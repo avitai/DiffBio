@@ -1,0 +1,31 @@
+"""Loss functions and regularization for bioinformatics pipelines.
+
+This module provides loss functions for training differentiable bioinformatics
+pipelines, including biological regularization to prevent adversarial optimization.
+"""
+
+from diffbio.losses.alignment_losses import (
+    AlignmentConsistencyLoss,
+    AlignmentScoreLoss,
+    SoftEditDistanceLoss,
+)
+from diffbio.losses.biological_regularization import (
+    BiologicalPlausibilityLoss,
+    BiologicalRegularizationConfig,
+    GapPatternRegularization,
+    GCContentRegularization,
+    SequenceComplexityLoss,
+)
+
+__all__ = [
+    # Alignment losses
+    "AlignmentConsistencyLoss",
+    "AlignmentScoreLoss",
+    "SoftEditDistanceLoss",
+    # Biological regularization
+    "BiologicalPlausibilityLoss",
+    "BiologicalRegularizationConfig",
+    "GapPatternRegularization",
+    "GCContentRegularization",
+    "SequenceComplexityLoss",
+]
