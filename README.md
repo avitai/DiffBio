@@ -258,6 +258,6 @@ Apache License 2.0. See [LICENSE](LICENSE) for details.
 ## Acknowledgments
 
 DiffBio builds on ideas from:
-- [SMURF](https://www.biorxiv.org/content/10.1101/2024.04.09.588712): Differentiable sequence alignment
+- [SMURF](https://www.biorxiv.org/content/10.1101/2021.10.23.465204): Differentiable Smith-Waterman for end-to-end MSA learning
 - [Datarax](https://github.com/mahdi-shafiei/workshop-data): Composable data processing framework
 - [Flax NNX](https://flax.readthedocs.io/): Neural network library for JAX
