@@ -17,9 +17,7 @@ from diffbio.operators.variant import (
 )
 
 
-def generate_random_reads(
-    key: jax.Array, num_reads: int, read_length: int
-) -> jax.Array:
+def generate_random_reads(key: jax.Array, num_reads: int, read_length: int) -> jax.Array:
     """Generate random one-hot encoded reads.
 
     Args:
@@ -34,9 +32,7 @@ def generate_random_reads(
     return jax.nn.one_hot(indices, 4)
 
 
-def generate_random_positions(
-    key: jax.Array, num_reads: int, max_position: int
-) -> jax.Array:
+def generate_random_positions(key: jax.Array, num_reads: int, max_position: int) -> jax.Array:
     """Generate random read positions.
 
     Args:
@@ -50,9 +46,7 @@ def generate_random_positions(
     return jax.random.randint(key, (num_reads,), 0, max_position)
 
 
-def generate_random_quality_scores(
-    key: jax.Array, num_reads: int, read_length: int
-) -> jax.Array:
+def generate_random_quality_scores(key: jax.Array, num_reads: int, read_length: int) -> jax.Array:
     """Generate random quality scores.
 
     Args:

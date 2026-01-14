@@ -11,9 +11,10 @@ Key components:
 - pipelines: Pre-built differentiable pipeline templates
 """
 
+from diffbio import losses, operators, pipelines, sequences, utils
+
 __version__ = "0.1.0"
 
-# Lazy imports to avoid circular dependencies
 __all__ = [
     "__version__",
     "sequences",

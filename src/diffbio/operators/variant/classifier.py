@@ -75,9 +75,7 @@ class VariantClassifier(OperatorModule):
         layers = []
         dropout_layers = []
         for _ in range(config.num_layers - 1):
-            layers.append(
-                nnx.Linear(config.hidden_dim, config.hidden_dim, rngs=rngs)
-            )
+            layers.append(nnx.Linear(config.hidden_dim, config.hidden_dim, rngs=rngs))
             dropout_layers.append(nnx.Dropout(rate=config.dropout_rate, rngs=rngs))
 
         self.layers = nnx.List(layers)

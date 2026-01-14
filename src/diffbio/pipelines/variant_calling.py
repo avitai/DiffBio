@@ -15,10 +15,10 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.element_batch import Batch, Element
+from datarax.core.element_batch import Batch
 from datarax.core.operator import OperatorModule
 from flax import nnx
-from jaxtyping import Array, Float, Int
+from jaxtyping import Array, Float
 
 from diffbio.operators.quality_filter import (
     DifferentiableQualityFilter,
@@ -231,7 +231,9 @@ class VariantCallingPipeline(OperatorModule):
     def _classify_positions(
         self,
         pileup: Float[Array, "reference_length 4"],
-    ) -> tuple[Float[Array, "reference_length num_classes"], Float[Array, "reference_length num_classes"]]:
+    ) -> tuple[
+        Float[Array, "reference_length num_classes"], Float[Array, "reference_length num_classes"]
+    ]:
         """Classify each reference position using pileup windows.
 
         Extracts a window around each position and classifies it.

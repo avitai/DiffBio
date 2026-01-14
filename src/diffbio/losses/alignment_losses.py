@@ -211,14 +211,11 @@ class AlignmentConsistencyLoss(nnx.Module):
         # Compute KL divergence between expected and actual A->C alignment
         # KL(actual || expected) = sum(actual * log(actual / expected))
         eps = 1e-8
-        kl_div = jnp.sum(
-            align_ac * jnp.log((align_ac + eps) / (align_ac_expected + eps))
-        )
+        kl_div = jnp.sum(align_ac * jnp.log((align_ac + eps) / (align_ac_expected + eps)))
 
         # Also compute reverse KL for symmetry
         kl_div_reverse = jnp.sum(
-            align_ac_expected
-            * jnp.log((align_ac_expected + eps) / (align_ac + eps))
+            align_ac_expected * jnp.log((align_ac_expected + eps) / (align_ac + eps))
         )
 
         # Return symmetric KL (Jensen-Shannon style)

@@ -165,9 +165,7 @@ class TestGapPatternRegularization:
         """Test that gap pattern loss is differentiable."""
         loss_fn = GapPatternRegularization(max_gap_length=10, rngs=rngs)
 
-        alignment = jax.nn.softmax(
-            jax.random.normal(jax.random.PRNGKey(0), (5, 5)), axis=-1
-        )
+        alignment = jax.nn.softmax(jax.random.normal(jax.random.PRNGKey(0), (5, 5)), axis=-1)
 
         def loss(a):
             return loss_fn(a)

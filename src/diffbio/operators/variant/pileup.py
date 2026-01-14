@@ -142,9 +142,7 @@ class DifferentiablePileup(OperatorModule):
         pileup_normalized = pileup / coverage
 
         # Apply softmax to ensure valid probability distribution
-        pileup_normalized = jax.nn.softmax(
-            pileup_normalized / self.temperature[...], axis=-1
-        )
+        pileup_normalized = jax.nn.softmax(pileup_normalized / self.temperature[...], axis=-1)
 
         return pileup_normalized
 

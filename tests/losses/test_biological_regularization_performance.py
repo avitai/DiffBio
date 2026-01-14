@@ -32,9 +32,7 @@ def generate_random_soft_sequence(key: jax.Array, length: int) -> jax.Array:
     return jax.nn.softmax(logits, axis=-1)
 
 
-def generate_random_alignment_weights(
-    key: jax.Array, len1: int, len2: int
-) -> jax.Array:
+def generate_random_alignment_weights(key: jax.Array, len1: int, len2: int) -> jax.Array:
     """Generate random soft alignment matrix."""
     logits = jax.random.normal(key, (len1, len2))
     return jax.nn.softmax(logits, axis=-1)

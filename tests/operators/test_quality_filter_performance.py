@@ -22,9 +22,7 @@ LARGE_LENGTH = 10000
 XLARGE_LENGTH = 100000
 
 
-def generate_random_sequence_data(
-    key: jax.Array, length: int
-) -> dict[str, jax.Array]:
+def generate_random_sequence_data(key: jax.Array, length: int) -> dict[str, jax.Array]:
     """Generate random one-hot encoded DNA sequence with quality scores."""
     keys = jax.random.split(key, 2)
     indices = jax.random.randint(keys[0], (length,), 0, 4)
@@ -57,9 +55,7 @@ class TestQualityFilterScalability:
         data = generate_random_sequence_data(key, length)
         state = {}
 
-        transformed, new_state, metadata = quality_filter.apply(
-            data, state, None, None
-        )
+        transformed, new_state, metadata = quality_filter.apply(data, state, None, None)
 
         # Verify correct shapes
         assert transformed["sequence"].shape == (length, 4)

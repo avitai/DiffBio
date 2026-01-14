@@ -3,7 +3,6 @@
 import jax
 import jax.numpy as jnp
 import pytest
-from flax import nnx
 
 from diffbio.pipelines import create_variant_calling_pipeline
 from diffbio.utils.training import (
@@ -261,10 +260,11 @@ class TestTrainerIntegration:
 
         # Train for a few epochs
         for epoch in range(2):
+
             def data_iter():
                 return data_iterator(inputs, targets)
 
-            metrics = trainer.train_epoch(data_iter(), loss_fn)
+            trainer.train_epoch(data_iter(), loss_fn)
 
         # Training should have run
         assert trainer.training_state.step > 0

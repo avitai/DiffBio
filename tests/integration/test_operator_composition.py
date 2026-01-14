@@ -206,7 +206,7 @@ class TestPileupBatchProcessing:
         keys = jax.random.split(key, batch_size * 3)
 
         for i in range(batch_size):
-            k1, k2, k3 = keys[i * 3:(i + 1) * 3]
+            k1, k2, k3 = keys[i * 3 : (i + 1) * 3]
             indices = jax.random.randint(k1, (num_reads, read_length), 0, 4)
             reads = jax.nn.one_hot(indices, 4)
             positions = jax.random.randint(k2, (num_reads,), 0, reference_length - read_length)
@@ -289,9 +289,7 @@ class TestClassifierBatchProcessing:
 
     @pytest.fixture
     def classifier(self, rngs):
-        config = VariantClassifierConfig(
-            num_classes=3, hidden_dim=32, input_window=11
-        )
+        config = VariantClassifierConfig(num_classes=3, hidden_dim=32, input_window=11)
         classifier = VariantClassifier(config, rngs=rngs)
         classifier.eval()  # Disable dropout for deterministic testing
         return classifier
@@ -541,9 +539,7 @@ class TestGradientFlowThroughPipelines:
         pileup_config = PileupConfig(reference_length=11, window_size=11)
         pileup_op = DifferentiablePileup(pileup_config, rngs=rngs)
 
-        classifier_config = VariantClassifierConfig(
-            num_classes=3, hidden_dim=32, input_window=11
-        )
+        classifier_config = VariantClassifierConfig(num_classes=3, hidden_dim=32, input_window=11)
         classifier = VariantClassifier(classifier_config, rngs=rngs)
         classifier.eval()
 
@@ -633,9 +629,7 @@ class TestOperatorModuleInterface:
 
     def test_classifier_has_apply_method(self, rngs):
         """Test VariantClassifier has proper apply() signature."""
-        op = VariantClassifier(
-            VariantClassifierConfig(input_window=5), rngs=rngs
-        )
+        op = VariantClassifier(VariantClassifierConfig(input_window=5), rngs=rngs)
         op.eval()
 
         assert hasattr(op, "apply")

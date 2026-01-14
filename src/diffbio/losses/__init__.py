@@ -16,6 +16,16 @@ from diffbio.losses.biological_regularization import (
     GCContentRegularization,
     SequenceComplexityLoss,
 )
+from diffbio.losses.singlecell_losses import (
+    BatchMixingLoss,
+    ClusteringCompactnessLoss,
+    VelocityConsistencyLoss,
+)
+from diffbio.losses.statistical_losses import (
+    HMMLikelihoodLoss,
+    NegativeBinomialLoss,
+    VAELoss,
+)
 
 __all__ = [
     # Alignment losses
@@ -28,4 +38,12 @@ __all__ = [
     "GapPatternRegularization",
     "GCContentRegularization",
     "SequenceComplexityLoss",
+    # Single-cell losses
+    "BatchMixingLoss",
+    "ClusteringCompactnessLoss",
+    "VelocityConsistencyLoss",
+    # Statistical losses
+    "HMMLikelihoodLoss",
+    "NegativeBinomialLoss",
+    "VAELoss",
 ]

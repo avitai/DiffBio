@@ -589,7 +589,7 @@ wheels = [
 [[package]]
 name = "datarax"
 version = "0.1.0"
-source = { git = "https://github.com/mahdi-shafiei/workshop-data.git#d629acceeabcbe6e4f801a02f1afb95a738f3b04" }
+source = { git = "https://github.com/avitai/datarax.git#787cff47876daf45f3925512afe6a2e290302183" }
 dependencies = [
     { name = "absl-py" },
     { name = "antlr4-python3-runtime" },
@@ -771,7 +771,7 @@ requires-dist = [
     { name = "chex", specifier = ">=0.1.7" },
     { name = "coverage", marker = "extra == 'dev'", specifier = ">=7" },
     { name = "coverage", marker = "extra == 'test'", specifier = ">=7" },
-    { name = "datarax", git = "https://github.com/mahdi-shafiei/workshop-data.git" },
+    { name = "datarax", git = "https://github.com/avitai/datarax.git" },
     { name = "diffbio", extras = ["dev", "docs", "gpu", "test"], marker = "extra == 'all'" },
     { name = "diffbio", extras = ["dev", "gpu"], marker = "extra == 'cuda-dev'" },
     { name = "flax", specifier = ">=0.12.0" },

@@ -246,7 +246,9 @@ class TestVariantCallingPipelineGradients:
         indices = jax.random.randint(k1, (batch_size, num_reads, read_length), 0, 4)
         reads = jax.nn.one_hot(indices, 4).astype(jnp.float32)
         positions = jax.random.randint(k2, (batch_size, num_reads), 0, 10)
-        quality = jax.random.uniform(k3, (batch_size, num_reads, read_length), minval=10.0, maxval=40.0)
+        quality = jax.random.uniform(
+            k3, (batch_size, num_reads, read_length), minval=10.0, maxval=40.0
+        )
 
         def loss_fn(r):
             # Process each sample and sum losses

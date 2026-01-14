@@ -1,9 +1,14 @@
 """Differentiable sequence alignment operators.
 
 This module provides differentiable implementations of sequence alignment
-algorithms including smooth Smith-Waterman for local alignment.
+algorithms including smooth Smith-Waterman for local alignment,
+profile HMM search for domain detection, and soft progressive MSA.
 """
 
+from diffbio.operators.alignment.profile_hmm import (
+    ProfileHMMConfig,
+    ProfileHMMSearch,
+)
 from diffbio.operators.alignment.scoring import (
     BLOSUM62,
     DNA_SIMPLE,
@@ -18,9 +23,16 @@ from diffbio.operators.alignment.smith_waterman import (
     SmithWatermanConfig,
     SmoothSmithWaterman,
 )
+from diffbio.operators.alignment.soft_msa import (
+    SoftProgressiveMSA,
+    SoftProgressiveMSAConfig,
+)
 
 
 __all__ = [
+    # Profile HMM
+    "ProfileHMMConfig",
+    "ProfileHMMSearch",
     # Scoring
     "BLOSUM62",
     "DNA_SIMPLE",
@@ -33,4 +45,7 @@ __all__ = [
     "AlignmentResult",
     "SmithWatermanConfig",
     "SmoothSmithWaterman",
+    # Soft MSA
+    "SoftProgressiveMSA",
+    "SoftProgressiveMSAConfig",
 ]

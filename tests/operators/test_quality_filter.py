@@ -74,9 +74,7 @@ class TestDifferentiableQualityFilter:
         quality = jnp.array([40.0, 40.0, 40.0, 40.0])  # All Q40
         data = {"sequence": sequence, "quality_scores": quality}
 
-        transformed_data, new_state, new_metadata = op.apply(
-            data, sample_state, None, None
-        )
+        transformed_data, new_state, new_metadata = op.apply(data, sample_state, None, None)
 
         # High quality should result in weights close to 1
         # Weighted sequence should be close to original
@@ -96,9 +94,7 @@ class TestDifferentiableQualityFilter:
         quality = jnp.array([0.0, 0.0, 0.0, 0.0])  # All Q0
         data = {"sequence": sequence, "quality_scores": quality}
 
-        transformed_data, new_state, new_metadata = op.apply(
-            data, sample_state, None, None
-        )
+        transformed_data, new_state, new_metadata = op.apply(data, sample_state, None, None)
 
         # Low quality should result in weights close to 0
         # Weighted sequence should be significantly reduced
@@ -111,9 +107,7 @@ class TestDifferentiableQualityFilter:
         config = QualityFilterConfig(initial_threshold=20.0)
         op = DifferentiableQualityFilter(config, rngs=rngs)
 
-        transformed_data, new_state, new_metadata = op.apply(
-            sample_data, sample_state, None, None
-        )
+        transformed_data, new_state, new_metadata = op.apply(sample_data, sample_state, None, None)
 
         # Verify output structure
         assert "sequence" in transformed_data
@@ -128,9 +122,7 @@ class TestDifferentiableQualityFilter:
 
         # Quality scores should be preserved
         assert "quality_scores" in transformed_data
-        assert jnp.allclose(
-            transformed_data["quality_scores"], sample_data["quality_scores"]
-        )
+        assert jnp.allclose(transformed_data["quality_scores"], sample_data["quality_scores"])
 
     def test_threshold_is_learnable(self, rngs):
         """Test that threshold parameter is learnable (has gradients)."""

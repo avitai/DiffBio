@@ -188,9 +188,7 @@ class Trainer:
             # Compute gradient norm for metrics
             grad_leaves = jax.tree.leaves(nnx.state(grads, nnx.Param))
             if grad_leaves:
-                grad_norm = jnp.sqrt(
-                    sum(jnp.sum(g**2) for g in grad_leaves)
-                )
+                grad_norm = jnp.sqrt(sum(jnp.sum(g**2) for g in grad_leaves))
             else:
                 grad_norm = jnp.array(0.0)
 
@@ -278,10 +276,7 @@ class Trainer:
 
             metrics = self.train_epoch(data_iterator, loss_fn)
 
-            print(
-                f"Epoch {epoch + 1}/{self.config.num_epochs}: "
-                f"avg_loss={metrics['avg_loss']:.4f}"
-            )
+            print(f"Epoch {epoch + 1}/{self.config.num_epochs}: avg_loss={metrics['avg_loss']:.4f}")
 
         # Set back to eval mode
         if hasattr(self.pipeline, "set_training"):
@@ -335,9 +330,7 @@ def create_synthetic_training_data(
         )
 
         # Generate reads from reference (with variants)
-        positions = jax.random.randint(
-            k4, (num_reads,), 0, reference_length - read_length
-        )
+        positions = jax.random.randint(k4, (num_reads,), 0, reference_length - read_length)
 
         # Extract read segments
         def get_read(pos):
@@ -354,18 +347,20 @@ def create_synthetic_training_data(
 
         # Generate quality scores
         key, k6 = jax.random.split(key)
-        quality = jax.random.uniform(
-            k6, (num_reads, read_length), minval=20.0, maxval=40.0
-        )
+        quality = jax.random.uniform(k6, (num_reads, read_length), minval=20.0, maxval=40.0)
 
-        inputs.append({
-            "reads": reads,
-            "positions": positions,
-            "quality": quality,
-        })
-        targets.append({
-            "labels": labels,
-        })
+        inputs.append(
+            {
+                "reads": reads,
+                "positions": positions,
+                "quality": quality,
+            }
+        )
+        targets.append(
+            {
+                "labels": labels,
+            }
+        )
 
     return inputs, targets
 
@@ -386,8 +381,7 @@ def data_iterator(
         Tuples of (batch_data, targets)
     """
     # For simplicity, yield one sample at a time
-    for inp, tgt in zip(inputs, targets):
-        yield inp, tgt
+    yield from zip(inputs, targets)
 
 
 # Backwards compatibility alias

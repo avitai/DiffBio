@@ -149,9 +149,9 @@ class GapPatternRegularization(nnx.Module):
 
         # Compute weighted average position for each row
         positions = jnp.arange(len2)
-        weighted_pos = jnp.sum(
-            alignment_weights * positions[None, :], axis=1
-        ) / jnp.maximum(jnp.sum(alignment_weights, axis=1), 1e-8)
+        weighted_pos = jnp.sum(alignment_weights * positions[None, :], axis=1) / jnp.maximum(
+            jnp.sum(alignment_weights, axis=1), 1e-8
+        )
 
         # Penalize deviation from expected diagonal progression
         diag_penalty = jnp.mean((weighted_pos - expected_diag) ** 2) / (len2**2)

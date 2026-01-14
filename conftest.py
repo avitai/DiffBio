@@ -139,10 +139,7 @@ def sample_reads(random_key):
     k1, k2, k3 = jax.random.split(random_key, 3)
 
     return {
-        "reads": jax.nn.one_hot(
-            jax.random.randint(k1, (num_reads, read_length), 0, 4),
-            4
-        ),
+        "reads": jax.nn.one_hot(jax.random.randint(k1, (num_reads, read_length), 0, 4), 4),
         "positions": jax.random.randint(k2, (num_reads,), 0, 70),
         "quality": jax.random.uniform(k3, (num_reads, read_length), minval=10.0, maxval=40.0),
     }
