@@ -78,9 +78,11 @@ dev = [
 docs = [
   "griffe>=1.7.3",
   "mkdocs>=1.6.1",
+  "mkdocs-include-exclude-files>=0.1",
   "mkdocs-material>=9.6.7",
   "mkdocstrings>=0.28.3",
   "mkdocstrings-python>=1.1.2",
+  "pymdown-extensions>=10.14.3",
 ]
 gpu = ["jax[cuda12]>=0.6.1", "jaxlib>=0.6.1"]
 test = [

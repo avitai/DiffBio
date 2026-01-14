@@ -1,0 +1,163 @@
+# Core Base Classes
+
+DiffBio operators inherit from Datarax's base classes, providing a consistent interface for composable, differentiable data processing.
+
+## OperatorModule
+
+All DiffBio operators inherit from `datarax.core.operator.OperatorModule`, which provides:
+
+- Consistent `apply()` interface for data transformation
+- `apply_batch()` for batch processing
+- Integration with Flax NNX for learnable parameters
+
+### Interface
+
+```python
+class OperatorModule:
+    def apply(
+        self,
+        data: PyTree,
+        state: PyTree,
+        metadata: dict | None,
+        random_params: Any = None,
+        stats: dict | None = None,
+    ) -> tuple[PyTree, PyTree, dict | None]:
+        """Transform data through the operator.
+
+        Args:
+            data: Input data (typically dict of arrays)
+            state: Per-element state
+            metadata: Optional element metadata
+            random_params: Random parameters for stochastic ops
+            stats: Optional statistics dictionary
+
+        Returns:
+            Tuple of (transformed_data, updated_state, updated_metadata)
+        """
+```
+
+### Usage Pattern
+
+```python
+from diffbio.operators import SmoothSmithWaterman, SmithWatermanConfig
+from diffbio.operators.alignment import create_dna_scoring_matrix
+
+# Create operator
+config = SmithWatermanConfig(temperature=1.0)
+scoring = create_dna_scoring_matrix(match=2.0, mismatch=-1.0)
+operator = SmoothSmithWaterman(config, scoring_matrix=scoring)
+
+# Prepare data
+data = {"seq1": seq1_tensor, "seq2": seq2_tensor}
+state = {}
+metadata = None
+
+# Apply operator
+result_data, state, metadata = operator.apply(data, state, metadata)
+```
+
+## OperatorConfig
+
+Configuration base class for operators from `datarax.core.config.OperatorConfig`:
+
+```python
+from dataclasses import dataclass
+from datarax.core.config import OperatorConfig
+
+@dataclass
+class MyOperatorConfig(OperatorConfig):
+    """Configuration for MyOperator.
+
+    Attributes:
+        my_param: Description of parameter
+        stochastic: Whether operator uses randomness
+        stream_name: RNG stream name for stochastic ops
+    """
+    my_param: float = 1.0
+    stochastic: bool = False
+    stream_name: str | None = None
+```
+
+## DiffBio Operator Hierarchy
+
+```
+datarax.core.operator.OperatorModule
+    │
+    ├── diffbio.operators.DifferentiableQualityFilter
+    │
+    ├── diffbio.operators.alignment.SmoothSmithWaterman
+    │
+    ├── diffbio.operators.variant.DifferentiablePileup
+    │
+    ├── diffbio.operators.variant.VariantClassifier
+    │
+    └── diffbio.pipelines.VariantCallingPipeline
+```
+
+## Learnable Parameters
+
+DiffBio uses Flax NNX's `nnx.Param` for learnable parameters:
+
+```python
+from flax import nnx
+
+class MyOperator(OperatorModule):
+    def __init__(self, config, rngs):
+        super().__init__(config, rngs=rngs)
+
+        # Learnable parameters
+        self.temperature = nnx.Param(jnp.array(1.0))
+        self.threshold = nnx.Param(jnp.array(20.0))
+```
+
+### Accessing Parameters
+
+```python
+# Get all parameters
+params = nnx.state(operator, nnx.Param)
+
+# Access specific parameter value
+value = operator.temperature[...]
+
+# Update parameter
+operator.temperature[...] = new_value
+```
+
+### Gradient Computation
+
+```python
+import jax
+
+def loss_fn(operator, data):
+    result, _, _ = operator.apply(data, {}, None)
+    return result["score"]
+
+# Compute gradients w.r.t. parameters
+grads = jax.grad(loss_fn)(operator, data)
+```
+
+## Type Annotations
+
+DiffBio uses jaxtyping for array type annotations:
+
+```python
+from jaxtyping import Array, Float, Int, PyTree
+
+# Float array with shape annotations
+def align(
+    self,
+    seq1: Float[Array, "len1 alphabet"],
+    seq2: Float[Array, "len2 alphabet"],
+) -> Float[Array, ""]:
+    ...
+```
+
+Common type patterns:
+
+| Annotation | Description |
+|------------|-------------|
+| `Float[Array, ""]` | Scalar float |
+| `Float[Array, "n"]` | 1D float array |
+| `Float[Array, "n m"]` | 2D float array |
+| `Int[Array, "n"]` | 1D integer array |
+| `PyTree` | JAX pytree (dict, tuple, etc.) |

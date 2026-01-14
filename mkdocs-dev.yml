@@ -1,0 +1,29 @@
+# MkDocs Development Configuration - Fast Build
+# Use this for rapid iteration: mkdocs serve -f mkdocs-dev.yml
+
+# Inherit from main config
+INHERIT: mkdocs.yml
+
+# Override plugins for faster builds
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - include_exclude_files:
+      exclude:
+        - "_overrides"
+        - "*.tmp"
+        - "*.pyc"
+        - "__pycache__"
+  # Disable mkdocstrings for faster builds during development
+  # - mkdocstrings
+
+# Reduce watch scope for faster reloads
+watch:
+  - docs/
+  - mkdocs-dev.yml
+
+# Disable strict mode for development
+strict: false
+
+# Note: This config skips API documentation generation for faster development.
+# Use the main mkdocs.yml for full builds before deployment.
