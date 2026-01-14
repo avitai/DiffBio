@@ -4,6 +4,7 @@ This module provides training loops and utilities for end-to-end gradient-based
 optimization of DiffBio pipelines using Flax NNX patterns.
 """
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -203,7 +204,7 @@ class Trainer:
 
     def train_epoch(
         self,
-        data_iterator,
+        data_iterator: Iterator[tuple[dict[str, Array], dict[str, Array]]],
         loss_fn: Callable,
     ) -> dict[str, float]:
         """Train for one epoch.
@@ -369,7 +370,7 @@ def data_iterator(
     inputs: list[dict[str, Array]],
     targets: list[dict[str, Array]],
     batch_size: int = 1,
-):
+) -> Iterator[tuple[dict[str, Array], dict[str, Array]]]:
     """Create an iterator over training data.
 
     Args:

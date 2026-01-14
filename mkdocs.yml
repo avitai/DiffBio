@@ -88,12 +88,29 @@ nav:
           - Pileup Generation: user-guide/concepts/pileup-generation.md
       - Operators:
           - Overview: user-guide/operators/overview.md
-          - Smith-Waterman: user-guide/operators/smith-waterman.md
-          - Pileup Operator: user-guide/operators/pileup.md
-          - Quality Filter: user-guide/operators/quality-filter.md
+          - Core:
+              - Smith-Waterman: user-guide/operators/smith-waterman.md
+              - Pileup Operator: user-guide/operators/pileup.md
+              - Quality Filter: user-guide/operators/quality-filter.md
+          - Alignment: user-guide/operators/alignment.md
+          - Epigenomics: user-guide/operators/epigenomics.md
+          - RNA-seq: user-guide/operators/rnaseq.md
+          - Single-Cell: user-guide/operators/singlecell.md
+          - Preprocessing: user-guide/operators/preprocessing.md
+          - Normalization: user-guide/operators/normalization.md
+          - Statistical: user-guide/operators/statistical.md
+          - Assembly & Mapping: user-guide/operators/assembly-mapping.md
+          - Multi-omics: user-guide/operators/multiomics.md
+          - Variant: user-guide/operators/variant.md
       - Pipelines:
           - Pipeline Overview: user-guide/pipelines/overview.md
-          - Variant Calling Pipeline: user-guide/pipelines/variant-calling.md
+          - Variant Calling: user-guide/pipelines/variant-calling.md
+          - Preprocessing: user-guide/pipelines/preprocessing.md
+          - Differential Expression: user-guide/pipelines/differential-expression.md
+      - Losses:
+          - Overview: user-guide/losses/overview.md
+          - Single-Cell Losses: user-guide/losses/singlecell.md
+          - Statistical Losses: user-guide/losses/statistical.md
       - Training:
           - Training Overview: user-guide/training/overview.md
           - Training Utilities: user-guide/training/utilities.md
@@ -103,11 +120,30 @@ nav:
           - Base Classes: api/core/base.md
           - Configuration: api/core/configuration.md
       - Operators:
-          - Smith-Waterman: api/operators/smith-waterman.md
-          - Pileup: api/operators/pileup.md
-          - Quality Filter: api/operators/quality-filter.md
+          - Core:
+              - Smith-Waterman: api/operators/smith-waterman.md
+              - Pileup: api/operators/pileup.md
+              - Quality Filter: api/operators/quality-filter.md
+          - Alignment: api/operators/alignment.md
+          - Epigenomics: api/operators/epigenomics.md
+          - RNA-seq: api/operators/rnaseq.md
+          - Single-Cell: api/operators/singlecell.md
+          - Preprocessing: api/operators/preprocessing.md
+          - Normalization: api/operators/normalization.md
+          - Statistical: api/operators/statistical.md
+          - Assembly: api/operators/assembly.md
+          - Mapping: api/operators/mapping.md
+          - Multi-omics: api/operators/multiomics.md
+          - Variant: api/operators/variant.md
       - Pipelines:
           - Variant Calling: api/pipelines/variant-calling.md
+          - Preprocessing: api/pipelines/preprocessing.md
+          - Differential Expression: api/pipelines/differential-expression.md
+      - Losses:
+          - Alignment Losses: api/losses/alignment.md
+          - Biological Regularization: api/losses/biological-regularization.md
+          - Single-Cell Losses: api/losses/singlecell.md
+          - Statistical Losses: api/losses/statistical.md
       - Utils:
           - Training Utilities: api/utils/training.md
 
@@ -119,8 +155,13 @@ nav:
       - Basic:
           - Simple Alignment: examples/basic/simple-alignment.md
           - Pileup Generation: examples/basic/pileup-generation.md
+          - Single-Cell Clustering: examples/basic/single-cell-clustering.md
+          - Preprocessing: examples/basic/preprocessing.md
       - Advanced:
           - Variant Calling Pipeline: examples/advanced/variant-calling.md
+          - Differential Expression: examples/advanced/differential-expression.md
+          - Epigenomics Analysis: examples/advanced/epigenomics-analysis.md
+          - Multi-omics Integration: examples/advanced/multiomics-integration.md
 
   - Development:
       - Contributing: development/contributing.md

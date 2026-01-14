@@ -34,25 +34,123 @@ This enables learning optimal pipeline parameters directly from data, rather tha
 
 ### Differentiable Operators
 
+#### Core Operators
+
 | Operator | Description |
 |----------|-------------|
 | `DifferentiableQualityFilter` | Sigmoid-based soft quality filtering with learnable threshold |
 | `DifferentiablePileup` | Soft pileup generation with temperature-controlled position assignments |
-| `SoftSmithWaterman` | Differentiable sequence alignment with soft max operations |
+| `SmoothSmithWaterman` | Differentiable sequence alignment with soft max operations |
 | `VariantClassifier` | Neural network for variant classification (ref/SNP/indel) |
+
+#### Alignment Operators
+
+| Operator | Description |
+|----------|-------------|
+| `SoftProgressiveMSA` | Differentiable multiple sequence alignment with guide tree |
+| `ProfileHMM` | Profile Hidden Markov Model for sequence homology detection |
+
+#### Epigenomics Operators
+
+| Operator | Description |
+|----------|-------------|
+| `DifferentiablePeakCaller` | CNN-based peak calling for ChIP-seq/ATAC-seq |
+| `ChromatinStateAnnotator` | HMM-based chromatin state classification |
+
+#### RNA-seq Operators
+
+| Operator | Description |
+|----------|-------------|
+| `SplicingPSI` | Differentiable PSI calculation for alternative splicing |
+| `DifferentiableMotifDiscovery` | Learnable PWM-based motif discovery |
+
+#### Single-Cell Operators
+
+| Operator | Description |
+|----------|-------------|
+| `SoftKMeansClustering` | Differentiable soft k-means with learnable centroids |
+| `DifferentiableHarmony` | Harmony-style batch correction |
+| `DifferentiableVelocity` | RNA velocity via neural ODEs |
+| `DifferentiableAmbientRemoval` | VAE-based ambient RNA decontamination |
+
+#### Preprocessing Operators
+
+| Operator | Description |
+|----------|-------------|
+| `SoftAdapterRemoval` | Differentiable adapter trimming with soft alignment |
+| `DifferentiableDuplicateWeighting` | Probabilistic duplicate weighting |
+| `SoftErrorCorrection` | Neural network-based error correction |
+
+#### Normalization Operators
+
+| Operator | Description |
+|----------|-------------|
+| `VAENormalizer` | scVI-style VAE for count normalization |
+| `DifferentiableUMAP` | Differentiable UMAP dimensionality reduction |
+| `SequenceEmbedding` | Learned sequence embeddings |
+
+#### Statistical Operators
+
+| Operator | Description |
+|----------|-------------|
+| `DifferentiableHMM` | Forward algorithm with logsumexp stability |
+| `DifferentiableNBGLM` | Negative binomial GLM for differential expression |
+| `DifferentiableEMQuantifier` | Unrolled EM for transcript quantification |
+
+#### Assembly & Mapping Operators
+
+| Operator | Description |
+|----------|-------------|
+| `GNNAssemblyNavigator` | GNN for assembly graph traversal |
+| `NeuralReadMapper` | Cross-attention based read mapping |
+
+#### Multi-omics Operators
+
+| Operator | Description |
+|----------|-------------|
+| `SpatialDeconvolution` | Cell type deconvolution for spatial transcriptomics |
+| `HiCContactAnalysis` | Chromatin contact analysis for Hi-C data |
+
+#### Variant Operators
+
+| Operator | Description |
+|----------|-------------|
+| `CNNVariantClassifier` | CNN-based variant classification |
+| `CNVSegmentation` | Copy number variation segmentation |
+| `QualityRecalibration` | Base quality score recalibration |
 
 ### Pipelines
 
 | Pipeline | Description |
 |----------|-------------|
-| `VariantCallingPipeline` | End-to-end differentiable variant calling from reads to predictions |
+| `VariantCallingPipeline` | End-to-end differentiable variant calling |
+| `PreprocessingPipeline` | Quality filtering, adapter removal, error correction |
+| `DifferentialExpressionPipeline` | DESeq2-style differential expression analysis |
+
+### Loss Functions
+
+#### Single-Cell Losses
+
+| Loss | Description |
+|------|-------------|
+| `BatchMixingLoss` | Maximizes batch mixing in latent space |
+| `ClusteringCompactnessLoss` | Tight, well-separated clusters |
+| `VelocityConsistencyLoss` | RNA velocity consistency |
+
+#### Statistical Losses
+
+| Loss | Description |
+|------|-------------|
+| `NegativeBinomialLoss` | NB log-likelihood for count data |
+| `VAELoss` | ELBO loss with KL regularization |
+| `HMMLikelihoodLoss` | HMM forward algorithm loss |
 
 ### Training Infrastructure
 
 - **Flax NNX patterns** for stateful model management
 - **Gradient clipping** and configurable optimizers via Optax
 - **Synthetic data generation** for development and testing
-- **Cross-entropy loss** for variant classification
+- **Multiple loss functions** for various bioinformatics tasks
 
 ## Installation
 

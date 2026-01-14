@@ -1,122 +1,37 @@
 # Configuration Classes
 
-DiffBio uses dataclasses for operator and pipeline configuration.
+DiffBio uses dataclasses for operator and pipeline configuration. All configurations inherit from Datarax's `OperatorConfig` base class.
 
 ## Operator Configurations
 
-### SmithWatermanConfig
+Configuration classes for each operator are documented alongside their respective operators:
 
-Configuration for the differentiable Smith-Waterman alignment operator.
-
-::: diffbio.operators.alignment.smith_waterman.SmithWatermanConfig
-    options:
-      show_root_heading: true
-      members: []
-
-**Example:**
-
-```python
-from diffbio.operators.alignment import SmithWatermanConfig
-
-config = SmithWatermanConfig(
-    temperature=1.0,    # Logsumexp smoothness
-    gap_open=-10.0,     # Gap opening penalty
-    gap_extend=-1.0,    # Gap extension penalty
-)
-```
-
----
-
-### QualityFilterConfig
-
-Configuration for the differentiable quality filter.
-
-::: diffbio.operators.quality_filter.QualityFilterConfig
-    options:
-      show_root_heading: true
-      members: []
-
-**Example:**
-
-```python
-from diffbio.operators import QualityFilterConfig
-
-config = QualityFilterConfig(
-    initial_threshold=20.0,  # Phred quality threshold
-)
-```
-
----
-
-### PileupConfig
-
-Configuration for the differentiable pileup generator.
-
-::: diffbio.operators.variant.pileup.PileupConfig
-    options:
-      show_root_heading: true
-      members: []
-
-**Example:**
-
-```python
-from diffbio.operators.variant import PileupConfig
-
-config = PileupConfig(
-    reference_length=1000,
-    window_size=21,
-    use_quality_weights=True,
-)
-```
+| Operator | Config | Documentation |
+|----------|--------|---------------|
+| Smith-Waterman | `SmithWatermanConfig` | [API Reference](../operators/smith-waterman.md) |
+| Quality Filter | `QualityFilterConfig` | [API Reference](../operators/quality-filter.md) |
+| Pileup | `PileupConfig` | [API Reference](../operators/pileup.md) |
+| CNN Variant Classifier | `CNNVariantClassifierConfig` | [API Reference](../operators/variant.md) |
+| CNV Segmentation | `CNVSegmentationConfig` | [API Reference](../operators/variant.md) |
+| Soft K-Means | `SoftClusteringConfig` | [API Reference](../operators/singlecell.md) |
+| Harmony | `BatchCorrectionConfig` | [API Reference](../operators/singlecell.md) |
+| RNA Velocity | `VelocityConfig` | [API Reference](../operators/singlecell.md) |
 
 ## Pipeline Configurations
 
-### VariantCallingPipelineConfig
-
-Configuration for the end-to-end variant calling pipeline.
-
-::: diffbio.pipelines.variant_calling.VariantCallingPipelineConfig
-    options:
-      show_root_heading: true
-      members: []
-
-**Example:**
-
-```python
-from diffbio.pipelines import VariantCallingPipelineConfig
-
-config = VariantCallingPipelineConfig(
-    reference_length=10000,
-    num_classes=3,
-    quality_threshold=20.0,
-    pileup_window_size=11,
-    classifier_hidden_dim=128,
-)
-```
+| Pipeline | Config | Documentation |
+|----------|--------|---------------|
+| Variant Calling | `VariantCallingPipelineConfig` | [API Reference](../pipelines/variant-calling.md) |
+| Preprocessing | `PreprocessingPipelineConfig` | [API Reference](../pipelines/preprocessing.md) |
+| Differential Expression | `DEPipelineConfig` | [API Reference](../pipelines/differential-expression.md) |
 
 ## Training Configuration
 
-### TrainingConfig
+The training configuration is documented in the training utilities:
 
-Configuration for the training loop.
-
-::: diffbio.utils.training.TrainingConfig
-    options:
-      show_root_heading: true
-      members: []
-
-**Example:**
-
-```python
-from diffbio.utils.training import TrainingConfig
-
-config = TrainingConfig(
-    learning_rate=1e-3,
-    num_epochs=100,
-    log_every=10,
-    grad_clip_norm=1.0,
-)
-```
+| Config | Documentation |
+|--------|---------------|
+| `TrainingConfig` | [API Reference](../utils/training.md) |
 
 ## Configuration Patterns
 
@@ -145,7 +60,7 @@ Pipelines can contain nested configs:
 ```python
 @dataclass
 class PipelineConfig:
-    preprocessing: PreprocessingConfig
+    preprocessing: PreprocessingPipelineConfig
     alignment: AlignmentConfig
     classification: ClassificationConfig
 ```
@@ -162,4 +77,17 @@ class ValidatedConfig(OperatorConfig):
     def __post_init__(self):
         if self.temperature <= 0:
             raise ValueError("temperature must be positive")
+```
+
+### Frozen Configurations
+
+Use frozen dataclasses for immutability:
+
+```python
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class ImmutableConfig(OperatorConfig):
+    """Configuration that cannot be modified after creation."""
+    param: float = 1.0
 ```

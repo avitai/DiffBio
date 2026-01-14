@@ -1,0 +1,265 @@
+# Variant Operators
+
+DiffBio provides differentiable operators for variant calling, including CNN-based classification, copy number analysis, and quality recalibration.
+
+<span class="operator-variant">Variant</span> <span class="diff-high">Fully Differentiable</span>
+
+## Overview
+
+Variant operators enable end-to-end optimization of:
+
+- **CNNVariantClassifier**: CNN-based variant classification
+- **CNVSegmentation**: Copy number variation segmentation
+- **QualityRecalibration**: Base quality score recalibration
+
+## CNNVariantClassifier
+
+CNN-based variant classification from pileup images.
+
+### Quick Start
+
+```python
+from flax import nnx
+from diffbio.operators.variant import CNNVariantClassifier, CNNVariantConfig
+
+# Configure CNN classifier
+config = CNNVariantConfig(
+    num_classes=3,           # ref, SNP, indel
+    window_size=21,          # Pileup window
+    num_channels=6,          # Read depth, quality, etc.
+    num_filters=[32, 64, 128],
+)
+
+# Create operator
+rngs = nnx.Rngs(42)
+classifier = CNNVariantClassifier(config, rngs=rngs)
+
+# Classify variants from pileup
+data = {"pileup_tensor": pileup}  # (n_positions, window_size, num_channels)
+result, state, metadata = classifier.apply(data, {}, None)
+
+# Get predictions
+logits = result["logits"]              # (n_positions, num_classes)
+probabilities = result["probabilities"] # Softmax probabilities
+predictions = result["predictions"]     # Argmax predictions
+```
+
+### Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `num_classes` | int | 3 | Number of variant classes |
+| `window_size` | int | 21 | Context window size |
+| `num_channels` | int | 6 | Input channels |
+| `num_filters` | list | [32, 64, 128] | Filters per conv layer |
+
+### Pileup Tensor Channels
+
+Standard pileup tensor channels:
+
+| Channel | Description |
+|---------|-------------|
+| 0 | Reference base (one-hot) |
+| 1-4 | Read base frequencies (A, C, G, T) |
+| 5 | Average base quality |
+| 6 | Read depth (normalized) |
+| 7 | Mapping quality |
+
+### CNN Architecture
+
+```
+Pileup Tensor → [Conv2D → BN → ReLU → Pool] × 3 → Flatten → Dense → Softmax
+     ↓
+(window, channels) → features → logits → probabilities
+```
+
+## CNVSegmentation
+
+Copy number variation segmentation using changepoint detection.
+
+### Quick Start
+
+```python
+from diffbio.operators.variant import CNVSegmentation, CNVConfig
+
+# Configure CNV segmentation
+config = CNVConfig(
+    n_states=5,              # Ploidy states (0, 1, 2, 3, 4+)
+    hidden_dim=64,
+    temperature=1.0,
+)
+
+# Create operator
+rngs = nnx.Rngs(42)
+cnv_seg = CNVSegmentation(config, rngs=rngs)
+
+# Segment copy number
+data = {
+    "log_ratios": log_ratios,    # (n_bins,) or (n_samples, n_bins)
+    "positions": bin_positions,  # (n_bins,) genomic positions
+}
+result, state, metadata = cnv_seg.apply(data, {}, None)
+
+# Get segmentation
+segments = result["segments"]              # Segment assignments
+copy_numbers = result["copy_numbers"]      # Inferred CN states
+changepoints = result["changepoints"]      # Changepoint probabilities
+```
+
+### Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `n_states` | int | 5 | Number of copy number states |
+| `hidden_dim` | int | 64 | Network hidden dimension |
+| `temperature` | float | 1.0 | Changepoint detection sharpness |
+
+### CNV Model
+
+The CNV model combines:
+
+1. **Emission model**: P(log_ratio | copy_number)
+2. **Transition model**: Penalizes state changes (segments)
+3. **Soft segmentation**: Temperature-controlled changepoints
+
+```python
+# Soft changepoint detection
+change_scores = neural_network(log_ratios)
+changepoint_probs = jax.nn.sigmoid(change_scores / temperature)
+
+# Segment-aware state prediction
+state_logits = emission_network(log_ratios)
+state_probs = segment_aware_softmax(state_logits, changepoint_probs)
+```
+
+## QualityRecalibration
+
+Base quality score recalibration using machine learning.
+
+### Quick Start
+
+```python
+from diffbio.operators.variant import QualityRecalibration, QualityRecalConfig
+
+# Configure recalibration
+config = QualityRecalConfig(
+    n_features=10,           # Context features
+    hidden_dim=32,
+    output_quality_bins=50,
+)
+
+# Create operator
+rngs = nnx.Rngs(42)
+recal = QualityRecalibration(config, rngs=rngs)
+
+# Recalibrate quality scores
+data = {
+    "quality_scores": original_quality,  # (n_bases,)
+    "context_features": features,        # (n_bases, n_features)
+}
+result, state, metadata = recal.apply(data, {}, None)
+
+# Get recalibrated scores
+recalibrated = result["recalibrated_quality"]
+adjustment = result["quality_adjustment"]
+```
+
+### Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `n_features` | int | 10 | Number of context features |
+| `hidden_dim` | int | 32 | Network hidden dimension |
+| `output_quality_bins` | int | 50 | Quality score range |
+
+### Context Features
+
+Features used for recalibration:
+
+| Feature | Description |
+|---------|-------------|
+| Original quality | Reported quality score |
+| Read position | Position within read |
+| Cycle | Sequencing cycle |
+| Context | Dinucleotide context |
+| Read group | Library/lane information |
+
+### Recalibration Model
+
+```python
+# Neural quality recalibration
+predicted_error_rate = recal_network(context_features)
+recalibrated_quality = -10 * jnp.log10(predicted_error_rate + 1e-10)
+```
+
+## Training Variant Models
+
+### CNN Classifier Training
+
+```python
+from flax import nnx
+import optax
+
+def variant_loss(classifier, pileups, labels):
+    """Cross-entropy loss for variant classification."""
+    data = {"pileup_tensor": pileups}
+    result, _, _ = classifier.apply(data, {}, None)
+
+    # Softmax cross-entropy
+    loss = optax.softmax_cross_entropy_with_integer_labels(
+        result["logits"], labels
+    ).mean()
+    return loss
+
+# Train
+grads = nnx.grad(variant_loss)(classifier, train_pileups, train_labels)
+```
+
+### CNV Training with Known Segments
+
+```python
+def cnv_loss(cnv_model, log_ratios, true_segments):
+    """Train CNV segmentation."""
+    data = {"log_ratios": log_ratios, "positions": positions}
+    result, _, _ = cnv_model.apply(data, {}, None)
+
+    # Segment matching loss
+    seg_loss = jnp.mean((result["copy_numbers"] - true_segments) ** 2)
+
+    # Sparsity penalty on changepoints
+    sparse_loss = jnp.mean(result["changepoints"])
+
+    return seg_loss + 0.1 * sparse_loss
+```
+
+## Use Cases
+
+| Application | Operator | Description |
+|-------------|----------|-------------|
+| SNP/indel calling | CNNVariantClassifier | Classify variant types |
+| Somatic variants | CNNVariantClassifier | Cancer variant detection |
+| Copy number | CNVSegmentation | Detect CNV regions |
+| Tumor purity | CNVSegmentation | Estimate tumor fraction |
+| Quality control | QualityRecalibration | Improve base qualities |
+
+## Integration with Pipelines
+
+```python
+from diffbio.pipelines import VariantCallingPipeline
+
+# Full variant calling pipeline
+pipeline = VariantCallingPipeline(config, rngs=rngs)
+
+# Pipeline includes:
+# 1. Quality filtering
+# 2. Pileup generation
+# 3. Variant classification (uses CNNVariantClassifier internally)
+
+result, _, _ = pipeline.apply(read_data, {}, None)
+```
+
+## Next Steps
+
+- See [Variant Calling Pipeline](../pipelines/variant-calling.md) for end-to-end workflow
+- Explore [Pileup Operator](pileup.md) for pileup generation
+- Check [Quality Filter](quality-filter.md) for preprocessing

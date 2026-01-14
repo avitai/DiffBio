@@ -19,27 +19,90 @@ DiffBio provides a collection of differentiable operators for bioinformatics ana
 </div>
 </div>
 
-### Alignment Operators
+### Core Operators
 
 | Operator | Description | Status |
 |----------|-------------|--------|
-| [`SmoothSmithWaterman`](smith-waterman.md) | Differentiable local sequence alignment | <span class="diff-high">Implemented</span> |
-| `SmoothNeedlemanWunsch` | Differentiable global alignment | <span class="diff-medium">Planned</span> |
-| `MultipleSequenceAlignment` | Differentiable MSA | <span class="diff-low">Research</span> |
-
-### Variant Calling Operators
-
-| Operator | Description | Status |
-|----------|-------------|--------|
+| [`DifferentiableQualityFilter`](quality-filter.md) | Sigmoid-based soft quality filtering | <span class="diff-high">Implemented</span> |
 | [`DifferentiablePileup`](pileup.md) | Soft pileup generation | <span class="diff-high">Implemented</span> |
+| [`SmoothSmithWaterman`](smith-waterman.md) | Differentiable local sequence alignment | <span class="diff-high">Implemented</span> |
 | `VariantClassifier` | Neural variant classifier | <span class="diff-high">Implemented</span> |
 
-### Preprocessing Operators
+### [Alignment Operators](alignment.md)
 
 | Operator | Description | Status |
 |----------|-------------|--------|
-| [`DifferentiableQualityFilter`](quality-filter.md) | Soft quality filtering | <span class="diff-high">Implemented</span> |
-| `AdapterTrimmer` | Differentiable adapter removal | <span class="diff-medium">Planned</span> |
+| `SoftProgressiveMSA` | Differentiable multiple sequence alignment with guide tree | <span class="diff-high">Implemented</span> |
+| `ProfileHMM` | Profile Hidden Markov Model for sequence homology | <span class="diff-high">Implemented</span> |
+
+### [Epigenomics Operators](epigenomics.md)
+
+| Operator | Description | Status |
+|----------|-------------|--------|
+| `DifferentiablePeakCaller` | CNN-based peak calling for ChIP-seq/ATAC-seq | <span class="diff-high">Implemented</span> |
+| `ChromatinStateAnnotator` | HMM-based chromatin state classification | <span class="diff-high">Implemented</span> |
+
+### [RNA-seq Operators](rnaseq.md)
+
+| Operator | Description | Status |
+|----------|-------------|--------|
+| `SplicingPSI` | Differentiable PSI calculation for alternative splicing | <span class="diff-high">Implemented</span> |
+| `DifferentiableMotifDiscovery` | Learnable PWM-based motif discovery | <span class="diff-high">Implemented</span> |
+
+### [Single-Cell Operators](singlecell.md)
+
+| Operator | Description | Status |
+|----------|-------------|--------|
+| `SoftKMeansClustering` | Differentiable soft k-means with learnable centroids | <span class="diff-high">Implemented</span> |
+| `DifferentiableHarmony` | Harmony-style batch correction | <span class="diff-high">Implemented</span> |
+| `DifferentiableVelocity` | RNA velocity via neural ODEs | <span class="diff-high">Implemented</span> |
+| `DifferentiableAmbientRemoval` | VAE-based ambient RNA decontamination | <span class="diff-high">Implemented</span> |
+
+### [Preprocessing Operators](preprocessing.md)
+
+| Operator | Description | Status |
+|----------|-------------|--------|
+| `SoftAdapterRemoval` | Differentiable adapter trimming with soft alignment | <span class="diff-high">Implemented</span> |
+| `DifferentiableDuplicateWeighting` | Probabilistic duplicate weighting | <span class="diff-high">Implemented</span> |
+| `SoftErrorCorrection` | Neural network-based error correction | <span class="diff-high">Implemented</span> |
+
+### [Normalization Operators](normalization.md)
+
+| Operator | Description | Status |
+|----------|-------------|--------|
+| `VAENormalizer` | scVI-style VAE for count normalization | <span class="diff-high">Implemented</span> |
+| `DifferentiableUMAP` | Differentiable UMAP dimensionality reduction | <span class="diff-high">Implemented</span> |
+| `SequenceEmbedding` | Learned sequence embeddings | <span class="diff-high">Implemented</span> |
+
+### [Statistical Operators](statistical.md)
+
+| Operator | Description | Status |
+|----------|-------------|--------|
+| `DifferentiableHMM` | Forward algorithm with logsumexp stability | <span class="diff-high">Implemented</span> |
+| `DifferentiableNBGLM` | Negative binomial GLM for differential expression | <span class="diff-high">Implemented</span> |
+| `DifferentiableEMQuantifier` | Unrolled EM for transcript quantification | <span class="diff-high">Implemented</span> |
+
+### [Assembly & Mapping Operators](assembly-mapping.md)
+
+| Operator | Description | Status |
+|----------|-------------|--------|
+| `GNNAssemblyNavigator` | GNN for assembly graph traversal | <span class="diff-high">Implemented</span> |
+| `NeuralReadMapper` | Cross-attention based read mapping | <span class="diff-high">Implemented</span> |
+
+### [Multi-omics Operators](multiomics.md)
+
+| Operator | Description | Status |
+|----------|-------------|--------|
+| `SpatialDeconvolution` | Cell type deconvolution for spatial transcriptomics | <span class="diff-high">Implemented</span> |
+| `HiCContactAnalysis` | Chromatin contact analysis for Hi-C data | <span class="diff-high">Implemented</span> |
+
+### [Variant Operators](variant.md)
+
+| Operator | Description | Status |
+|----------|-------------|--------|
+| `CNNVariantClassifier` | CNN-based variant classification | <span class="diff-high">Implemented</span> |
+| `CNVSegmentation` | Copy number variation segmentation | <span class="diff-high">Implemented</span> |
+| `QualityRecalibration` | Base quality score recalibration | <span class="diff-high">Implemented</span> |
 
 ## Operator Interface
 
