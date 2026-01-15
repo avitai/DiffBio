@@ -436,3 +436,91 @@ class TestJITCompatibility:
 
         result = compute_complement(seq)
         assert result.shape == seq.shape
+
+
+class TestEdgeCases:
+    """Edge case tests for DNA operations."""
+
+    def test_encode_single_char(self):
+        """Test encoding single character sequences."""
+        for nucleotide in "ACGT":
+            encoded = encode_dna_string(nucleotide)
+            assert encoded.shape == (1, 4)
+            assert float(jnp.sum(encoded)) == pytest.approx(1.0)
+
+    def test_encode_long_sequence(self):
+        """Test encoding long sequence."""
+        seq = "ACGT" * 1000  # 4000 nucleotides
+        encoded = encode_dna_string(seq)
+        assert encoded.shape == (4000, 4)
+        # Each row should sum to 1
+        row_sums = jnp.sum(encoded, axis=1)
+        assert jnp.allclose(row_sums, 1.0)
+
+    def test_gc_content_all_gc(self):
+        """Test GC content with all GC sequence."""
+        seq = encode_dna_string("GCGCGC")
+        gc = gc_content(seq)
+        assert float(gc) == pytest.approx(1.0)
+
+    def test_gc_content_no_gc(self):
+        """Test GC content with no GC sequence."""
+        seq = encode_dna_string("ATAT")
+        gc = gc_content(seq)
+        assert float(gc) == pytest.approx(0.0)
+
+    def test_phred_zero(self):
+        """Test Phred score of zero."""
+        phred = jnp.array([0.0])
+        prob = phred_to_probability(phred)
+        # Phred 0 = 100% error probability
+        assert float(prob[0]) == pytest.approx(1.0)
+
+    def test_phred_high_quality(self):
+        """Test very high Phred score."""
+        phred = jnp.array([60.0])  # Very high quality
+        prob = phred_to_probability(phred)
+        # Should be near zero error probability
+        assert float(prob[0]) < 1e-5
+
+    def test_reverse_complement_palindrome(self):
+        """Test reverse complement of palindromic sequence."""
+        # GAATTC is EcoRI site (palindromic)
+        seq = encode_dna_string("GAATTC")
+        rc = reverse_complement_dna(seq)
+        decoded_rc = decode_dna_onehot(rc)
+        assert decoded_rc == "GAATTC"  # Should equal itself
+
+    def test_soft_encode_zero_quality(self):
+        """Test soft encoding with zero quality."""
+        seq = encode_dna_string("ACGT")
+        quality = jnp.zeros(4)  # Zero quality
+        soft = soft_encode_dna(seq, quality)
+        # Should still produce valid probabilities
+        row_sums = jnp.sum(soft, axis=1)
+        assert jnp.allclose(row_sums, 1.0)
+
+    def test_soft_encode_high_quality(self):
+        """Test soft encoding with very high quality stays sharp."""
+        seq = encode_dna_string("ACGT")
+        quality = jnp.ones(4) * 60.0  # Very high quality
+        soft = soft_encode_dna(seq, quality)
+        # Should be nearly identical to original
+        assert jnp.allclose(soft, seq, atol=0.01)
+
+    def test_decode_uniform_distribution(self):
+        """Test decoding uniform distribution returns N below threshold."""
+        # Near-uniform distribution below default threshold (0.5)
+        encoded = jnp.array([[0.26, 0.25, 0.25, 0.24]])
+        decoded = decode_dna_onehot(encoded)
+        assert decoded == "N"  # Below threshold returns N
+
+        # With lower threshold, picks highest
+        decoded_low_threshold = decode_dna_onehot(encoded, threshold=0.25)
+        assert decoded_low_threshold == "A"
+
+    def test_create_element_data_empty_quality(self):
+        """Test creating element data with explicit zero quality."""
+        quality = jnp.zeros(4)
+        data = create_dna_element_data("ACGT", quality_scores=quality)
+        assert jnp.allclose(data["quality_scores"], quality)

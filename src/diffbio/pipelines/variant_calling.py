@@ -21,6 +21,7 @@ from flax import nnx
 from jaxtyping import Array, Float
 
 from diffbio.constants import ClassifierType
+from diffbio.utils.nn_utils import extract_windows_1d
 from diffbio.operators.quality_filter import (
     DifferentiableQualityFilter,
     QualityFilterConfig,
@@ -308,23 +309,12 @@ class VariantCallingPipeline(OperatorModule):
         Float[Array, "reference_length num_classes"], Float[Array, "reference_length num_classes"]
     ]:
         """Classify positions using MLP classifier."""
-        # Pad pileup for boundary positions
-        padded_pileup = jnp.pad(
-            pileup,
-            ((half_window, half_window), (0, 0)),
-            mode="edge",
-        )
+        del reference_length, half_window  # Not needed - handled by extract_windows_1d
 
-        # Extract all windows using pure jax.vmap (no module state involved)
-        def extract_window(pos: int) -> Array:
-            return jax.lax.dynamic_slice(
-                padded_pileup,
-                (pos, 0),
-                (window_size, 4),
-            )
-
-        positions = jnp.arange(reference_length)
-        all_windows = jax.vmap(extract_window)(positions)  # (reference_length, window_size, 4)
+        # Extract all windows using utility function
+        all_windows = extract_windows_1d(
+            pileup, window_size=window_size, pad_mode="edge"
+        )  # (reference_length, window_size, 4)
 
         # Classify all windows using batch processing through the classifier
         batch_size = all_windows.shape[0]
@@ -364,6 +354,7 @@ class VariantCallingPipeline(OperatorModule):
         - Channel 4: Coverage (normalized by max_coverage)
         - Channel 5: Mean quality (normalized to 0-1)
         """
+        del half_window  # Not needed - handled by extract_windows_1d
         max_coverage = self.pileup.config.max_coverage
 
         # Normalize coverage and quality if provided
@@ -380,23 +371,10 @@ class VariantCallingPipeline(OperatorModule):
         # Concatenate all channels: (reference_length, 6)
         pileup_6ch = jnp.concatenate([pileup, norm_coverage, norm_quality], axis=-1)
 
-        # Pad for boundary positions
-        padded_pileup = jnp.pad(
-            pileup_6ch,
-            ((half_window, half_window), (0, 0)),
-            mode="edge",
-        )
-
-        # Extract all windows
-        def extract_window(pos: int) -> Array:
-            return jax.lax.dynamic_slice(
-                padded_pileup,
-                (pos, 0),
-                (window_size, 6),
-            )
-
-        positions = jnp.arange(reference_length)
-        all_windows = jax.vmap(extract_window)(positions)  # (reference_length, window_size, 6)
+        # Extract all windows using utility function
+        all_windows = extract_windows_1d(
+            pileup_6ch, window_size=window_size, pad_mode="edge"
+        )  # (reference_length, window_size, 6)
 
         # Reshape for CNN: (batch, height, width=window_size, channels=6)
         # We need height >= 2 for CNN's max_pool(2,2) to work

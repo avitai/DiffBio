@@ -7,6 +7,7 @@ neural network building, and other common operations in bioinformatics pipelines
 from diffbio.utils.nn_utils import (
     build_mlp_layers,
     ensure_rngs,
+    extract_windows_1d,
     get_rng_key,
     init_learnable_param,
     safe_divide,
@@ -39,6 +40,7 @@ __all__ = [
     # Neural network utilities
     "build_mlp_layers",
     "ensure_rngs",
+    "extract_windows_1d",
     "get_rng_key",
     "init_learnable_param",
     "safe_divide",

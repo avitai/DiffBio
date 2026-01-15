@@ -439,3 +439,107 @@ class TestCNNFactoryFunction:
         assert cnn_pipeline._use_cnn is True
         assert mlp_pipeline.pipeline_config.classifier_type == "mlp"
         assert cnn_pipeline.pipeline_config.classifier_type == "cnn"
+
+
+class TestEdgeCases:
+    """Edge case tests for variant calling pipeline."""
+
+    def test_single_read(self, rngs):
+        """Test pipeline handles single read."""
+        config = VariantCallingPipelineConfig(
+            reference_length=20,
+            num_classes=3,
+            pileup_window_size=5,
+            classifier_hidden_dim=8,
+        )
+        pipeline = VariantCallingPipeline(config, rngs=rngs)
+        pipeline.eval_mode()
+
+        # Single read
+        indices = jnp.array([[0, 1, 2, 3, 0]])  # 1 read, 5 bases
+        reads = jax.nn.one_hot(indices, 4)
+        positions = jnp.array([0])
+        quality = jnp.ones((1, 5)) * 30.0
+
+        data = {"reads": reads, "positions": positions, "quality": quality}
+        result_data, _, _ = pipeline.apply(data, {}, None)
+
+        assert result_data["logits"].shape == (20, 3)
+        assert jnp.all(jnp.isfinite(result_data["logits"]))
+
+    def test_minimal_reference_length(self, rngs):
+        """Test pipeline with minimal reference length equal to window size."""
+        window_size = 5
+        config = VariantCallingPipelineConfig(
+            reference_length=window_size,  # Same as window
+            num_classes=3,
+            pileup_window_size=window_size,
+            classifier_hidden_dim=8,
+        )
+        pipeline = VariantCallingPipeline(config, rngs=rngs)
+        pipeline.eval_mode()
+
+        key = jax.random.PRNGKey(42)
+        indices = jax.random.randint(key, (3, 5), 0, 4)
+        reads = jax.nn.one_hot(indices, 4)
+        positions = jnp.array([0, 0, 0])  # All start at 0
+        quality = jnp.ones((3, 5)) * 30.0
+
+        data = {"reads": reads, "positions": positions, "quality": quality}
+        result_data, _, _ = pipeline.apply(data, {}, None)
+
+        assert result_data["logits"].shape == (window_size, 3)
+        assert jnp.all(jnp.isfinite(result_data["probabilities"]))
+
+    def test_all_low_quality_reads(self, rngs):
+        """Test pipeline handles all low quality reads."""
+        config = VariantCallingPipelineConfig(
+            reference_length=20,
+            num_classes=3,
+            pileup_window_size=5,
+            quality_threshold=30.0,
+            classifier_hidden_dim=8,
+        )
+        pipeline = VariantCallingPipeline(config, rngs=rngs)
+        pipeline.eval_mode()
+
+        key = jax.random.PRNGKey(42)
+        indices = jax.random.randint(key, (3, 8), 0, 4)
+        reads = jax.nn.one_hot(indices, 4)
+        positions = jnp.array([0, 5, 10])
+        # All quality scores below threshold
+        quality = jnp.ones((3, 8)) * 5.0
+
+        data = {"reads": reads, "positions": positions, "quality": quality}
+        result_data, _, _ = pipeline.apply(data, {}, None)
+
+        # Should still produce valid output
+        assert jnp.all(jnp.isfinite(result_data["logits"]))
+        sums = result_data["probabilities"].sum(axis=-1)
+        assert jnp.allclose(sums, 1.0, atol=1e-5)
+
+    def test_reads_at_reference_end(self, rngs):
+        """Test pipeline handles reads at reference end boundary."""
+        ref_len = 20
+        config = VariantCallingPipelineConfig(
+            reference_length=ref_len,
+            num_classes=3,
+            pileup_window_size=5,
+            classifier_hidden_dim=8,
+        )
+        pipeline = VariantCallingPipeline(config, rngs=rngs)
+        pipeline.eval_mode()
+
+        read_length = 8
+        key = jax.random.PRNGKey(42)
+        indices = jax.random.randint(key, (3, read_length), 0, 4)
+        reads = jax.nn.one_hot(indices, 4)
+        # Positions near end of reference
+        positions = jnp.array([ref_len - 5, ref_len - 3, ref_len - 1])
+        quality = jnp.ones((3, read_length)) * 30.0
+
+        data = {"reads": reads, "positions": positions, "quality": quality}
+        result_data, _, _ = pipeline.apply(data, {}, None)
+
+        assert result_data["logits"].shape == (ref_len, 3)
+        assert jnp.all(jnp.isfinite(result_data["logits"]))
