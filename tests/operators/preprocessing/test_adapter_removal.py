@@ -43,11 +43,6 @@ class TestSoftAdapterRemoval:
     """Tests for SoftAdapterRemoval operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def sample_data_no_adapter(self):
         """Provide sample data without adapter."""
         sequence = encode_dna_string("ACGTACGTACGTACGT")
@@ -144,10 +139,6 @@ class TestSoftAdapterRemoval:
 class TestGradientFlow:
     """Tests for gradient flow through adapter removal."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_gradient_flows_through_apply(self, rngs):
         """Test that gradients flow through the apply method."""
         config = AdapterRemovalConfig()
@@ -208,10 +199,6 @@ class TestGradientFlow:
 class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_apply_is_jit_compatible(self, rngs):
         """Test that apply method works with JIT."""
         config = AdapterRemovalConfig()
@@ -254,10 +241,6 @@ class TestJITCompatibility:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_short_sequence(self, rngs):
         """Test with sequence shorter than adapter."""

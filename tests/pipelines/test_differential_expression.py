@@ -44,11 +44,6 @@ class TestDifferentialExpressionPipeline:
     """Tests for DifferentialExpressionPipeline."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         """Provide default config."""
         from diffbio.pipelines.differential_expression import DEPipelineConfig
@@ -206,11 +201,6 @@ class TestDEPipelineDifferentiability:
     """Tests for gradient flow through the DE pipeline."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         """Provide default config."""
         from diffbio.pipelines.differential_expression import DEPipelineConfig
@@ -289,11 +279,6 @@ class TestDEPipelineJITCompatibility:
     """Tests for JIT compilation compatibility."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         """Provide default config."""
         from diffbio.pipelines.differential_expression import DEPipelineConfig
@@ -340,11 +325,6 @@ class TestDEPipelineJITCompatibility:
 
 class TestSizeFactor:
     """Tests for size factor computation."""
-
-    @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def config(self):

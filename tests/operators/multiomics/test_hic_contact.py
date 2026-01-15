@@ -41,11 +41,6 @@ class TestHiCContactAnalysis:
     """Tests for HiCContactAnalysis operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def sample_data(self):
         """Provide sample Hi-C contact data."""
         key = jax.random.key(0)
@@ -141,10 +136,6 @@ class TestGradientFlow:
     """Tests for gradient flow through Hi-C contact analysis."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return HiCContactAnalysisConfig(
             n_bins=50,
@@ -215,10 +206,6 @@ class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return HiCContactAnalysisConfig(
             n_bins=50,
@@ -257,10 +244,6 @@ class TestJITCompatibility:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_small_matrix(self, rngs):
         """Test with small contact matrix."""

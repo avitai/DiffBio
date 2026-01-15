@@ -7,8 +7,6 @@ components.
 
 import jax
 import jax.numpy as jnp
-import pytest
-from flax import nnx
 
 from diffbio.losses.biological_regularization import (
     BiologicalPlausibilityLoss,
@@ -45,10 +43,6 @@ class TestBiologicalRegularizationConfig:
 
 class TestGCContentRegularization:
     """Tests for GC content regularization loss."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_initialization(self, rngs):
         """Test GC content regularization initialization."""
@@ -115,10 +109,6 @@ class TestGCContentRegularization:
 class TestGapPatternRegularization:
     """Tests for gap pattern regularization loss."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_initialization(self, rngs):
         """Test gap pattern regularization initialization."""
         loss = GapPatternRegularization(max_gap_length=10, rngs=rngs)
@@ -178,10 +168,6 @@ class TestGapPatternRegularization:
 class TestSequenceComplexityLoss:
     """Tests for sequence complexity regularization."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_initialization(self, rngs):
         """Test sequence complexity loss initialization."""
         loss = SequenceComplexityLoss(min_entropy=1.0, rngs=rngs)
@@ -233,10 +219,6 @@ class TestSequenceComplexityLoss:
 
 class TestBiologicalPlausibilityLoss:
     """Tests for the combined biological plausibility loss."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_initialization(self, rngs):
         """Test combined loss initialization."""
@@ -319,10 +301,6 @@ class TestBiologicalPlausibilityLoss:
 
 class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_gc_loss_jit_compatible(self, rngs):
         """Test GC content loss works with JIT."""

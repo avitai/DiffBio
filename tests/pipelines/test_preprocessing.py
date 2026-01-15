@@ -45,10 +45,6 @@ class TestPreprocessingPipeline:
     """Tests for PreprocessingPipeline."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         return PreprocessingPipelineConfig(
             read_length=50,
@@ -152,10 +148,6 @@ class TestPreprocessingPipeline:
 
 class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_pipeline_jit(self, rngs):
         """Test pipeline with JIT compilation."""

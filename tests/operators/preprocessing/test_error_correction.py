@@ -45,11 +45,6 @@ class TestSoftErrorCorrection:
     """Tests for SoftErrorCorrection operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def sample_data(self):
         """Provide sample sequence data."""
         sequence = encode_dna_string("ACGTACGTACGTACGT")
@@ -171,10 +166,6 @@ class TestSoftErrorCorrection:
 class TestGradientFlow:
     """Tests for gradient flow through error correction."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_gradient_flows_through_apply(self, rngs):
         """Test that gradients flow through the apply method."""
         config = ErrorCorrectionConfig()
@@ -255,10 +246,6 @@ class TestGradientFlow:
 class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_apply_is_jit_compatible(self, rngs):
         """Test that apply method works with JIT."""
         config = ErrorCorrectionConfig()
@@ -301,10 +288,6 @@ class TestJITCompatibility:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_short_sequence(self, rngs):
         """Test with sequence shorter than window."""

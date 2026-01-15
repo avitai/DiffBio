@@ -7,7 +7,6 @@ with increasing sequence lengths.
 import jax
 import jax.numpy as jnp
 import pytest
-from flax import nnx
 
 from diffbio.losses.biological_regularization import (
     BiologicalPlausibilityLoss,
@@ -42,10 +41,6 @@ class TestGCContentScalability:
     """Tests for GC content regularization scalability."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def gc_loss(self, rngs):
         return GCContentRegularization(target_gc=0.5, tolerance=0.2, rngs=rngs)
 
@@ -78,10 +73,6 @@ class TestSequenceComplexityScalability:
     """Tests for sequence complexity loss scalability."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def complexity_loss(self, rngs):
         return SequenceComplexityLoss(min_entropy=1.0, rngs=rngs)
 
@@ -112,10 +103,6 @@ class TestSequenceComplexityScalability:
 
 class TestGapPatternScalability:
     """Tests for gap pattern regularization scalability."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def gap_loss(self, rngs):
@@ -151,10 +138,6 @@ class TestCombinedLossScalability:
     """Tests for combined biological plausibility loss scalability."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def combined_loss(self, rngs):
         config = BiologicalRegularizationConfig()
         return BiologicalPlausibilityLoss(config, rngs=rngs)
@@ -186,10 +169,6 @@ class TestCombinedLossScalability:
 
 class TestLossJITPerformance:
     """Tests for JIT compilation performance of losses."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_gc_loss_jit_speedup(self, rngs):
         """Test GC loss benefits from JIT compilation."""
@@ -255,10 +234,6 @@ class TestLossJITPerformance:
 class TestLossGradientPerformance:
     """Tests for gradient computation performance."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_gc_loss_gradient_at_scale(self, rngs):
         """Test GC loss gradient computes efficiently at scale."""
         gc_loss = GCContentRegularization(target_gc=0.5, tolerance=0.2, rngs=rngs)
@@ -320,10 +295,6 @@ class TestLossGradientPerformance:
 
 class TestLossBenchmarks:
     """Benchmark tests using pytest-benchmark."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_benchmark_gc_loss_small(self, benchmark, rngs):
         """Benchmark GC loss for small sequences."""
@@ -421,10 +392,6 @@ class TestLossBenchmarks:
 
 class TestNumericalStability:
     """Tests for numerical stability at scale."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_gc_loss_stability_with_extreme_gc(self, rngs):
         """Test GC loss stability with extreme GC content."""

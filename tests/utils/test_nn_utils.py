@@ -93,11 +93,6 @@ class TestGetRngKey:
 class TestBuildMlpLayers:
     """Tests for build_mlp_layers function."""
 
-    @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for tests."""
-        return nnx.Rngs(42)
-
     def test_creates_correct_number_of_layers(self, rngs):
         """Should create the specified number of layers."""
         layers, dropouts, out_dim = build_mlp_layers(

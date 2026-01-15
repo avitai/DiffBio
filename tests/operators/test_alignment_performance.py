@@ -7,7 +7,6 @@ with increasing sequence lengths.
 import jax
 import jax.numpy as jnp
 import pytest
-from flax import nnx
 
 from diffbio.operators.alignment import SmoothSmithWaterman, SmithWatermanConfig
 from diffbio.operators.alignment.scoring import create_dna_scoring_matrix
@@ -28,10 +27,6 @@ def generate_random_dna_sequence(key: jax.Array, length: int) -> jax.Array:
 
 class TestAlignmentScalability:
     """Tests for alignment scalability with different sequence lengths."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def scoring_matrix(self):
@@ -91,10 +86,6 @@ class TestAlignmentJITPerformance:
     """Tests for JIT compilation performance."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def scoring_matrix(self):
         return create_dna_scoring_matrix(match=2.0, mismatch=-1.0)
 
@@ -149,10 +140,6 @@ class TestAlignmentGradientPerformance:
     """Tests for gradient computation performance."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def scoring_matrix(self):
         return create_dna_scoring_matrix(match=2.0, mismatch=-1.0)
 
@@ -200,10 +187,6 @@ class TestAlignmentGradientPerformance:
 
 class TestAlignmentBenchmarks:
     """Benchmark tests using pytest-benchmark."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def scoring_matrix(self):
@@ -281,10 +264,6 @@ class TestAlignmentBenchmarks:
 
 class TestNumericalStability:
     """Tests for numerical stability at scale."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def scoring_matrix(self):

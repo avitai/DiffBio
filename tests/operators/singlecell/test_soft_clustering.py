@@ -41,11 +41,6 @@ class TestSoftKMeansClustering:
     """Tests for SoftKMeansClustering operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def sample_cells(self):
         """Provide sample cell embeddings."""
         # Simulate cells in latent space
@@ -121,10 +116,6 @@ class TestGradientFlow:
     """Tests for gradient flow through clustering."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return SoftClusteringConfig(
             n_clusters=5,
@@ -171,10 +162,6 @@ class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return SoftClusteringConfig(
             n_clusters=5,
@@ -201,10 +188,6 @@ class TestJITCompatibility:
 class TestTemperatureControl:
     """Tests for temperature control."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_low_temperature_sharper_assignments(self, rngs):
         """Test that low temperature gives sharper assignments."""
         key = jax.random.key(0)
@@ -228,10 +211,6 @@ class TestTemperatureControl:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_single_cell(self, rngs):
         """Test with single cell."""

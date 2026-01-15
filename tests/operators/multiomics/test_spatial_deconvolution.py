@@ -46,11 +46,6 @@ class TestSpatialDeconvolution:
     """Tests for SpatialDeconvolution operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def sample_data(self):
         """Provide sample spatial transcriptomics data."""
         key = jax.random.key(0)
@@ -148,10 +143,6 @@ class TestGradientFlow:
     """Tests for gradient flow through spatial deconvolution."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return SpatialDeconvolutionConfig(
             n_genes=100,
@@ -228,10 +219,6 @@ class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return SpatialDeconvolutionConfig(
             n_genes=100,
@@ -273,10 +260,6 @@ class TestJITCompatibility:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_few_spots(self, rngs):
         """Test with few spots."""

@@ -35,11 +35,6 @@ class TestDifferentiableQualityFilter:
     """Tests for DifferentiableQualityFilter operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def sample_data(self):
         """Provide sample DNA sequence data."""
         sequence = encode_dna_string("ACGTACGT")
@@ -162,10 +157,6 @@ class TestDifferentiableQualityFilter:
 class TestGradientFlow:
     """Tests for gradient flow through quality filter."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_gradient_flows_through_apply(self, rngs):
         """Test that gradients flow through the apply method."""
         config = QualityFilterConfig(initial_threshold=20.0)
@@ -207,10 +198,6 @@ class TestGradientFlow:
 
 class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_apply_is_jit_compatible(self, rngs):
         """Test that apply method works with JIT."""
@@ -255,10 +242,6 @@ class TestJITCompatibility:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_single_position(self, rngs):
         """Test with single position sequence."""

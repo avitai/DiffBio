@@ -36,10 +36,6 @@ class TestQualityFilterScalability:
     """Tests for quality filter scalability with different sequence lengths."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def quality_filter(self, rngs):
         config = QualityFilterConfig(initial_threshold=20.0)
         return DifferentiableQualityFilter(config, rngs=rngs)
@@ -76,10 +72,6 @@ class TestQualityFilterScalability:
 
 class TestQualityFilterJITPerformance:
     """Tests for JIT compilation performance."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_jit_compilation_works(self, rngs):
         """Test that JIT compilation works for quality filter."""
@@ -128,10 +120,6 @@ class TestQualityFilterJITPerformance:
 class TestQualityFilterGradientPerformance:
     """Tests for gradient computation performance."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_gradient_computes_for_large_sequences(self, rngs):
         """Test gradients compute efficiently for large sequences."""
         config = QualityFilterConfig(initial_threshold=20.0)
@@ -178,10 +166,6 @@ class TestQualityFilterGradientPerformance:
 
 class TestQualityFilterBenchmarks:
     """Benchmark tests using pytest-benchmark."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def quality_filter(self, rngs):
@@ -255,10 +239,6 @@ class TestQualityFilterBenchmarks:
 
 class TestNumericalStability:
     """Tests for numerical stability at scale."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_stability_with_extreme_quality_scores(self, rngs):
         """Test stability with extreme quality score values."""

@@ -86,10 +86,6 @@ class TestDifferentiablePileup:
     """Tests for differentiable pileup operator."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def pileup_config(self):
         return PileupConfig(window_size=11)
 
@@ -249,10 +245,6 @@ class TestVariantClassifier:
     """Tests for variant classifier."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def classifier_config(self):
         return VariantClassifierConfig(num_classes=3, hidden_dim=32, num_layers=2)
 
@@ -376,10 +368,6 @@ class TestVariantClassifier:
 class TestVariantCallingIntegration:
     """Integration tests for variant calling pipeline."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_pileup_to_classifier_pipeline(self, rngs):
         """Test pileup output flows to classifier."""
         window_size = 11
@@ -462,10 +450,6 @@ class TestVariantCallingIntegration:
 
 class TestEnhancedPileup:
     """Tests for enhanced pileup with coverage and quality channels."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_pileup_returns_coverage_when_enabled(self, rngs):
         """Test pileup returns coverage channel when configured."""
@@ -591,10 +575,6 @@ class TestEnhancedPileup:
 
 class TestEdgeCases:
     """Edge case tests."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_single_read(self, rngs):
         """Test pileup with single read."""

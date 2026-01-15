@@ -52,11 +52,6 @@ class TestPeakCallerConfig:
 class TestPeakDetectionCNN:
     """Tests for the PeakDetectionCNN module."""
 
-    @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
     def test_initialization(self, rngs):
         """Test CNN initialization."""
         from diffbio.operators.epigenomics.peak_calling import PeakDetectionCNN
@@ -109,11 +104,6 @@ class TestPeakDetectionCNN:
 
 class TestDifferentiablePeakCaller:
     """Tests for DifferentiablePeakCaller operator."""
-
-    @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def config(self):
@@ -235,11 +225,6 @@ class TestPeakCallerDifferentiability:
     """Tests for gradient flow through the peak caller."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         """Provide default config."""
         from diffbio.operators.epigenomics.peak_calling import PeakCallerConfig
@@ -344,11 +329,6 @@ class TestPeakCallerJITCompatibility:
     """Tests for JIT compilation compatibility."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         """Provide default config."""
         from diffbio.operators.epigenomics.peak_calling import PeakCallerConfig
@@ -404,11 +384,6 @@ class TestPeakCallerJITCompatibility:
 
 class TestPeakCallerBiologicalBehavior:
     """Tests for biologically meaningful behavior."""
-
-    @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def config(self):

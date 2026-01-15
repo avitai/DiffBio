@@ -42,11 +42,6 @@ class TestDifferentiableNBGLM:
     """Tests for DifferentiableNBGLM operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def sample_data(self):
         """Provide sample count and design matrix data."""
         # Counts for single sample, 100 genes
@@ -173,10 +168,6 @@ class TestDifferentiableNBGLM:
 class TestBatchProcessing:
     """Tests for batch processing."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_batch_log_likelihood(self, rngs):
         """Test batch log likelihood computation."""
         config = NBGLMConfig(n_features=100, n_covariates=2)
@@ -199,10 +190,6 @@ class TestBatchProcessing:
 
 class TestGradientFlow:
     """Tests for gradient flow through NB GLM."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_gradient_flows_through_log_prob(self, rngs):
         """Test that gradients flow through log probability."""
@@ -264,10 +251,6 @@ class TestGradientFlow:
 class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_apply_is_jit_compatible(self, rngs):
         """Test that apply method works with JIT."""
         config = NBGLMConfig(n_features=100, n_covariates=2)
@@ -304,10 +287,6 @@ class TestJITCompatibility:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_zero_counts(self, rngs):
         """Test with zero counts."""

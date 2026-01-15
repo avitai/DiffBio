@@ -42,11 +42,6 @@ class TestDifferentiableAmbientRemoval:
     """Tests for DifferentiableAmbientRemoval operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         """Provide small config for faster tests."""
         return AmbientRemovalConfig(
@@ -143,10 +138,6 @@ class TestGradientFlow:
     """Tests for gradient flow through ambient removal."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return AmbientRemovalConfig(
             n_genes=50,
@@ -211,10 +202,6 @@ class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return AmbientRemovalConfig(
             n_genes=50,
@@ -251,10 +238,6 @@ class TestJITCompatibility:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_few_cells(self, rngs):
         """Test with few cells."""

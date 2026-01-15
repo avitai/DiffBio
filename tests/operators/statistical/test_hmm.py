@@ -44,11 +44,6 @@ class TestDifferentiableHMM:
     """Tests for DifferentiableHMM operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def sample_data(self):
         """Provide sample observation data."""
         # DNA sequence encoded as one-hot
@@ -180,10 +175,6 @@ class TestDifferentiableHMM:
 class TestGradientFlow:
     """Tests for gradient flow through HMM."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_gradient_flows_through_forward(self, rngs):
         """Test that gradients flow through the forward algorithm."""
         config = HMMConfig(n_states=3, n_emissions=4)
@@ -239,10 +230,6 @@ class TestGradientFlow:
 class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_forward_is_jit_compatible(self, rngs):
         """Test that forward algorithm works with JIT."""
         config = HMMConfig(n_states=3, n_emissions=4)
@@ -276,10 +263,6 @@ class TestJITCompatibility:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_single_observation(self, rngs):
         """Test with single observation."""

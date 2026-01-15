@@ -42,11 +42,6 @@ class TestSoftVariantQualityFilter:
     """Tests for SoftVariantQualityFilter operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def sample_variants(self):
         """Provide sample variant features."""
         # Features: depth, quality, strand_bias, mapping_quality
@@ -127,10 +122,6 @@ class TestSoftVariantQualityFilter:
 class TestGradientFlow:
     """Tests for gradient flow through quality filter."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_gradient_flows_through_filter(self, rngs):
         """Test that gradients flow through filtering."""
         config = VariantQualityFilterConfig()
@@ -174,10 +165,6 @@ class TestGradientFlow:
 class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_apply_is_jit_compatible(self, rngs):
         """Test that apply method works with JIT."""
         config = VariantQualityFilterConfig()
@@ -198,10 +185,6 @@ class TestJITCompatibility:
 
 class TestTemperatureControl:
     """Tests for temperature control."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_high_temperature_more_uniform(self, rngs):
         """Test that high temperature gives more uniform weights."""
@@ -226,10 +209,6 @@ class TestTemperatureControl:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_single_variant(self, rngs):
         """Test with single variant."""

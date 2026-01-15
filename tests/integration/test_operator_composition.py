@@ -25,7 +25,6 @@ import jax
 import jax.numpy as jnp
 import pytest
 from datarax.core.element_batch import Batch, Element
-from flax import nnx
 
 from diffbio.operators.alignment import SmoothSmithWaterman, SmithWatermanConfig
 from diffbio.operators.alignment.scoring import create_dna_scoring_matrix
@@ -44,10 +43,6 @@ from diffbio.sequences.dna import encode_dna_string
 
 class TestQualityFilterBatchProcessing:
     """Tests for QualityFilter with Datarax Batch objects."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def quality_filter(self, rngs):
@@ -103,10 +98,6 @@ class TestSmithWatermanBatchProcessing:
     SmithWaterman is a structure-changing operator (adds score, alignment_matrix, etc.),
     which now works with apply_batch() thanks to Datarax's dynamic output structure support.
     """
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def aligner(self, rngs):
@@ -182,10 +173,6 @@ class TestPileupBatchProcessing:
     Pileup is a structure-changing operator (adds 'pileup' key to output),
     which now works with apply_batch() thanks to Datarax's dynamic output structure support.
     """
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def pileup(self, rngs):
@@ -284,10 +271,6 @@ class TestClassifierBatchProcessing:
     """
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def classifier(self, rngs):
         config = VariantClassifierConfig(num_classes=3, hidden_dim=32, input_window=11)
         classifier = VariantClassifier(config, rngs=rngs)
@@ -371,10 +354,6 @@ class TestClassifierBatchProcessing:
 class TestOperatorComposition:
     """Tests for composing multiple DiffBio operators."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_quality_filter_chain(self, rngs):
         """Test chaining multiple quality filters."""
         filter1 = DifferentiableQualityFilter(
@@ -444,10 +423,6 @@ class TestGradientFlowThroughPipelines:
     Note: These tests use apply() directly instead of __call__() because
     __call__ mutates _iteration_count which can't be done inside JAX tracing.
     """
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_gradient_through_quality_filter(self, rngs):
         """Test gradients flow through quality filter."""
@@ -570,10 +545,6 @@ class TestGradientFlowThroughPipelines:
 
 class TestOperatorModuleInterface:
     """Tests verifying OperatorModule interface compliance."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_quality_filter_has_apply_method(self, rngs):
         """Test QualityFilter has proper apply() signature."""

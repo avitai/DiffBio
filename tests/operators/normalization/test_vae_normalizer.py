@@ -42,11 +42,6 @@ class TestVAENormalizer:
     """Tests for VAENormalizer operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def sample_counts(self):
         """Provide sample count data."""
         # Simulate gene expression counts for a single cell
@@ -154,10 +149,6 @@ class TestVAENormalizer:
 class TestVAELoss:
     """Tests for VAE loss computation."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_elbo_loss_computable(self, rngs):
         """Test that ELBO loss can be computed."""
         config = VAENormalizerConfig(n_genes=100, latent_dim=10)
@@ -191,10 +182,6 @@ class TestVAELoss:
 
 class TestGradientFlow:
     """Tests for gradient flow through VAE normalizer."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_gradient_flows_through_apply(self, rngs):
         """Test that gradients flow through the apply method."""
@@ -271,10 +258,6 @@ class TestGradientFlow:
 class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_apply_is_jit_compatible(self, rngs):
         """Test that apply method works with JIT."""
         config = VAENormalizerConfig(n_genes=100, latent_dim=10)
@@ -310,10 +293,6 @@ class TestJITCompatibility:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_zero_counts(self, rngs):
         """Test with all zero counts."""

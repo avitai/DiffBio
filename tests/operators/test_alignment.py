@@ -86,11 +86,6 @@ class TestSmoothSmithWaterman:
     """Tests for SmoothSmithWaterman operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def simple_scoring(self):
         """Provide simple DNA scoring matrix."""
         return create_dna_scoring_matrix(match=2.0, mismatch=-1.0)
@@ -217,10 +212,6 @@ class TestGradientFlow:
     """Tests for gradient flow through alignment."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def simple_scoring(self):
         return create_dna_scoring_matrix(match=2.0, mismatch=-1.0)
 
@@ -283,10 +274,6 @@ class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def simple_scoring(self):
         return create_dna_scoring_matrix(match=2.0, mismatch=-1.0)
 
@@ -329,10 +316,6 @@ class TestJITCompatibility:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def simple_scoring(self):

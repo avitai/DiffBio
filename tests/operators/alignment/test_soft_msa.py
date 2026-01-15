@@ -42,11 +42,6 @@ class TestSoftProgressiveMSA:
     """Tests for SoftProgressiveMSA operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         """Provide small config for faster tests."""
         return SoftProgressiveMSAConfig(
@@ -117,10 +112,6 @@ class TestGradientFlow:
     """Tests for gradient flow through soft MSA."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return SoftProgressiveMSAConfig(
             max_seq_length=15,
@@ -181,10 +172,6 @@ class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return SoftProgressiveMSAConfig(
             max_seq_length=15,
@@ -218,10 +205,6 @@ class TestJITCompatibility:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_two_sequences(self, rngs):
         """Test with minimum number of sequences."""

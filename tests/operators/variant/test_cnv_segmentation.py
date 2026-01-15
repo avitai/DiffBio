@@ -42,11 +42,6 @@ class TestDifferentiableCNVSegmentation:
     """Tests for DifferentiableCNVSegmentation operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def sample_coverage(self):
         """Provide sample coverage signal."""
         # Coverage signal along genome
@@ -138,10 +133,6 @@ class TestGradientFlow:
     """Tests for gradient flow through CNV segmentation."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return CNVSegmentationConfig(
             max_segments=10,
@@ -191,10 +182,6 @@ class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return CNVSegmentationConfig(
             max_segments=10,
@@ -221,10 +208,6 @@ class TestJITCompatibility:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_short_signal(self, rngs):
         """Test with short coverage signal."""

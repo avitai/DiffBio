@@ -4,7 +4,6 @@ import jax
 import jax.numpy as jnp
 import pytest
 from datarax.core.element_batch import Batch, Element
-from flax import nnx
 
 from diffbio.pipelines import (
     VariantCallingPipeline,
@@ -42,10 +41,6 @@ class TestVariantCallingPipelineConfig:
 
 class TestVariantCallingPipeline:
     """Tests for the variant calling pipeline."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def pipeline(self, rngs):
@@ -199,10 +194,6 @@ class TestVariantCallingPipelineGradients:
     """Tests for gradient flow through the pipeline."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def pipeline(self, rngs):
         config = VariantCallingPipelineConfig(
             reference_length=20,
@@ -304,10 +295,6 @@ class TestFactoryFunction:
 
 class TestCNNVariantPipeline:
     """Tests for the CNN-based variant calling pipeline."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def cnn_pipeline(self, rngs):

@@ -41,11 +41,6 @@ class TestDifferentiableHarmony:
     """Tests for DifferentiableHarmony operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def sample_data(self):
         """Provide sample batch data."""
         key = jax.random.key(0)
@@ -116,10 +111,6 @@ class TestGradientFlow:
     """Tests for gradient flow through batch correction."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return BatchCorrectionConfig(
             n_clusters=10,
@@ -172,10 +163,6 @@ class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return BatchCorrectionConfig(
             n_clusters=10,
@@ -205,10 +192,6 @@ class TestJITCompatibility:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_single_batch(self, rngs):
         """Test with single batch (should be no-op)."""

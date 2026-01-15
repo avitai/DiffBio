@@ -46,11 +46,6 @@ class TestDifferentiableMotifDiscovery:
     """Tests for DifferentiableMotifDiscovery operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         """Provide default config."""
         from diffbio.operators.rnaseq.motif_discovery import MotifDiscoveryConfig
@@ -172,11 +167,6 @@ class TestMotifDiscoveryDifferentiability:
     """Tests for gradient flow through the motif discovery operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         """Provide default config."""
         from diffbio.operators.rnaseq.motif_discovery import MotifDiscoveryConfig
@@ -246,11 +236,6 @@ class TestMotifDiscoveryJITCompatibility:
     """Tests for JIT compilation compatibility."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         """Provide default config."""
         from diffbio.operators.rnaseq.motif_discovery import MotifDiscoveryConfig
@@ -307,11 +292,6 @@ class TestMotifDiscoveryJITCompatibility:
 
 class TestPWMScanning:
     """Tests for PWM scanning functionality."""
-
-    @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def config(self):

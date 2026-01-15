@@ -42,11 +42,6 @@ class TestDifferentiableEMQuantifier:
     """Tests for DifferentiableEMQuantifier operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def sample_data(self):
         """Provide sample read assignment data."""
         n_reads = 100
@@ -164,10 +159,6 @@ class TestDifferentiableEMQuantifier:
 class TestGradientFlow:
     """Tests for gradient flow through EM quantification."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_gradient_flows_through_quantify(self, rngs):
         """Test that gradients flow through quantification."""
         config = EMQuantifierConfig(n_transcripts=50, n_iterations=5)
@@ -210,10 +201,6 @@ class TestGradientFlow:
 class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_quantify_is_jit_compatible(self, rngs):
         """Test that quantify works with JIT."""
         config = EMQuantifierConfig(n_transcripts=50, n_iterations=5)
@@ -252,10 +239,6 @@ class TestJITCompatibility:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_single_transcript(self, rngs):
         """Test with single transcript."""

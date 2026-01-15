@@ -21,6 +21,8 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.utils.nn_utils import ensure_rngs
+
 
 @dataclass
 class SoftProgressiveMSAConfig(OperatorConfig):
@@ -221,8 +223,7 @@ class SoftProgressiveMSA(OperatorModule):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        if rngs is None:
-            rngs = nnx.Rngs(0)
+        rngs = ensure_rngs(rngs)
 
         self.hidden_dim = config.hidden_dim
         self.temperature = config.temperature

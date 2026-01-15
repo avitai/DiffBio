@@ -47,11 +47,6 @@ class TestGNNAssemblyNavigator:
     """Tests for GNNAssemblyNavigator operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def sample_graph(self):
         """Provide sample assembly graph data."""
         key = jax.random.key(0)
@@ -154,10 +149,6 @@ class TestGradientFlow:
     """Tests for gradient flow through GNN assembly navigator."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return GNNAssemblyNavigatorConfig(
             node_features=16,
@@ -243,10 +234,6 @@ class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return GNNAssemblyNavigatorConfig(
             node_features=16,
@@ -293,10 +280,6 @@ class TestJITCompatibility:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_small_graph(self, rngs):
         """Test with small graph."""

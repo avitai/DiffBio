@@ -42,11 +42,6 @@ class TestProfileHMMSearch:
     """Tests for ProfileHMMSearch operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def sample_sequence(self):
         """Provide sample protein sequence (one-hot encoded)."""
         # Random protein sequence of length 150
@@ -147,10 +142,6 @@ class TestProfileHMMSearch:
 class TestGradientFlow:
     """Tests for gradient flow through profile HMM."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_gradient_flows_through_score(self, rngs):
         """Test that gradients flow through scoring."""
         config = ProfileHMMConfig(profile_length=20, alphabet_size=20)
@@ -189,10 +180,6 @@ class TestGradientFlow:
 class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_score_is_jit_compatible(self, rngs):
         """Test that scoring works with JIT."""
         config = ProfileHMMConfig(profile_length=20, alphabet_size=20)
@@ -228,10 +215,6 @@ class TestJITCompatibility:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_short_sequence(self, rngs):
         """Test with sequence shorter than profile."""

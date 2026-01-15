@@ -7,7 +7,6 @@ for training differentiable alignment models.
 import jax
 import jax.numpy as jnp
 import pytest
-from flax import nnx
 
 from diffbio.losses.alignment_losses import (
     AlignmentConsistencyLoss,
@@ -32,10 +31,6 @@ def generate_soft_alignment(key: jax.Array, len1: int, len2: int) -> jax.Array:
 
 class TestAlignmentScoreLoss:
     """Tests for alignment score loss."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_initialization(self, rngs):
         """Test alignment score loss initialization."""
@@ -124,10 +119,6 @@ class TestAlignmentScoreLoss:
 
 class TestSoftEditDistanceLoss:
     """Tests for soft edit distance loss."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_initialization(self, rngs):
         """Test soft edit distance loss initialization."""
@@ -242,10 +233,6 @@ class TestSoftEditDistanceLoss:
 class TestAlignmentConsistencyLoss:
     """Tests for alignment consistency loss."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_initialization(self, rngs):
         """Test alignment consistency loss initialization."""
         loss = AlignmentConsistencyLoss(rngs=rngs)
@@ -321,10 +308,6 @@ class TestIntegrationWithAligner:
     """Tests for integration with SmoothSmithWaterman aligner."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def aligner(self, rngs):
         config = SmithWatermanConfig(temperature=1.0)
         scoring = create_dna_scoring_matrix(match=2.0, mismatch=-1.0)
@@ -369,10 +352,6 @@ class TestIntegrationWithAligner:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_single_position_sequences(self, rngs):
         """Test losses work with single position sequences."""

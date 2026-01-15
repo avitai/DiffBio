@@ -19,6 +19,8 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.utils.nn_utils import build_mlp_layers, ensure_rngs, init_learnable_param
+
 
 @dataclass
 class ErrorCorrectionConfig(OperatorConfig):
@@ -80,8 +82,7 @@ class SoftErrorCorrection(OperatorModule):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        if rngs is None:
-            rngs = nnx.Rngs(0)
+        rngs = ensure_rngs(rngs)
 
         self.window_size = config.window_size
         self.use_quality = config.use_quality
@@ -91,32 +92,22 @@ class SoftErrorCorrection(OperatorModule):
         features_per_position = alphabet_size + (1 if config.use_quality else 0)
         input_dim = config.window_size * features_per_position
 
-        # Build MLP layers
-        hidden_dim = config.hidden_dim
-        layers_list: list[nnx.Linear] = []
-
-        # First layer
-        layers_list.append(nnx.Linear(in_features=input_dim, out_features=hidden_dim, rngs=rngs))
-
-        # Hidden layers
-        for _ in range(config.num_layers - 1):
-            layers_list.append(
-                nnx.Linear(in_features=hidden_dim, out_features=hidden_dim, rngs=rngs)
-            )
-
-        # Convert to nnx.List for Flax NNX 0.12+ compatibility
-        self.layers = nnx.List(layers_list)
-
-        # Output layer (predicts 4 base probabilities)
-        self.output_layer = nnx.Linear(
-            in_features=hidden_dim, out_features=alphabet_size, rngs=rngs
+        # Build MLP layers using utility
+        self.layers, _, out_dim = build_mlp_layers(
+            in_features=input_dim,
+            hidden_dim=config.hidden_dim,
+            num_layers=config.num_layers,
+            rngs=rngs,
         )
 
+        # Output layer (predicts 4 base probabilities)
+        self.output_layer = nnx.Linear(in_features=out_dim, out_features=alphabet_size, rngs=rngs)
+
         # Learnable parameters
-        self.temperature = nnx.Param(jnp.array(config.temperature))
+        self.temperature = init_learnable_param(config.temperature)
 
         # Learnable blending weight (how much to trust correction vs original)
-        self.correction_weight = nnx.Param(jnp.array(0.5))
+        self.correction_weight = init_learnable_param(0.5)
 
     def _extract_window(
         self,

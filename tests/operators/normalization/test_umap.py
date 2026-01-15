@@ -47,11 +47,6 @@ class TestDifferentiableUMAP:
     """Tests for DifferentiableUMAP operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         """Provide default config."""
         from diffbio.operators.normalization.umap import UMAPConfig
@@ -165,11 +160,6 @@ class TestUMAPDifferentiability:
     """Tests for gradient flow through the UMAP operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         """Provide default config."""
         from diffbio.operators.normalization.umap import UMAPConfig
@@ -238,11 +228,6 @@ class TestUMAPJITCompatibility:
     """Tests for JIT compilation compatibility."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         """Provide default config."""
         from diffbio.operators.normalization.umap import UMAPConfig
@@ -298,11 +283,6 @@ class TestUMAPJITCompatibility:
 
 class TestUMAPLocalStructure:
     """Tests for UMAP's local structure preservation."""
-
-    @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def config(self):

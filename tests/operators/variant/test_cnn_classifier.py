@@ -45,11 +45,6 @@ class TestCNNVariantClassifier:
     """Tests for CNNVariantClassifier operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def sample_pileup(self):
         """Provide sample pileup image."""
         # Shape: (batch, height, width, channels) = (1, 100, 221, 6)
@@ -143,10 +138,6 @@ class TestGradientFlow:
     """Tests for gradient flow through CNN classifier."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return CNNVariantClassifierConfig(
             input_height=32,
@@ -204,10 +195,6 @@ class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return CNNVariantClassifierConfig(
             input_height=32,
@@ -239,12 +226,102 @@ class TestJITCompatibility:
         assert jnp.isfinite(transformed["class_probs"]).all()
 
 
+class TestClassifySingleMethod:
+    """Tests for the _classify_single method."""
+
+    def test_classify_single_basic(self, rngs):
+        """Test _classify_single method directly."""
+        config = CNNVariantClassifierConfig(
+            input_height=32,
+            input_width=64,
+            hidden_channels=[16],
+            fc_dims=[16],
+            dropout_rate=0.0,
+            stochastic=False,
+            stream_name=None,
+        )
+        op = CNNVariantClassifier(config, rngs=rngs)
+
+        key = jax.random.key(0)
+        # Single image without batch dimension
+        pileup = jax.random.uniform(key, (32, 64, 6))
+
+        logits = op._classify_single(pileup)
+        assert logits.shape == (config.num_classes,)
+        assert jnp.isfinite(logits).all()
+
+    def test_classify_single_with_dropout(self, rngs):
+        """Test _classify_single with dropout enabled."""
+        config = CNNVariantClassifierConfig(
+            input_height=32,
+            input_width=64,
+            hidden_channels=[16],
+            fc_dims=[16],
+            dropout_rate=0.5,
+            stochastic=True,
+            stream_name="dropout",
+        )
+        op = CNNVariantClassifier(config, rngs=rngs)
+
+        key = jax.random.key(0)
+        pileup = jax.random.uniform(key, (32, 64, 6))
+
+        logits = op._classify_single(pileup)
+        assert logits.shape == (config.num_classes,)
+        assert jnp.isfinite(logits).all()
+
+
+class TestInitializationVariants:
+    """Tests for different initialization scenarios."""
+
+    def test_initialization_without_rngs(self):
+        """Test that operator can be initialized without rngs (uses ensure_rngs)."""
+        config = CNNVariantClassifierConfig(
+            input_height=32,
+            input_width=64,
+            hidden_channels=[16],
+            fc_dims=[16],
+            dropout_rate=0.0,
+            stochastic=False,
+            stream_name=None,
+        )
+        # Initialize without rngs - should use ensure_rngs fallback
+        op = CNNVariantClassifier(config, rngs=None)
+        assert op is not None
+        assert op.num_classes == config.num_classes
+
+    def test_initialization_with_dropout(self, rngs):
+        """Test initialization with dropout enabled."""
+        config = CNNVariantClassifierConfig(
+            input_height=32,
+            input_width=64,
+            hidden_channels=[16],
+            fc_dims=[16],
+            dropout_rate=0.5,
+            stochastic=True,
+            stream_name="dropout",
+        )
+        op = CNNVariantClassifier(config, rngs=rngs)
+        assert op.dropout is not None
+        assert op.dropout_rate == 0.5
+
+    def test_initialization_without_dropout(self, rngs):
+        """Test initialization with dropout disabled."""
+        config = CNNVariantClassifierConfig(
+            input_height=32,
+            input_width=64,
+            hidden_channels=[16],
+            fc_dims=[16],
+            dropout_rate=0.0,
+            stochastic=False,
+            stream_name=None,
+        )
+        op = CNNVariantClassifier(config, rngs=rngs)
+        assert op.dropout is None
+
+
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_single_conv_layer(self, rngs):
         """Test with single convolutional layer."""

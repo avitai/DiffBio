@@ -44,11 +44,6 @@ class TestSplicingPSI:
     """Tests for SplicingPSI operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         """Provide default config."""
         from diffbio.operators.rnaseq.splicing_psi import SplicingPSIConfig
@@ -212,11 +207,6 @@ class TestSplicingPSIDifferentiability:
     """Tests for gradient flow through the PSI operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         """Provide default config."""
         from diffbio.operators.rnaseq.splicing_psi import SplicingPSIConfig
@@ -294,11 +284,6 @@ class TestSplicingPSIJITCompatibility:
     """Tests for JIT compilation compatibility."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         """Provide default config."""
         from diffbio.operators.rnaseq.splicing_psi import SplicingPSIConfig
@@ -357,11 +342,6 @@ class TestSplicingPSIJITCompatibility:
 
 class TestDeltaPSI:
     """Tests for delta PSI calculation (differential splicing)."""
-
-    @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def config(self):

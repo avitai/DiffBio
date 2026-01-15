@@ -44,11 +44,6 @@ class TestChromatinStateAnnotator:
     """Tests for ChromatinStateAnnotator operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         """Provide default config."""
         from diffbio.operators.epigenomics.chromatin_state import ChromatinStateConfig
@@ -175,11 +170,6 @@ class TestChromatinStateDifferentiability:
     """Tests for gradient flow through the chromatin state annotator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         """Provide default config."""
         from diffbio.operators.epigenomics.chromatin_state import ChromatinStateConfig
@@ -263,11 +253,6 @@ class TestChromatinStateJITCompatibility:
     """Tests for JIT compilation compatibility."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def config(self):
         """Provide default config."""
         from diffbio.operators.epigenomics.chromatin_state import ChromatinStateConfig
@@ -321,11 +306,6 @@ class TestChromatinStateJITCompatibility:
 
 class TestChromatinStateHMMBehavior:
     """Tests for HMM-specific behavior."""
-
-    @pytest.fixture
-    def rngs(self):
-        """Provide RNG fixture."""
-        return nnx.Rngs(42)
 
     @pytest.fixture
     def config(self):

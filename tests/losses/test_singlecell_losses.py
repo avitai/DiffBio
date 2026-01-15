@@ -6,8 +6,6 @@ for differentiable bioinformatics pipelines.
 
 import jax
 import jax.numpy as jnp
-import pytest
-from flax import nnx
 
 from diffbio.losses.singlecell_losses import (
     BatchMixingLoss,
@@ -18,10 +16,6 @@ from diffbio.losses.singlecell_losses import (
 
 class TestBatchMixingLoss:
     """Tests for BatchMixingLoss."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_initialization(self, rngs):
         """Test loss initialization."""
@@ -91,10 +85,6 @@ class TestBatchMixingLoss:
 
 class TestClusteringCompactnessLoss:
     """Tests for ClusteringCompactnessLoss."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_initialization(self, rngs):
         """Test loss initialization."""
@@ -193,10 +183,6 @@ class TestClusteringCompactnessLoss:
 class TestVelocityConsistencyLoss:
     """Tests for VelocityConsistencyLoss."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_initialization(self, rngs):
         """Test loss initialization."""
         loss_fn = VelocityConsistencyLoss(rngs=rngs)
@@ -289,10 +275,6 @@ class TestVelocityConsistencyLoss:
 
 class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_batch_mixing_jit(self, rngs):
         """Test BatchMixingLoss with JIT."""

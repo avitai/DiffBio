@@ -6,7 +6,6 @@ for differentiable bioinformatics pipelines.
 
 import jax
 import jax.numpy as jnp
-import pytest
 from flax import nnx
 
 from diffbio.losses.statistical_losses import (
@@ -18,10 +17,6 @@ from diffbio.losses.statistical_losses import (
 
 class TestNegativeBinomialLoss:
     """Tests for NegativeBinomialLoss."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_initialization(self, rngs):
         """Test loss initialization."""
@@ -85,10 +80,6 @@ class TestNegativeBinomialLoss:
 
 class TestVAELoss:
     """Tests for VAELoss."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_initialization(self, rngs):
         """Test loss initialization."""
@@ -161,10 +152,6 @@ class TestVAELoss:
 class TestHMMLikelihoodLoss:
     """Tests for HMMLikelihoodLoss."""
 
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
     def test_initialization(self, rngs):
         """Test loss initialization."""
         loss_fn = HMMLikelihoodLoss(n_states=3, n_emissions=4, rngs=rngs)
@@ -210,10 +197,6 @@ class TestHMMLikelihoodLoss:
 
 class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_nb_loss_jit(self, rngs):
         """Test NB loss with JIT."""

@@ -42,11 +42,6 @@ class TestNeuralReadMapper:
     """Tests for NeuralReadMapper operator."""
 
     @pytest.fixture
-    def rngs(self):
-        """Provide RNGs for operator initialization."""
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def sample_data(self):
         """Provide sample read and reference data."""
         key = jax.random.key(0)
@@ -143,10 +138,6 @@ class TestGradientFlow:
     """Tests for gradient flow through neural mapper."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return NeuralReadMapperConfig(
             read_length=50,
@@ -208,10 +199,6 @@ class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
     @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
-
-    @pytest.fixture
     def small_config(self):
         return NeuralReadMapperConfig(
             read_length=50,
@@ -246,10 +233,6 @@ class TestJITCompatibility:
 
 class TestEdgeCases:
     """Tests for edge cases."""
-
-    @pytest.fixture
-    def rngs(self):
-        return nnx.Rngs(42)
 
     def test_short_read(self, rngs):
         """Test with short read."""

@@ -20,6 +20,7 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float
 
+from diffbio.constants import ClassifierType
 from diffbio.operators.quality_filter import (
     DifferentiableQualityFilter,
     QualityFilterConfig,
@@ -45,7 +46,7 @@ class VariantCallingPipelineConfig(OperatorConfig):
         pileup_window_size: Window size for pileup context
         classifier_hidden_dim: Hidden dimension for classifier MLP
         use_quality_weights: Whether to weight pileup by quality scores
-        classifier_type: Type of classifier ("mlp" or "cnn")
+        classifier_type: Type of classifier (ClassifierType.MLP or ClassifierType.CNN)
         cnn_hidden_channels: Hidden channels for CNN classifier
         cnn_fc_dims: Fully connected layer dimensions for CNN
         apply_pileup_softmax: Whether to apply softmax to pileup output
@@ -57,7 +58,7 @@ class VariantCallingPipelineConfig(OperatorConfig):
     pileup_window_size: int = 11
     classifier_hidden_dim: int = 64
     use_quality_weights: bool = True
-    classifier_type: str = "mlp"  # "mlp" or "cnn"
+    classifier_type: str = ClassifierType.MLP  # ClassifierType.MLP or ClassifierType.CNN
     cnn_hidden_channels: list[int] = field(default_factory=lambda: [32, 64])
     cnn_fc_dims: list[int] = field(default_factory=lambda: [64, 32])
     apply_pileup_softmax: bool = True  # False is better for variant detection
@@ -119,7 +120,7 @@ class VariantCallingPipeline(OperatorModule):
         )
 
         # 2. Pileup generator - always return coverage and quality for CNN
-        use_multichannel = config.classifier_type == "cnn"
+        use_multichannel = config.classifier_type == ClassifierType.CNN
         self.pileup = DifferentiablePileup(
             PileupConfig(
                 window_size=config.pileup_window_size,
@@ -133,7 +134,7 @@ class VariantCallingPipeline(OperatorModule):
         )
 
         # 3. Variant classifier (per-position)
-        if config.classifier_type == "cnn":
+        if config.classifier_type == ClassifierType.CNN:
             # CNN classifier takes pileup images with multiple channels
             # Channels: 4 (base) + 1 (coverage) + 1 (quality) = 6
             self.classifier = CNNVariantClassifier(
@@ -446,7 +447,7 @@ def create_variant_calling_pipeline(
     num_classes: int = 3,
     quality_threshold: float = 20.0,
     hidden_dim: int = 64,
-    classifier_type: str = "mlp",
+    classifier_type: str = ClassifierType.MLP,
     pileup_window_size: int = 11,
     apply_pileup_softmax: bool = True,
     seed: int = 42,
@@ -458,7 +459,7 @@ def create_variant_calling_pipeline(
         num_classes: Number of variant classes
         quality_threshold: Quality score threshold
         hidden_dim: Hidden dimension for classifier
-        classifier_type: Type of classifier ("mlp" or "cnn")
+        classifier_type: Type of classifier (ClassifierType.MLP or ClassifierType.CNN)
         pileup_window_size: Window size for pileup context
         apply_pileup_softmax: Whether to apply softmax to pileup (False is better
             for variant detection as it preserves raw coverage-weighted signals)
@@ -520,7 +521,7 @@ def create_cnn_variant_pipeline(
         reference_length=reference_length,
         num_classes=num_classes,
         quality_threshold=quality_threshold,
-        classifier_type="cnn",
+        classifier_type=ClassifierType.CNN,
         pileup_window_size=pileup_window_size,
         cnn_hidden_channels=cnn_hidden_channels,
         cnn_fc_dims=cnn_fc_dims,
