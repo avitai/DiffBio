@@ -24,7 +24,6 @@ class PeakCallerConfig(OperatorConfig):
         threshold: Initial threshold for peak calling.
         temperature: Temperature for sigmoid smoothing.
         min_peak_width: Minimum width for called peaks.
-        stochastic: Whether to use stochastic operations.
         stream_name: Name of the data stream to process.
     """
 
@@ -34,8 +33,6 @@ class PeakCallerConfig(OperatorConfig):
     threshold: float = 0.5
     temperature: float = 1.0
     min_peak_width: int = 50
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class PeakDetectionCNN(nnx.Module):

@@ -27,15 +27,11 @@ class NBGLMConfig(OperatorConfig):
         n_features: Number of features (genes).
         n_covariates: Number of covariates in design matrix.
         estimate_dispersion: Whether to estimate dispersion parameters.
-        stochastic: Whether the operator uses randomness.
-        stream_name: RNG stream name (not used).
     """
 
     n_features: int = 2000
     n_covariates: int = 2
     estimate_dispersion: bool = True
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class DifferentiableNBGLM(OperatorModule):

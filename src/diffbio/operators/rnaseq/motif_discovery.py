@@ -23,7 +23,6 @@ class MotifDiscoveryConfig(OperatorConfig):
         alphabet_size: Size of the sequence alphabet (4 for DNA).
         temperature: Temperature for soft operations.
         background_prior: Prior probability for background model.
-        stochastic: Whether to use stochastic operations.
         stream_name: Name of the data stream to process.
     """
 
@@ -32,8 +31,6 @@ class MotifDiscoveryConfig(OperatorConfig):
     alphabet_size: int = 4
     temperature: float = 1.0
     background_prior: float = 0.25  # Uniform for DNA
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class DifferentiableMotifDiscovery(OperatorModule):

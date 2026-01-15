@@ -34,8 +34,6 @@ class SoftProgressiveMSAConfig(OperatorConfig):
         temperature: Temperature for softmax operations.
         gap_open_penalty: Gap opening penalty.
         gap_extend_penalty: Gap extension penalty.
-        stochastic: Whether the operator uses randomness.
-        stream_name: RNG stream name.
     """
 
     max_seq_length: int = 100
@@ -45,8 +43,6 @@ class SoftProgressiveMSAConfig(OperatorConfig):
     temperature: float = 1.0
     gap_open_penalty: float = -10.0
     gap_extend_penalty: float = -1.0
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class SequenceEncoder(nnx.Module):

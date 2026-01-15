@@ -8,15 +8,17 @@ from dataclasses import dataclass
 from typing import Any
 
 import jax
-import jax.numpy as jnp
-from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import PyTree
 
+from diffbio.configs import DiffBioOperatorConfig
+from diffbio.constants import PHRED_QUALITY_THRESHOLD
+from diffbio.utils.nn_utils import init_learnable_param
+
 
 @dataclass
-class QualityFilterConfig(OperatorConfig):
+class QualityFilterConfig(DiffBioOperatorConfig):
     """Configuration for DifferentiableQualityFilter.
 
     Attributes:
@@ -25,9 +27,7 @@ class QualityFilterConfig(OperatorConfig):
             Default is 20.0 (1% error rate).
     """
 
-    initial_threshold: float = 20.0
-    stochastic: bool = False
-    stream_name: str | None = None
+    initial_threshold: float = PHRED_QUALITY_THRESHOLD
 
 
 class DifferentiableQualityFilter(OperatorModule):
@@ -73,7 +73,7 @@ class DifferentiableQualityFilter(OperatorModule):
         super().__init__(config, rngs=rngs, name=name)
 
         # Learnable threshold parameter
-        self.threshold = nnx.Param(jnp.array(config.initial_threshold))
+        self.threshold = init_learnable_param(config.initial_threshold)
 
     def apply(
         self,

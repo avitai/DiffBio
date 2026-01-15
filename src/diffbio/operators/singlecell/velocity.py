@@ -32,8 +32,6 @@ class VelocityConfig(OperatorConfig):
         dt: Time step for ODE integration.
         n_steps: Number of integration steps.
         kinetics_model: Type of kinetics model ("standard" or "dynamical").
-        stochastic: Whether the operator uses randomness.
-        stream_name: RNG stream name.
     """
 
     n_genes: int = 2000
@@ -41,8 +39,6 @@ class VelocityConfig(OperatorConfig):
     dt: float = 0.1
     n_steps: int = 10
     kinetics_model: str = "standard"
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class TimeEncoder(nnx.Module):

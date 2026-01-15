@@ -34,8 +34,6 @@ class HiCContactAnalysisConfig(OperatorConfig):
         bin_features: Dimension of input bin features.
         dropout_rate: Dropout rate for regularization.
         temperature: Temperature for softmax operations.
-        stochastic: Whether the operator uses randomness.
-        stream_name: RNG stream name.
     """
 
     n_bins: int = 1000
@@ -45,8 +43,6 @@ class HiCContactAnalysisConfig(OperatorConfig):
     bin_features: int = 16
     dropout_rate: float = 0.1
     temperature: float = 1.0
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class ContactEncoder(nnx.Module):

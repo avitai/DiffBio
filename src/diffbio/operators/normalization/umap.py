@@ -28,7 +28,6 @@ class UMAPConfig(OperatorConfig):
         negative_sample_rate: Number of negative samples per positive.
         input_features: Number of input features (required for initialization).
         hidden_dim: Hidden dimension for projection network.
-        stochastic: Whether to use stochastic operations.
         stream_name: Name of the data stream to process.
     """
 
@@ -41,8 +40,6 @@ class UMAPConfig(OperatorConfig):
     negative_sample_rate: int = 5
     input_features: int = 64
     hidden_dim: int = 32
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class DifferentiableUMAP(OperatorModule):

@@ -21,15 +21,12 @@ class ChromatinStateConfig(OperatorConfig):
         num_states: Number of chromatin states to learn.
         num_marks: Number of histone marks in input.
         temperature: Temperature for soft operations.
-        stochastic: Whether to use stochastic operations.
         stream_name: Name of the data stream to process.
     """
 
     num_states: int = 15
     num_marks: int = 6
     temperature: float = 1.0
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class ChromatinStateAnnotator(OperatorModule):

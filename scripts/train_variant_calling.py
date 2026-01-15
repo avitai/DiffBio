@@ -145,20 +145,29 @@ print("VARIANT CALLING PERFORMANCE: UNTRAINED vs TRAINED")
 print("=" * 65)
 print(f"\n{'Metric':<20} {'Untrained':>15} {'Trained':>15} {'Change':>15}")
 print("-" * 65)
+prec_change = trained_metrics["precision"] - untrained_metrics["precision"]
+recall_change = trained_metrics["recall"] - untrained_metrics["recall"]
+f1_change = trained_metrics["f1"] - untrained_metrics["f1"]
+acc_change = trained_metrics["accuracy"] - untrained_metrics["accuracy"]
+
 print(
-    f"{'Precision':<20} {untrained_metrics['precision']:>15.4f} {trained_metrics['precision']:>15.4f} {trained_metrics['precision'] - untrained_metrics['precision']:>+15.4f}"
+    f"{'Precision':<20} {untrained_metrics['precision']:>15.4f} "
+    f"{trained_metrics['precision']:>15.4f} {prec_change:>+15.4f}"
 )
 print(
-    f"{'Recall':<20} {untrained_metrics['recall']:>15.4f} {trained_metrics['recall']:>15.4f} {trained_metrics['recall'] - untrained_metrics['recall']:>+15.4f}"
+    f"{'Recall':<20} {untrained_metrics['recall']:>15.4f} "
+    f"{trained_metrics['recall']:>15.4f} {recall_change:>+15.4f}"
 )
 print(
-    f"{'F1 Score':<20} {untrained_metrics['f1']:>15.4f} {trained_metrics['f1']:>15.4f} {trained_metrics['f1'] - untrained_metrics['f1']:>+15.4f}"
+    f"{'F1 Score':<20} {untrained_metrics['f1']:>15.4f} "
+    f"{trained_metrics['f1']:>15.4f} {f1_change:>+15.4f}"
 )
 print(
-    f"{'Accuracy':<20} {untrained_metrics['accuracy']:>15.4f} {trained_metrics['accuracy']:>15.4f} {trained_metrics['accuracy'] - untrained_metrics['accuracy']:>+15.4f}"
+    f"{'Accuracy':<20} {untrained_metrics['accuracy']:>15.4f} "
+    f"{trained_metrics['accuracy']:>15.4f} {acc_change:>+15.4f}"
 )
 
-print(f"\nConfusion Matrix (Trained Model):")
+print("\nConfusion Matrix (Trained Model):")
 print(f"  True Positives:  {trained_metrics['tp']}")
 print(f"  False Positives: {trained_metrics['fp']}")
 print(f"  False Negatives: {trained_metrics['fn']}")
@@ -171,14 +180,15 @@ probs = result["probabilities"]
 preds = jnp.argmax(probs, axis=-1)
 true_labels = val_targets[0]["labels"]
 
-print(f"Sample analysis:")
+print("Sample analysis:")
 print(f"  True variants: {int((true_labels > 0).sum())}")
 print(f"  Predicted variants: {int((preds > 0).sum())}")
 
 variant_positions = jnp.where(true_labels > 0)[0]
 print(f"\nTrue variant positions: {list(variant_positions)}")
 print(f"Predictions at those positions: {list(preds[variant_positions])}")
-print(f"Confidence at those positions: {[f'{c:.4f}' for c in probs[variant_positions].max(axis=-1)]}")
+conf_at_variants = probs[variant_positions].max(axis=-1)
+print(f"Confidence at those positions: {[f'{c:.4f}' for c in conf_at_variants]}")
 
 # Learned parameters
 print("\n\n=== Learned Parameters ===")

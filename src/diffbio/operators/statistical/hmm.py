@@ -30,8 +30,6 @@ class HMMConfig(OperatorConfig):
         temperature: Temperature for softmax operations.
         learnable_transitions: Whether transition probabilities are learnable.
         learnable_emissions: Whether emission probabilities are learnable.
-        stochastic: Whether the operator uses randomness.
-        stream_name: RNG stream name (not used).
     """
 
     n_states: int = 3
@@ -39,8 +37,6 @@ class HMMConfig(OperatorConfig):
     temperature: float = 1.0
     learnable_transitions: bool = True
     learnable_emissions: bool = True
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class DifferentiableHMM(OperatorModule):

@@ -9,17 +9,21 @@ Key components:
 - operators: Differentiable bioinformatics operators (alignment, quality filtering)
 - losses: Loss functions and biological regularization
 - pipelines: Pre-built differentiable pipeline templates
+- configs: Base configuration classes for operators
+- constants: Centralized constants for the library
 """
 
-from diffbio import losses, operators, pipelines, sequences, utils
+from diffbio import configs, constants, losses, operators, pipelines, sequences, utils
 
 __version__ = "0.1.0"
 
 __all__ = [
     "__version__",
-    "sequences",
-    "operators",
+    "configs",
+    "constants",
     "losses",
+    "operators",
     "pipelines",
+    "sequences",
     "utils",
 ]

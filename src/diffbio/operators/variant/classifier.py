@@ -7,14 +7,16 @@ from pileup representations.
 from dataclasses import dataclass
 from typing import Any
 
-from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.configs import ClassifierConfig
+from diffbio.constants import DEFAULT_PILEUP_WINDOW_SIZE, DNA_ALPHABET_SIZE
+
 
 @dataclass
-class VariantClassifierConfig(OperatorConfig):
+class VariantClassifierConfig(ClassifierConfig):
     """Configuration for variant classifier.
 
     Attributes:
@@ -23,17 +25,9 @@ class VariantClassifierConfig(OperatorConfig):
         num_layers: Number of hidden layers.
         dropout_rate: Dropout rate for regularization.
         input_window: Default input window size for pileup.
-        stochastic: Whether the operator uses randomness (True due to dropout).
-        stream_name: RNG stream name for dropout.
     """
 
-    num_classes: int = 3
-    hidden_dim: int = 64
-    num_layers: int = 2
-    dropout_rate: float = 0.1
-    input_window: int = 21
-    stochastic: bool = False  # Dropout handled by eval/train mode, not stochastic RNG
-    stream_name: str | None = None
+    input_window: int = DEFAULT_PILEUP_WINDOW_SIZE
 
 
 class VariantClassifier(OperatorModule):
@@ -65,8 +59,8 @@ class VariantClassifier(OperatorModule):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        # Input dimension: window_size * 4 (nucleotides)
-        input_dim = config.input_window * 4
+        # Input dimension: window_size * alphabet_size (nucleotides)
+        input_dim = config.input_window * DNA_ALPHABET_SIZE
 
         # Input layer
         self.input_layer = nnx.Linear(input_dim, config.hidden_dim, rngs=rngs)

@@ -16,14 +16,17 @@ from typing import Any, NamedTuple
 
 import jax
 import jax.numpy as jnp
-from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.configs import TemperatureConfig
+from diffbio.constants import DEFAULT_GAP_EXTEND, DEFAULT_GAP_OPEN
+from diffbio.utils.nn_utils import init_learnable_param
+
 
 @dataclass
-class SmithWatermanConfig(OperatorConfig):
+class SmithWatermanConfig(TemperatureConfig):
     """Configuration for SmoothSmithWaterman.
 
     Attributes:
@@ -31,15 +34,10 @@ class SmithWatermanConfig(OperatorConfig):
             Lower = sharper (closer to hard max), Higher = smoother.
         gap_open: Penalty for opening a gap.
         gap_extend: Penalty for extending a gap.
-        stochastic: Whether the operator uses randomness (always False).
-        stream_name: RNG stream name (not used).
     """
 
-    temperature: float = 1.0
-    gap_open: float = -10.0
-    gap_extend: float = -1.0
-    stochastic: bool = False
-    stream_name: str | None = None
+    gap_open: float = DEFAULT_GAP_OPEN
+    gap_extend: float = DEFAULT_GAP_EXTEND
 
 
 class AlignmentResult(NamedTuple):
@@ -100,10 +98,10 @@ class SmoothSmithWaterman(OperatorModule):
         super().__init__(config, rngs=rngs, name=name)
 
         # Learnable parameters
-        self.temperature = nnx.Param(jnp.array(config.temperature))
+        self.temperature = init_learnable_param(config.temperature)
         self.scoring_matrix = nnx.Param(scoring_matrix)
-        self.gap_open = nnx.Param(jnp.array(config.gap_open))
-        self.gap_extend = nnx.Param(jnp.array(config.gap_extend))
+        self.gap_open = init_learnable_param(config.gap_open)
+        self.gap_extend = init_learnable_param(config.gap_extend)
 
     def _smooth_max(self, *args: Array) -> Array:
         """Compute smooth maximum using logsumexp.

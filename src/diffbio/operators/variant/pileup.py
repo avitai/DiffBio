@@ -9,14 +9,22 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
-from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
+from diffbio.configs import DiffBioOperatorConfig
+from diffbio.constants import (
+    DEFAULT_MAX_COVERAGE,
+    DEFAULT_MIN_COVERAGE,
+    DEFAULT_PILEUP_WINDOW_SIZE,
+    EPSILON,
+)
+from diffbio.utils.nn_utils import init_learnable_param
+
 
 @dataclass
-class PileupConfig(OperatorConfig):
+class PileupConfig(DiffBioOperatorConfig):
     """Configuration for differentiable pileup.
 
     Attributes:
@@ -30,20 +38,16 @@ class PileupConfig(OperatorConfig):
         return_quality: Whether to return mean quality channel in output.
         apply_softmax: Whether to apply softmax to final pileup (set False to preserve
             raw weighted sums, which is better for variant detection).
-        stochastic: Whether the operator uses randomness (always False).
-        stream_name: RNG stream name (not used).
     """
 
-    window_size: int = 21
-    min_coverage: int = 1
-    max_coverage: int = 100
+    window_size: int = DEFAULT_PILEUP_WINDOW_SIZE
+    min_coverage: int = DEFAULT_MIN_COVERAGE
+    max_coverage: int = DEFAULT_MAX_COVERAGE
     use_quality_weights: bool = True
-    reference_length: int = 100  # Default reference length for batch processing
+    reference_length: int = 100
     return_coverage: bool = False
     return_quality: bool = False
-    apply_softmax: bool = True  # For backward compatibility
-    stochastic: bool = False
-    stream_name: str | None = None
+    apply_softmax: bool = True
 
 
 class DifferentiablePileup(OperatorModule):
@@ -75,7 +79,7 @@ class DifferentiablePileup(OperatorModule):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-        self.temperature = nnx.Param(jnp.array(1.0))
+        self.temperature = init_learnable_param(1.0)
 
     def compute_pileup(
         self,
@@ -149,7 +153,7 @@ class DifferentiablePileup(OperatorModule):
 
         # Normalize by coverage to get nucleotide distribution
         # Add small epsilon to avoid division by zero
-        coverage_safe = jnp.maximum(coverage, 1e-8)
+        coverage_safe = jnp.maximum(coverage, EPSILON)
         pileup_normalized = pileup / coverage_safe
 
         # Optionally apply softmax

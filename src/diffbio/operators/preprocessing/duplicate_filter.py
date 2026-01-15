@@ -28,15 +28,11 @@ class DuplicateWeightingConfig(OperatorConfig):
             Lower = sharper clustering, Higher = smoother.
         similarity_threshold: Minimum similarity to consider as duplicate.
         embedding_dim: Dimension of learned sequence embedding.
-        stochastic: Whether the operator uses randomness (always False).
-        stream_name: RNG stream name (not used).
     """
 
     temperature: float = 1.0
     similarity_threshold: float = 0.9
     embedding_dim: int = 32
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class DifferentiableDuplicateWeighting(OperatorModule):

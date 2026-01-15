@@ -29,16 +29,12 @@ class SoftClusteringConfig(OperatorConfig):
         n_features: Dimensionality of input embeddings.
         temperature: Temperature for softmax (lower = sharper).
         learnable_centroids: Whether centroids are learnable parameters.
-        stochastic: Whether the operator uses randomness.
-        stream_name: RNG stream name.
     """
 
     n_clusters: int = 10
     n_features: int = 50
     temperature: float = 1.0
     learnable_centroids: bool = True
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class SoftKMeansClustering(OperatorModule):

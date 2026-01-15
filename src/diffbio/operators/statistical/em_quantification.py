@@ -28,15 +28,11 @@ class EMQuantifierConfig(OperatorConfig):
         n_transcripts: Number of transcripts to quantify.
         n_iterations: Fixed number of EM iterations (for unrolling).
         temperature: Temperature for softmax in E-step.
-        stochastic: Whether the operator uses randomness.
-        stream_name: RNG stream name (not used).
     """
 
     n_transcripts: int = 1000
     n_iterations: int = 10
     temperature: float = 1.0
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class DifferentiableEMQuantifier(OperatorModule):

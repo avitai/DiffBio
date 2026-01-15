@@ -32,8 +32,6 @@ class BatchCorrectionConfig(OperatorConfig):
         theta: Diversity penalty parameter.
         sigma: Soft assignment bandwidth.
         temperature: Temperature for softmax operations.
-        stochastic: Whether the operator uses randomness.
-        stream_name: RNG stream name.
     """
 
     n_clusters: int = 100
@@ -43,8 +41,6 @@ class BatchCorrectionConfig(OperatorConfig):
     theta: float = 2.0
     sigma: float = 0.1
     temperature: float = 1.0
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class DifferentiableHarmony(OperatorModule):

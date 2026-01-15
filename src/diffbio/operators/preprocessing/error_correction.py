@@ -31,8 +31,6 @@ class ErrorCorrectionConfig(OperatorConfig):
         num_layers: Number of hidden layers in the MLP.
         use_quality: Whether to include quality scores as input.
         temperature: Temperature for output softmax.
-        stochastic: Whether the operator uses randomness (always False).
-        stream_name: RNG stream name (not used).
     """
 
     window_size: int = 11
@@ -40,8 +38,6 @@ class ErrorCorrectionConfig(OperatorConfig):
     num_layers: int = 2
     use_quality: bool = True
     temperature: float = 1.0
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class SoftErrorCorrection(OperatorModule):

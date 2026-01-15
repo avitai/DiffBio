@@ -29,16 +29,12 @@ class CNVSegmentationConfig(OperatorConfig):
         hidden_dim: Hidden dimension for attention layers.
         attention_heads: Number of attention heads.
         temperature: Temperature for softmax operations.
-        stochastic: Whether the operator uses randomness.
-        stream_name: RNG stream name.
     """
 
     max_segments: int = 100
     hidden_dim: int = 64
     attention_heads: int = 4
     temperature: float = 1.0
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class DifferentiableCNVSegmentation(OperatorModule):

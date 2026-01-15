@@ -33,8 +33,6 @@ class NeuralReadMapperConfig(OperatorConfig):
         num_layers: Number of transformer layers.
         dropout_rate: Dropout rate for regularization.
         temperature: Temperature for softmax operations.
-        stochastic: Whether the operator uses randomness.
-        stream_name: RNG stream name.
     """
 
     read_length: int = 150
@@ -44,8 +42,6 @@ class NeuralReadMapperConfig(OperatorConfig):
     num_layers: int = 4
     dropout_rate: float = 0.1
     temperature: float = 1.0
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class SequenceEncoder(nnx.Module):

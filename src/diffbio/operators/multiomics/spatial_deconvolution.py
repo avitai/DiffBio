@@ -34,8 +34,6 @@ class SpatialDeconvolutionConfig(OperatorConfig):
         spatial_hidden: Hidden dimension for spatial encoder.
         dropout_rate: Dropout rate for regularization.
         temperature: Temperature for softmax operations.
-        stochastic: Whether the operator uses randomness.
-        stream_name: RNG stream name.
     """
 
     n_genes: int = 2000
@@ -45,8 +43,6 @@ class SpatialDeconvolutionConfig(OperatorConfig):
     spatial_hidden: int = 32
     dropout_rate: float = 0.1
     temperature: float = 1.0
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class SpotEncoder(nnx.Module):

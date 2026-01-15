@@ -29,16 +29,12 @@ class VariantQualityFilterConfig(OperatorConfig):
         n_features: Number of variant features.
         threshold: Quality score threshold for filtering.
         temperature: Temperature for softmax/sigmoid operations.
-        stochastic: Whether the operator uses randomness.
-        stream_name: RNG stream name.
     """
 
     n_components: int = 3
     n_features: int = 4  # depth, qual, strand_bias, mapq
     threshold: float = 0.5
     temperature: float = 1.0
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class SoftVariantQualityFilter(OperatorModule):

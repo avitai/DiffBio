@@ -27,16 +27,12 @@ class SequenceEmbeddingConfig(OperatorConfig):
         method: Embedding method ("conv" for convolutional).
         kernel_size: Convolution kernel size.
         num_conv_layers: Number of convolutional layers.
-        stochastic: Whether the operator uses randomness.
-        stream_name: RNG stream name (not used).
     """
 
     embedding_dim: int = 64
     method: str = "conv"
     kernel_size: int = 7
     num_conv_layers: int = 3
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class SequenceEmbedding(OperatorModule):

@@ -14,14 +14,17 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
-from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.configs import DiffBioOperatorConfig
+from diffbio.constants import DEFAULT_DROPOUT_RATE, DEFAULT_NUM_CLASSES
+from diffbio.utils.nn_utils import ensure_rngs
+
 
 @dataclass
-class CNNVariantClassifierConfig(OperatorConfig):
+class CNNVariantClassifierConfig(DiffBioOperatorConfig):
     """Configuration for CNNVariantClassifier.
 
     Attributes:
@@ -32,17 +35,15 @@ class CNNVariantClassifierConfig(OperatorConfig):
         hidden_channels: Number of channels in each conv layer.
         fc_dims: Dimensions of fully connected layers.
         dropout_rate: Dropout rate for regularization.
-        stochastic: Whether the operator uses randomness.
-        stream_name: RNG stream name.
     """
 
-    num_classes: int = 3  # REF, SNV, INDEL
+    num_classes: int = DEFAULT_NUM_CLASSES
     input_height: int = 100  # coverage depth
     input_width: int = 221  # context window
     num_channels: int = 6  # A, C, G, T, quality, strand
     hidden_channels: list[int] = field(default_factory=lambda: [64, 128, 256])
     fc_dims: list[int] = field(default_factory=lambda: [256, 128])
-    dropout_rate: float = 0.1
+    dropout_rate: float = DEFAULT_DROPOUT_RATE
     stochastic: bool = True  # Uses dropout
     stream_name: str | None = "dropout"  # Required for stochastic operators
 
@@ -88,8 +89,7 @@ class CNNVariantClassifier(OperatorModule):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        if rngs is None:
-            rngs = nnx.Rngs(0)
+        rngs = ensure_rngs(rngs)
 
         self.num_classes = config.num_classes
         self.dropout_rate = config.dropout_rate

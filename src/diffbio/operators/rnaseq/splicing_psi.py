@@ -21,15 +21,12 @@ class SplicingPSIConfig(OperatorConfig):
         pseudocount: Pseudocount added for numerical stability and regularization.
         temperature: Temperature for confidence calculation.
         min_total_reads: Minimum total reads for reliable PSI estimation.
-        stochastic: Whether to use stochastic operations.
         stream_name: Name of the data stream to process.
     """
 
     pseudocount: float = 1.0
     temperature: float = 1.0
     min_total_reads: int = 10
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class SplicingPSI(OperatorModule):

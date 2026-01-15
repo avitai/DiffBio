@@ -29,16 +29,12 @@ class ProfileHMMConfig(OperatorConfig):
         alphabet_size: Size of sequence alphabet (20 for protein, 4 for DNA).
         temperature: Temperature for softmax operations.
         learnable_profile: Whether profile parameters are learnable.
-        stochastic: Whether the operator uses randomness.
-        stream_name: RNG stream name (not used).
     """
 
     profile_length: int = 100
     alphabet_size: int = 20  # Amino acids by default
     temperature: float = 1.0
     learnable_profile: bool = True
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class ProfileHMMSearch(OperatorModule):

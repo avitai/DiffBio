@@ -31,16 +31,12 @@ class AdapterRemovalConfig(OperatorConfig):
             Lower = sharper trimming, Higher = smoother.
         match_threshold: Minimum alignment score ratio to consider a match.
         min_overlap: Minimum overlap length to consider adapter presence.
-        stochastic: Whether the operator uses randomness (always False).
-        stream_name: RNG stream name (not used).
     """
 
     adapter_sequence: str = "AGATCGGAAGAG"  # Illumina universal adapter
     temperature: float = 1.0
     match_threshold: float = 0.5
     min_overlap: int = 6
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class SoftAdapterRemoval(OperatorModule):
