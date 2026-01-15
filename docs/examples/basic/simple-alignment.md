@@ -51,6 +51,13 @@ print(f"Sequence 1 shape: {seq1.shape}")  # (8, 4)
 print(f"Sequence 2 shape: {seq2.shape}")  # (8, 4)
 ```
 
+**Output:**
+
+```console
+Sequence 1 shape: (8, 4)
+Sequence 2 shape: (8, 4)
+```
+
 ## Perform Alignment
 
 ```python
@@ -60,6 +67,14 @@ result = aligner.align(seq1, seq2)
 print(f"Alignment score: {result.score:.4f}")
 print(f"Alignment matrix shape: {result.alignment_matrix.shape}")  # (9, 9)
 print(f"Soft alignment shape: {result.soft_alignment.shape}")      # (8, 8)
+```
+
+**Output:**
+
+```console
+Alignment score: 13.1916
+Alignment matrix shape: (9, 9)
+Soft alignment shape: (8, 8)
 ```
 
 ## Interpret Results
@@ -73,6 +88,12 @@ The alignment score indicates overall similarity:
 print(f"Score: {result.score:.4f}")
 ```
 
+**Output:**
+
+```console
+Score: 13.1916
+```
+
 ### Soft Alignment Matrix
 
 The soft alignment shows position correspondences as probabilities:
@@ -82,6 +103,12 @@ The soft alignment shows position correspondences as probabilities:
 best_matches = jnp.argmax(result.soft_alignment, axis=1)
 print(f"Position correspondences: {best_matches}")
 # Position i in seq1 corresponds to position best_matches[i] in seq2
+```
+
+**Output:**
+
+```console
+Position correspondences: [2 5 6 7 4 5 6 7]
 ```
 
 ### Visualization (Optional)
@@ -97,6 +124,8 @@ plt.ylabel('Sequence 1 position')
 plt.title('Soft Alignment Matrix')
 plt.show()
 ```
+
+![Soft Alignment Matrix](../../assets/images/examples/alignment-matrix.png)
 
 ## Compute Gradients
 
@@ -118,6 +147,16 @@ print("Scoring matrix gradients:")
 print(grads)
 ```
 
+**Output:**
+
+```console
+Scoring matrix gradients:
+[[-1.8247273e+00 -1.9172340e-07 -2.9888235e-15 -7.5641262e-09]
+ [-5.5532780e-07 -1.9372165e+00 -1.4243892e-10 -5.4443811e-12]
+ [-9.5245820e-01 -3.6374666e-07 -9.9998236e-01 -5.4135889e-08]
+ [-6.1676126e-08 -1.7161713e-12 -2.0101693e-11 -1.9935606e+00]]
+```
+
 The gradients tell us how to adjust the scoring matrix to improve alignment.
 
 ## Using the Datarax Interface
@@ -137,6 +176,13 @@ result_data, state, metadata = aligner.apply(data, {}, None)
 # Access results
 print(f"Score: {result_data['score']:.4f}")
 print(f"Keys: {result_data.keys()}")
+```
+
+**Output:**
+
+```console
+Score: 13.1916
+Keys: ['seq1', 'seq2', 'score', 'alignment_matrix', 'soft_alignment']
 ```
 
 ## Batch Processing with vmap
@@ -167,6 +213,12 @@ batch_results = batch_align(batch_seq1, batch_seq2)
 print(f"Batch scores: {batch_results.score}")
 ```
 
+**Output:**
+
+```console
+Batch scores: [13.191646 14.145432 10.148667]
+```
+
 ## Temperature Effects
 
 The temperature parameter controls the smoothness of the alignment:
@@ -179,6 +231,15 @@ for temp in temperatures:
     aligner = SmoothSmithWaterman(config, scoring_matrix=scoring_matrix)
     result = aligner.align(seq1, seq2)
     print(f"Temperature {temp}: score = {result.score:.4f}")
+```
+
+**Output:**
+
+```console
+Temperature 0.1: score = 13.0000
+Temperature 1.0: score = 13.1916
+Temperature 5.0: score = 22.2542
+Temperature 10.0: score = 58.6904
 ```
 
 - **Low temperature** (0.1): Near-discrete, sharp alignment
@@ -226,6 +287,52 @@ for step in range(100):
 final_result = aligner.align(seq1, seq2)
 print(f"Final score: {final_result.score:.4f} (target: {target_score})")
 ```
+
+**Output:**
+
+```console
+Step 0: loss = 10.1866
+Step 20: loss = 0.6327
+Step 40: loss = 0.0532
+Step 60: loss = 0.0085
+Step 80: loss = 0.0015
+Final score: 10.0036 (target: 10.0)
+```
+
+### Visualize Learned Alignment
+
+Compare the soft alignment before and after training:
+
+```python
+# Get alignment after training
+final_result = aligner.align(seq1, seq2)
+
+# Visualization comparing before and after
+fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+# Before training (using initial aligner)
+initial_aligner = SmoothSmithWaterman(config, scoring_matrix=initial_scoring)
+initial_result = initial_aligner.align(seq1, seq2)
+
+im1 = axes[0].imshow(initial_result.soft_alignment, cmap='viridis', vmin=0, vmax=1)
+axes[0].set_xlabel('Sequence 2 position')
+axes[0].set_ylabel('Sequence 1 position')
+axes[0].set_title(f'Before Training (score: {initial_result.score:.2f})')
+plt.colorbar(im1, ax=axes[0], label='Alignment probability')
+
+# After training
+im2 = axes[1].imshow(final_result.soft_alignment, cmap='viridis', vmin=0, vmax=1)
+axes[1].set_xlabel('Sequence 2 position')
+axes[1].set_ylabel('Sequence 1 position')
+axes[1].set_title(f'After Training (score: {final_result.score:.2f})')
+plt.colorbar(im2, ax=axes[1], label='Alignment probability')
+
+plt.suptitle('Soft Alignment Matrix: Before vs After Parameter Learning')
+plt.tight_layout()
+plt.show()
+```
+
+![Alignment Before vs After Training](../../assets/images/examples/alignment-learning.png)
 
 ## Summary
 

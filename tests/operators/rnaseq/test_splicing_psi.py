@@ -179,12 +179,8 @@ class TestSplicingPSI:
 
     def test_output_finite(self, psi_operator):
         """Test that all outputs are finite."""
-        inclusion_reads = jax.random.uniform(
-            jax.random.key(0), (20,), minval=0, maxval=100
-        )
-        exclusion_reads = jax.random.uniform(
-            jax.random.key(1), (20,), minval=0, maxval=100
-        )
+        inclusion_reads = jax.random.uniform(jax.random.key(0), (20,), minval=0, maxval=100)
+        exclusion_reads = jax.random.uniform(jax.random.key(1), (20,), minval=0, maxval=100)
 
         data = {
             "inclusion_counts": inclusion_reads,

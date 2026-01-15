@@ -146,9 +146,7 @@ class TestDifferentiableHMM:
         config = HMMConfig(n_states=3, n_emissions=4)
         op = DifferentiableHMM(config, rngs=rngs)
 
-        transformed_data, state, metadata = op.apply(
-            integer_observations, {}, None, None
-        )
+        transformed_data, state, metadata = op.apply(integer_observations, {}, None, None)
 
         assert "log_likelihood" in transformed_data
         assert jnp.isfinite(transformed_data["log_likelihood"])

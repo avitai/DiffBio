@@ -101,7 +101,7 @@ class TestDifferentiableVelocity:
 
         # Per-gene kinetics parameters
         assert "alpha" in transformed  # transcription rate
-        assert "beta" in transformed   # splicing rate
+        assert "beta" in transformed  # splicing rate
         assert "gamma" in transformed  # degradation rate
 
     def test_output_contains_latent_time(self, rngs, small_config, sample_data):

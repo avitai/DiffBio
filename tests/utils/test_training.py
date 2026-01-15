@@ -10,6 +10,7 @@ from diffbio.utils.training import (
     TrainingConfig,
     TrainingState,
     create_optax_optimizer,
+    create_realistic_training_data,
     create_synthetic_training_data,
     cross_entropy_loss,
     data_iterator,
@@ -160,6 +161,205 @@ class TestSyntheticData:
             # Labels should be valid class indices
             assert jnp.all(tgt["labels"] >= 0)
             assert jnp.all(tgt["labels"] < 3)
+
+
+class TestRealisticSyntheticData:
+    """Tests for realistic synthetic data generation."""
+
+    def test_generate_data_structure(self):
+        """Test that realistic data has correct structure."""
+        inputs, targets = create_realistic_training_data(
+            num_samples=5,
+            num_reads=10,
+            read_length=20,
+            reference_length=50,
+            seed=42,
+        )
+
+        assert len(inputs) == 5
+        assert len(targets) == 5
+
+        # Check input structure
+        for inp in inputs:
+            assert "reads" in inp
+            assert "positions" in inp
+            assert "quality" in inp
+            assert "strand" in inp
+            assert inp["reads"].shape == (10, 20, 4)
+            assert inp["positions"].shape == (10,)
+            assert inp["quality"].shape == (10, 20)
+            assert inp["strand"].shape == (10,)
+
+        # Check target structure
+        for tgt in targets:
+            assert "labels" in tgt
+            assert "variant_alleles" in tgt
+            assert "is_heterozygous" in tgt
+            assert tgt["labels"].shape == (50,)
+
+    def test_reads_are_valid_distributions(self):
+        """Test that reads are valid one-hot encoded sequences."""
+        inputs, _ = create_realistic_training_data(
+            num_samples=3,
+            num_reads=5,
+            read_length=15,
+            reference_length=30,
+            seed=42,
+        )
+
+        for inp in inputs:
+            # Each position should sum to 1 (one-hot encoding)
+            read_sums = inp["reads"].sum(axis=-1)
+            assert jnp.allclose(read_sums, 1.0, atol=1e-5)
+
+    def test_variants_appear_in_reads(self):
+        """Test that variant positions show alternate alleles in reads.
+
+        This is the KEY test - the old implementation failed because
+        variants were labeled but not actually present in reads.
+        """
+        inputs, targets = create_realistic_training_data(
+            num_samples=10,
+            num_reads=20,
+            read_length=30,
+            reference_length=100,
+            variant_rate=0.1,  # 10% variant rate
+            heterozygous_rate=0.0,  # All homozygous for simpler testing
+            error_rate=0.0,  # No errors for simpler testing
+            seed=42,
+        )
+
+        # For each sample, check that variant positions show alternate alleles
+        variant_found = False
+        for inp, tgt in zip(inputs, targets):
+            reads = inp["reads"]
+            positions = inp["positions"]
+            labels = tgt["labels"]
+            alt_alleles = tgt["variant_alleles"]
+
+            # Find SNP positions (label == 1)
+            snp_positions = jnp.where(labels == 1)[0]
+
+            if len(snp_positions) == 0:
+                continue
+
+            # For each read, check if it covers any SNP position
+            for read_idx in range(len(positions)):
+                read_start = positions[read_idx]
+                read_end = read_start + 30  # read_length
+
+                for snp_pos in snp_positions:
+                    if read_start <= snp_pos < read_end:
+                        # This read covers this SNP
+                        offset = snp_pos - read_start
+                        read_base = jnp.argmax(reads[read_idx, offset])
+                        expected_alt = alt_alleles[snp_pos]
+
+                        # The read should show the alternate allele (for homozygous)
+                        if read_base == expected_alt:
+                            variant_found = True
+
+        assert variant_found, "No variants found in reads - data generation is broken!"
+
+    def test_quality_profile_position_dependent(self):
+        """Test that quality scores follow position-dependent profile."""
+        inputs, _ = create_realistic_training_data(
+            num_samples=5,
+            num_reads=100,
+            read_length=50,
+            reference_length=100,
+            error_rate=0.0,  # No errors to see clean profile
+            seed=42,
+        )
+
+        # Average quality across all reads at each position
+        all_qualities = jnp.stack([inp["quality"] for inp in inputs])
+        mean_quality = all_qualities.mean(axis=(0, 1))  # Average over samples and reads
+
+        # Quality should be higher in middle than at ends
+        center = 25
+        center_quality = mean_quality[center - 5 : center + 5].mean()
+        edge_quality = (mean_quality[:5].mean() + mean_quality[-5:].mean()) / 2
+
+        assert center_quality > edge_quality, "Quality should be higher in center of reads"
+
+    def test_quality_in_valid_range(self):
+        """Test that quality scores are in valid Phred range."""
+        inputs, _ = create_realistic_training_data(
+            num_samples=3,
+            num_reads=10,
+            read_length=20,
+            reference_length=50,
+            seed=42,
+        )
+
+        for inp in inputs:
+            assert jnp.all(inp["quality"] >= 5.0), "Quality should be >= 5"
+            assert jnp.all(inp["quality"] <= 40.0), "Quality should be <= 40"
+
+    def test_heterozygous_variants_show_mixed_alleles(self):
+        """Test that heterozygous variants show ~50% variant alleles."""
+        inputs, targets = create_realistic_training_data(
+            num_samples=20,
+            num_reads=100,  # Many reads for statistical power
+            read_length=80,
+            reference_length=100,
+            variant_rate=0.1,
+            heterozygous_rate=1.0,  # All heterozygous
+            error_rate=0.0,
+            seed=42,
+        )
+
+        # Count variant vs reference alleles at heterozygous SNP sites
+        variant_count = 0
+        total_count = 0
+
+        for inp, tgt in zip(inputs, targets):
+            reads = inp["reads"]
+            positions = inp["positions"]
+            labels = tgt["labels"]
+            alt_alleles = tgt["variant_alleles"]
+
+            # Find SNP positions
+            snp_positions = jnp.where(labels == 1)[0]
+
+            for snp_pos in snp_positions:
+                # Count reads covering this position
+                for read_idx in range(len(positions)):
+                    read_start = positions[read_idx]
+                    read_end = read_start + 80
+
+                    if read_start <= snp_pos < read_end:
+                        offset = snp_pos - read_start
+                        read_base = jnp.argmax(reads[read_idx, offset])
+                        expected_alt = alt_alleles[snp_pos]
+
+                        if read_base == expected_alt:
+                            variant_count += 1
+                        total_count += 1
+
+        if total_count > 0:
+            variant_fraction = variant_count / total_count
+            # Should be around 50% for heterozygous (allow some variance)
+            assert 0.3 < variant_fraction < 0.7, (
+                f"Heterozygous variants should show ~50% alt allele, got {variant_fraction:.2%}"
+            )
+
+    def test_strand_information_present(self):
+        """Test that strand information is generated."""
+        inputs, _ = create_realistic_training_data(
+            num_samples=5,
+            num_reads=20,
+            read_length=30,
+            reference_length=100,
+            seed=42,
+        )
+
+        for inp in inputs:
+            strands = inp["strand"]
+            # Should have both forward (0) and reverse (1) strands
+            assert jnp.any(strands == 0), "Should have forward strand reads"
+            assert jnp.any(strands == 1), "Should have reverse strand reads"
 
 
 class TestDataIterator:

@@ -64,9 +64,7 @@ class SplicingPSI(OperatorModule):
         ```
     """
 
-    def __init__(
-        self, config: SplicingPSIConfig, *, rngs: nnx.Rngs | None = None
-    ):
+    def __init__(self, config: SplicingPSIConfig, *, rngs: nnx.Rngs | None = None):
         """Initialize the PSI operator.
 
         Args:
@@ -124,9 +122,7 @@ class SplicingPSI(OperatorModule):
 
         # Sigmoid-based confidence: approaches 1 as reads increase
         # Centered around min_total_reads
-        confidence = jax.nn.sigmoid(
-            (total_reads - min_reads) / (temperature * min_reads + 1e-6)
-        )
+        confidence = jax.nn.sigmoid((total_reads - min_reads) / (temperature * min_reads + 1e-6))
 
         return confidence
 

@@ -152,8 +152,7 @@ class SoftVariantQualityFilter(OperatorModule):
         # log p(x | mu, sigma^2) = -0.5 * sum((x - mu)^2 / sigma^2 + log(2*pi*sigma^2))
         diff_sq = (features_exp - means_exp) ** 2
         log_prob = -0.5 * jnp.sum(
-            diff_sq / variances_exp + jnp.log(2 * jnp.pi * variances_exp),
-            axis=-1
+            diff_sq / variances_exp + jnp.log(2 * jnp.pi * variances_exp), axis=-1
         )  # (n_variants, n_components)
 
         return log_prob
@@ -201,8 +200,7 @@ class SoftVariantQualityFilter(OperatorModule):
 
         # Total log likelihood under mixture
         log_likelihood = jax.scipy.special.logsumexp(
-            log_probs + jnp.log(mixing_weights + 1e-10),
-            axis=-1
+            log_probs + jnp.log(mixing_weights + 1e-10), axis=-1
         )  # (n_variants,)
 
         # Learned quality projection
@@ -248,9 +246,7 @@ class SoftVariantQualityFilter(OperatorModule):
         quality_scores = self.compute_quality_scores(features)
 
         # Soft filter weights using sigmoid threshold
-        filter_weights = jax.nn.sigmoid(
-            (quality_scores - self.threshold) / self.temperature
-        )
+        filter_weights = jax.nn.sigmoid((quality_scores - self.threshold) / self.temperature)
 
         # Component responsibilities
         component_probs = self.compute_responsibilities(features)

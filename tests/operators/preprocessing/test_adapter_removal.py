@@ -77,16 +77,12 @@ class TestSoftAdapterRemoval:
         op = SoftAdapterRemoval(config, rngs=rngs)
         assert op.adapter[...].shape[0] == 8  # Length of custom adapter
 
-    def test_apply_no_adapter_preserves_sequence(
-        self, rngs, sample_data_no_adapter
-    ):
+    def test_apply_no_adapter_preserves_sequence(self, rngs, sample_data_no_adapter):
         """Test that sequences without adapter are mostly preserved."""
         config = AdapterRemovalConfig()
         op = SoftAdapterRemoval(config, rngs=rngs)
 
-        transformed_data, state, metadata = op.apply(
-            sample_data_no_adapter, {}, None, None
-        )
+        transformed_data, state, metadata = op.apply(sample_data_no_adapter, {}, None, None)
 
         # Without adapter, sequence should be largely preserved
         original_sum = jnp.sum(sample_data_no_adapter["sequence"])
@@ -94,16 +90,12 @@ class TestSoftAdapterRemoval:
         # Allow for some reduction due to soft operations
         assert transformed_sum > 0.7 * original_sum
 
-    def test_apply_with_adapter_trims_end(
-        self, rngs, sample_data_with_adapter
-    ):
+    def test_apply_with_adapter_trims_end(self, rngs, sample_data_with_adapter):
         """Test that sequences with adapter have end trimmed."""
         config = AdapterRemovalConfig()
         op = SoftAdapterRemoval(config, rngs=rngs)
 
-        transformed_data, state, metadata = op.apply(
-            sample_data_with_adapter, {}, None, None
-        )
+        transformed_data, state, metadata = op.apply(sample_data_with_adapter, {}, None, None)
 
         # With adapter at end, the adapter portion should be down-weighted
         # The first 16 bases should have higher weight than last 8
@@ -119,9 +111,7 @@ class TestSoftAdapterRemoval:
         config = AdapterRemovalConfig()
         op = SoftAdapterRemoval(config, rngs=rngs)
 
-        transformed_data, state, metadata = op.apply(
-            sample_data_with_adapter, {}, None, None
-        )
+        transformed_data, state, metadata = op.apply(sample_data_with_adapter, {}, None, None)
 
         assert "adapter_score" in transformed_data
         # Score should be non-negative
@@ -132,9 +122,7 @@ class TestSoftAdapterRemoval:
         config = AdapterRemovalConfig()
         op = SoftAdapterRemoval(config, rngs=rngs)
 
-        transformed_data, state, metadata = op.apply(
-            sample_data_with_adapter, {}, None, None
-        )
+        transformed_data, state, metadata = op.apply(sample_data_with_adapter, {}, None, None)
 
         assert "trim_position" in transformed_data
         # Trim position should be in valid range
@@ -261,9 +249,7 @@ class TestJITCompatibility:
 
         jit_result, _, _ = jit_apply(data, state)
 
-        assert jnp.allclose(
-            eager_result["sequence"], jit_result["sequence"], rtol=1e-5
-        )
+        assert jnp.allclose(eager_result["sequence"], jit_result["sequence"], rtol=1e-5)
 
 
 class TestEdgeCases:

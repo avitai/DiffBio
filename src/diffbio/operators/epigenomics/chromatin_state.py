@@ -59,9 +59,7 @@ class ChromatinStateAnnotator(OperatorModule):
         ```
     """
 
-    def __init__(
-        self, config: ChromatinStateConfig, *, rngs: nnx.Rngs | None = None
-    ):
+    def __init__(self, config: ChromatinStateConfig, *, rngs: nnx.Rngs | None = None):
         """Initialize the chromatin state annotator.
 
         Args:
@@ -143,9 +141,7 @@ class ChromatinStateAnnotator(OperatorModule):
         # Sum over marks
         return log_emission.sum(axis=-1)  # (..., num_states)
 
-    def _forward_algorithm(
-        self, log_emissions: jax.Array
-    ) -> tuple[jax.Array, jax.Array]:
+    def _forward_algorithm(self, log_emissions: jax.Array) -> tuple[jax.Array, jax.Array]:
         """Run forward algorithm in log-space.
 
         Args:
@@ -164,9 +160,7 @@ class ChromatinStateAnnotator(OperatorModule):
 
             # Expand for broadcasting: (num_states, 1) + (num_states, num_states)
             log_alpha_trans = log_alpha_prev[:, None] + log_trans
-            log_alpha_t = log_emit_t + jax.scipy.special.logsumexp(
-                log_alpha_trans, axis=0
-            )
+            log_alpha_t = log_emit_t + jax.scipy.special.logsumexp(log_alpha_trans, axis=0)
             return log_alpha_t, log_alpha_t
 
         # Initialize with initial distribution
@@ -209,18 +203,14 @@ class ChromatinStateAnnotator(OperatorModule):
         log_beta_T = jnp.zeros(num_states)
 
         # Run backward pass (reversed)
-        _, log_betas_rev = jax.lax.scan(
-            backward_step, log_beta_T, log_emissions[1:][::-1]
-        )
+        _, log_betas_rev = jax.lax.scan(backward_step, log_beta_T, log_emissions[1:][::-1])
 
         # Reverse and prepend final beta
         log_betas = jnp.concatenate([log_betas_rev[::-1], log_beta_T[None, :]], axis=0)
 
         return log_betas
 
-    def _compute_posteriors(
-        self, log_alphas: jax.Array, log_betas: jax.Array
-    ) -> jax.Array:
+    def _compute_posteriors(self, log_alphas: jax.Array, log_betas: jax.Array) -> jax.Array:
         """Compute posterior state probabilities.
 
         Args:
@@ -266,9 +256,7 @@ class ChromatinStateAnnotator(OperatorModule):
 
         # Soft argmax for most likely state
         state_probs = jax.nn.softmax(log_deltas / temperature, axis=-1)
-        most_likely = jnp.sum(
-            state_probs * jnp.arange(self.config.num_states)[None, :], axis=-1
-        )
+        most_likely = jnp.sum(state_probs * jnp.arange(self.config.num_states)[None, :], axis=-1)
 
         return most_likely
 

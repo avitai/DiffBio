@@ -312,9 +312,7 @@ class DifferentiableAmbientRemoval(OperatorModule):
 
         # Model: observed = (1 - contamination) * cell + contamination * ambient * total
         # Decontaminated = observed - contamination * ambient * total
-        ambient_contribution = (
-            contamination[:, None] * ambient_profile[None, :] * total_counts
-        )
+        ambient_contribution = contamination[:, None] * ambient_profile[None, :] * total_counts
         decontaminated = jnp.maximum(counts - ambient_contribution, 0.0)
 
         # Reconstructed expression (for loss computation)

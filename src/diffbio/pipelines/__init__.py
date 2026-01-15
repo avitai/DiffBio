@@ -17,6 +17,7 @@ from diffbio.pipelines.preprocessing import (
 from diffbio.pipelines.variant_calling import (
     VariantCallingPipeline,
     VariantCallingPipelineConfig,
+    create_cnn_variant_pipeline,
     create_variant_calling_pipeline,
 )
 
@@ -33,4 +34,5 @@ __all__ = [
     "VariantCallingPipeline",
     "VariantCallingPipelineConfig",
     "create_variant_calling_pipeline",
+    "create_cnn_variant_pipeline",
 ]

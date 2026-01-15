@@ -174,9 +174,9 @@ class GraphAttentionLayer(nnx.Module):
         attn_exp = jnp.exp(attn_scores)
 
         # Sum of exp scores per target node
-        attn_sum = jax.ops.segment_sum(
-            attn_exp, targets, num_segments=n_nodes
-        ) + 1e-10  # (n_nodes, num_heads)
+        attn_sum = (
+            jax.ops.segment_sum(attn_exp, targets, num_segments=n_nodes) + 1e-10
+        )  # (n_nodes, num_heads)
 
         # Normalize
         attn_probs = attn_exp / attn_sum[targets]  # (n_edges, num_heads)
@@ -190,9 +190,7 @@ class GraphAttentionLayer(nnx.Module):
 
         # Aggregate to target nodes
         aggregated = jax.ops.segment_sum(
-            weighted_V.reshape(n_edges, -1),
-            targets,
-            num_segments=n_nodes
+            weighted_V.reshape(n_edges, -1), targets, num_segments=n_nodes
         )  # (n_nodes, out_features)
 
         # Output projection
@@ -336,16 +334,18 @@ class GNNAssemblyNavigator(OperatorModule):
         )
 
         # GNN layers
-        self.gnn_layers = nnx.List([
-            GNNLayer(
-                hidden_dim=config.hidden_dim,
-                num_heads=config.num_heads,
-                edge_features=config.edge_features,
-                dropout_rate=config.dropout_rate,
-                rngs=rngs,
-            )
-            for _ in range(config.num_layers)
-        ])
+        self.gnn_layers = nnx.List(
+            [
+                GNNLayer(
+                    hidden_dim=config.hidden_dim,
+                    num_heads=config.num_heads,
+                    edge_features=config.edge_features,
+                    dropout_rate=config.dropout_rate,
+                    rngs=rngs,
+                )
+                for _ in range(config.num_layers)
+            ]
+        )
 
         # Edge scoring MLP
         self.edge_mlp = nnx.Linear(
@@ -424,9 +424,7 @@ class GNNAssemblyNavigator(OperatorModule):
         # Apply GNN layers
         deterministic = not self.config.stochastic
         for layer in self.gnn_layers:
-            node_emb = layer(
-                node_emb, edge_index, edge_features, deterministic=deterministic
-            )
+            node_emb = layer(node_emb, edge_index, edge_features, deterministic=deterministic)
 
         # Compute edge scores
         edge_scores = self.compute_edge_scores(node_emb, edge_index)

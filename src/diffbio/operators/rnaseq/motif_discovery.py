@@ -64,9 +64,7 @@ class DifferentiableMotifDiscovery(OperatorModule):
         ```
     """
 
-    def __init__(
-        self, config: MotifDiscoveryConfig, *, rngs: nnx.Rngs | None = None
-    ):
+    def __init__(self, config: MotifDiscoveryConfig, *, rngs: nnx.Rngs | None = None):
         """Initialize the motif discovery operator.
 
         Args:
@@ -84,10 +82,13 @@ class DifferentiableMotifDiscovery(OperatorModule):
         # Initialize PWM logits (before softmax normalization)
         # Shape: (num_motifs, motif_width, alphabet_size)
         # Initialize near uniform with small random noise
-        pwm_init = jax.random.normal(
-            key,
-            (config.num_motifs, config.motif_width, config.alphabet_size),
-        ) * 0.1
+        pwm_init = (
+            jax.random.normal(
+                key,
+                (config.num_motifs, config.motif_width, config.alphabet_size),
+            )
+            * 0.1
+        )
 
         self.pwm_logits = nnx.Param(pwm_init)
 
@@ -104,9 +105,7 @@ class DifferentiableMotifDiscovery(OperatorModule):
         temperature = jnp.abs(self.temperature.value) + 1e-6
         return jax.nn.softmax(self.pwm_logits.value / temperature, axis=-1)
 
-    def _scan_single_motif(
-        self, sequence: jax.Array, pwm: jax.Array
-    ) -> jax.Array:
+    def _scan_single_motif(self, sequence: jax.Array, pwm: jax.Array) -> jax.Array:
         """Scan a sequence with a single PWM using convolution.
 
         Args:
@@ -160,9 +159,7 @@ class DifferentiableMotifDiscovery(OperatorModule):
         # Transpose to (num_positions, num_motifs)
         return all_scores.T
 
-    def _find_motif_positions(
-        self, scores: jax.Array, threshold: float = 0.0
-    ) -> jax.Array:
+    def _find_motif_positions(self, scores: jax.Array, threshold: float = 0.0) -> jax.Array:
         """Find soft motif positions based on scores.
 
         Args:

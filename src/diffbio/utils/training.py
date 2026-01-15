@@ -385,5 +385,190 @@ def data_iterator(
     yield from zip(inputs, targets)
 
 
+def create_realistic_training_data(
+    num_samples: int = 100,
+    num_reads: int = 20,
+    read_length: int = 50,
+    reference_length: int = 100,
+    variant_rate: float = 0.05,
+    heterozygous_rate: float = 0.5,
+    error_rate: float = 0.01,
+    seed: int = 42,
+) -> tuple[list[dict[str, Array]], list[dict[str, Array]]]:
+    """Create realistic synthetic training data for variant calling.
+
+    Unlike `create_synthetic_training_data`, this function generates reads that
+    actually contain variants at the labeled positions, making it possible for
+    models to learn meaningful patterns.
+
+    Features:
+    - SNP simulation: Substitutes reference bases with alternate alleles
+    - Heterozygous/homozygous modeling: Controls allele frequency in reads
+    - Quality modeling: Position-dependent quality (higher in read center)
+    - Sequencing errors: Random substitutions with low quality scores
+    - Strand information: Assigns reads to forward/reverse strands
+
+    Args:
+        num_samples: Number of samples to generate
+        num_reads: Number of reads per sample
+        read_length: Length of each read
+        reference_length: Length of reference sequence
+        variant_rate: Probability of variant at each position (default 0.05)
+        heterozygous_rate: Fraction of variants that are heterozygous (default 0.5)
+        error_rate: Probability of sequencing error per base (default 0.01)
+        seed: Random seed
+
+    Returns:
+        Tuple of (inputs, targets) where:
+        - inputs: List of dicts with reads, positions, quality, strand
+        - targets: List of dicts with labels (0=ref, 1=snp, 2=indel),
+                   variant_alleles, zygosity
+    """
+    key = jax.random.PRNGKey(seed)
+    inputs = []
+    targets = []
+
+    for _ in range(num_samples):
+        key, *keys = jax.random.split(key, 9)
+        k_ref, k_var, k_type, k_pos, k_het, k_alt, k_read_var, k_strand = keys
+
+        # Generate reference sequence (A=0, C=1, G=2, T=3)
+        ref_indices = jax.random.randint(k_ref, (reference_length,), 0, 4)
+        ref_one_hot = jax.nn.one_hot(ref_indices, 4)
+
+        # Generate variant positions and types
+        variant_mask = jax.random.uniform(k_var, (reference_length,)) < variant_rate
+        # Variant types: 1=SNP, 2=deletion (simplified - no insertions for now)
+        # Focus on SNPs (type 1) for better learning signal
+        variant_types = jnp.where(
+            variant_mask,
+            jnp.where(
+                jax.random.uniform(k_type, (reference_length,)) < 0.9,
+                1,  # SNP (90%)
+                2,  # Deletion (10%)
+            ),
+            0,  # Reference
+        )
+
+        # Determine zygosity for each variant (0=hom, 1=het)
+        is_heterozygous = jax.random.uniform(k_het, (reference_length,)) < heterozygous_rate
+
+        # Generate alternate alleles for SNPs (different from reference)
+        # For each position, pick a random base that's different from reference
+        alt_offsets = jax.random.randint(k_alt, (reference_length,), 1, 4)
+        alt_indices = (ref_indices + alt_offsets) % 4
+        alt_one_hot = jax.nn.one_hot(alt_indices, 4)
+
+        # Generate read positions
+        positions = jax.random.randint(k_pos, (num_reads,), 0, reference_length - read_length)
+
+        # Determine which reads carry variant allele (for heterozygous sites)
+        # For homozygous variants: all reads show variant
+        # For heterozygous variants: ~50% of reads show variant
+        read_shows_variant = jax.random.uniform(k_read_var, (num_reads,)) < 0.5
+
+        # Generate strand assignments (0=forward, 1=reverse)
+        strands = jax.random.randint(k_strand, (num_reads,), 0, 2)
+
+        # Build reads with actual variants
+        def build_read(read_idx):
+            pos = positions[read_idx]
+            shows_var = read_shows_variant[read_idx]
+
+            # Get reference segment for this read
+            def get_base_at(offset):
+                ref_pos = pos + offset
+                ref_base = ref_one_hot[ref_pos]
+                alt_base = alt_one_hot[ref_pos]
+
+                # Check if this position is a variant
+                is_var = variant_types[ref_pos] == 1  # SNP
+                is_het = is_heterozygous[ref_pos]
+
+                # Use variant allele if:
+                # - Position is a variant AND
+                # - (homozygous OR (heterozygous AND this read shows variant))
+                use_variant = is_var & (~is_het | shows_var)
+
+                return jnp.where(use_variant, alt_base, ref_base)
+
+            # Build read base by base
+            read_bases = jax.vmap(get_base_at)(jnp.arange(read_length))
+            return read_bases
+
+        reads = jax.vmap(build_read)(jnp.arange(num_reads))
+
+        # Add sequencing errors (random substitutions at error_rate)
+        key, k_err_pos, k_err_base = jax.random.split(key, 3)
+        error_mask = jax.random.uniform(k_err_pos, (num_reads, read_length)) < error_rate
+
+        # Generate random error bases
+        error_offsets = jax.random.randint(k_err_base, (num_reads, read_length), 1, 4)
+        current_bases = jnp.argmax(reads, axis=-1)  # Get current base indices
+        error_bases = (current_bases + error_offsets) % 4
+        error_one_hot = jax.nn.one_hot(error_bases, 4)
+
+        # Apply errors
+        reads = jnp.where(error_mask[..., None], error_one_hot, reads)
+
+        # Generate quality scores with position-dependent profile
+        # Quality is higher in middle of read, lower at ends
+        key, k_qual_noise = jax.random.split(key, 2)
+
+        # Position-dependent base quality (parabolic profile)
+        pos_in_read = jnp.arange(read_length)
+        center = read_length / 2
+        # Quality ranges from 25 at ends to 35 in middle
+        base_quality = 35.0 - 10.0 * ((pos_in_read - center) / center) ** 2
+        base_quality = jnp.broadcast_to(base_quality, (num_reads, read_length))
+
+        # Add random variation
+        quality_noise = jax.random.uniform(
+            k_qual_noise,
+            (num_reads, read_length),
+            minval=-3.0,
+            maxval=3.0,
+        )
+        quality = base_quality + quality_noise
+
+        # Lower quality at error positions
+        quality = jnp.where(error_mask, jnp.minimum(quality, 15.0), quality)
+
+        # Slightly lower quality near variant positions in reads
+        def check_variant_overlap(read_idx):
+            pos = positions[read_idx]
+
+            # Get variant status for each position in this read
+            def is_var_at(offset):
+                ref_pos = pos + offset
+                return variant_types[ref_pos] > 0
+
+            return jax.vmap(is_var_at)(jnp.arange(read_length))
+
+        variant_in_read = jax.vmap(check_variant_overlap)(jnp.arange(num_reads))
+        quality = jnp.where(variant_in_read, quality - 2.0, quality)
+
+        # Clamp quality to valid range
+        quality = jnp.clip(quality, 5.0, 40.0)
+
+        inputs.append(
+            {
+                "reads": reads,
+                "positions": positions,
+                "quality": quality,
+                "strand": strands,
+            }
+        )
+        targets.append(
+            {
+                "labels": variant_types,
+                "variant_alleles": alt_indices,
+                "is_heterozygous": is_heterozygous.astype(jnp.int32),
+            }
+        )
+
+    return inputs, targets
+
+
 # Backwards compatibility alias
 create_optimizer = create_optax_optimizer

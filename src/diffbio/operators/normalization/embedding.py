@@ -105,7 +105,7 @@ class SequenceEmbedding(OperatorModule):
                 nnx.Linear(
                     in_features=config.kernel_size * config.embedding_dim,
                     out_features=config.embedding_dim,
-                    rngs=rngs
+                    rngs=rngs,
                 )
             )
 
@@ -129,20 +129,11 @@ class SequenceEmbedding(OperatorModule):
         half_k = kernel_size // 2
 
         # Pad sequence for edge handling
-        padded = jnp.pad(
-            sequence,
-            ((half_k, half_k), (0, 0)),
-            mode="constant",
-            constant_values=0.0
-        )
+        padded = jnp.pad(sequence, ((half_k, half_k), (0, 0)), mode="constant", constant_values=0.0)
 
         # Extract windows using vmap
         def extract_window(center: int) -> Float[Array, "window_features"]:
-            window = jax.lax.dynamic_slice(
-                padded,
-                (center, 0),
-                (kernel_size, num_features)
-            )
+            window = jax.lax.dynamic_slice(padded, (center, 0), (kernel_size, num_features))
             return window.flatten()
 
         windows = jax.vmap(extract_window)(jnp.arange(seq_len))

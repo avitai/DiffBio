@@ -192,6 +192,7 @@ class PreprocessingPipeline(OperatorModule):
 
         # Step 2: Adapter removal (optional) - apply per-read using vmap
         if self._enable_adapter_removal and self.adapter_removal is not None:
+
             def apply_adapter_removal(read, quality):
                 adapter_data = {"sequence": read, "quality_scores": quality}
                 adapter_result, _, _ = self.adapter_removal.apply(adapter_data, {}, None)
@@ -204,22 +205,19 @@ class PreprocessingPipeline(OperatorModule):
         # Step 3: Duplicate weighting (optional) - operates on full batch for cross-read comparison
         # Use apply_batch which returns weights for all reads (not just first)
         if self._enable_duplicate_weighting and self.duplicate_weighting is not None:
-            raw_weights, _ = self.duplicate_weighting.apply_batch(
-                filtered_reads, filtered_quality
-            )
+            raw_weights, _ = self.duplicate_weighting.apply_batch(filtered_reads, filtered_quality)
             # Normalize weights to [0, 1] range for use as probabilities
             read_weights = raw_weights / jnp.max(raw_weights)
 
         # Step 4: Error correction (optional) - apply per-read using vmap
         if self._enable_error_correction and self.error_correction is not None:
+
             def apply_error_correction(read, quality):
                 ec_data = {"sequence": read, "quality_scores": quality}
                 ec_result, _, _ = self.error_correction.apply(ec_data, {}, None)
                 return ec_result["sequence"]
 
-            filtered_reads = jax.vmap(apply_error_correction)(
-                filtered_reads, filtered_quality
-            )
+            filtered_reads = jax.vmap(apply_error_correction)(filtered_reads, filtered_quality)
 
         # Build output preserving input keys
         output_data = {
@@ -255,9 +253,7 @@ class PreprocessingPipeline(OperatorModule):
 
         # Reshape back
         filtered_reads = filtered_result["sequence"].reshape(num_reads, read_length, 4)
-        filtered_quality = filtered_result["quality_scores"].reshape(
-            num_reads, read_length
-        )
+        filtered_quality = filtered_result["quality_scores"].reshape(num_reads, read_length)
 
         return filtered_reads, filtered_quality
 

@@ -99,12 +99,8 @@ class VAENormalizer(OperatorModule):
         self.encoder_layers = nnx.List(encoder_layers)
 
         # Latent space projection (mean and logvar)
-        self.fc_mean = nnx.Linear(
-            in_features=prev_dim, out_features=config.latent_dim, rngs=rngs
-        )
-        self.fc_logvar = nnx.Linear(
-            in_features=prev_dim, out_features=config.latent_dim, rngs=rngs
-        )
+        self.fc_mean = nnx.Linear(in_features=prev_dim, out_features=config.latent_dim, rngs=rngs)
+        self.fc_logvar = nnx.Linear(in_features=prev_dim, out_features=config.latent_dim, rngs=rngs)
 
         # Build decoder layers
         decoder_layers: list[nnx.Linear] = []
@@ -119,9 +115,7 @@ class VAENormalizer(OperatorModule):
         self.decoder_layers = nnx.List(decoder_layers)
 
         # Output layer (log rates)
-        self.fc_output = nnx.Linear(
-            in_features=prev_dim, out_features=config.n_genes, rngs=rngs
-        )
+        self.fc_output = nnx.Linear(in_features=prev_dim, out_features=config.n_genes, rngs=rngs)
 
         # Store rngs for sampling
         self._rngs = rngs

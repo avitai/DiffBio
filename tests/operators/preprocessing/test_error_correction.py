@@ -61,9 +61,26 @@ class TestSoftErrorCorrection:
         """Provide sample data with low quality regions."""
         sequence = encode_dna_string("ACGTACGTACGTACGT")
         # Low quality at positions 4-7
-        quality = jnp.array([
-            30., 30., 30., 30., 5., 5., 5., 5., 30., 30., 30., 30., 30., 30., 30., 30.
-        ])
+        quality = jnp.array(
+            [
+                30.0,
+                30.0,
+                30.0,
+                30.0,
+                5.0,
+                5.0,
+                5.0,
+                5.0,
+                30.0,
+                30.0,
+                30.0,
+                30.0,
+                30.0,
+                30.0,
+                30.0,
+                30.0,
+            ]
+        )
         return {"sequence": sequence, "quality_scores": quality}
 
     def test_initialization(self, rngs):
@@ -97,10 +114,7 @@ class TestSoftErrorCorrection:
         transformed_data, _, _ = op.apply(sample_data, {}, None, None)
 
         assert "quality_scores" in transformed_data
-        assert jnp.allclose(
-            transformed_data["quality_scores"],
-            sample_data["quality_scores"]
-        )
+        assert jnp.allclose(transformed_data["quality_scores"], sample_data["quality_scores"])
 
     def test_apply_returns_confidence(self, rngs, sample_data):
         """Test that apply returns correction confidence."""
@@ -282,11 +296,7 @@ class TestJITCompatibility:
 
         jit_result, _, _ = jit_apply(data, state)
 
-        assert jnp.allclose(
-            eager_result["sequence"],
-            jit_result["sequence"],
-            rtol=1e-5
-        )
+        assert jnp.allclose(eager_result["sequence"], jit_result["sequence"], rtol=1e-5)
 
 
 class TestEdgeCases:

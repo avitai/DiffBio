@@ -80,9 +80,7 @@ class BatchMixingLoss(nnx.Module):
         # Compute pairwise distances
         # ||a - b||^2 = ||a||^2 + ||b||^2 - 2 * a.b
         sq_norms = jnp.sum(embeddings**2, axis=-1)
-        distances = (
-            sq_norms[:, None] + sq_norms[None, :] - 2 * embeddings @ embeddings.T
-        )
+        distances = sq_norms[:, None] + sq_norms[None, :] - 2 * embeddings @ embeddings.T
 
         # Set self-distance to inf to exclude self from neighbors
         distances = distances + jnp.eye(n_cells) * 1e10
@@ -101,9 +99,7 @@ class BatchMixingLoss(nnx.Module):
 
         # Apply mask
         neighbor_weights = neighbor_weights * k_mask
-        neighbor_weights = neighbor_weights / (
-            neighbor_weights.sum(axis=-1, keepdims=True) + 1e-8
-        )
+        neighbor_weights = neighbor_weights / (neighbor_weights.sum(axis=-1, keepdims=True) + 1e-8)
 
         # One-hot encode batch labels
         batch_onehot = jax.nn.one_hot(batch_labels, n_batches)
@@ -166,24 +162,29 @@ class ClusteringCompactnessLoss(nnx.Module):
         self,
         embeddings: Float[Array, "n_cells latent_dim"],
         assignments: Float[Array, "n_cells n_clusters"],
+        centroids: Float[Array, "n_clusters latent_dim"] | None = None,
     ) -> Float[Array, ""]:
         """Compute clustering compactness loss.
 
         Args:
             embeddings: Cell embeddings in latent space.
             assignments: Soft cluster assignments (should sum to 1 per cell).
+            centroids: Optional cluster centroids. If provided, uses these directly
+                for gradient flow. If None, computes soft centroids from assignments.
 
         Returns:
             Combined compactness and separation loss (scalar).
         """
         n_clusters = assignments.shape[1]
 
-        # Compute soft cluster centroids
-        # centroid_k = sum_i(assignment_ik * embedding_i) / sum_i(assignment_ik)
-        assignment_sums = assignments.sum(axis=0, keepdims=True).T  # (n_clusters, 1)
-        centroids = (assignments.T @ embeddings) / (
-            assignment_sums + 1e-8
-        )  # (n_clusters, latent_dim)
+        # Use provided centroids or compute soft centroids from assignments
+        if centroids is None:
+            # Compute soft cluster centroids
+            # centroid_k = sum_i(assignment_ik * embedding_i) / sum_i(assignment_ik)
+            assignment_sums = assignments.sum(axis=0, keepdims=True).T  # (n_clusters, 1)
+            centroids = (assignments.T @ embeddings) / (
+                assignment_sums + 1e-8
+            )  # (n_clusters, latent_dim)
 
         # Compactness: weighted sum of squared distances to centroids
         # For each cell, compute distance to each centroid
@@ -193,17 +194,12 @@ class ClusteringCompactnessLoss(nnx.Module):
         )  # (n_cells, n_clusters)
 
         # Weighted compactness
-        compactness = jnp.sum(assignments * distances_to_centroids) / embeddings.shape[
-            0
-        ]
+        compactness = jnp.sum(assignments * distances_to_centroids) / embeddings.shape[0]
 
         # Separation: pairwise distances between centroids
         # We want centroids to be at least min_separation apart
         centroid_dists = jnp.sqrt(
-            jnp.sum(
-                (centroids[:, None, :] - centroids[None, :, :]) ** 2, axis=-1
-            )
-            + 1e-8
+            jnp.sum((centroids[:, None, :] - centroids[None, :, :]) ** 2, axis=-1) + 1e-8
         )  # (n_clusters, n_clusters)
 
         # Hinge loss: penalize if distance < min_separation

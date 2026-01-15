@@ -35,10 +35,7 @@ class TestSequenceEmbeddingConfig:
 
     def test_custom_architecture(self):
         """Test custom architecture parameters."""
-        config = SequenceEmbeddingConfig(
-            num_conv_layers=5,
-            kernel_size=11
-        )
+        config = SequenceEmbeddingConfig(num_conv_layers=5, kernel_size=11)
         assert config.num_conv_layers == 5
         assert config.kernel_size == 11
 
@@ -220,11 +217,7 @@ class TestJITCompatibility:
 
         jit_result, _, _ = jit_apply(data, state)
 
-        assert jnp.allclose(
-            eager_result["embedding"],
-            jit_result["embedding"],
-            rtol=1e-5
-        )
+        assert jnp.allclose(eager_result["embedding"], jit_result["embedding"], rtol=1e-5)
 
 
 class TestEdgeCases:

@@ -118,9 +118,7 @@ class DifferentiableHMM(OperatorModule):
             Log transition probabilities (n_states, n_states).
         """
         # Apply softmax along rows to get valid probabilities
-        log_trans = jax.nn.log_softmax(
-            self.log_transition_params[...] / self.temperature, axis=1
-        )
+        log_trans = jax.nn.log_softmax(self.log_transition_params[...] / self.temperature, axis=1)
         return log_trans
 
     def get_log_emission_matrix(self) -> Float[Array, "n_states n_emissions"]:
@@ -130,9 +128,7 @@ class DifferentiableHMM(OperatorModule):
             Log emission probabilities (n_states, n_emissions).
         """
         # Apply softmax along rows to get valid probabilities
-        log_emit = jax.nn.log_softmax(
-            self.log_emission_params[...] / self.temperature, axis=1
-        )
+        log_emit = jax.nn.log_softmax(self.log_emission_params[...] / self.temperature, axis=1)
         return log_emit
 
     def get_log_initial_distribution(self) -> Float[Array, "n_states"]:
@@ -141,9 +137,7 @@ class DifferentiableHMM(OperatorModule):
         Returns:
             Log initial probabilities (n_states,).
         """
-        log_init = jax.nn.log_softmax(
-            self.log_initial_params[...] / self.temperature
-        )
+        log_init = jax.nn.log_softmax(self.log_initial_params[...] / self.temperature)
         return log_init
 
     def forward(
@@ -175,9 +169,7 @@ class DifferentiableHMM(OperatorModule):
             log_alpha_expanded = log_alpha[:, None]  # (n_states, 1)
             # log_alpha_expanded + log_trans has shape (n_states, n_states)
             # logsumexp over axis 0 gives (n_states,)
-            log_alpha_new = jax.scipy.special.logsumexp(
-                log_alpha_expanded + log_trans, axis=0
-            )
+            log_alpha_new = jax.scipy.special.logsumexp(log_alpha_expanded + log_trans, axis=0)
             # Add emission probability
             log_alpha_new = log_alpha_new + log_emit[:, obs]
             return log_alpha_new, None
@@ -221,13 +213,10 @@ class DifferentiableHMM(OperatorModule):
 
         # Forward pass
         def forward_step(
-            log_alpha: Float[Array, "n_states"],
-            obs: Float[Array, "n_emissions"]
+            log_alpha: Float[Array, "n_states"], obs: Float[Array, "n_emissions"]
         ) -> tuple[Float[Array, "n_states"], None]:
             log_alpha_expanded = log_alpha[:, None]
-            log_alpha_new = jax.scipy.special.logsumexp(
-                log_alpha_expanded + log_trans, axis=0
-            )
+            log_alpha_new = jax.scipy.special.logsumexp(log_alpha_expanded + log_trans, axis=0)
             log_alpha_new = log_alpha_new + soft_emission(obs)
             return log_alpha_new, None
 
@@ -255,13 +244,10 @@ class DifferentiableHMM(OperatorModule):
 
         # Forward pass - store all alpha values
         def forward_step(
-            log_alpha: Float[Array, "n_states"],
-            obs: int
+            log_alpha: Float[Array, "n_states"], obs: int
         ) -> tuple[Float[Array, "n_states"], Float[Array, "n_states"]]:
             log_alpha_expanded = log_alpha[:, None]
-            log_alpha_new = jax.scipy.special.logsumexp(
-                log_alpha_expanded + log_trans, axis=0
-            )
+            log_alpha_new = jax.scipy.special.logsumexp(log_alpha_expanded + log_trans, axis=0)
             log_alpha_new = log_alpha_new + log_emit[:, obs]
             return log_alpha_new, log_alpha_new
 
@@ -272,21 +258,16 @@ class DifferentiableHMM(OperatorModule):
 
         # Backward pass
         def backward_step(
-            log_beta: Float[Array, "n_states"],
-            obs: int
+            log_beta: Float[Array, "n_states"], obs: int
         ) -> tuple[Float[Array, "n_states"], Float[Array, "n_states"]]:
             # log_beta_new[i] = logsumexp_j(log_A[i,j] + log_B[j, obs] + log_beta[j])
             log_beta_expanded = log_beta + log_emit[:, obs]  # (n_states,)
-            log_beta_new = jax.scipy.special.logsumexp(
-                log_trans + log_beta_expanded, axis=1
-            )
+            log_beta_new = jax.scipy.special.logsumexp(log_trans + log_beta_expanded, axis=1)
             return log_beta_new, log_beta_new
 
         log_beta_init = jnp.zeros(self.n_states)  # log(1) = 0
         # Backward pass goes in reverse
-        _, log_betas_rev = jax.lax.scan(
-            backward_step, log_beta_init, observations[1:][::-1]
-        )
+        _, log_betas_rev = jax.lax.scan(backward_step, log_beta_init, observations[1:][::-1])
         # Reverse and append final beta
         log_betas = jnp.concatenate([log_betas_rev[::-1], log_beta_init[None, :]], axis=0)
 

@@ -81,9 +81,7 @@ class SequenceEncoder(nnx.Module):
         layers = []
         norms = []
         for _ in range(num_layers):
-            layers.append(
-                nnx.Linear(in_features=hidden_dim, out_features=hidden_dim, rngs=rngs)
-            )
+            layers.append(nnx.Linear(in_features=hidden_dim, out_features=hidden_dim, rngs=rngs))
             norms.append(nnx.LayerNorm(num_features=hidden_dim, rngs=rngs))
 
         self.layers = nnx.List(layers)

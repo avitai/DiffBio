@@ -25,12 +25,17 @@ This section provides practical examples demonstrating DiffBio's capabilities.
 |---------|-------------|--------------|
 | [Simple Alignment](basic/simple-alignment.md) | Basic Smith-Waterman alignment | Operators, one-hot encoding |
 | [Pileup Generation](basic/pileup-generation.md) | Generate pileups from reads | Pileup operator, quality weighting |
+| [Single-Cell Clustering](basic/single-cell-clustering.md) | Soft k-means cell clustering | Single-cell, differentiability |
+| [Preprocessing](basic/preprocessing.md) | Read preprocessing pipeline | Quality filtering, adapters |
 
 ## Advanced Examples
 
 | Example | Description | Key Concepts |
 |---------|-------------|--------------|
 | [Variant Calling Pipeline](advanced/variant-calling.md) | End-to-end variant calling | Full pipeline, training |
+| [Differential Expression](advanced/differential-expression.md) | DESeq2-style DE analysis | Statistical testing, NB-GLM |
+| [Epigenomics Analysis](advanced/epigenomics-analysis.md) | Peak calling & chromatin states | ChIP-seq, ATAC-seq |
+| [Multi-omics Integration](advanced/multiomics-integration.md) | Spatial deconvolution & Hi-C | Data integration |
 
 ## Running Examples
 

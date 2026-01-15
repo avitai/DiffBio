@@ -124,8 +124,7 @@ class TestDifferentiableDuplicateWeighting:
 
         # Use apply_batch for batch processing
         weights, embeddings = op.apply_batch(
-            batch_data_unique["sequence"],
-            batch_data_unique["quality_scores"]
+            batch_data_unique["sequence"], batch_data_unique["quality_scores"]
         )
 
         assert weights.shape == (4,)
@@ -137,8 +136,7 @@ class TestDifferentiableDuplicateWeighting:
         op = DifferentiableDuplicateWeighting(config, rngs=rngs)
 
         weights, _ = op.apply_batch(
-            batch_data_unique["sequence"],
-            batch_data_unique["quality_scores"]
+            batch_data_unique["sequence"], batch_data_unique["quality_scores"]
         )
 
         # All weights should be relatively close for unique sequences
@@ -151,8 +149,7 @@ class TestDifferentiableDuplicateWeighting:
         op = DifferentiableDuplicateWeighting(config, rngs=rngs)
 
         weights, _ = op.apply_batch(
-            batch_data_duplicates["sequence"],
-            batch_data_duplicates["quality_scores"]
+            batch_data_duplicates["sequence"], batch_data_duplicates["quality_scores"]
         )
 
         # Weights are normalized to mean 1.0, so duplicates should be below mean
@@ -193,10 +190,12 @@ class TestGradientFlow:
         config = DuplicateWeightingConfig()
         op = DifferentiableDuplicateWeighting(config, rngs=rngs)
 
-        sequences = jnp.stack([
-            encode_dna_string("ACGTACGTACGTACGT"),
-            encode_dna_string("TGCATGCATGCATGCA"),
-        ])
+        sequences = jnp.stack(
+            [
+                encode_dna_string("ACGTACGTACGTACGT"),
+                encode_dna_string("TGCATGCATGCATGCA"),
+            ]
+        )
         quality = jnp.ones((2, 16)) * 30.0
 
         def loss_fn(seqs):
@@ -257,10 +256,12 @@ class TestJITCompatibility:
         config = DuplicateWeightingConfig()
         op = DifferentiableDuplicateWeighting(config, rngs=rngs)
 
-        sequences = jnp.stack([
-            encode_dna_string("ACGTACGTACGTACGT"),
-            encode_dna_string("TGCATGCATGCATGCA"),
-        ])
+        sequences = jnp.stack(
+            [
+                encode_dna_string("ACGTACGTACGTACGT"),
+                encode_dna_string("TGCATGCATGCATGCA"),
+            ]
+        )
         quality = jnp.ones((2, 16)) * 30.0
 
         @jax.jit
@@ -309,10 +310,12 @@ class TestEdgeCases:
         config = DuplicateWeightingConfig(temperature=10.0)
         op = DifferentiableDuplicateWeighting(config, rngs=rngs)
 
-        sequences = jnp.stack([
-            encode_dna_string("ACGTACGTACGTACGT"),
-            encode_dna_string("ACGTACGTACGTACGT"),  # Duplicate
-        ])
+        sequences = jnp.stack(
+            [
+                encode_dna_string("ACGTACGTACGTACGT"),
+                encode_dna_string("ACGTACGTACGTACGT"),  # Duplicate
+            ]
+        )
         quality = jnp.ones((2, 16)) * 30.0
 
         weights, _ = op.apply_batch(sequences, quality)
@@ -323,10 +326,12 @@ class TestEdgeCases:
         config = DuplicateWeightingConfig(temperature=0.1)
         op = DifferentiableDuplicateWeighting(config, rngs=rngs)
 
-        sequences = jnp.stack([
-            encode_dna_string("ACGTACGTACGTACGT"),
-            encode_dna_string("ACGTACGTACGTACGT"),  # Duplicate
-        ])
+        sequences = jnp.stack(
+            [
+                encode_dna_string("ACGTACGTACGTACGT"),
+                encode_dna_string("ACGTACGTACGTACGT"),  # Duplicate
+            ]
+        )
         quality = jnp.ones((2, 16)) * 30.0
 
         weights, _ = op.apply_batch(sequences, quality)

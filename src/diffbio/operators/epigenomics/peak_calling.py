@@ -63,16 +63,18 @@ class PeakDetectionCNN(nnx.Module):
         self.kernel_sizes = kernel_sizes
 
         # Multi-scale convolution layers - use nnx.List for proper parameter tracking
-        self.conv_layers = nnx.List([
-            nnx.Conv(
-                in_features=1,
-                out_features=num_filters,
-                kernel_size=(kernel_size,),
-                padding="SAME",
-                rngs=rngs,
-            )
-            for kernel_size in kernel_sizes
-        ])
+        self.conv_layers = nnx.List(
+            [
+                nnx.Conv(
+                    in_features=1,
+                    out_features=num_filters,
+                    kernel_size=(kernel_size,),
+                    padding="SAME",
+                    rngs=rngs,
+                )
+                for kernel_size in kernel_sizes
+            ]
+        )
 
         # Combine multi-scale features
         total_features = num_filters * len(kernel_sizes)
@@ -178,9 +180,7 @@ class DifferentiablePeakCaller(OperatorModule):
         # Local maximum detection kernel (for summit finding)
         self.summit_kernel_size = config.min_peak_width
 
-    def _soft_local_max(
-        self, scores: jax.Array, window_size: int, temperature: float
-    ) -> jax.Array:
+    def _soft_local_max(self, scores: jax.Array, window_size: int, temperature: float) -> jax.Array:
         """Compute soft local maximum indicator.
 
         Args:
@@ -202,9 +202,9 @@ class DifferentiablePeakCaller(OperatorModule):
         # Extract windows around each position
         def extract_windows(padded_row):
             indices = jnp.arange(length)
-            windows = jax.vmap(
-                lambda i: jax.lax.dynamic_slice(padded_row, (i,), (window_size,))
-            )(indices)
+            windows = jax.vmap(lambda i: jax.lax.dynamic_slice(padded_row, (i,), (window_size,)))(
+                indices
+            )
             return windows
 
         windows = jax.vmap(extract_windows)(padded)  # (batch, length, window_size)
@@ -219,9 +219,7 @@ class DifferentiablePeakCaller(OperatorModule):
 
         return local_max_prob
 
-    def _compute_peak_boundaries(
-        self, peak_probs: jax.Array
-    ) -> tuple[jax.Array, jax.Array]:
+    def _compute_peak_boundaries(self, peak_probs: jax.Array) -> tuple[jax.Array, jax.Array]:
         """Compute soft peak boundaries.
 
         Args:
@@ -283,9 +281,7 @@ class DifferentiablePeakCaller(OperatorModule):
 
         # Apply soft threshold
         temperature = jnp.abs(self.temperature.value) + 1e-6
-        peak_probs = jax.nn.sigmoid(
-            (peak_scores - self.threshold.value) / temperature
-        )
+        peak_probs = jax.nn.sigmoid((peak_scores - self.threshold.value) / temperature)
 
         # Find soft summits (local maxima)
         summit_probs = self._soft_local_max(

@@ -102,18 +102,21 @@ class TestDifferentialExpressionPipeline:
         ).astype(jnp.float32)
 
         # Design matrix: simple case/control
-        design = jnp.array([
-            [1, 0],  # intercept, treatment
-            [1, 0],
-            [1, 0],
-            [1, 0],
-            [1, 0],
-            [1, 1],
-            [1, 1],
-            [1, 1],
-            [1, 1],
-            [1, 1],
-        ], dtype=jnp.float32)
+        design = jnp.array(
+            [
+                [1, 0],  # intercept, treatment
+                [1, 0],
+                [1, 0],
+                [1, 0],
+                [1, 0],
+                [1, 1],
+                [1, 1],
+                [1, 1],
+                [1, 1],
+                [1, 1],
+            ],
+            dtype=jnp.float32,
+        )
 
         data = {"counts": counts, "design": design}
         result, state, metadata = pipeline.apply(data, {}, None)
@@ -135,10 +138,13 @@ class TestDifferentialExpressionPipeline:
             shape=(n_samples, config.n_genes),
         ).astype(jnp.float32)
 
-        design = jnp.concatenate([
-            jnp.ones((n_samples, 1)),
-            jnp.array([[0]] * 5 + [[1]] * 5),
-        ], axis=1).astype(jnp.float32)
+        design = jnp.concatenate(
+            [
+                jnp.ones((n_samples, 1)),
+                jnp.array([[0]] * 5 + [[1]] * 5),
+            ],
+            axis=1,
+        ).astype(jnp.float32)
 
         data = {"counts": counts, "design": design}
         result, _, _ = pipeline.apply(data, {}, None)
@@ -156,10 +162,13 @@ class TestDifferentialExpressionPipeline:
             shape=(n_samples, config.n_genes),
         ).astype(jnp.float32)
 
-        design = jnp.concatenate([
-            jnp.ones((n_samples, 1)),
-            jnp.array([[0]] * 5 + [[1]] * 5),
-        ], axis=1).astype(jnp.float32)
+        design = jnp.concatenate(
+            [
+                jnp.ones((n_samples, 1)),
+                jnp.array([[0]] * 5 + [[1]] * 5),
+            ],
+            axis=1,
+        ).astype(jnp.float32)
 
         data = {"counts": counts, "design": design}
         result, _, _ = pipeline.apply(data, {}, None)
@@ -176,10 +185,13 @@ class TestDifferentialExpressionPipeline:
             shape=(n_samples, config.n_genes),
         ).astype(jnp.float32)
 
-        design = jnp.concatenate([
-            jnp.ones((n_samples, 1)),
-            jnp.array([[0]] * 5 + [[1]] * 5),
-        ], axis=1).astype(jnp.float32)
+        design = jnp.concatenate(
+            [
+                jnp.ones((n_samples, 1)),
+                jnp.array([[0]] * 5 + [[1]] * 5),
+            ],
+            axis=1,
+        ).astype(jnp.float32)
 
         extra_data = jnp.array([1.0, 2.0, 3.0])
 
@@ -229,10 +241,13 @@ class TestDEPipelineDifferentiability:
             shape=(n_samples, config.n_genes),
         ).astype(jnp.float32)
 
-        design = jnp.concatenate([
-            jnp.ones((n_samples, 1)),
-            jnp.array([[0]] * 5 + [[1]] * 5),
-        ], axis=1).astype(jnp.float32)
+        design = jnp.concatenate(
+            [
+                jnp.ones((n_samples, 1)),
+                jnp.array([[0]] * 5 + [[1]] * 5),
+            ],
+            axis=1,
+        ).astype(jnp.float32)
 
         grads = nnx.grad(loss_fn)(pipeline, counts, design)
         assert grads is not None
@@ -258,10 +273,13 @@ class TestDEPipelineDifferentiability:
             shape=(n_samples, config.n_genes),
         ).astype(jnp.float32)
 
-        design = jnp.concatenate([
-            jnp.ones((n_samples, 1)),
-            jnp.array([[0]] * 5 + [[1]] * 5),
-        ], axis=1).astype(jnp.float32)
+        design = jnp.concatenate(
+            [
+                jnp.ones((n_samples, 1)),
+                jnp.array([[0]] * 5 + [[1]] * 5),
+            ],
+            axis=1,
+        ).astype(jnp.float32)
 
         grad = jax.grad(loss_fn)(counts, design)
         assert grad.shape == counts.shape
@@ -307,10 +325,13 @@ class TestDEPipelineJITCompatibility:
             shape=(n_samples, config.n_genes),
         ).astype(jnp.float32)
 
-        design = jnp.concatenate([
-            jnp.ones((n_samples, 1)),
-            jnp.array([[0]] * 5 + [[1]] * 5),
-        ], axis=1).astype(jnp.float32)
+        design = jnp.concatenate(
+            [
+                jnp.ones((n_samples, 1)),
+                jnp.array([[0]] * 5 + [[1]] * 5),
+            ],
+            axis=1,
+        ).astype(jnp.float32)
 
         # Should compile and run without error
         result = jit_apply(counts, design)
@@ -351,10 +372,13 @@ class TestSizeFactor:
             shape=(n_samples, config.n_genes),
         ).astype(jnp.float32)
 
-        design = jnp.concatenate([
-            jnp.ones((n_samples, 1)),
-            jnp.array([[0]] * 5 + [[1]] * 5),
-        ], axis=1).astype(jnp.float32)
+        design = jnp.concatenate(
+            [
+                jnp.ones((n_samples, 1)),
+                jnp.array([[0]] * 5 + [[1]] * 5),
+            ],
+            axis=1,
+        ).astype(jnp.float32)
 
         data = {"counts": counts, "design": design}
         result, _, _ = pipeline.apply(data, {}, None)

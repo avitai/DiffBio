@@ -100,9 +100,7 @@ class SoftErrorCorrection(OperatorModule):
         layers_list: list[nnx.Linear] = []
 
         # First layer
-        layers_list.append(
-            nnx.Linear(in_features=input_dim, out_features=hidden_dim, rngs=rngs)
-        )
+        layers_list.append(nnx.Linear(in_features=input_dim, out_features=hidden_dim, rngs=rngs))
 
         # Hidden layers
         for _ in range(config.num_layers - 1):

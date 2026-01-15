@@ -97,9 +97,7 @@ class DifferentiableDuplicateWeighting(OperatorModule):
 
         # Convolution kernel for sequence embedding (kernel_size=7)
         kernel_shape = (7, 4, embedding_dim)  # (kernel_size, in_channels, out_channels)
-        self.conv_kernel = nnx.Param(
-            jax.random.normal(key, kernel_shape) * 0.1
-        )
+        self.conv_kernel = nnx.Param(jax.random.normal(key, kernel_shape) * 0.1)
 
     def _embed_sequence(
         self,

@@ -77,10 +77,9 @@ class SpotEncoder(nnx.Module):
             in_dim = hidden_dim
 
         self.layers = nnx.List(layers)
-        self.layer_norms = nnx.List([
-            nnx.LayerNorm(num_features=hidden_dim, rngs=rngs)
-            for _ in range(num_layers)
-        ])
+        self.layer_norms = nnx.List(
+            [nnx.LayerNorm(num_features=hidden_dim, rngs=rngs) for _ in range(num_layers)]
+        )
 
     def __call__(
         self,

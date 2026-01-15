@@ -116,8 +116,9 @@ class TestDifferentiablePileup:
 
         result = pileup.compute_pileup(reads, positions, quality, reference_length)
 
-        # Output should be (reference_length, 4) - nucleotide distribution per position
-        assert result.shape == (reference_length, 4)
+        # Output should be a dict with "pileup" key of shape (reference_length, 4)
+        assert "pileup" in result
+        assert result["pileup"].shape == (reference_length, 4)
 
     def test_pileup_coverage_tracking(self, rngs, pileup_config):
         """Test pileup tracks coverage correctly."""
@@ -135,10 +136,11 @@ class TestDifferentiablePileup:
         quality = generate_random_quality_scores(keys[2], num_reads, read_length)
 
         result = pileup.compute_pileup(reads, positions, quality, reference_length)
+        pileup_data = result["pileup"]
 
         # Result should have valid probability distributions
         # Sum along nucleotide axis should be close to 1 where there's coverage
-        row_sums = jnp.sum(result, axis=1)
+        row_sums = jnp.sum(pileup_data, axis=1)
         # Positions with coverage should sum to ~1
         has_coverage = row_sums > 0.1
         if jnp.any(has_coverage):
@@ -169,8 +171,8 @@ class TestDifferentiablePileup:
 
         # Results should be different when quality weighting is used
         # (though both should be valid)
-        assert jnp.all(jnp.isfinite(result_with))
-        assert jnp.all(jnp.isfinite(result_without))
+        assert jnp.all(jnp.isfinite(result_with["pileup"]))
+        assert jnp.all(jnp.isfinite(result_without["pileup"]))
 
     def test_pileup_differentiable(self, rngs, pileup_config):
         """Test pileup is differentiable through reads."""
@@ -189,7 +191,7 @@ class TestDifferentiablePileup:
 
         def loss(r):
             result = pileup.compute_pileup(r, positions, quality, reference_length)
-            return jnp.sum(result)
+            return jnp.sum(result["pileup"])
 
         grad = jax.grad(loss)(reads)
 
@@ -218,7 +220,7 @@ class TestDifferentiablePileup:
             return pileup.compute_pileup(r, p, q, reference_length)
 
         result = jit_pileup(reads, positions, quality)
-        assert jnp.all(jnp.isfinite(result))
+        assert jnp.all(jnp.isfinite(result["pileup"]))
 
 
 class TestVariantClassifierConfig:
@@ -407,7 +409,7 @@ class TestVariantCallingIntegration:
         # Extract window around position 25
         center = 25
         half_window = pileup_config.window_size // 2
-        window = pileup_result[center - half_window : center + half_window + 1]
+        window = pileup_result["pileup"][center - half_window : center + half_window + 1]
 
         # Classify
         logits = classifier.classify(window)
@@ -445,7 +447,7 @@ class TestVariantCallingIntegration:
             # Extract center window
             center = reference_length // 2
             half_window = pileup_config.window_size // 2
-            window = pileup_result[center - half_window : center + half_window + 1]
+            window = pileup_result["pileup"][center - half_window : center + half_window + 1]
 
             # Classify and compute loss (e.g., cross-entropy with target class 0)
             logits = classifier.classify(window)
@@ -456,6 +458,135 @@ class TestVariantCallingIntegration:
         assert grad is not None
         assert grad.shape == reads.shape
         assert jnp.all(jnp.isfinite(grad))
+
+
+class TestEnhancedPileup:
+    """Tests for enhanced pileup with coverage and quality channels."""
+
+    @pytest.fixture
+    def rngs(self):
+        return nnx.Rngs(42)
+
+    def test_pileup_returns_coverage_when_enabled(self, rngs):
+        """Test pileup returns coverage channel when configured."""
+        config = PileupConfig(
+            window_size=11,
+            reference_length=50,
+            return_coverage=True,
+        )
+        pileup = DifferentiablePileup(config, rngs=rngs)
+
+        key = jax.random.PRNGKey(42)
+        keys = jax.random.split(key, 3)
+
+        num_reads = 20
+        read_length = 15
+
+        reads = generate_random_reads(keys[0], num_reads, read_length)
+        max_pos = config.reference_length - read_length
+        positions = generate_random_positions(keys[1], num_reads, max_pos)
+        quality = generate_random_quality_scores(keys[2], num_reads, read_length)
+
+        data = {"reads": reads, "positions": positions, "quality": quality}
+        result, _, _ = pileup.apply(data, {}, None)
+
+        assert "coverage" in result
+        assert result["coverage"].shape == (config.reference_length, 1)
+        # Coverage should be non-negative
+        assert jnp.all(result["coverage"] >= 0)
+
+    def test_pileup_returns_quality_when_enabled(self, rngs):
+        """Test pileup returns mean quality channel when configured."""
+        config = PileupConfig(
+            window_size=11,
+            reference_length=50,
+            return_coverage=True,
+            return_quality=True,
+        )
+        pileup = DifferentiablePileup(config, rngs=rngs)
+
+        key = jax.random.PRNGKey(42)
+        keys = jax.random.split(key, 3)
+
+        num_reads = 20
+        read_length = 15
+
+        reads = generate_random_reads(keys[0], num_reads, read_length)
+        max_pos = config.reference_length - read_length
+        positions = generate_random_positions(keys[1], num_reads, max_pos)
+        quality = generate_random_quality_scores(keys[2], num_reads, read_length)
+
+        data = {"reads": reads, "positions": positions, "quality": quality}
+        result, _, _ = pileup.apply(data, {}, None)
+
+        assert "mean_quality" in result
+        assert result["mean_quality"].shape == (config.reference_length, 1)
+        # Mean quality should be in valid range where there's coverage
+        coverage = result["coverage"]
+        mean_quality = result["mean_quality"]
+        # Where there's coverage, quality should be reasonable
+        has_coverage = coverage.squeeze() > 0.1
+        if jnp.any(has_coverage):
+            assert jnp.all(mean_quality[has_coverage] >= 0)
+            assert jnp.all(mean_quality[has_coverage] <= 50)
+
+    def test_pileup_no_final_softmax_option(self, rngs):
+        """Test pileup can skip final softmax normalization."""
+        config = PileupConfig(
+            window_size=11,
+            reference_length=50,
+            apply_softmax=False,  # Skip final softmax
+        )
+        pileup = DifferentiablePileup(config, rngs=rngs)
+
+        key = jax.random.PRNGKey(42)
+        keys = jax.random.split(key, 3)
+
+        num_reads = 20
+        read_length = 15
+
+        reads = generate_random_reads(keys[0], num_reads, read_length)
+        max_pos = config.reference_length - read_length
+        positions = generate_random_positions(keys[1], num_reads, max_pos)
+        quality = generate_random_quality_scores(keys[2], num_reads, read_length)
+
+        data = {"reads": reads, "positions": positions, "quality": quality}
+        result, _, _ = pileup.apply(data, {}, None)
+
+        pileup_data = result["pileup"]
+        # Without softmax, values don't need to sum to 1
+        # But they should still be valid
+        assert jnp.all(jnp.isfinite(pileup_data))
+
+    def test_coverage_reflects_actual_read_depth(self, rngs):
+        """Test that coverage channel reflects actual read depth."""
+        config = PileupConfig(
+            window_size=11,
+            reference_length=30,
+            return_coverage=True,
+            use_quality_weights=False,  # Disable quality weighting for cleaner test
+        )
+        pileup = DifferentiablePileup(config, rngs=rngs)
+
+        # Create controlled test data: 5 reads all starting at position 5
+        num_reads = 5
+        read_length = 10
+
+        key = jax.random.PRNGKey(42)
+        reads = generate_random_reads(key, num_reads, read_length)
+        positions = jnp.full((num_reads,), 5)  # All reads at position 5
+        quality = jnp.full((num_reads, read_length), 30.0)  # Uniform quality
+
+        data = {"reads": reads, "positions": positions, "quality": quality}
+        result, _, _ = pileup.apply(data, {}, None)
+
+        coverage = result["coverage"].squeeze()
+
+        # Positions 5-14 should have coverage == 5
+        # Other positions should have coverage == 0
+        assert jnp.allclose(coverage[:5], 0.0, atol=0.1)
+        assert jnp.all(coverage[5:15] > 0)  # Should have coverage
+        assert jnp.allclose(coverage[15:], 0.0, atol=0.1)
 
 
 class TestEdgeCases:
@@ -479,8 +610,9 @@ class TestEdgeCases:
 
         result = pileup.compute_pileup(reads, positions, quality, 20)
 
-        assert result.shape == (20, 4)
-        assert jnp.all(jnp.isfinite(result))
+        assert "pileup" in result
+        assert result["pileup"].shape == (20, 4)
+        assert jnp.all(jnp.isfinite(result["pileup"]))
 
     def test_small_window_classifier(self, rngs):
         """Test classifier with minimal window."""

@@ -33,10 +33,7 @@ class TestVAENormalizerConfig:
 
     def test_custom_architecture(self):
         """Test custom architecture parameters."""
-        config = VAENormalizerConfig(
-            hidden_dims=[256, 128, 64],
-            n_genes=5000
-        )
+        config = VAENormalizerConfig(hidden_dims=[256, 128, 64], n_genes=5000)
         assert config.hidden_dims == [256, 128, 64]
         assert config.n_genes == 5000
 
@@ -53,21 +50,13 @@ class TestVAENormalizer:
     def sample_counts(self):
         """Provide sample count data."""
         # Simulate gene expression counts for a single cell
-        counts = jax.random.poisson(
-            jax.random.key(0),
-            lam=10.0,
-            shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         return {"counts": counts, "library_size": jnp.sum(counts)}
 
     @pytest.fixture
     def batch_counts(self):
         """Provide batch of count data."""
-        counts = jax.random.poisson(
-            jax.random.key(0),
-            lam=10.0,
-            shape=(8, 100)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(8, 100)).astype(jnp.float32)
         library_sizes = jnp.sum(counts, axis=1)
         return {"counts": counts, "library_size": library_sizes}
 
@@ -80,11 +69,7 @@ class TestVAENormalizer:
 
     def test_initialization_custom_architecture(self, rngs):
         """Test initialization with custom architecture."""
-        config = VAENormalizerConfig(
-            n_genes=100,
-            latent_dim=20,
-            hidden_dims=[64, 32]
-        )
+        config = VAENormalizerConfig(n_genes=100, latent_dim=20, hidden_dims=[64, 32])
         op = VAENormalizer(config, rngs=rngs)
         assert op.latent_dim == 20
 
@@ -178,9 +163,7 @@ class TestVAELoss:
         config = VAENormalizerConfig(n_genes=100, latent_dim=10)
         op = VAENormalizer(config, rngs=rngs)
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         library_size = jnp.sum(counts)
 
         loss = op.compute_elbo_loss(counts, library_size, jax.random.key(1))
@@ -193,9 +176,7 @@ class TestVAELoss:
         config = VAENormalizerConfig(n_genes=100, latent_dim=10)
         op = VAENormalizer(config, rngs=rngs)
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         library_size = jnp.sum(counts)
 
         # Get reconstruction
@@ -220,9 +201,7 @@ class TestGradientFlow:
         config = VAENormalizerConfig(n_genes=100, latent_dim=10)
         op = VAENormalizer(config, rngs=rngs)
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         library_size = jnp.sum(counts)
         state = {}
 
@@ -240,9 +219,7 @@ class TestGradientFlow:
         config = VAENormalizerConfig(n_genes=100, latent_dim=10)
         op = VAENormalizer(config, rngs=rngs)
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         library_size = jnp.sum(counts)
 
         def loss_fn(c):
@@ -257,9 +234,7 @@ class TestGradientFlow:
         config = VAENormalizerConfig(n_genes=100, latent_dim=10)
         op = VAENormalizer(config, rngs=rngs)
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         library_size = jnp.sum(counts)
         data = {"counts": counts, "library_size": library_size}
         state = {}
@@ -278,9 +253,7 @@ class TestGradientFlow:
         config = VAENormalizerConfig(n_genes=100, latent_dim=10)
         op = VAENormalizer(config, rngs=rngs)
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         library_size = jnp.sum(counts)
         data = {"counts": counts, "library_size": library_size}
         state = {}
@@ -307,9 +280,7 @@ class TestJITCompatibility:
         config = VAENormalizerConfig(n_genes=100, latent_dim=10)
         op = VAENormalizer(config, rngs=rngs)
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         library_size = jnp.sum(counts)
         data = {"counts": counts, "library_size": library_size}
         state = {}
@@ -326,9 +297,7 @@ class TestJITCompatibility:
         config = VAENormalizerConfig(n_genes=100, latent_dim=10)
         op = VAENormalizer(config, rngs=rngs)
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
 
         @jax.jit
         def jit_encode(x):
@@ -390,9 +359,7 @@ class TestEdgeCases:
         config = VAENormalizerConfig(n_genes=100, latent_dim=2)
         op = VAENormalizer(config, rngs=rngs)
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         library_size = jnp.sum(counts)
         data = {"counts": counts, "library_size": library_size}
 
@@ -404,9 +371,7 @@ class TestEdgeCases:
         config = VAENormalizerConfig(n_genes=100, latent_dim=50)
         op = VAENormalizer(config, rngs=rngs)
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         library_size = jnp.sum(counts)
         data = {"counts": counts, "library_size": library_size}
 

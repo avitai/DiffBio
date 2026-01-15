@@ -83,10 +83,9 @@ class ContactEncoder(nnx.Module):
             layers.append(nnx.Linear(in_features=hidden_dim, out_features=hidden_dim, rngs=rngs))
 
         self.layers = nnx.List(layers)
-        self.layer_norms = nnx.List([
-            nnx.LayerNorm(num_features=hidden_dim, rngs=rngs)
-            for _ in range(num_layers - 1)
-        ])
+        self.layer_norms = nnx.List(
+            [nnx.LayerNorm(num_features=hidden_dim, rngs=rngs) for _ in range(num_layers - 1)]
+        )
 
     def __call__(
         self,

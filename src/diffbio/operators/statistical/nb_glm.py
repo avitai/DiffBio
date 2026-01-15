@@ -89,9 +89,7 @@ class DifferentiableNBGLM(OperatorModule):
         # Initialize coefficients (beta)
         # Shape: (n_covariates, n_features)
         key = rngs.params()
-        init_beta = jax.random.normal(
-            key, (config.n_covariates, config.n_features)
-        ) * 0.1
+        init_beta = jax.random.normal(key, (config.n_covariates, config.n_features)) * 0.1
         self.beta = nnx.Param(init_beta)
 
         # Initialize log dispersion parameters
@@ -205,6 +203,7 @@ class DifferentiableNBGLM(OperatorModule):
         Returns:
             Total log likelihood.
         """
+
         def sample_log_prob(args):
             c, d, s = args
             return self.negative_binomial_log_prob(c, d, s)

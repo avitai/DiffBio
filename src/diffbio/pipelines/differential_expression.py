@@ -67,9 +67,7 @@ class DifferentialExpressionPipeline(OperatorModule):
         ```
     """
 
-    def __init__(
-        self, config: DEPipelineConfig, *, rngs: nnx.Rngs | None = None
-    ):
+    def __init__(self, config: DEPipelineConfig, *, rngs: nnx.Rngs | None = None):
         """Initialize the differential expression pipeline.
 
         Args:
@@ -254,9 +252,7 @@ class DifferentialExpressionPipeline(OperatorModule):
         predicted_mean = jnp.exp(log_mu) * size_factors[:, None]
 
         # Compute Wald statistics
-        wald_stat, se = self._compute_wald_statistic(
-            beta, dispersion, design, size_factors
-        )
+        wald_stat, se = self._compute_wald_statistic(beta, dispersion, design, size_factors)
 
         # Convert to p-values
         p_values = self._wald_to_pvalue(wald_stat)

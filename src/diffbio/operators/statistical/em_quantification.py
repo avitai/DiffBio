@@ -167,9 +167,7 @@ class DifferentiableEMQuantifier(OperatorModule):
             new_abundances = self.em_step(abundances, compatibility, effective_lengths)
             return new_abundances, None
 
-        final_abundances, _ = jax.lax.scan(
-            em_iteration, abundances, None, length=self.n_iterations
-        )
+        final_abundances, _ = jax.lax.scan(em_iteration, abundances, None, length=self.n_iterations)
 
         return final_abundances
 

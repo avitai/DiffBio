@@ -97,9 +97,7 @@ class TestDifferentiableMotifDiscovery:
         seq_length = 100
 
         # One-hot encoded sequence (length, alphabet_size)
-        sequence = jax.nn.one_hot(
-            jax.random.randint(jax.random.key(0), (seq_length,), 0, 4), 4
-        )
+        sequence = jax.nn.one_hot(jax.random.randint(jax.random.key(0), (seq_length,), 0, 4), 4)
 
         data = {"sequence": sequence}
         result, state, metadata = motif_op.apply(data, {}, None)
@@ -133,9 +131,7 @@ class TestDifferentiableMotifDiscovery:
 
     def test_pwm_is_valid_probability(self, motif_op, config):
         """Test that PWM is a valid probability distribution."""
-        sequence = jax.nn.one_hot(
-            jax.random.randint(jax.random.key(0), (50,), 0, 4), 4
-        )
+        sequence = jax.nn.one_hot(jax.random.randint(jax.random.key(0), (50,), 0, 4), 4)
 
         data = {"sequence": sequence}
         result, _, _ = motif_op.apply(data, {}, None)
@@ -152,9 +148,7 @@ class TestDifferentiableMotifDiscovery:
 
     def test_output_finite(self, motif_op):
         """Test that all outputs are finite."""
-        sequence = jax.nn.one_hot(
-            jax.random.randint(jax.random.key(0), (50,), 0, 4), 4
-        )
+        sequence = jax.nn.one_hot(jax.random.randint(jax.random.key(0), (50,), 0, 4), 4)
 
         data = {"sequence": sequence}
         result, _, _ = motif_op.apply(data, {}, None)
@@ -164,9 +158,7 @@ class TestDifferentiableMotifDiscovery:
 
     def test_preserves_original_data(self, motif_op):
         """Test that original data is preserved in output."""
-        sequence = jax.nn.one_hot(
-            jax.random.randint(jax.random.key(0), (50,), 0, 4), 4
-        )
+        sequence = jax.nn.one_hot(jax.random.randint(jax.random.key(0), (50,), 0, 4), 4)
         extra_data = jnp.array([1.0, 2.0, 3.0])
 
         data = {"sequence": sequence, "extra": extra_data}
@@ -206,9 +198,7 @@ class TestMotifDiscoveryDifferentiability:
             result, _, _ = op.apply(data, {}, None)
             return result["motif_scores"].sum()
 
-        sequence = jax.nn.one_hot(
-            jax.random.randint(jax.random.key(0), (50,), 0, 4), 4
-        )
+        sequence = jax.nn.one_hot(jax.random.randint(jax.random.key(0), (50,), 0, 4), 4)
         grads = nnx.grad(loss_fn)(motif_op, sequence)
 
         assert grads is not None
@@ -224,9 +214,7 @@ class TestMotifDiscoveryDifferentiability:
             result, _, _ = op.apply(data, {}, None)
             return result["motif_scores"].mean()
 
-        sequence = jax.nn.one_hot(
-            jax.random.randint(jax.random.key(0), (50,), 0, 4), 4
-        )
+        sequence = jax.nn.one_hot(jax.random.randint(jax.random.key(0), (50,), 0, 4), 4)
         grads = nnx.grad(loss_fn)(motif_op, sequence)
 
         assert hasattr(grads, "pwm_logits")
@@ -244,9 +232,9 @@ class TestMotifDiscoveryDifferentiability:
             result, _, _ = motif_op.apply(data, {}, None)
             return result["motif_scores"].sum()
 
-        sequence = jax.nn.one_hot(
-            jax.random.randint(jax.random.key(0), (50,), 0, 4), 4
-        ).astype(jnp.float32)
+        sequence = jax.nn.one_hot(jax.random.randint(jax.random.key(0), (50,), 0, 4), 4).astype(
+            jnp.float32
+        )
 
         grad = jax.grad(loss_fn)(sequence)
 
@@ -285,9 +273,7 @@ class TestMotifDiscoveryJITCompatibility:
             result, _, _ = motif_op.apply(data, {}, None)
             return result["motif_scores"]
 
-        sequence = jax.nn.one_hot(
-            jax.random.randint(jax.random.key(0), (50,), 0, 4), 4
-        )
+        sequence = jax.nn.one_hot(jax.random.randint(jax.random.key(0), (50,), 0, 4), 4)
 
         # Should compile and run without error
         result = jit_apply(sequence)
@@ -309,9 +295,9 @@ class TestMotifDiscoveryJITCompatibility:
 
             return jax.value_and_grad(loss_fn)(sequence)
 
-        sequence = jax.nn.one_hot(
-            jax.random.randint(jax.random.key(0), (50,), 0, 4), 4
-        ).astype(jnp.float32)
+        sequence = jax.nn.one_hot(jax.random.randint(jax.random.key(0), (50,), 0, 4), 4).astype(
+            jnp.float32
+        )
 
         # Should compile and run without error
         loss, grad = loss_and_grad(sequence)
@@ -347,9 +333,7 @@ class TestPWMScanning:
         # Create a sequence that has a clear motif pattern
         # The PWM will have some structure, and we check that
         # different positions get different scores
-        sequence = jax.nn.one_hot(
-            jax.random.randint(jax.random.key(0), (50,), 0, 4), 4
-        )
+        sequence = jax.nn.one_hot(jax.random.randint(jax.random.key(0), (50,), 0, 4), 4)
 
         data = {"sequence": sequence}
         result, _, _ = motif_op.apply(data, {}, None)

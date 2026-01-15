@@ -95,17 +95,13 @@ class ProfileHMMSearch(OperatorModule):
 
         # Initialize match emissions (profile_length, alphabet_size)
         key = rngs.params()
-        init_match = jax.random.normal(
-            key, (config.profile_length, config.alphabet_size)
-        ) * 0.1
+        init_match = jax.random.normal(key, (config.profile_length, config.alphabet_size)) * 0.1
         self.log_match_emissions = nnx.Param(init_match)
 
         # Initialize insert emissions (profile_length, alphabet_size)
         # Insert states use near-uniform distribution
         key = rngs.params()
-        init_insert = jax.random.normal(
-            key, (config.profile_length, config.alphabet_size)
-        ) * 0.01
+        init_insert = jax.random.normal(key, (config.profile_length, config.alphabet_size)) * 0.01
         self.log_insert_emissions = nnx.Param(init_insert)
 
         # Initialize transition parameters
@@ -125,9 +121,7 @@ class ProfileHMMSearch(OperatorModule):
         Returns:
             Log match emission probabilities.
         """
-        return jax.nn.log_softmax(
-            self.log_match_emissions[...] / self.temperature, axis=1
-        )
+        return jax.nn.log_softmax(self.log_match_emissions[...] / self.temperature, axis=1)
 
     def get_insert_emissions(self) -> Float[Array, "profile_length alphabet_size"]:
         """Get normalized insert emission probabilities.
@@ -135,9 +129,7 @@ class ProfileHMMSearch(OperatorModule):
         Returns:
             Log insert emission probabilities.
         """
-        return jax.nn.log_softmax(
-            self.log_insert_emissions[...] / self.temperature, axis=1
-        )
+        return jax.nn.log_softmax(self.log_insert_emissions[...] / self.temperature, axis=1)
 
     def get_transitions(self) -> dict[str, Float[Array, "profile_length"]]:
         """Get normalized transition probabilities.
@@ -234,24 +226,21 @@ class ProfileHMMSearch(OperatorModule):
             from_D = log_D[:-1] + trans["d_to_m"][:-1]
 
             # Combine and add emission
-            combined = jax.scipy.special.logsumexp(
-                jnp.stack([from_M, from_I, from_D]), axis=0
-            )
+            combined = jax.scipy.special.logsumexp(jnp.stack([from_M, from_I, from_D]), axis=0)
             new_log_M = new_log_M.at[1:].set(combined + obs_match[1:])
 
             # Can also start fresh at position 0
             new_log_M = new_log_M.at[0].set(
-                jax.scipy.special.logsumexp(
-                    jnp.array([new_log_M[0], obs_match[0]])
-                )
+                jax.scipy.special.logsumexp(jnp.array([new_log_M[0], obs_match[0]]))
             )
 
             # New I states: can come from M or I at same profile position
             from_M_to_I = log_M + trans["m_to_i"]
             from_I_to_I = log_I + trans["i_to_i"]
-            new_log_I = jax.scipy.special.logsumexp(
-                jnp.stack([from_M_to_I, from_I_to_I]), axis=0
-            ) + obs_insert
+            new_log_I = (
+                jax.scipy.special.logsumexp(jnp.stack([from_M_to_I, from_I_to_I]), axis=0)
+                + obs_insert
+            )
 
             # D states don't emit, handled separately
             # For simplicity, we skip explicit D state tracking in emissions
@@ -262,15 +251,11 @@ class ProfileHMMSearch(OperatorModule):
 
         # Scan over sequence positions (skip first, handled in init)
         (final_M, final_I, final_D), _ = jax.lax.scan(
-            forward_step,
-            (log_M, log_I, log_D),
-            jnp.arange(1, seq_len)
+            forward_step, (log_M, log_I, log_D), jnp.arange(1, seq_len)
         )
 
         # Final score: sum over all final states
-        score = jax.scipy.special.logsumexp(
-            jnp.concatenate([final_M, final_I])
-        )
+        score = jax.scipy.special.logsumexp(jnp.concatenate([final_M, final_I]))
 
         return score
 

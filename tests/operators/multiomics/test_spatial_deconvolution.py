@@ -60,15 +60,11 @@ class TestSpatialDeconvolution:
 
         # Spot expression (n_spots, n_genes)
         key, subkey = jax.random.split(key)
-        spot_expression = jax.nn.softplus(
-            jax.random.normal(subkey, (n_spots, n_genes))
-        )
+        spot_expression = jax.nn.softplus(jax.random.normal(subkey, (n_spots, n_genes)))
 
         # Reference single-cell profiles (n_cell_types, n_genes)
         key, subkey = jax.random.split(key)
-        reference_profiles = jax.nn.softplus(
-            jax.random.normal(subkey, (n_cell_types, n_genes))
-        )
+        reference_profiles = jax.nn.softplus(jax.random.normal(subkey, (n_cell_types, n_genes)))
 
         # Spot coordinates (n_spots, 2)
         key, subkey = jax.random.split(key)

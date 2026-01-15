@@ -90,9 +90,7 @@ class SoftKMeansClustering(OperatorModule):
 
         # Initialize cluster centroids
         key = rngs.params()
-        init_centroids = jax.random.normal(
-            key, (config.n_clusters, config.n_features)
-        ) * 0.1
+        init_centroids = jax.random.normal(key, (config.n_clusters, config.n_features)) * 0.1
         self.centroids = nnx.Param(init_centroids)
 
     def compute_distances(
@@ -111,8 +109,8 @@ class SoftKMeansClustering(OperatorModule):
 
         # Efficient distance computation using expansion
         # ||x - c||² = ||x||² + ||c||² - 2 * x · c
-        emb_sq = jnp.sum(embeddings ** 2, axis=-1, keepdims=True)  # (n_cells, 1)
-        cent_sq = jnp.sum(centroids ** 2, axis=-1)  # (n_clusters,)
+        emb_sq = jnp.sum(embeddings**2, axis=-1, keepdims=True)  # (n_cells, 1)
+        cent_sq = jnp.sum(centroids**2, axis=-1)  # (n_clusters,)
         dot_product = jnp.einsum("nf,kf->nk", embeddings, centroids)  # (n_cells, n_clusters)
 
         distances_sq = emb_sq + cent_sq - 2 * dot_product

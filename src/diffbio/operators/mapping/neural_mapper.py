@@ -361,15 +361,17 @@ class NeuralReadMapper(OperatorModule):
         )
 
         # Transformer layers
-        self.transformer_layers = nnx.List([
-            TransformerBlock(
-                embedding_dim=config.embedding_dim,
-                num_heads=config.num_heads,
-                dropout_rate=config.dropout_rate,
-                rngs=rngs,
-            )
-            for _ in range(config.num_layers)
-        ])
+        self.transformer_layers = nnx.List(
+            [
+                TransformerBlock(
+                    embedding_dim=config.embedding_dim,
+                    num_heads=config.num_heads,
+                    dropout_rate=config.dropout_rate,
+                    rngs=rngs,
+                )
+                for _ in range(config.num_layers)
+            ]
+        )
 
         # Output projections
         self.score_projection = nnx.Linear(
@@ -469,9 +471,7 @@ class NeuralReadMapper(OperatorModule):
 
         # Mapping quality: higher when distribution is peaked
         # Use negative entropy as quality measure
-        entropy = -jnp.sum(
-            position_probs * jnp.log(position_probs + 1e-10), axis=-1
-        )
+        entropy = -jnp.sum(position_probs * jnp.log(position_probs + 1e-10), axis=-1)
         max_entropy = jnp.log(jnp.array(reference.shape[1], dtype=jnp.float32))
         mapping_quality = 1.0 - (entropy / max_entropy)
 

@@ -9,6 +9,7 @@ from flax import nnx
 from diffbio.pipelines import (
     VariantCallingPipeline,
     VariantCallingPipelineConfig,
+    create_cnn_variant_pipeline,
     create_variant_calling_pipeline,
 )
 
@@ -299,3 +300,155 @@ class TestFactoryFunction:
         assert pipeline.pipeline_config.num_classes == 4
         assert pipeline.pipeline_config.quality_threshold == 25.0
         assert pipeline.pipeline_config.classifier_hidden_dim == 128
+
+
+class TestCNNVariantPipeline:
+    """Tests for the CNN-based variant calling pipeline."""
+
+    @pytest.fixture
+    def rngs(self):
+        return nnx.Rngs(42)
+
+    @pytest.fixture
+    def cnn_pipeline(self, rngs):
+        """Create a CNN variant calling pipeline."""
+        config = VariantCallingPipelineConfig(
+            reference_length=30,
+            num_classes=3,
+            pileup_window_size=11,  # Larger window for CNN
+            classifier_type="cnn",
+            cnn_hidden_channels=[16, 32],
+            cnn_fc_dims=[32, 16],
+            apply_pileup_softmax=False,  # Better for variant detection
+        )
+        pipeline = VariantCallingPipeline(config, rngs=rngs)
+        pipeline.eval_mode()
+        return pipeline
+
+    @pytest.fixture
+    def sample_data(self):
+        """Create sample input data for CNN testing."""
+        key = jax.random.PRNGKey(42)
+        k1, k2, k3 = jax.random.split(key, 3)
+
+        num_reads = 10
+        read_length = 15
+
+        indices = jax.random.randint(k1, (num_reads, read_length), 0, 4)
+        reads = jax.nn.one_hot(indices, 4)
+        positions = jax.random.randint(k2, (num_reads,), 0, 15)
+        quality = jax.random.uniform(k3, (num_reads, read_length), minval=10.0, maxval=40.0)
+
+        return {
+            "reads": reads,
+            "positions": positions,
+            "quality": quality,
+        }
+
+    def test_cnn_pipeline_initialization(self, cnn_pipeline):
+        """Test CNN pipeline initializes with correct components."""
+        assert hasattr(cnn_pipeline, "quality_filter")
+        assert hasattr(cnn_pipeline, "pileup")
+        assert hasattr(cnn_pipeline, "classifier")
+        assert cnn_pipeline._use_cnn is True
+        assert cnn_pipeline.pipeline_config.classifier_type == "cnn"
+
+    def test_cnn_pipeline_apply(self, cnn_pipeline, sample_data):
+        """Test CNN pipeline processes data correctly."""
+        result_data, _, _ = cnn_pipeline.apply(sample_data, {}, None)
+
+        # Check all output keys present
+        assert "pileup" in result_data
+        assert "logits" in result_data
+        assert "probabilities" in result_data
+        # CNN pipeline should also have coverage and quality
+        assert "coverage" in result_data
+        assert "mean_quality" in result_data
+
+        # Check output shapes
+        assert result_data["pileup"].shape == (30, 4)
+        assert result_data["logits"].shape == (30, 3)
+        assert result_data["probabilities"].shape == (30, 3)
+        assert result_data["coverage"].shape == (30, 1)
+        assert result_data["mean_quality"].shape == (30, 1)
+
+    def test_cnn_pipeline_probabilities_valid(self, cnn_pipeline, sample_data):
+        """Test CNN pipeline outputs valid probability distributions."""
+        result_data, _, _ = cnn_pipeline.apply(sample_data, {}, None)
+        probs = result_data["probabilities"]
+
+        # Each position should sum to 1
+        sums = probs.sum(axis=-1)
+        assert jnp.allclose(sums, 1.0, atol=1e-5)
+
+        # All probabilities should be non-negative
+        assert jnp.all(probs >= 0)
+
+    def test_cnn_pipeline_gradient_flow(self, cnn_pipeline, sample_data):
+        """Test gradients flow through CNN pipeline."""
+        reads = sample_data["reads"]
+        positions = sample_data["positions"]
+        quality = sample_data["quality"]
+
+        def loss_fn(r):
+            data = {"reads": r, "positions": positions, "quality": quality}
+            result_data, _, _ = cnn_pipeline.apply(data, {}, None)
+            return jnp.sum(result_data["logits"])
+
+        grad = jax.grad(loss_fn)(reads)
+
+        assert grad is not None
+        assert grad.shape == reads.shape
+        assert jnp.all(jnp.isfinite(grad))
+
+
+class TestCNNFactoryFunction:
+    """Tests for the create_cnn_variant_pipeline factory."""
+
+    def test_factory_creates_cnn_pipeline(self):
+        """Test factory creates valid CNN pipeline."""
+        pipeline = create_cnn_variant_pipeline(
+            reference_length=50,
+            num_classes=3,
+            seed=42,
+        )
+
+        assert isinstance(pipeline, VariantCallingPipeline)
+        assert pipeline.pipeline_config.reference_length == 50
+        assert pipeline.pipeline_config.classifier_type == "cnn"
+        assert pipeline._use_cnn is True
+
+    def test_factory_with_custom_params(self):
+        """Test CNN factory with custom parameters."""
+        pipeline = create_cnn_variant_pipeline(
+            reference_length=100,
+            num_classes=4,
+            pileup_window_size=31,
+            cnn_hidden_channels=[64, 128],
+            cnn_fc_dims=[128, 64],
+            seed=123,
+        )
+
+        assert pipeline.pipeline_config.reference_length == 100
+        assert pipeline.pipeline_config.num_classes == 4
+        assert pipeline.pipeline_config.pileup_window_size == 31
+        assert pipeline.pipeline_config.classifier_type == "cnn"
+        # Softmax should be disabled for CNN (better for variant detection)
+        assert pipeline.pipeline_config.apply_pileup_softmax is False
+
+    def test_mlp_vs_cnn_factory_difference(self):
+        """Test that MLP and CNN factories create different pipelines."""
+        mlp_pipeline = create_variant_calling_pipeline(
+            reference_length=50,
+            classifier_type="mlp",
+            seed=42,
+        )
+        cnn_pipeline = create_cnn_variant_pipeline(
+            reference_length=50,
+            seed=42,
+        )
+
+        assert mlp_pipeline._use_cnn is False
+        assert cnn_pipeline._use_cnn is True
+        assert mlp_pipeline.pipeline_config.classifier_type == "mlp"
+        assert cnn_pipeline.pipeline_config.classifier_type == "cnn"

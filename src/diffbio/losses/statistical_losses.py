@@ -202,19 +202,13 @@ class HMMLikelihoodLoss(nnx.Module):
 
         # Learnable parameters (log-space for stability)
         # Initial state distribution
-        self.log_initial = nnx.Param(
-            jax.random.normal(k1, (n_states,)) * 0.1
-        )
+        self.log_initial = nnx.Param(jax.random.normal(k1, (n_states,)) * 0.1)
 
         # Transition matrix (log probabilities)
-        self.log_transitions = nnx.Param(
-            jax.random.normal(k2, (n_states, n_states)) * 0.1
-        )
+        self.log_transitions = nnx.Param(jax.random.normal(k2, (n_states, n_states)) * 0.1)
 
         # Emission matrix (log probabilities)
-        self.log_emissions = nnx.Param(
-            jax.random.normal(k3, (n_states, n_emissions)) * 0.1
-        )
+        self.log_emissions = nnx.Param(jax.random.normal(k3, (n_states, n_emissions)) * 0.1)
 
     def _get_log_initial(self) -> Float[Array, "n_states"]:
         """Get normalized log initial distribution."""

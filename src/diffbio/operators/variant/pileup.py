@@ -26,6 +26,10 @@ class PileupConfig(OperatorConfig):
         use_quality_weights: Whether to weight bases by quality scores.
         reference_length: Length of reference sequence (required for batch processing).
             All reads in a batch must align to the same reference length.
+        return_coverage: Whether to return coverage channel in output.
+        return_quality: Whether to return mean quality channel in output.
+        apply_softmax: Whether to apply softmax to final pileup (set False to preserve
+            raw weighted sums, which is better for variant detection).
         stochastic: Whether the operator uses randomness (always False).
         stream_name: RNG stream name (not used).
     """
@@ -35,6 +39,9 @@ class PileupConfig(OperatorConfig):
     max_coverage: int = 100
     use_quality_weights: bool = True
     reference_length: int = 100  # Default reference length for batch processing
+    return_coverage: bool = False
+    return_quality: bool = False
+    apply_softmax: bool = True  # For backward compatibility
     stochastic: bool = False
     stream_name: str | None = None
 
@@ -76,7 +83,7 @@ class DifferentiablePileup(OperatorModule):
         positions: Int[Array, "num_reads"],
         quality: Float[Array, "num_reads read_length"],
         reference_length: int,
-    ) -> Float[Array, "reference_length 4"]:
+    ) -> dict[str, Float[Array, "..."]]:
         """Generate pileup from aligned reads.
 
         Args:
@@ -86,8 +93,10 @@ class DifferentiablePileup(OperatorModule):
             reference_length: Length of reference sequence.
 
         Returns:
-            Pileup array of shape (reference_length, 4) with nucleotide
-            distributions at each position.
+            Dictionary containing:
+            - pileup: (reference_length, 4) nucleotide distributions
+            - coverage: (reference_length, 1) read depth at each position (if return_coverage)
+            - mean_quality: (reference_length, 1) mean quality at each position (if return_quality)
         """
         _, read_length, _ = reads.shape
 
@@ -110,13 +119,15 @@ class DifferentiablePileup(OperatorModule):
         flat_positions = absolute_positions.reshape(-1)  # (num_reads * read_length,)
         flat_reads = reads.reshape(-1, 4)  # (num_reads * read_length, 4)
         flat_weights = weights.reshape(-1, 1)  # (num_reads * read_length, 1)
+        flat_quality = quality.reshape(-1, 1)  # (num_reads * read_length, 1)
 
         # Mask out-of-bounds positions
         in_bounds = (flat_positions >= 0) & (flat_positions < reference_length)
-        flat_weights = flat_weights * in_bounds[:, None].astype(jnp.float32)
+        in_bounds_mask = in_bounds[:, None].astype(jnp.float32)
+        flat_weights_masked = flat_weights * in_bounds_mask
 
         # Weighted reads
-        weighted_reads = flat_reads * flat_weights
+        weighted_reads = flat_reads * flat_weights_masked
 
         # Use segment_sum to aggregate bases at each position
         # First, clip positions to valid range (we've already masked weights for invalid)
@@ -129,22 +140,41 @@ class DifferentiablePileup(OperatorModule):
             num_segments=reference_length,
         )
 
-        # Aggregate coverage at each position
+        # Aggregate coverage at each position (sum of weights)
         coverage = jax.ops.segment_sum(
-            flat_weights,
+            flat_weights_masked,
             clipped_positions.astype(jnp.int32),
             num_segments=reference_length,
         )
 
         # Normalize by coverage to get nucleotide distribution
         # Add small epsilon to avoid division by zero
-        coverage = jnp.maximum(coverage, 1e-8)
-        pileup_normalized = pileup / coverage
+        coverage_safe = jnp.maximum(coverage, 1e-8)
+        pileup_normalized = pileup / coverage_safe
 
-        # Apply softmax to ensure valid probability distribution
-        pileup_normalized = jax.nn.softmax(pileup_normalized / self.temperature[...], axis=-1)
+        # Optionally apply softmax
+        if self.config.apply_softmax:
+            pileup_normalized = jax.nn.softmax(pileup_normalized / self.temperature[...], axis=-1)
 
-        return pileup_normalized
+        result = {"pileup": pileup_normalized}
+
+        # Add coverage channel if requested
+        if self.config.return_coverage:
+            result["coverage"] = coverage
+
+        # Add mean quality channel if requested
+        if self.config.return_quality:
+            # Aggregate quality * weight, then divide by weight sum
+            weighted_quality = flat_quality * flat_weights_masked
+            quality_sum = jax.ops.segment_sum(
+                weighted_quality,
+                clipped_positions.astype(jnp.int32),
+                num_segments=reference_length,
+            )
+            mean_quality = quality_sum / coverage_safe
+            result["mean_quality"] = mean_quality
+
+        return result
 
     def apply(
         self,
@@ -186,15 +216,21 @@ class DifferentiablePileup(OperatorModule):
         # Use reference_length from config (must be static for segment_sum)
         reference_length = self.config.reference_length
 
-        # Compute pileup
-        pileup = self.compute_pileup(reads, positions, quality, reference_length)
+        # Compute pileup (returns dict with pileup and optional coverage/quality)
+        pileup_result = self.compute_pileup(reads, positions, quality, reference_length)
 
         # Build output data - preserve input keys for Datarax vmap compatibility
         transformed_data = {
             "reads": reads,
             "positions": positions,
             "quality": quality,
-            "pileup": pileup,
+            "pileup": pileup_result["pileup"],
         }
+
+        # Add coverage and mean_quality if present
+        if "coverage" in pileup_result:
+            transformed_data["coverage"] = pileup_result["coverage"]
+        if "mean_quality" in pileup_result:
+            transformed_data["mean_quality"] = pileup_result["mean_quality"]
 
         return transformed_data, state, metadata

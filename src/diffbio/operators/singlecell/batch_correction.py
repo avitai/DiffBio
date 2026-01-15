@@ -102,9 +102,7 @@ class DifferentiableHarmony(OperatorModule):
 
         # Initialize cluster centroids
         key = rngs.params()
-        init_centroids = jax.random.normal(
-            key, (config.n_clusters, config.n_features)
-        ) * 0.1
+        init_centroids = jax.random.normal(key, (config.n_clusters, config.n_features)) * 0.1
         self.cluster_centroids = nnx.Param(init_centroids)
 
     def compute_soft_assignments(
@@ -123,8 +121,8 @@ class DifferentiableHarmony(OperatorModule):
         """
         # Compute squared distances
         # ||x - c||² = ||x||² + ||c||² - 2 * x · c
-        emb_sq = jnp.sum(embeddings ** 2, axis=-1, keepdims=True)
-        cent_sq = jnp.sum(centroids ** 2, axis=-1)
+        emb_sq = jnp.sum(embeddings**2, axis=-1, keepdims=True)
+        cent_sq = jnp.sum(centroids**2, axis=-1)
         dot_product = jnp.einsum("nf,kf->nk", embeddings, centroids)
         distances_sq = emb_sq + cent_sq - 2 * dot_product
 
@@ -189,7 +187,7 @@ class DifferentiableHarmony(OperatorModule):
         # Compute diversity correction factor
         # Higher diversity penalty for clusters with skewed batch composition
         # Note: diversity_penalty could be used for additional regularization
-        _diversity = 1.0 - jnp.sum(batch_props ** 2, axis=-1)  # (n_clusters,)
+        _diversity = 1.0 - jnp.sum(batch_props**2, axis=-1)  # (n_clusters,)
 
         # Compute correction direction for each cell
         # Move cells toward cluster centroids weighted by assignment and batch correction
@@ -262,10 +260,7 @@ class DifferentiableHarmony(OperatorModule):
             return (new_corrected, centroids), new_assignments
 
         (corrected, _), assignments = jax.lax.scan(
-            iteration_step,
-            (corrected, centroids),
-            None,
-            length=self.n_iterations
+            iteration_step, (corrected, centroids), None, length=self.n_iterations
         )
 
         # Get final assignments

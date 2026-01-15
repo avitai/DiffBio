@@ -141,9 +141,7 @@ class DifferentiableUMAP(OperatorModule):
         # Compute pairwise distances
         if self.config.metric == "cosine":
             # Normalize features for cosine distance
-            features_norm = features / (
-                jnp.linalg.norm(features, axis=-1, keepdims=True) + 1e-8
-            )
+            features_norm = features / (jnp.linalg.norm(features, axis=-1, keepdims=True) + 1e-8)
             # Cosine similarity -> distance
             sim = jnp.dot(features_norm, features_norm.T)
             distances = jnp.sqrt(2 * (1 - sim + 1e-8))
@@ -158,7 +156,7 @@ class DifferentiableUMAP(OperatorModule):
         # Find local bandwidth (distance to k-th neighbor) using soft top-k
         # Sort distances and take k-th smallest
         sorted_dists = jnp.sort(distances, axis=-1)
-        sigma = sorted_dists[:, n_neighbors - 1:n_neighbors].squeeze(-1)
+        sigma = sorted_dists[:, n_neighbors - 1 : n_neighbors].squeeze(-1)
         sigma = jnp.maximum(sigma, 1e-8)
 
         # Compute fuzzy membership using Gaussian kernel
@@ -203,9 +201,7 @@ class DifferentiableUMAP(OperatorModule):
 
         return q_ij
 
-    def _compute_umap_loss(
-        self, p_ij: jax.Array, q_ij: jax.Array
-    ) -> jax.Array:
+    def _compute_umap_loss(self, p_ij: jax.Array, q_ij: jax.Array) -> jax.Array:
         """Compute UMAP cross-entropy loss.
 
         Args:

@@ -119,9 +119,7 @@ class TestProfileHMMSearch:
         config = ProfileHMMConfig(profile_length=50, alphabet_size=20)
         op = ProfileHMMSearch(config, rngs=rngs)
 
-        transformed_data, state, metadata = op.apply(
-            sample_sequence, {}, None, None
-        )
+        transformed_data, state, metadata = op.apply(sample_sequence, {}, None, None)
 
         assert "score" in transformed_data
         assert jnp.isfinite(transformed_data["score"])
@@ -159,9 +157,7 @@ class TestGradientFlow:
         op = ProfileHMMSearch(config, rngs=rngs)
 
         key = jax.random.key(0)
-        seq = jax.nn.one_hot(
-            jax.random.categorical(key, jnp.ones(20), shape=(50,)), 20
-        )
+        seq = jax.nn.one_hot(jax.random.categorical(key, jnp.ones(20), shape=(50,)), 20)
 
         def loss_fn(sequence):
             return op.score_sequence(sequence)
@@ -176,9 +172,7 @@ class TestGradientFlow:
         op = ProfileHMMSearch(config, rngs=rngs)
 
         key = jax.random.key(0)
-        seq = jax.nn.one_hot(
-            jax.random.categorical(key, jnp.ones(20), shape=(50,)), 20
-        )
+        seq = jax.nn.one_hot(jax.random.categorical(key, jnp.ones(20), shape=(50,)), 20)
         data = {"sequence": seq}
         state = {}
 
@@ -205,9 +199,7 @@ class TestJITCompatibility:
         op = ProfileHMMSearch(config, rngs=rngs)
 
         key = jax.random.key(0)
-        seq = jax.nn.one_hot(
-            jax.random.categorical(key, jnp.ones(20), shape=(50,)), 20
-        )
+        seq = jax.nn.one_hot(jax.random.categorical(key, jnp.ones(20), shape=(50,)), 20)
 
         @jax.jit
         def jit_score(sequence):
@@ -222,9 +214,7 @@ class TestJITCompatibility:
         op = ProfileHMMSearch(config, rngs=rngs)
 
         key = jax.random.key(0)
-        seq = jax.nn.one_hot(
-            jax.random.categorical(key, jnp.ones(20), shape=(50,)), 20
-        )
+        seq = jax.nn.one_hot(jax.random.categorical(key, jnp.ones(20), shape=(50,)), 20)
         data = {"sequence": seq}
         state = {}
 
@@ -249,9 +239,7 @@ class TestEdgeCases:
         op = ProfileHMMSearch(config, rngs=rngs)
 
         key = jax.random.key(0)
-        seq = jax.nn.one_hot(
-            jax.random.categorical(key, jnp.ones(20), shape=(20,)), 20
-        )
+        seq = jax.nn.one_hot(jax.random.categorical(key, jnp.ones(20), shape=(20,)), 20)
         data = {"sequence": seq}
 
         transformed, _, _ = op.apply(data, {}, None, None)
@@ -263,9 +251,7 @@ class TestEdgeCases:
         op = ProfileHMMSearch(config, rngs=rngs)
 
         key = jax.random.key(0)
-        seq = jax.nn.one_hot(
-            jax.random.categorical(key, jnp.ones(20), shape=(50,)), 20
-        )
+        seq = jax.nn.one_hot(jax.random.categorical(key, jnp.ones(20), shape=(50,)), 20)
         data = {"sequence": seq}
 
         transformed, _, _ = op.apply(data, {}, None, None)
@@ -277,9 +263,7 @@ class TestEdgeCases:
         op = ProfileHMMSearch(config, rngs=rngs)
 
         key = jax.random.key(0)
-        seq = jax.nn.one_hot(
-            jax.random.categorical(key, jnp.ones(20), shape=(500,)), 20
-        )
+        seq = jax.nn.one_hot(jax.random.categorical(key, jnp.ones(20), shape=(500,)), 20)
         data = {"sequence": seq}
 
         transformed, _, _ = op.apply(data, {}, None, None)
@@ -291,9 +275,7 @@ class TestEdgeCases:
         op = ProfileHMMSearch(config, rngs=rngs)
 
         key = jax.random.key(0)
-        seq = jax.nn.one_hot(
-            jax.random.categorical(key, jnp.ones(20), shape=(50,)), 20
-        )
+        seq = jax.nn.one_hot(jax.random.categorical(key, jnp.ones(20), shape=(50,)), 20)
         data = {"sequence": seq}
 
         transformed, _, _ = op.apply(data, {}, None, None)
@@ -305,9 +287,7 @@ class TestEdgeCases:
         op = ProfileHMMSearch(config, rngs=rngs)
 
         key = jax.random.key(0)
-        seq = jax.nn.one_hot(
-            jax.random.categorical(key, jnp.ones(20), shape=(50,)), 20
-        )
+        seq = jax.nn.one_hot(jax.random.categorical(key, jnp.ones(20), shape=(50,)), 20)
         data = {"sequence": seq}
 
         transformed, _, _ = op.apply(data, {}, None, None)

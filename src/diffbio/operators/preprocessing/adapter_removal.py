@@ -92,12 +92,14 @@ class SoftAdapterRemoval(OperatorModule):
         self.match_threshold = nnx.Param(jnp.array(config.match_threshold))
 
         # Scoring matrix for DNA alignment (match=2, mismatch=-1)
-        scoring = jnp.array([
-            [2.0, -1.0, -1.0, -1.0],  # A
-            [-1.0, 2.0, -1.0, -1.0],  # C
-            [-1.0, -1.0, 2.0, -1.0],  # G
-            [-1.0, -1.0, -1.0, 2.0],  # T
-        ])
+        scoring = jnp.array(
+            [
+                [2.0, -1.0, -1.0, -1.0],  # A
+                [-1.0, 2.0, -1.0, -1.0],  # C
+                [-1.0, -1.0, 2.0, -1.0],  # G
+                [-1.0, -1.0, -1.0, 2.0],  # T
+            ]
+        )
         self.scoring_matrix = nnx.Param(scoring)
 
         # Store config values

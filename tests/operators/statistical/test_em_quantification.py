@@ -98,10 +98,7 @@ class TestDifferentiableEMQuantifier:
         config = EMQuantifierConfig(n_transcripts=50, n_iterations=1)
         op = DifferentiableEMQuantifier(config, rngs=rngs)
 
-        abundances = op.quantify(
-            sample_data["compatibility"],
-            sample_data["effective_lengths"]
-        )
+        abundances = op.quantify(sample_data["compatibility"], sample_data["effective_lengths"])
 
         assert jnp.isclose(jnp.sum(abundances), 1.0, rtol=1e-4)
 
@@ -110,10 +107,7 @@ class TestDifferentiableEMQuantifier:
         config = EMQuantifierConfig(n_transcripts=50, n_iterations=5)
         op = DifferentiableEMQuantifier(config, rngs=rngs)
 
-        abundances = op.quantify(
-            sample_data["compatibility"],
-            sample_data["effective_lengths"]
-        )
+        abundances = op.quantify(sample_data["compatibility"], sample_data["effective_lengths"])
 
         assert abundances.shape == (50,)
 
@@ -122,10 +116,7 @@ class TestDifferentiableEMQuantifier:
         config = EMQuantifierConfig(n_transcripts=50, n_iterations=5)
         op = DifferentiableEMQuantifier(config, rngs=rngs)
 
-        abundances = op.quantify(
-            sample_data["compatibility"],
-            sample_data["effective_lengths"]
-        )
+        abundances = op.quantify(sample_data["compatibility"], sample_data["effective_lengths"])
 
         assert jnp.all(abundances >= 0)
 
@@ -159,12 +150,10 @@ class TestDifferentiableEMQuantifier:
         op_many = DifferentiableEMQuantifier(config_many, rngs=nnx.Rngs(42))
 
         abundances_few = op_few.quantify(
-            sample_data["compatibility"],
-            sample_data["effective_lengths"]
+            sample_data["compatibility"], sample_data["effective_lengths"]
         )
         abundances_many = op_many.quantify(
-            sample_data["compatibility"],
-            sample_data["effective_lengths"]
+            sample_data["compatibility"], sample_data["effective_lengths"]
         )
 
         # Both should be valid probability distributions
@@ -184,9 +173,7 @@ class TestGradientFlow:
         config = EMQuantifierConfig(n_transcripts=50, n_iterations=5)
         op = DifferentiableEMQuantifier(config, rngs=rngs)
 
-        compatibility = jax.random.uniform(
-            jax.random.key(0), shape=(100, 50)
-        )
+        compatibility = jax.random.uniform(jax.random.key(0), shape=(100, 50))
         effective_lengths = jnp.ones(50) * 500.0
 
         def loss_fn(compat):
@@ -202,9 +189,7 @@ class TestGradientFlow:
         config = EMQuantifierConfig(n_transcripts=50, n_iterations=5)
         op = DifferentiableEMQuantifier(config, rngs=rngs)
 
-        compatibility = jax.random.uniform(
-            jax.random.key(0), shape=(100, 50)
-        )
+        compatibility = jax.random.uniform(jax.random.key(0), shape=(100, 50))
         effective_lengths = jnp.ones(50) * 500.0
         data = {
             "compatibility": compatibility,
@@ -234,9 +219,7 @@ class TestJITCompatibility:
         config = EMQuantifierConfig(n_transcripts=50, n_iterations=5)
         op = DifferentiableEMQuantifier(config, rngs=rngs)
 
-        compatibility = jax.random.uniform(
-            jax.random.key(0), shape=(100, 50)
-        )
+        compatibility = jax.random.uniform(jax.random.key(0), shape=(100, 50))
         effective_lengths = jnp.ones(50) * 500.0
 
         @jax.jit
@@ -251,9 +234,7 @@ class TestJITCompatibility:
         config = EMQuantifierConfig(n_transcripts=50, n_iterations=5)
         op = DifferentiableEMQuantifier(config, rngs=rngs)
 
-        compatibility = jax.random.uniform(
-            jax.random.key(0), shape=(100, 50)
-        )
+        compatibility = jax.random.uniform(jax.random.key(0), shape=(100, 50))
         effective_lengths = jnp.ones(50) * 500.0
         data = {
             "compatibility": compatibility,
@@ -322,20 +303,14 @@ class TestEdgeCases:
 
         transformed, _, _ = op.apply(data, {}, None, None)
         # Should converge to uniform distribution
-        assert jnp.allclose(
-            transformed["abundances"],
-            jnp.ones(50) / 50,
-            rtol=0.1
-        )
+        assert jnp.allclose(transformed["abundances"], jnp.ones(50) / 50, rtol=0.1)
 
     def test_high_temperature(self, rngs):
         """Test with high temperature (smooth assignments)."""
         config = EMQuantifierConfig(n_transcripts=50, n_iterations=5, temperature=10.0)
         op = DifferentiableEMQuantifier(config, rngs=rngs)
 
-        compatibility = jax.random.uniform(
-            jax.random.key(0), shape=(100, 50)
-        )
+        compatibility = jax.random.uniform(jax.random.key(0), shape=(100, 50))
         effective_lengths = jnp.ones(50) * 500.0
         data = {
             "compatibility": compatibility,
@@ -350,9 +325,7 @@ class TestEdgeCases:
         config = EMQuantifierConfig(n_transcripts=50, n_iterations=5, temperature=0.1)
         op = DifferentiableEMQuantifier(config, rngs=rngs)
 
-        compatibility = jax.random.uniform(
-            jax.random.key(0), shape=(100, 50)
-        )
+        compatibility = jax.random.uniform(jax.random.key(0), shape=(100, 50))
         effective_lengths = jnp.ones(50) * 500.0
         data = {
             "compatibility": compatibility,
@@ -367,9 +340,7 @@ class TestEdgeCases:
         config = EMQuantifierConfig(n_transcripts=50, n_iterations=50)
         op = DifferentiableEMQuantifier(config, rngs=rngs)
 
-        compatibility = jax.random.uniform(
-            jax.random.key(0), shape=(100, 50)
-        )
+        compatibility = jax.random.uniform(jax.random.key(0), shape=(100, 50))
         effective_lengths = jnp.ones(50) * 500.0
         data = {
             "compatibility": compatibility,

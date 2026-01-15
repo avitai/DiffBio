@@ -50,9 +50,7 @@ class TestDifferentiableNBGLM:
     def sample_data(self):
         """Provide sample count and design matrix data."""
         # Counts for single sample, 100 genes
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         # Design matrix row (e.g., intercept + treatment indicator)
         design = jnp.array([1.0, 0.0])  # Control sample
         size_factor = jnp.array(1.0)
@@ -65,9 +63,9 @@ class TestDifferentiableNBGLM:
         n_genes = 100
         n_covariates = 2
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(n_samples, n_genes)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(n_samples, n_genes)).astype(
+            jnp.float32
+        )
         # Design matrix: intercept + treatment (half control, half treatment)
         design = jnp.zeros((n_samples, n_covariates))
         design = design.at[:, 0].set(1.0)  # Intercept
@@ -135,9 +133,7 @@ class TestDifferentiableNBGLM:
         op = DifferentiableNBGLM(config, rngs=rngs)
 
         log_prob = op.negative_binomial_log_prob(
-            sample_data["counts"],
-            sample_data["design"],
-            sample_data["size_factor"]
+            sample_data["counts"], sample_data["design"], sample_data["size_factor"]
         )
 
         assert log_prob.shape == ()
@@ -187,9 +183,9 @@ class TestBatchProcessing:
         op = DifferentiableNBGLM(config, rngs=rngs)
 
         n_samples = 8
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(n_samples, 100)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(n_samples, 100)).astype(
+            jnp.float32
+        )
         design = jnp.zeros((n_samples, 2))
         design = design.at[:, 0].set(1.0)
         design = design.at[4:, 1].set(1.0)
@@ -213,9 +209,7 @@ class TestGradientFlow:
         config = NBGLMConfig(n_features=100, n_covariates=2)
         op = DifferentiableNBGLM(config, rngs=rngs)
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         design = jnp.array([1.0, 1.0])
         size_factor = jnp.array(1.0)
 
@@ -231,9 +225,7 @@ class TestGradientFlow:
         config = NBGLMConfig(n_features=100, n_covariates=2)
         op = DifferentiableNBGLM(config, rngs=rngs)
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         design = jnp.array([1.0, 1.0])
         size_factor = jnp.array(1.0)
         data = {"counts": counts, "design": design, "size_factor": size_factor}
@@ -253,9 +245,7 @@ class TestGradientFlow:
         config = NBGLMConfig(n_features=100, n_covariates=2, estimate_dispersion=True)
         op = DifferentiableNBGLM(config, rngs=rngs)
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         design = jnp.array([1.0, 1.0])
         size_factor = jnp.array(1.0)
         data = {"counts": counts, "design": design, "size_factor": size_factor}
@@ -283,9 +273,7 @@ class TestJITCompatibility:
         config = NBGLMConfig(n_features=100, n_covariates=2)
         op = DifferentiableNBGLM(config, rngs=rngs)
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         design = jnp.array([1.0, 1.0])
         size_factor = jnp.array(1.0)
         data = {"counts": counts, "design": design, "size_factor": size_factor}
@@ -352,9 +340,7 @@ class TestEdgeCases:
         config = NBGLMConfig(n_features=100, n_covariates=1)
         op = DifferentiableNBGLM(config, rngs=rngs)
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         design = jnp.array([1.0])
         size_factor = jnp.array(1.0)
         data = {"counts": counts, "design": design, "size_factor": size_factor}
@@ -367,9 +353,7 @@ class TestEdgeCases:
         config = NBGLMConfig(n_features=100, n_covariates=10)
         op = DifferentiableNBGLM(config, rngs=rngs)
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         design = jnp.ones(10)
         size_factor = jnp.array(1.0)
         data = {"counts": counts, "design": design, "size_factor": size_factor}
@@ -382,9 +366,7 @@ class TestEdgeCases:
         config = NBGLMConfig(n_features=100, n_covariates=2)
         op = DifferentiableNBGLM(config, rngs=rngs)
 
-        counts = jax.random.poisson(
-            jax.random.key(0), lam=10.0, shape=(100,)
-        ).astype(jnp.float32)
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         design = jnp.array([1.0, 0.0])
         size_factor = jnp.array(0.1)
         data = {"counts": counts, "design": design, "size_factor": size_factor}

@@ -140,7 +140,9 @@ class KineticsEncoder(nnx.Module):
         # Degradation rate (gamma): typically 0.01-0.5
         self.log_gamma = nnx.Param(jax.random.normal(k3, (n_genes,)) * 0.5 - 2.0)
 
-    def __call__(self) -> tuple[
+    def __call__(
+        self,
+    ) -> tuple[
         Float[Array, "n_genes"],
         Float[Array, "n_genes"],
         Float[Array, "n_genes"],

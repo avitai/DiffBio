@@ -461,6 +461,4 @@ class TestPeakCallerBiologicalBehavior:
 
         # Scores should differ based on magnitude
         # (The exact relationship depends on training, but they should be different)
-        assert not jnp.allclose(
-            result_low["peak_scores"], result_high["peak_scores"], atol=1e-3
-        )
+        assert not jnp.allclose(result_low["peak_scores"], result_high["peak_scores"], atol=1e-3)
