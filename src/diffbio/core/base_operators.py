@@ -401,21 +401,15 @@ class GraphOperator(OperatorModule):
             Aggregated features for each node.
         """
         if aggregation == "sum":
-            return jax.ops.segment_sum(
-                messages, indices, num_segments=num_nodes
-            )
+            return jax.ops.segment_sum(messages, indices, num_segments=num_nodes)
         elif aggregation == "mean":
-            sum_messages = jax.ops.segment_sum(
-                messages, indices, num_segments=num_nodes
-            )
+            sum_messages = jax.ops.segment_sum(messages, indices, num_segments=num_nodes)
             counts = jax.ops.segment_sum(
                 jnp.ones(messages.shape[0]), indices, num_segments=num_nodes
             )
             return sum_messages / (counts[:, None] + EPSILON)
         elif aggregation == "max":
-            result = jax.ops.segment_max(
-                messages, indices, num_segments=num_nodes
-            )
+            result = jax.ops.segment_max(messages, indices, num_segments=num_nodes)
             # Replace -inf with 0
             return jnp.where(jnp.isinf(result), jnp.zeros_like(result), result)
         else:
@@ -450,9 +444,7 @@ class GraphOperator(OperatorModule):
         else:
             # Batched graphs
             num_graphs = int(jnp.max(batch)) + 1
-            return self.scatter_aggregate(
-                node_features, batch, num_graphs, aggregation
-            )
+            return self.scatter_aggregate(node_features, batch, num_graphs, aggregation)
 
     def apply(
         self,
@@ -520,21 +512,15 @@ class HMMOperator(OperatorModule):
 
     def get_log_transition_matrix(self) -> Float[Array, "num_states num_states"]:
         """Get normalized log transition matrix."""
-        return jax.nn.log_softmax(
-            self.log_transition_params[...] / self.temperature, axis=1
-        )
+        return jax.nn.log_softmax(self.log_transition_params[...] / self.temperature, axis=1)
 
     def get_log_emission_matrix(self) -> Float[Array, "num_states num_emissions"]:
         """Get normalized log emission matrix."""
-        return jax.nn.log_softmax(
-            self.log_emission_params[...] / self.temperature, axis=1
-        )
+        return jax.nn.log_softmax(self.log_emission_params[...] / self.temperature, axis=1)
 
     def get_log_initial_distribution(self) -> Float[Array, "num_states"]:
         """Get normalized log initial state distribution."""
-        return jax.nn.log_softmax(
-            self.log_initial_params[...] / self.temperature
-        )
+        return jax.nn.log_softmax(self.log_initial_params[...] / self.temperature)
 
     def forward_pass(
         self,
@@ -558,9 +544,7 @@ class HMMOperator(OperatorModule):
         # Forward pass
         def forward_step(log_alpha, obs):
             log_alpha_expanded = log_alpha[:, None]
-            log_alpha_new = jax.scipy.special.logsumexp(
-                log_alpha_expanded + log_trans, axis=0
-            )
+            log_alpha_new = jax.scipy.special.logsumexp(log_alpha_expanded + log_trans, axis=0)
             log_alpha_new = log_alpha_new + log_emit[:, obs]
             return log_alpha_new, None
 
@@ -587,9 +571,7 @@ class HMMOperator(OperatorModule):
         # Forward pass - store all alpha values
         def forward_step(log_alpha, obs):
             log_alpha_expanded = log_alpha[:, None]
-            log_alpha_new = jax.scipy.special.logsumexp(
-                log_alpha_expanded + log_trans, axis=0
-            )
+            log_alpha_new = jax.scipy.special.logsumexp(log_alpha_expanded + log_trans, axis=0)
             log_alpha_new = log_alpha_new + log_emit[:, obs]
             return log_alpha_new, log_alpha_new
 
@@ -600,15 +582,11 @@ class HMMOperator(OperatorModule):
         # Backward pass
         def backward_step(log_beta, obs):
             log_beta_expanded = log_beta + log_emit[:, obs]
-            log_beta_new = jax.scipy.special.logsumexp(
-                log_trans + log_beta_expanded, axis=1
-            )
+            log_beta_new = jax.scipy.special.logsumexp(log_trans + log_beta_expanded, axis=1)
             return log_beta_new, log_beta_new
 
         log_beta_init = jnp.zeros(self.num_states)
-        _, log_betas_rev = jax.lax.scan(
-            backward_step, log_beta_init, observations[1:][::-1]
-        )
+        _, log_betas_rev = jax.lax.scan(backward_step, log_beta_init, observations[1:][::-1])
         log_betas = jnp.concatenate([log_betas_rev[::-1], log_beta_init[None, :]], axis=0)
 
         # Compute posteriors

@@ -224,16 +224,10 @@ class GraphMessagePassing(nnx.Module):
 
         # Aggregate messages at destination nodes
         if self.aggregation == "sum":
-            aggregated = jax.ops.segment_sum(
-                messages, dest_idx, num_segments=num_nodes
-            )
+            aggregated = jax.ops.segment_sum(messages, dest_idx, num_segments=num_nodes)
         elif self.aggregation == "mean":
-            sum_messages = jax.ops.segment_sum(
-                messages, dest_idx, num_segments=num_nodes
-            )
-            counts = jax.ops.segment_sum(
-                jnp.ones(num_edges), dest_idx, num_segments=num_nodes
-            )
+            sum_messages = jax.ops.segment_sum(messages, dest_idx, num_segments=num_nodes)
+            counts = jax.ops.segment_sum(jnp.ones(num_edges), dest_idx, num_segments=num_nodes)
             aggregated = sum_messages / (counts[:, None] + EPSILON)
         elif self.aggregation == "max":
             # segment_max with default of -inf for empty segments
@@ -244,9 +238,7 @@ class GraphMessagePassing(nnx.Module):
                 indices_are_sorted=False,
             )
             # Replace -inf with 0 for nodes with no incoming edges
-            aggregated = jnp.where(
-                jnp.isinf(aggregated), jnp.zeros_like(aggregated), aggregated
-            )
+            aggregated = jnp.where(jnp.isinf(aggregated), jnp.zeros_like(aggregated), aggregated)
         else:
             raise ValueError(f"Unknown aggregation: {self.aggregation}")
 

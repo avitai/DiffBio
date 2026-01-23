@@ -14,6 +14,11 @@ from diffbio.pipelines.preprocessing import (
     PreprocessingPipelineConfig,
     create_preprocessing_pipeline,
 )
+from diffbio.pipelines.single_cell import (
+    SingleCellPipeline,
+    SingleCellPipelineConfig,
+    create_single_cell_pipeline,
+)
 from diffbio.pipelines.variant_calling import (
     VariantCallingPipeline,
     VariantCallingPipelineConfig,
@@ -30,6 +35,10 @@ __all__ = [
     "PreprocessingPipeline",
     "PreprocessingPipelineConfig",
     "create_preprocessing_pipeline",
+    # Single-Cell Analysis
+    "SingleCellPipeline",
+    "SingleCellPipelineConfig",
+    "create_single_cell_pipeline",
     # Variant calling
     "VariantCallingPipeline",
     "VariantCallingPipelineConfig",

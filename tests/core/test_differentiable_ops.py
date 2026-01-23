@@ -382,9 +382,9 @@ class TestSoftAttentionWeights:
         from diffbio.core.differentiable_ops import soft_attention_weights
 
         query = jnp.array([1.0, 0.0, 0.0, 0.0])  # 4-dim query
-        keys = jnp.array([[1.0, 0.0, 0.0, 0.0],
-                         [0.0, 1.0, 0.0, 0.0],
-                         [0.0, 0.0, 1.0, 0.0]])  # 3 keys
+        keys = jnp.array(
+            [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]]
+        )  # 3 keys
         result = soft_attention_weights(query, keys, temperature=1.0)
 
         assert result.shape == (3,)
@@ -662,9 +662,7 @@ class TestFlaxNNXCompatibility:
         """Test nnx.grad works with module parameters."""
         from diffbio.core.neural_components import GraphMessagePassing
 
-        layer = GraphMessagePassing(
-            node_features=4, edge_features=2, hidden_dim=8, rngs=rngs
-        )
+        layer = GraphMessagePassing(node_features=4, edge_features=2, hidden_dim=8, rngs=rngs)
 
         def loss_fn(model, node_feat, edge_feat, edge_index):
             output = model(node_feat, edge_feat, edge_index)
@@ -685,7 +683,7 @@ class TestFlaxNNXCompatibility:
 
         def loss_fn(m, logits):
             output = m(logits)
-            return jnp.mean(output ** 2)
+            return jnp.mean(output**2)
 
         logits = jnp.array([[1.0, 2.0, 3.0]])
         loss, grads = nnx.value_and_grad(loss_fn)(module, logits)
@@ -698,9 +696,7 @@ class TestFlaxNNXCompatibility:
         """Test nnx.split and nnx.merge for state management."""
         from diffbio.core.neural_components import GraphMessagePassing
 
-        layer = GraphMessagePassing(
-            node_features=4, edge_features=2, hidden_dim=8, rngs=rngs
-        )
+        layer = GraphMessagePassing(node_features=4, edge_features=2, hidden_dim=8, rngs=rngs)
 
         # Split into graph def and state
         graphdef, state = nnx.split(layer)
@@ -723,11 +719,7 @@ class TestFlaxNNXCompatibility:
         from diffbio.core.differentiable_ops import logsumexp_smooth_max, soft_argmax
 
         # Batch of inputs
-        batch_logits = jnp.array([
-            [1.0, 5.0, 2.0],
-            [3.0, 1.0, 4.0],
-            [2.0, 2.0, 2.0]
-        ])
+        batch_logits = jnp.array([[1.0, 5.0, 2.0], [3.0, 1.0, 4.0], [2.0, 2.0, 2.0]])
 
         # vmap over batch
         batch_smooth_max = jax.vmap(logsumexp_smooth_max)(batch_logits)
@@ -740,9 +732,7 @@ class TestFlaxNNXCompatibility:
         """Test modules work correctly in eval mode (no randomness needed)."""
         from diffbio.core.neural_components import GraphMessagePassing
 
-        layer = GraphMessagePassing(
-            node_features=4, edge_features=2, hidden_dim=8, rngs=rngs
-        )
+        layer = GraphMessagePassing(node_features=4, edge_features=2, hidden_dim=8, rngs=rngs)
 
         # Deterministic forward pass
         node_feat = jnp.ones((3, 4))
@@ -783,9 +773,7 @@ class TestScalability:
         logits = jax.random.normal(jax.random.PRNGKey(42), (size,))
         # Create random segments
         num_segments = 10
-        segment_ids = jax.random.randint(
-            jax.random.PRNGKey(43), (size,), 0, num_segments
-        )
+        segment_ids = jax.random.randint(jax.random.PRNGKey(43), (size,), 0, num_segments)
         result = segment_softmax(logits, segment_ids)
 
         assert result.shape == (size,)
@@ -803,9 +791,7 @@ class TestScalability:
         keys = jax.random.split(jax.random.PRNGKey(43), batch_size)
 
         # Batched application
-        result = jax.vmap(
-            lambda l, k: gumbel_softmax(l, k, temperature=1.0)
-        )(logits, keys)
+        result = jax.vmap(lambda l, k: gumbel_softmax(l, k, temperature=1.0))(logits, keys)
 
         assert result.shape == (batch_size, num_classes)
         # Each row should sum to 1
@@ -832,9 +818,7 @@ class TestScalability:
         node_feat = jax.random.normal(jax.random.PRNGKey(42), (num_nodes, node_feat_dim))
         edge_feat = jax.random.normal(jax.random.PRNGKey(43), (num_edges, edge_feat_dim))
         # Random edges
-        edge_index = jax.random.randint(
-            jax.random.PRNGKey(44), (2, num_edges), 0, num_nodes
-        )
+        edge_index = jax.random.randint(jax.random.PRNGKey(44), (2, num_edges), 0, num_nodes)
 
         output = layer(node_feat, edge_feat, edge_index)
 
@@ -893,9 +877,7 @@ class TestScalability:
 
         # Longer sequence
         seq_len = 100
-        observations = jax.random.randint(
-            jax.random.PRNGKey(42), (seq_len,), 0, 10
-        )
+        observations = jax.random.randint(jax.random.PRNGKey(42), (seq_len,), 0, 10)
 
         log_prob = op.forward_pass(observations)
         posteriors = op.forward_backward_posteriors(observations)

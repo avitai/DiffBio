@@ -653,9 +653,7 @@ class TestFlaxNNXCompatibility:
         assert batch_normalized.shape == (batch_size, seq_length, DNA_ALPHABET_SIZE)
         # Each position should sum to 1
         assert jnp.allclose(
-            jnp.sum(batch_normalized, axis=-1),
-            jnp.ones((batch_size, seq_length)),
-            atol=1e-5
+            jnp.sum(batch_normalized, axis=-1), jnp.ones((batch_size, seq_length)), atol=1e-5
         )
 
 
@@ -686,9 +684,7 @@ class TestScalability:
         from diffbio.core.base_operators import SequenceOperator
 
         op = SequenceOperator(MockSequenceConfig(), rngs=rngs)
-        sequence = jax.random.normal(
-            jax.random.PRNGKey(42), (seq_len, DNA_ALPHABET_SIZE)
-        )
+        sequence = jax.random.normal(jax.random.PRNGKey(42), (seq_len, DNA_ALPHABET_SIZE))
 
         normalized = op.normalize_sequence(sequence)
 
@@ -701,12 +697,8 @@ class TestScalability:
         from diffbio.core.base_operators import EncoderDecoderOperator
 
         op = EncoderDecoderOperator(MockEncoderDecoderConfig(), rngs=rngs)
-        mean = jax.random.normal(
-            jax.random.PRNGKey(42), (batch_size, DEFAULT_LATENT_DIM)
-        )
-        log_var = jax.random.normal(
-            jax.random.PRNGKey(43), (batch_size, DEFAULT_LATENT_DIM)
-        )
+        mean = jax.random.normal(jax.random.PRNGKey(42), (batch_size, DEFAULT_LATENT_DIM))
+        log_var = jax.random.normal(jax.random.PRNGKey(43), (batch_size, DEFAULT_LATENT_DIM))
 
         z = op.reparameterize(mean, log_var)
 
@@ -722,12 +714,8 @@ class TestScalability:
 
         num_nodes = 50
         feature_dim = 16
-        messages = jax.random.normal(
-            jax.random.PRNGKey(42), (num_messages, feature_dim)
-        )
-        indices = jax.random.randint(
-            jax.random.PRNGKey(43), (num_messages,), 0, num_nodes
-        )
+        messages = jax.random.normal(jax.random.PRNGKey(42), (num_messages, feature_dim))
+        indices = jax.random.randint(jax.random.PRNGKey(43), (num_messages,), 0, num_nodes)
 
         result = op.scatter_aggregate(messages, indices, num_nodes, "sum")
 
@@ -773,15 +761,15 @@ class TestScalability:
         # Simulate 3 graphs with 10, 15, 20 nodes packed together
         total_nodes = 45
         feature_dim = 16
-        node_features = jax.random.normal(
-            jax.random.PRNGKey(42), (total_nodes, feature_dim)
-        )
+        node_features = jax.random.normal(jax.random.PRNGKey(42), (total_nodes, feature_dim))
         # Batch assignment
-        batch = jnp.concatenate([
-            jnp.zeros(10, dtype=jnp.int32),
-            jnp.ones(15, dtype=jnp.int32),
-            jnp.full(20, 2, dtype=jnp.int32)
-        ])
+        batch = jnp.concatenate(
+            [
+                jnp.zeros(10, dtype=jnp.int32),
+                jnp.ones(15, dtype=jnp.int32),
+                jnp.full(20, 2, dtype=jnp.int32),
+            ]
+        )
 
         result = op.global_pool(node_features, batch, aggregation="mean")
 
@@ -796,12 +784,8 @@ class TestScalability:
 
         batch_size = 32
         recon_loss = jnp.array(100.0)  # Scalar reconstruction loss
-        mean = jax.random.normal(
-            jax.random.PRNGKey(42), (batch_size, DEFAULT_LATENT_DIM)
-        )
-        log_var = jax.random.normal(
-            jax.random.PRNGKey(43), (batch_size, DEFAULT_LATENT_DIM)
-        )
+        mean = jax.random.normal(jax.random.PRNGKey(42), (batch_size, DEFAULT_LATENT_DIM))
+        log_var = jax.random.normal(jax.random.PRNGKey(43), (batch_size, DEFAULT_LATENT_DIM))
 
         elbo = op.elbo_loss(recon_loss, mean, log_var, beta=1.0)
 

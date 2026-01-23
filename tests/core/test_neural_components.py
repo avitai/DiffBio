@@ -9,8 +9,6 @@ These tests only cover DiffBio-specific components.
 
 import jax
 import jax.numpy as jnp
-import pytest
-from flax import nnx
 
 from diffbio.constants import DEFAULT_HIDDEN_DIM, DEFAULT_TEMPERATURE
 

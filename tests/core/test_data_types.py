@@ -5,8 +5,6 @@ that provide type safety across the DiffBio codebase.
 """
 
 import jax.numpy as jnp
-import pytest
-from jaxtyping import Array
 
 
 class TestSequenceProtocol:
