@@ -9,6 +9,11 @@ from diffbio.pipelines.differential_expression import (
     DEPipelineConfig,
     DifferentialExpressionPipeline,
 )
+from diffbio.pipelines.enhanced_variant_calling import (
+    EnhancedVariantCallingPipeline,
+    EnhancedVariantCallingPipelineConfig,
+    create_enhanced_variant_calling_pipeline,
+)
 from diffbio.pipelines.preprocessing import (
     PreprocessingPipeline,
     PreprocessingPipelineConfig,
@@ -31,6 +36,10 @@ __all__ = [
     # Differential Expression
     "DEPipelineConfig",
     "DifferentialExpressionPipeline",
+    # Enhanced Variant Calling
+    "EnhancedVariantCallingPipeline",
+    "EnhancedVariantCallingPipelineConfig",
+    "create_enhanced_variant_calling_pipeline",
     # Preprocessing
     "PreprocessingPipeline",
     "PreprocessingPipelineConfig",

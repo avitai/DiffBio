@@ -77,9 +77,7 @@ class TestSingleCellPipeline:
 
         # Simulate count data with some structure
         key = jax.random.key(42)
-        counts = jax.random.poisson(key, lam=5.0, shape=(n_cells, n_genes)).astype(
-            jnp.float32
-        )
+        counts = jax.random.poisson(key, lam=5.0, shape=(n_cells, n_genes)).astype(jnp.float32)
 
         # Ambient profile (average expression)
         ambient_profile = counts.mean(axis=0)
@@ -242,9 +240,7 @@ class TestSingleCellPipelineDifferentiability:
         n_genes = config.n_genes
 
         key = jax.random.key(0)
-        counts = jax.random.poisson(key, lam=5.0, shape=(n_cells, n_genes)).astype(
-            jnp.float32
-        )
+        counts = jax.random.poisson(key, lam=5.0, shape=(n_cells, n_genes)).astype(jnp.float32)
         ambient = counts.mean(axis=0)
         batch = jnp.zeros(n_cells, dtype=jnp.int32)
 
@@ -316,9 +312,7 @@ class TestSingleCellPipelineJITCompatibility:
         n_genes = config.n_genes
 
         key = jax.random.key(0)
-        counts = jax.random.poisson(key, lam=5.0, shape=(n_cells, n_genes)).astype(
-            jnp.float32
-        )
+        counts = jax.random.poisson(key, lam=5.0, shape=(n_cells, n_genes)).astype(jnp.float32)
         ambient = counts.mean(axis=0)
         batch = jnp.zeros(n_cells, dtype=jnp.int32)
 
