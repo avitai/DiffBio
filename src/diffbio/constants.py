@@ -119,6 +119,53 @@ PROTEIN_ALPHABET_SIZE = 20
 
 
 # =============================================================================
+# VAE / Latent Space Constants
+# =============================================================================
+
+DEFAULT_LATENT_DIM = 10
+"""Default latent dimension for VAE models."""
+
+DEFAULT_BETA_VAE = 1.0
+"""Default beta parameter for beta-VAE (KL weight)."""
+
+
+# =============================================================================
+# Graph Neural Network Constants
+# =============================================================================
+
+DEFAULT_NODE_FEATURES = 32
+"""Default node feature dimension for GNN."""
+
+DEFAULT_EDGE_FEATURES = 8
+"""Default edge feature dimension for GNN."""
+
+DEFAULT_NUM_HEADS = 4
+"""Default number of attention heads."""
+
+
+# =============================================================================
+# HMM Constants
+# =============================================================================
+
+DEFAULT_HMM_STATES = 3
+"""Default number of hidden states for HMM."""
+
+DEFAULT_HMM_EMISSIONS = 4
+"""Default number of emissions for HMM (matches DNA alphabet)."""
+
+
+# =============================================================================
+# Sequence Length Limits
+# =============================================================================
+
+DEFAULT_MAX_SEQ_LENGTH = 1000
+"""Default maximum sequence length."""
+
+DEFAULT_MAX_ALIGNMENT_LENGTH = 500
+"""Default maximum alignment length."""
+
+
+# =============================================================================
 # Data Dictionary Keys
 # =============================================================================
 # These constants ensure consistent key naming across operators

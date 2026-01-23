@@ -26,6 +26,10 @@ classifiers = [
 dependencies = [
   # Core framework - Datarax
   "datarax @ git+https://github.com/avitai/datarax.git",
+  # Artifex - Flax NNX neural network components (positional encoding, residual blocks, losses)
+  "artifex @ git+ssh://git@github.com/mahdi-shafiei/workshop.git",
+  # SciML - Scientific machine learning (GradNorm, neural operators)
+  "sciml @ git+ssh://git@github.com/mahdi-shafiei/SciML.git",
   # JAX ecosystem
   "beartype>=0.14.1",
   "chex>=0.1.7",
