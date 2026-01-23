@@ -7,6 +7,11 @@ Key technique: Use a small MLP to predict corrected base probabilities
 from a sliding window of sequence and quality data.
 
 Inspired by DeepConsensus approach for consensus calling.
+
+Inherits from TemperatureOperator to get:
+- _temperature property for temperature-controlled smoothing
+- soft_max() for logsumexp-based smooth maximum
+- soft_argmax() for soft position selection
 """
 
 from dataclasses import dataclass
@@ -15,10 +20,10 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.core.base_operators import TemperatureOperator
 from diffbio.utils.nn_utils import build_mlp_layers, ensure_rngs, init_learnable_param
 
 
@@ -40,9 +45,10 @@ class ErrorCorrectionConfig(OperatorConfig):
     num_layers: int = 2
     use_quality: bool = True
     temperature: float = 1.0
+    learnable_temperature: bool = True
 
 
-class SoftErrorCorrection(OperatorModule):
+class SoftErrorCorrection(TemperatureOperator):
     """Differentiable error correction for sequencing reads.
 
     This operator uses a neural network to refine base calls based on
@@ -103,8 +109,7 @@ class SoftErrorCorrection(OperatorModule):
         # Output layer (predicts 4 base probabilities)
         self.output_layer = nnx.Linear(in_features=out_dim, out_features=alphabet_size, rngs=rngs)
 
-        # Learnable parameters
-        self.temperature = init_learnable_param(config.temperature)
+        # Temperature is managed by TemperatureOperator via self._temperature
 
         # Learnable blending weight (how much to trust correction vs original)
         self.correction_weight = init_learnable_param(0.5)
@@ -176,7 +181,7 @@ class SoftErrorCorrection(OperatorModule):
         logits = self.output_layer(x)
 
         # Apply temperature-scaled softmax
-        temp = self.temperature[...]
+        temp = self._temperature
         probs = jax.nn.softmax(logits / temp)
 
         return probs

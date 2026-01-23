@@ -79,7 +79,7 @@ class TestDifferentiableDuplicateWeighting:
         config = DuplicateWeightingConfig()
         op = DifferentiableDuplicateWeighting(config, rngs=rngs)
         assert op is not None
-        assert float(op.temperature[...]) == 1.0
+        assert float(op._temperature) == 1.0
 
     def test_apply_single_sequence(self, rngs, sample_data):
         """Test apply with single sequence returns weight 1.0."""

@@ -9,6 +9,11 @@ over neighboring bins.
 
 Applications: Chromatin compartment identification, TAD boundary detection,
 3D genome structure prediction.
+
+Inherits from TemperatureOperator to get:
+- _temperature property for temperature-controlled smoothing
+- soft_max() for logsumexp-based smooth maximum
+- soft_argmax() for soft position selection
 """
 
 from dataclasses import dataclass
@@ -17,9 +22,10 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
+
+from diffbio.core.base_operators import TemperatureOperator
 
 
 @dataclass
@@ -201,7 +207,7 @@ class LocalAttention(nnx.Module):
         return out
 
 
-class HiCContactAnalysis(OperatorModule):
+class HiCContactAnalysis(TemperatureOperator):
     """Differentiable Hi-C contact analysis.
 
     This operator analyzes Hi-C contact matrices to identify
@@ -248,7 +254,7 @@ class HiCContactAnalysis(OperatorModule):
             rngs = nnx.Rngs(0)
 
         self.hidden_dim = config.hidden_dim
-        self.temperature = config.temperature
+        # Temperature is managed by TemperatureOperator via self._temperature
 
         # Contact pattern encoder
         self.contact_encoder = ContactEncoder(

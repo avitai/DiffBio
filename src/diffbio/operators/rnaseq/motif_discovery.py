@@ -2,6 +2,11 @@
 
 This module implements a differentiable version of motif discovery with
 PWM (Position Weight Matrix) learning for end-to-end gradient flow.
+
+Inherits from TemperatureOperator to get:
+- _temperature property for temperature-controlled smoothing
+- soft_max() for logsumexp-based smooth maximum
+- soft_argmax() for soft position selection
 """
 
 from dataclasses import dataclass
@@ -10,7 +15,8 @@ import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
+
+from diffbio.core.base_operators import TemperatureOperator
 
 
 @dataclass
@@ -30,10 +36,11 @@ class MotifDiscoveryConfig(OperatorConfig):
     num_motifs: int = 1
     alphabet_size: int = 4
     temperature: float = 1.0
+    learnable_temperature: bool = True
     background_prior: float = 0.25  # Uniform for DNA
 
 
-class DifferentiableMotifDiscovery(OperatorModule):
+class DifferentiableMotifDiscovery(TemperatureOperator):
     """Differentiable motif discovery with PWM learning.
 
     This operator implements a simplified differentiable version of MEME-style
@@ -89,8 +96,7 @@ class DifferentiableMotifDiscovery(OperatorModule):
 
         self.pwm_logits = nnx.Param(pwm_init)
 
-        # Learnable temperature
-        self.temperature = nnx.Param(jnp.array(config.temperature))
+        # Temperature is managed by TemperatureOperator via self._temperature
 
     def _get_pwm(self) -> jax.Array:
         """Get normalized PWM from logits.
@@ -99,7 +105,7 @@ class DifferentiableMotifDiscovery(OperatorModule):
             PWM of shape (num_motifs, motif_width, alphabet_size) with
             probabilities summing to 1 over the alphabet dimension.
         """
-        temperature = jnp.abs(self.temperature.value) + 1e-6
+        temperature = jnp.abs(self._temperature) + 1e-6
         return jax.nn.softmax(self.pwm_logits.value / temperature, axis=-1)
 
     def _scan_single_motif(self, sequence: jax.Array, pwm: jax.Array) -> jax.Array:
@@ -166,7 +172,7 @@ class DifferentiableMotifDiscovery(OperatorModule):
         Returns:
             Soft position indicators of shape (num_positions, num_motifs).
         """
-        temperature = jnp.abs(self.temperature.value) + 1e-6
+        temperature = jnp.abs(self._temperature) + 1e-6
         return jax.nn.sigmoid((scores - threshold) / temperature)
 
     def _apply_single(self, sequence: jax.Array) -> dict:

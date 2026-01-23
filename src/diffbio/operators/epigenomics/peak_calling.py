@@ -2,6 +2,11 @@
 
 This module implements a CNN-based differentiable peak caller that can be
 used for ChIP-seq and ATAC-seq analysis with end-to-end gradient flow.
+
+Inherits from TemperatureOperator to get:
+- _temperature property for temperature-controlled smoothing
+- soft_max() for logsumexp-based smooth maximum
+- soft_argmax() for soft position selection
 """
 
 from dataclasses import dataclass
@@ -10,7 +15,8 @@ import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
+
+from diffbio.core.base_operators import TemperatureOperator
 
 
 @dataclass
@@ -32,6 +38,7 @@ class PeakCallerConfig(OperatorConfig):
     kernel_sizes: tuple[int, ...] = (5, 11, 21)
     threshold: float = 0.5
     temperature: float = 1.0
+    learnable_temperature: bool = True
     min_peak_width: int = 50
 
 
@@ -121,7 +128,7 @@ class PeakDetectionCNN(nnx.Module):
         return scores.squeeze(-1)
 
 
-class DifferentiablePeakCaller(OperatorModule):
+class DifferentiablePeakCaller(TemperatureOperator):
     """Differentiable peak caller for ChIP-seq and ATAC-seq data.
 
     This operator uses a CNN-based approach to detect peaks in coverage
@@ -164,8 +171,7 @@ class DifferentiablePeakCaller(OperatorModule):
         # Learnable threshold parameter
         self.threshold = nnx.Param(jnp.array(config.threshold))
 
-        # Learnable temperature parameter
-        self.temperature = nnx.Param(jnp.array(config.temperature))
+        # Temperature is managed by TemperatureOperator via self._temperature
 
         # Peak detection CNN
         self.peak_cnn = PeakDetectionCNN(
@@ -277,7 +283,7 @@ class DifferentiablePeakCaller(OperatorModule):
         peak_scores = self.peak_cnn(coverage)
 
         # Apply soft threshold
-        temperature = jnp.abs(self.temperature.value) + 1e-6
+        temperature = jnp.abs(self._temperature) + 1e-6
         peak_probs = jax.nn.sigmoid((peak_scores - self.threshold.value) / temperature)
 
         # Find soft summits (local maxima)

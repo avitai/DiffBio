@@ -2,6 +2,11 @@
 
 This module implements a differentiable PSI calculation operator for
 alternative splicing analysis with end-to-end gradient flow.
+
+Inherits from TemperatureOperator to get:
+- _temperature property for temperature-controlled smoothing
+- soft_max() for logsumexp-based smooth maximum
+- soft_argmax() for soft position selection
 """
 
 from dataclasses import dataclass
@@ -10,7 +15,8 @@ import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
+
+from diffbio.core.base_operators import TemperatureOperator
 
 
 @dataclass
@@ -26,10 +32,11 @@ class SplicingPSIConfig(OperatorConfig):
 
     pseudocount: float = 1.0
     temperature: float = 1.0
+    learnable_temperature: bool = True
     min_total_reads: int = 10
 
 
-class SplicingPSI(OperatorModule):
+class SplicingPSI(TemperatureOperator):
     """Differentiable PSI calculation for alternative splicing analysis.
 
     PSI (Percent Spliced In) quantifies alternative splicing by computing
@@ -74,8 +81,7 @@ class SplicingPSI(OperatorModule):
         # Learnable pseudocount (must be positive)
         self.pseudocount = nnx.Param(jnp.array(config.pseudocount))
 
-        # Learnable temperature for confidence
-        self.temperature = nnx.Param(jnp.array(config.temperature))
+        # Temperature is managed by TemperatureOperator via self._temperature
 
     def _compute_psi(
         self, inclusion: jax.Array, exclusion: jax.Array, pseudocount: float
@@ -180,7 +186,7 @@ class SplicingPSI(OperatorModule):
 
         # Get learnable parameters (ensure positive)
         pseudocount = jnp.abs(self.pseudocount.value) + 1e-6
-        temperature = jnp.abs(self.temperature.value) + 1e-6
+        temperature = jnp.abs(self._temperature) + 1e-6
 
         # Compute PSI
         psi = self._compute_psi(inclusion, exclusion, pseudocount)

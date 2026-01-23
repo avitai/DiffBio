@@ -6,6 +6,11 @@ removal.
 
 Key technique: Soft clustering of reads by sequence similarity with weights
 inversely proportional to cluster size.
+
+Inherits from TemperatureOperator to get:
+- _temperature property for temperature-controlled smoothing
+- soft_max() for logsumexp-based smooth maximum
+- soft_argmax() for soft position selection
 """
 
 from dataclasses import dataclass
@@ -14,9 +19,10 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
+
+from diffbio.core.base_operators import TemperatureOperator
 
 
 @dataclass
@@ -31,11 +37,12 @@ class DuplicateWeightingConfig(OperatorConfig):
     """
 
     temperature: float = 1.0
+    learnable_temperature: bool = True
     similarity_threshold: float = 0.9
     embedding_dim: int = 32
 
 
-class DifferentiableDuplicateWeighting(OperatorModule):
+class DifferentiableDuplicateWeighting(TemperatureOperator):
     """Differentiable duplicate weighting for sequencing reads.
 
     This operator assigns probabilistic weights to reads based on their
@@ -80,7 +87,7 @@ class DifferentiableDuplicateWeighting(OperatorModule):
         super().__init__(config, rngs=rngs, name=name)
 
         # Learnable parameters
-        self.temperature = nnx.Param(jnp.array(config.temperature))
+        # Temperature is managed by TemperatureOperator via self._temperature
         self.similarity_threshold = nnx.Param(jnp.array(config.similarity_threshold))
 
         # Simple embedding: learned projection from one-hot to embedding
@@ -172,7 +179,7 @@ class DifferentiableDuplicateWeighting(OperatorModule):
         Returns:
             Soft cluster size for each sequence.
         """
-        temp = self.temperature[...]
+        temp = self._temperature
         threshold = self.similarity_threshold[...]
 
         # Soft thresholding: sigmoid((similarity - threshold) / temperature)

@@ -64,7 +64,7 @@ class TestSoftAdapterRemoval:
         op = SoftAdapterRemoval(config, rngs=rngs)
         assert op is not None
         assert op.adapter is not None
-        assert float(op.temperature[...]) == 1.0
+        assert float(op._temperature) == 1.0
 
     def test_initialization_custom_adapter(self, rngs):
         """Test initialization with custom adapter."""

@@ -133,7 +133,8 @@ class TestDifferentiablePeakCaller:
 
         assert peak_caller.config == config
         assert hasattr(peak_caller, "threshold")
-        assert hasattr(peak_caller, "temperature")
+        # Temperature is managed by TemperatureOperator base class (learnable)
+        assert hasattr(peak_caller, "temperature")  # Learnable Param
         assert hasattr(peak_caller, "peak_cnn")
 
     def test_initialization_without_rngs(self, config):

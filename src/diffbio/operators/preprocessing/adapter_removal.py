@@ -6,6 +6,11 @@ gradient flow.
 
 Key technique: Use SmoothSmithWaterman for adapter matching, then apply
 sigmoid-weighted soft trimming based on the match position.
+
+Inherits from TemperatureOperator to get:
+- _temperature property for temperature-controlled smoothing
+- soft_max() for logsumexp-based smooth maximum
+- soft_argmax() for soft position selection
 """
 
 from dataclasses import dataclass
@@ -14,10 +19,10 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.core.base_operators import TemperatureOperator
 from diffbio.sequences.dna import encode_dna_string
 
 
@@ -35,11 +40,12 @@ class AdapterRemovalConfig(OperatorConfig):
 
     adapter_sequence: str = "AGATCGGAAGAG"  # Illumina universal adapter
     temperature: float = 1.0
+    learnable_temperature: bool = True
     match_threshold: float = 0.5
     min_overlap: int = 6
 
 
-class SoftAdapterRemoval(OperatorModule):
+class SoftAdapterRemoval(TemperatureOperator):
     """Differentiable adapter removal for sequencing reads.
 
     This operator performs soft adapter trimming using a differentiable
@@ -84,7 +90,7 @@ class SoftAdapterRemoval(OperatorModule):
         self.adapter = nnx.Param(adapter_onehot)
 
         # Learnable parameters
-        self.temperature = nnx.Param(jnp.array(config.temperature))
+        # Temperature is managed by TemperatureOperator via self._temperature
         self.match_threshold = nnx.Param(jnp.array(config.match_threshold))
 
         # Scoring matrix for DNA alignment (match=2, mismatch=-1)
@@ -185,7 +191,7 @@ class SoftAdapterRemoval(OperatorModule):
             Soft trim position (continuous value).
         """
         seq_len = adapter_scores.shape[0]
-        temp = self.temperature[...]
+        temp = self._temperature
         threshold = self.match_threshold[...]
 
         # Apply threshold - only consider positions with good matches
@@ -226,7 +232,7 @@ class SoftAdapterRemoval(OperatorModule):
             Tuple of (weighted_sequence, weighted_quality).
         """
         seq_len = sequence.shape[0]
-        temp = self.temperature[...]
+        temp = self._temperature
 
         # Create position-based retention weights
         # retention = sigmoid((trim_pos - position) / temperature)

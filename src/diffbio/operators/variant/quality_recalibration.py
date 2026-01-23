@@ -7,6 +7,11 @@ Key technique: Differentiable GMM enables end-to-end learning of
 quality distributions, with sigmoid thresholds maintaining gradients.
 
 Applications: VQSR-style variant filtering, quality score recalibration.
+
+Inherits from TemperatureOperator to get:
+- _temperature property for temperature-controlled smoothing
+- soft_max() for logsumexp-based smooth maximum
+- soft_argmax() for soft position selection
 """
 
 from dataclasses import dataclass
@@ -15,9 +20,10 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
+
+from diffbio.core.base_operators import TemperatureOperator
 
 
 @dataclass
@@ -37,7 +43,7 @@ class VariantQualityFilterConfig(OperatorConfig):
     temperature: float = 1.0
 
 
-class SoftVariantQualityFilter(OperatorModule):
+class SoftVariantQualityFilter(TemperatureOperator):
     """Differentiable variant quality filter using GMM.
 
     This operator implements VQSR-style variant quality recalibration
@@ -84,7 +90,7 @@ class SoftVariantQualityFilter(OperatorModule):
         self.n_components = config.n_components
         self.n_features = config.n_features
         self.threshold = config.threshold
-        self.temperature = config.temperature
+        # Temperature is managed by TemperatureOperator via self._temperature
 
         # Initialize GMM parameters
         # Component means: (n_components, n_features)
@@ -112,7 +118,7 @@ class SoftVariantQualityFilter(OperatorModule):
         Returns:
             Mixing weights summing to 1.
         """
-        return jax.nn.softmax(self.log_mixing_weights[...] / self.temperature)
+        return jax.nn.softmax(self.log_mixing_weights[...] / self._temperature)
 
     def get_variances(self) -> Float[Array, "n_components n_features"]:
         """Get positive variances from log parameters.
@@ -172,7 +178,7 @@ class SoftVariantQualityFilter(OperatorModule):
         log_joint = log_probs + jnp.log(mixing_weights + 1e-10)
 
         # Responsibilities via softmax (with temperature)
-        responsibilities = jax.nn.softmax(log_joint / self.temperature, axis=-1)
+        responsibilities = jax.nn.softmax(log_joint / self._temperature, axis=-1)
 
         return responsibilities
 
@@ -242,7 +248,7 @@ class SoftVariantQualityFilter(OperatorModule):
         quality_scores = self.compute_quality_scores(features)
 
         # Soft filter weights using sigmoid threshold
-        filter_weights = jax.nn.sigmoid((quality_scores - self.threshold) / self.temperature)
+        filter_weights = jax.nn.sigmoid((quality_scores - self.threshold) / self._temperature)
 
         # Component responsibilities
         component_probs = self.compute_responsibilities(features)

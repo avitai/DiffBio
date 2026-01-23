@@ -70,7 +70,8 @@ class TestSplicingPSI:
 
         assert psi_op.config == config
         assert hasattr(psi_op, "pseudocount")
-        assert hasattr(psi_op, "temperature")
+        # Temperature is managed by TemperatureOperator base class
+        assert psi_op._temperature == 1.0
 
     def test_initialization_without_rngs(self, config):
         """Test initialization without providing RNGs."""
