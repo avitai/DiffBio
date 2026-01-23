@@ -7,6 +7,11 @@ Key technique: Use the forward algorithm with logsumexp for
 differentiable profile-sequence alignment scoring.
 
 Applications: Protein domain detection, remote homology search.
+
+Inherits from TemperatureOperator to get:
+- _temperature property for temperature-controlled smoothing
+- soft_max() for logsumexp-based smooth maximum
+- soft_argmax() for soft position selection
 """
 
 from dataclasses import dataclass
@@ -15,9 +20,10 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
+
+from diffbio.core.base_operators import TemperatureOperator
 
 
 @dataclass
@@ -37,7 +43,7 @@ class ProfileHMMConfig(OperatorConfig):
     learnable_profile: bool = True
 
 
-class ProfileHMMSearch(OperatorModule):
+class ProfileHMMSearch(TemperatureOperator):
     """Profile HMM search with differentiable scoring.
 
     This operator implements a simplified profile HMM with match, insert,
@@ -53,6 +59,11 @@ class ProfileHMMSearch(OperatorModule):
     - M->M, M->I, M->D (from match)
     - I->M, I->I (from insert)
     - D->M, D->D (from delete)
+
+    Inherits from TemperatureOperator to get:
+    - _temperature property for temperature-controlled smoothing
+    - soft_max() for logsumexp-based smooth maximum
+    - soft_argmax() for soft position selection
 
     Args:
         config: ProfileHMMConfig with model parameters.
@@ -87,7 +98,7 @@ class ProfileHMMSearch(OperatorModule):
 
         self.profile_length = config.profile_length
         self.alphabet_size = config.alphabet_size
-        self.temperature = config.temperature
+        # Temperature is now managed by TemperatureOperator via self._temperature
 
         # Initialize match emissions (profile_length, alphabet_size)
         key = rngs.params()
@@ -117,7 +128,7 @@ class ProfileHMMSearch(OperatorModule):
         Returns:
             Log match emission probabilities.
         """
-        return jax.nn.log_softmax(self.log_match_emissions[...] / self.temperature, axis=1)
+        return jax.nn.log_softmax(self.log_match_emissions[...] / self._temperature, axis=1)
 
     def get_insert_emissions(self) -> Float[Array, "profile_length alphabet_size"]:
         """Get normalized insert emission probabilities.
@@ -125,7 +136,7 @@ class ProfileHMMSearch(OperatorModule):
         Returns:
             Log insert emission probabilities.
         """
-        return jax.nn.log_softmax(self.log_insert_emissions[...] / self.temperature, axis=1)
+        return jax.nn.log_softmax(self.log_insert_emissions[...] / self._temperature, axis=1)
 
     def get_transitions(self) -> dict[str, Float[Array, "profile_length"]]:
         """Get normalized transition probabilities.
@@ -136,13 +147,13 @@ class ProfileHMMSearch(OperatorModule):
         trans = self.log_transitions[...]
 
         # Normalize M->* transitions (positions 0, 1, 2)
-        log_m_trans = jax.nn.log_softmax(trans[:, :3] / self.temperature, axis=1)
+        log_m_trans = jax.nn.log_softmax(trans[:, :3] / self._temperature, axis=1)
 
         # Normalize I->* transitions (positions 3, 4)
-        log_i_trans = jax.nn.log_softmax(trans[:, 3:5] / self.temperature, axis=1)
+        log_i_trans = jax.nn.log_softmax(trans[:, 3:5] / self._temperature, axis=1)
 
         # Normalize D->* transitions (positions 5, 6)
-        log_d_trans = jax.nn.log_softmax(trans[:, 5:7] / self.temperature, axis=1)
+        log_d_trans = jax.nn.log_softmax(trans[:, 5:7] / self._temperature, axis=1)
 
         return {
             "m_to_m": log_m_trans[:, 0],
@@ -276,7 +287,7 @@ class ProfileHMMSearch(OperatorModule):
         match_scores = jnp.einsum("sa,pa->sp", sequence, jnp.exp(log_match))
 
         # Normalize across profile positions for each sequence position
-        posteriors = jax.nn.softmax(match_scores / self.temperature, axis=1)
+        posteriors = jax.nn.softmax(match_scores / self._temperature, axis=1)
 
         # Expand to include I/D placeholder dimensions
         # Shape: (seq_len, profile_length, 3) where dim 2 is [M, I, D]

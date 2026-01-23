@@ -95,7 +95,7 @@ class TestSmoothSmithWaterman:
         config = SmithWatermanConfig(temperature=1.0)
         op = SmoothSmithWaterman(config, scoring_matrix=simple_scoring, rngs=rngs)
         assert op is not None
-        assert float(op.temperature[...]) == 1.0
+        assert float(op._temperature) == 1.0  # Use TemperatureOperator's property
 
     def test_identical_sequences_high_score(self, rngs, simple_scoring):
         """Test that identical sequences produce high alignment score."""
@@ -252,8 +252,8 @@ class TestGradientFlow:
         assert hasattr(grads, "scoring_matrix")
 
     def test_gradient_wrt_temperature(self, rngs, simple_scoring):
-        """Test gradients flow with respect to temperature."""
-        config = SmithWatermanConfig(temperature=1.0)
+        """Test gradients flow with respect to temperature when learnable."""
+        config = SmithWatermanConfig(temperature=1.0, learnable_temperature=True)
         op = SmoothSmithWaterman(config, scoring_matrix=simple_scoring, rngs=rngs)
 
         seq1 = encode_dna_string("ACGT")
@@ -266,7 +266,7 @@ class TestGradientFlow:
 
         _, grads = loss_fn(op)
 
-        # Check gradients exist for temperature
+        # Check gradients exist for temperature when learnable_temperature=True
         assert hasattr(grads, "temperature")
 
 

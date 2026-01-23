@@ -9,6 +9,11 @@ alignment with soft gap handling.
 
 Applications: Multiple sequence alignment for homology detection, phylogenetic
 analysis, and protein family characterization.
+
+Inherits from TemperatureOperator to get:
+- _temperature property for temperature-controlled smoothing
+- soft_max() for logsumexp-based smooth maximum
+- soft_argmax() for soft position selection
 """
 
 from dataclasses import dataclass
@@ -17,10 +22,10 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.core.base_operators import TemperatureOperator
 from diffbio.utils.nn_utils import ensure_rngs
 
 
@@ -182,7 +187,7 @@ class ProfileBuilder(nnx.Module):
         return profile
 
 
-class SoftProgressiveMSA(OperatorModule):
+class SoftProgressiveMSA(TemperatureOperator):
     """Differentiable progressive multiple sequence alignment.
 
     This operator performs multiple sequence alignment using soft
@@ -194,6 +199,11 @@ class SoftProgressiveMSA(OperatorModule):
     3. Build soft guide tree from distances
     4. Progressive alignment following guide tree order
     5. Build consensus profile
+
+    Inherits from TemperatureOperator to get:
+    - _temperature property for temperature-controlled smoothing
+    - soft_max() for logsumexp-based smooth maximum
+    - soft_argmax() for soft position selection
 
     Args:
         config: SoftProgressiveMSAConfig with model parameters.
@@ -226,7 +236,7 @@ class SoftProgressiveMSA(OperatorModule):
         rngs = ensure_rngs(rngs)
 
         self.hidden_dim = config.hidden_dim
-        self.temperature = config.temperature
+        # Temperature is now managed by TemperatureOperator via self._temperature
         self.alphabet_size = config.alphabet_size
 
         # Sequence encoder for computing pairwise similarities
@@ -308,7 +318,8 @@ class SoftProgressiveMSA(OperatorModule):
 
         # Soft alignment via attention
         # Each position in seq1 attends to positions in seq2
-        attn_weights = jax.nn.softmax(match_scores / self.temperature, axis=-1)
+        # Use inherited _temperature property from TemperatureOperator
+        attn_weights = jax.nn.softmax(match_scores / self._temperature, axis=-1)
 
         # Soft-aligned seq2 based on seq1 positions
         aligned_seq2_to_seq1 = jnp.einsum("ij,ja->ia", attn_weights, seq2)

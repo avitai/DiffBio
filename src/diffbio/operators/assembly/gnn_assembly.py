@@ -9,6 +9,10 @@ through the assembly process.
 
 Applications: Differentiable genome assembly, assembly polishing,
 scaffolding optimization.
+
+Inherits from GraphOperator to get:
+- scatter_aggregate() for message aggregation
+- global_pool() for graph-level pooling
 """
 
 from dataclasses import dataclass
@@ -16,14 +20,16 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
-from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
+from diffbio.configs import TemperatureConfig
+from diffbio.core.base_operators import GraphOperator
+from diffbio.utils.nn_utils import init_learnable_param
+
 
 @dataclass
-class GNNAssemblyNavigatorConfig(OperatorConfig):
+class GNNAssemblyNavigatorConfig(TemperatureConfig):
     """Configuration for GNNAssemblyNavigator.
 
     Attributes:
@@ -274,7 +280,7 @@ class GNNLayer(nnx.Module):
         return x
 
 
-class GNNAssemblyNavigator(OperatorModule):
+class GNNAssemblyNavigator(GraphOperator):
     """Graph Neural Network for assembly graph traversal.
 
     This operator uses message passing with graph attention to update
@@ -287,6 +293,13 @@ class GNNAssemblyNavigator(OperatorModule):
     3. Compute edge scores from source/target node embeddings
     4. Apply sigmoid for traversal probabilities
     5. Compute path confidence from edge scores
+
+    Inherits from GraphOperator to get:
+    - scatter_aggregate() for message aggregation utilities
+    - global_pool() for graph-level pooling
+
+    Uses temperature-controlled smoothing:
+    - _temperature property for temperature-controlled sigmoid
 
     Args:
         config: GNNAssemblyNavigatorConfig with model parameters.
@@ -320,7 +333,13 @@ class GNNAssemblyNavigator(OperatorModule):
             rngs = nnx.Rngs(0)
 
         self.hidden_dim = config.hidden_dim
-        self.temperature = config.temperature
+
+        # Temperature management (similar to TemperatureOperator pattern)
+        if config.learnable_temperature:
+            self._temperature_param = init_learnable_param(config.temperature)
+        else:
+            self._temperature_param = None
+            self._fixed_temperature = config.temperature
 
         # Input projection
         self.input_projection = nnx.Linear(
@@ -349,6 +368,13 @@ class GNNAssemblyNavigator(OperatorModule):
             out_features=1,
             rngs=rngs,
         )
+
+    @property
+    def _temperature(self) -> float:
+        """Get current temperature value."""
+        if self._temperature_param is not None:
+            return jnp.abs(self._temperature_param[...]) + 1e-6
+        return self._fixed_temperature
 
     def compute_edge_scores(
         self,
@@ -426,7 +452,8 @@ class GNNAssemblyNavigator(OperatorModule):
         edge_scores = self.compute_edge_scores(node_emb, edge_index)
 
         # Traversal probabilities via sigmoid
-        traversal_probs = jax.nn.sigmoid(edge_scores / self.temperature)
+        # Use inherited _temperature property for temperature-controlled sigmoid
+        traversal_probs = jax.nn.sigmoid(edge_scores / self._temperature)
 
         # Path confidence: mean probability weighted by score magnitude
         path_confidence = jnp.mean(traversal_probs * jnp.abs(edge_scores))

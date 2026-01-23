@@ -2,6 +2,11 @@
 
 This module provides a differentiable approximation of pileup generation,
 which aggregates aligned reads at each position of a reference sequence.
+
+Inherits from TemperatureOperator to get:
+- _temperature property for temperature-controlled smoothing
+- soft_max() for logsumexp-based smooth maximum
+- soft_argmax() for soft position selection
 """
 
 from dataclasses import dataclass
@@ -9,23 +14,24 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
-from diffbio.configs import DiffBioOperatorConfig
+from diffbio.configs import TemperatureConfig
 from diffbio.constants import (
     DEFAULT_MAX_COVERAGE,
     DEFAULT_MIN_COVERAGE,
     DEFAULT_PILEUP_WINDOW_SIZE,
     EPSILON,
 )
-from diffbio.utils.nn_utils import init_learnable_param
+from diffbio.core.base_operators import TemperatureOperator
 
 
 @dataclass
-class PileupConfig(DiffBioOperatorConfig):
+class PileupConfig(TemperatureConfig):
     """Configuration for differentiable pileup.
+
+    Inherits from TemperatureConfig to get temperature and learnable_temperature fields.
 
     Attributes:
         window_size: Size of context window around each position.
@@ -50,13 +56,18 @@ class PileupConfig(DiffBioOperatorConfig):
     apply_softmax: bool = True
 
 
-class DifferentiablePileup(OperatorModule):
+class DifferentiablePileup(TemperatureOperator):
     """Differentiable pileup generator.
 
     Aggregates aligned reads into a position-wise nucleotide distribution
     that can be used for variant calling. Unlike traditional pileup which
     simply counts bases, this implementation uses soft weighting that
     allows gradients to flow through.
+
+    Inherits from TemperatureOperator to get:
+    - _temperature property for temperature-controlled smoothing
+    - soft_max() for logsumexp-based smooth maximum
+    - soft_argmax() for soft position selection
 
     Args:
         config: Pileup configuration.
@@ -79,7 +90,7 @@ class DifferentiablePileup(OperatorModule):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-        self.temperature = init_learnable_param(1.0)
+        # Temperature is now managed by TemperatureOperator via self._temperature
 
     def compute_pileup(
         self,
@@ -157,8 +168,9 @@ class DifferentiablePileup(OperatorModule):
         pileup_normalized = pileup / coverage_safe
 
         # Optionally apply softmax
+        # Use inherited _temperature property from TemperatureOperator
         if self.config.apply_softmax:
-            pileup_normalized = jax.nn.softmax(pileup_normalized / self.temperature[...], axis=-1)
+            pileup_normalized = jax.nn.softmax(pileup_normalized / self._temperature, axis=-1)
 
         result = {"pileup": pileup_normalized}
 

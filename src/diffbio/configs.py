@@ -37,9 +37,12 @@ class TemperatureConfig(OperatorConfig):
         temperature: Temperature for smooth operations.
             Lower = sharper (closer to hard operations).
             Higher = smoother (more gradient flow).
+        learnable_temperature: Whether temperature is a learnable parameter.
+            If True, temperature will be an nnx.Param that receives gradients.
     """
 
     temperature: float = DEFAULT_TEMPERATURE
+    learnable_temperature: bool = False
 
 
 @dataclass

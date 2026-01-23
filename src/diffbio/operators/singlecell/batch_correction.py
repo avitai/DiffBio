@@ -7,6 +7,11 @@ Key technique: Unrolled iterations enable gradient flow through
 the entire batch correction process.
 
 Applications: Multi-sample integration, batch effect removal.
+
+Inherits from TemperatureOperator to get:
+- _temperature property for temperature-controlled smoothing
+- soft_max() for logsumexp-based smooth maximum
+- soft_argmax() for soft position selection
 """
 
 from dataclasses import dataclass
@@ -15,9 +20,10 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
+
+from diffbio.core.base_operators import TemperatureOperator
 
 
 @dataclass
@@ -43,7 +49,7 @@ class BatchCorrectionConfig(OperatorConfig):
     temperature: float = 1.0
 
 
-class DifferentiableHarmony(OperatorModule):
+class DifferentiableHarmony(TemperatureOperator):
     """Differentiable Harmony-style batch correction.
 
     This operator implements iterative batch correction using soft
@@ -56,6 +62,11 @@ class DifferentiableHarmony(OperatorModule):
     3. Compute batch-aware centroid corrections
     4. Update cell embeddings toward corrected centroids
     5. Repeat for n_iterations
+
+    Inherits from TemperatureOperator to get:
+    - _temperature property for temperature-controlled smoothing
+    - soft_max() for logsumexp-based smooth maximum
+    - soft_argmax() for soft position selection
 
     Args:
         config: BatchCorrectionConfig with model parameters.
@@ -94,7 +105,7 @@ class DifferentiableHarmony(OperatorModule):
         self.n_iterations = config.n_iterations
         self.theta = config.theta
         self.sigma = config.sigma
-        self.temperature = config.temperature
+        # Temperature is now managed by TemperatureOperator via self._temperature
 
         # Initialize cluster centroids
         key = rngs.params()
@@ -123,7 +134,8 @@ class DifferentiableHarmony(OperatorModule):
         distances_sq = emb_sq + cent_sq - 2 * dot_product
 
         # Soft assignments
-        assignments = jax.nn.softmax(-distances_sq / (self.sigma * self.temperature), axis=-1)
+        # Use inherited _temperature property from TemperatureOperator
+        assignments = jax.nn.softmax(-distances_sq / (self.sigma * self._temperature), axis=-1)
 
         return assignments
 

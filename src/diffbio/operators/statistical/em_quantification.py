@@ -7,6 +7,11 @@ Key technique: Fixed number of EM iterations enables gradient flow
 through all steps of the algorithm.
 
 Applications: RNA-seq transcript quantification, isoform abundance estimation.
+
+Inherits from TemperatureOperator to get:
+- _temperature property for temperature-controlled smoothing
+- soft_max() for logsumexp-based smooth maximum
+- soft_argmax() for soft position selection
 """
 
 from dataclasses import dataclass
@@ -15,9 +20,10 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
+
+from diffbio.core.base_operators import TemperatureOperator
 
 
 @dataclass
@@ -35,7 +41,7 @@ class EMQuantifierConfig(OperatorConfig):
     temperature: float = 1.0
 
 
-class DifferentiableEMQuantifier(OperatorModule):
+class DifferentiableEMQuantifier(TemperatureOperator):
     """Differentiable EM for transcript quantification.
 
     This operator implements the EM algorithm for estimating transcript
@@ -51,6 +57,11 @@ class DifferentiableEMQuantifier(OperatorModule):
        abundances = sum(weights) / effective_lengths
        abundances = abundances / sum(abundances)
     4. Repeat for n_iterations
+
+    Inherits from TemperatureOperator to get:
+    - _temperature property for temperature-controlled smoothing
+    - soft_max() for logsumexp-based smooth maximum
+    - soft_argmax() for soft position selection
 
     Args:
         config: EMQuantifierConfig with model parameters.
@@ -85,7 +96,7 @@ class DifferentiableEMQuantifier(OperatorModule):
 
         self.n_transcripts = config.n_transcripts
         self.n_iterations = config.n_iterations
-        self.temperature = config.temperature
+        # Temperature is now managed by TemperatureOperator via self._temperature
 
         # Initialize log abundances (will be normalized via softmax)
         # Shape: (n_transcripts,)
@@ -125,8 +136,9 @@ class DifferentiableEMQuantifier(OperatorModule):
         scores = compatibility * rate  # (n_reads, n_transcripts)
 
         # Normalize per read (softmax with temperature)
+        # Use inherited _temperature property from TemperatureOperator
         weights = jax.nn.softmax(
-            jnp.log(scores + 1e-10) / self.temperature, axis=1
+            jnp.log(scores + 1e-10) / self._temperature, axis=1
         )  # (n_reads, n_transcripts)
 
         # M-step: Update abundances

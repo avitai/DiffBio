@@ -16,12 +16,12 @@ from typing import Any, NamedTuple
 
 import jax
 import jax.numpy as jnp
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.configs import TemperatureConfig
 from diffbio.constants import DEFAULT_GAP_EXTEND, DEFAULT_GAP_OPEN
+from diffbio.core.base_operators import TemperatureOperator
 from diffbio.utils.nn_utils import init_learnable_param
 
 
@@ -54,7 +54,7 @@ class AlignmentResult(NamedTuple):
     soft_alignment: Float[Array, "len1 len2"]
 
 
-class SmoothSmithWaterman(OperatorModule):
+class SmoothSmithWaterman(TemperatureOperator):
     """Differentiable Smith-Waterman local alignment.
 
     This operator implements a smooth version of the Smith-Waterman algorithm
@@ -64,6 +64,10 @@ class SmoothSmithWaterman(OperatorModule):
     The smoothness is controlled by the temperature parameter:
     - temperature -> 0: Approaches hard max (standard Smith-Waterman)
     - temperature -> inf: Uniform averaging
+
+    Inherits from TemperatureOperator to get:
+    - Learnable temperature parameter management
+    - soft_max() method using logsumexp relaxation
 
     Args:
         config: SmithWatermanConfig with alignment parameters.
@@ -97,24 +101,10 @@ class SmoothSmithWaterman(OperatorModule):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        # Learnable parameters
-        self.temperature = init_learnable_param(config.temperature)
+        # Domain-specific learnable parameters (temperature managed by base class)
         self.scoring_matrix = nnx.Param(scoring_matrix)
         self.gap_open = init_learnable_param(config.gap_open)
         self.gap_extend = init_learnable_param(config.gap_extend)
-
-    def _smooth_max(self, *args: Array) -> Array:
-        """Compute smooth maximum using logsumexp.
-
-        Args:
-            *args: Arrays to take smooth max over.
-
-        Returns:
-            Smooth maximum value.
-        """
-        temp = self.temperature[...]
-        stacked = jnp.stack(args, axis=-1)
-        return temp * jax.scipy.special.logsumexp(stacked / temp, axis=-1)
 
     def _compute_score_matrix(
         self,
@@ -180,12 +170,9 @@ class SmoothSmithWaterman(OperatorModule):
                 up = H[i, j + 1] + gap_penalty
                 left = H_prev_col + gap_penalty
 
-                h_new = self._smooth_max(
-                    jnp.array(0.0),
-                    diag,
-                    up,
-                    left,
-                )
+                # Use inherited soft_max from TemperatureOperator
+                candidates = jnp.stack([jnp.array(0.0), diag, up, left], axis=-1)
+                h_new = self.soft_max(candidates, axis=-1)
                 return h_new, h_new
 
             # Scan across columns
@@ -202,12 +189,13 @@ class SmoothSmithWaterman(OperatorModule):
 
         # Compute final score as smooth max over all positions
         # (local alignment can end anywhere)
-        final_score = self._smooth_max(jnp.array(0.0), jnp.max(H))
+        final_candidates = jnp.stack([jnp.array(0.0), jnp.max(H)], axis=-1)
+        final_score = self.soft_max(final_candidates, axis=-1)
 
         # Compute soft alignment (position correspondence probabilities)
         # This is the softmax of the DP matrix (excluding borders)
         H_inner = H[1:, 1:]  # (len1, len2)
-        temp = self.temperature[...]
+        temp = self._temperature  # Use property from TemperatureOperator
         soft_alignment = jax.nn.softmax(H_inner.flatten() / temp).reshape(len1, len2)
 
         return AlignmentResult(

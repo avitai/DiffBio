@@ -13,9 +13,10 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
+
+from diffbio.core.base_operators import EncoderDecoderOperator
 
 
 @dataclass
@@ -39,7 +40,7 @@ class VAENormalizerConfig(OperatorConfig):
     stream_name: str = "sample"
 
 
-class VAENormalizer(OperatorModule):
+class VAENormalizer(EncoderDecoderOperator):
     """Variational autoencoder for count normalization.
 
     This operator learns a low-dimensional latent representation of
@@ -50,6 +51,11 @@ class VAENormalizer(OperatorModule):
     - Encoder: counts -> latent (mean, logvar)
     - Reparameterization: z = mean + exp(0.5 * logvar) * epsilon
     - Decoder: z -> gene expression rates
+
+    Inherits from EncoderDecoderOperator to get:
+    - reparameterize() for sampling with reparameterization trick
+    - kl_divergence() for KL from standard normal
+    - elbo_loss() for combining reconstruction and KL losses
 
     Args:
         config: VAENormalizerConfig with model parameters.
@@ -82,7 +88,6 @@ class VAENormalizer(OperatorModule):
         if rngs is None:
             rngs = nnx.Rngs(0)
 
-        self.latent_dim = config.latent_dim
         self.n_genes = config.n_genes
         self.stream_name = config.stream_name
 
@@ -117,9 +122,6 @@ class VAENormalizer(OperatorModule):
         # Output layer (log rates)
         self.fc_output = nnx.Linear(in_features=prev_dim, out_features=config.n_genes, rngs=rngs)
 
-        # Store rngs for sampling
-        self._rngs = rngs
-
     def encode(
         self,
         counts: Float[Array, "n_genes"],
@@ -149,25 +151,7 @@ class VAENormalizer(OperatorModule):
 
         return mean, logvar
 
-    def reparameterize(
-        self,
-        mean: Float[Array, "latent_dim"],
-        logvar: Float[Array, "latent_dim"],
-        key: jax.Array,
-    ) -> Float[Array, "latent_dim"]:
-        """Reparameterization trick for sampling from latent distribution.
-
-        Args:
-            mean: Mean of latent distribution.
-            logvar: Log variance of latent distribution.
-            key: JAX random key for sampling.
-
-        Returns:
-            Sampled latent vector.
-        """
-        std = jnp.exp(0.5 * logvar)
-        eps = jax.random.normal(key, shape=mean.shape)
-        return mean + std * eps
+    # reparameterize() is inherited from EncoderDecoderOperator
 
     def decode(
         self,
@@ -221,37 +205,20 @@ class VAENormalizer(OperatorModule):
         nll = jnp.sum(rate - counts * log_rate)
         return nll
 
-    def kl_divergence(
-        self,
-        mean: Float[Array, "latent_dim"],
-        logvar: Float[Array, "latent_dim"],
-    ) -> Float[Array, ""]:
-        """Compute KL divergence from prior N(0, 1).
-
-        Args:
-            mean: Mean of approximate posterior.
-            logvar: Log variance of approximate posterior.
-
-        Returns:
-            KL divergence.
-        """
-        # KL(q(z|x) || p(z)) where p(z) = N(0, 1)
-        # = -0.5 * sum(1 + logvar - mean^2 - exp(logvar))
-        kl = -0.5 * jnp.sum(1 + logvar - mean**2 - jnp.exp(logvar))
-        return kl
+    # kl_divergence() is inherited from EncoderDecoderOperator
 
     def compute_elbo_loss(
         self,
         counts: Float[Array, "n_genes"],
         library_size: Float[Array, ""],
-        key: jax.Array,
     ) -> Float[Array, ""]:
         """Compute negative ELBO loss.
+
+        Uses inherited reparameterize() and elbo_loss() from EncoderDecoderOperator.
 
         Args:
             counts: Gene expression counts.
             library_size: Total counts.
-            key: Random key for sampling.
 
         Returns:
             Negative ELBO (reconstruction loss + KL divergence).
@@ -259,17 +226,15 @@ class VAENormalizer(OperatorModule):
         # Encode
         mean, logvar = self.encode(counts)
 
-        # Sample latent
-        z = self.reparameterize(mean, logvar, key)
+        # Sample latent using inherited reparameterize (uses self.rngs)
+        z = self.reparameterize(mean, logvar)
 
         # Decode
         log_rate = self.decode(z, library_size)
 
-        # Losses
+        # Compute losses using inherited elbo_loss
         recon_loss = self.reconstruction_loss(counts, log_rate)
-        kl_loss = self.kl_divergence(mean, logvar)
-
-        return recon_loss + kl_loss
+        return self.elbo_loss(recon_loss, mean, logvar)
 
     def apply(
         self,
@@ -311,14 +276,9 @@ class VAENormalizer(OperatorModule):
         # Encode to latent distribution
         mean, logvar = self.encode(counts)
 
-        # Sample from latent distribution
-        # Get RNG key for sampling
-        if self._rngs is not None and self.stream_name in self._rngs:
-            key = self._rngs[self.stream_name]()
-        else:
-            key = jax.random.key(0)
-
-        z = self.reparameterize(mean, logvar, key)
+        # Sample from latent distribution using inherited reparameterize
+        # (uses self.rngs from EncoderDecoderOperator)
+        z = self.reparameterize(mean, logvar)
 
         # Decode to gene expression rates
         log_rate = self.decode(z, library_size)

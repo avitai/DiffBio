@@ -2,6 +2,15 @@
 
 This module implements a differentiable HMM-based chromatin state annotator
 that can be used for learning chromatin states from histone modification data.
+
+Inherits from TemperatureOperator to get:
+- _temperature property for temperature-controlled smoothing
+- soft_max() for logsumexp-based smooth maximum
+- soft_argmax() for soft Viterbi decoding
+
+Note: This uses a Bernoulli emission model (for histone marks) rather than
+categorical emissions, so it doesn't inherit from HMMOperator which assumes
+categorical emissions.
 """
 
 from dataclasses import dataclass
@@ -10,7 +19,8 @@ import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
+
+from diffbio.core.base_operators import TemperatureOperator
 
 
 @dataclass
@@ -29,7 +39,7 @@ class ChromatinStateConfig(OperatorConfig):
     temperature: float = 1.0
 
 
-class ChromatinStateAnnotator(OperatorModule):
+class ChromatinStateAnnotator(TemperatureOperator):
     """Differentiable chromatin state annotator using HMM.
 
     This operator implements a differentiable Hidden Markov Model for
@@ -41,6 +51,14 @@ class ChromatinStateAnnotator(OperatorModule):
     - Learnable transition probabilities between states
     - Learnable emission probabilities for each histone mark per state
     - Learnable initial state distribution
+
+    Inherits from TemperatureOperator to get:
+    - _temperature property for temperature-controlled smoothing
+    - soft_max() for logsumexp-based smooth maximum
+    - soft_argmax() for soft Viterbi decoding
+
+    Note: Uses Bernoulli emission model for histone marks rather than
+    categorical emissions (doesn't inherit from HMMOperator).
 
     Example:
         ```python
@@ -89,9 +107,7 @@ class ChromatinStateAnnotator(OperatorModule):
         # Initial state distribution
         initial_init = jax.random.normal(k3, (num_states,)) * 0.1
         self.initial_logits = nnx.Param(initial_init)
-
-        # Temperature parameter
-        self.temperature = nnx.Param(jnp.array(config.temperature))
+        # Temperature is now managed by TemperatureOperator via self._temperature
 
     def _log_transition_matrix(self) -> jax.Array:
         """Get log transition probabilities (row-normalized)."""
@@ -233,7 +249,8 @@ class ChromatinStateAnnotator(OperatorModule):
         """
         log_trans = self._log_transition_matrix()
         log_init = self._log_initial_distribution()
-        temperature = jnp.abs(self.temperature.value) + 1e-6
+        # Use inherited _temperature property from TemperatureOperator
+        temperature = jnp.abs(self._temperature) + 1e-6
 
         def viterbi_step(log_delta_prev, log_emit_t):
             # Soft max over previous states

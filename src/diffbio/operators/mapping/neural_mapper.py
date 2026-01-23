@@ -15,14 +15,15 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
-from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.configs import TemperatureConfig
+from diffbio.core.base_operators import TemperatureOperator
+
 
 @dataclass
-class NeuralReadMapperConfig(OperatorConfig):
+class NeuralReadMapperConfig(TemperatureConfig):
     """Configuration for NeuralReadMapper.
 
     Attributes:
@@ -292,7 +293,7 @@ class TransformerBlock(nnx.Module):
         return x
 
 
-class NeuralReadMapper(OperatorModule):
+class NeuralReadMapper(TemperatureOperator):
     """Neural network-based read mapper.
 
     This operator uses cross-attention between read and reference
@@ -305,6 +306,11 @@ class NeuralReadMapper(OperatorModule):
     3. Compute position-wise alignment scores
     4. Apply softmax for position probabilities
     5. Compute mapping quality from confidence
+
+    Inherits from TemperatureOperator to get:
+    - _temperature property for temperature-controlled smoothing
+    - soft_max() for logsumexp-based smooth maximum
+    - soft_argmax() for soft position selection
 
     Args:
         config: NeuralReadMapperConfig with model parameters.
@@ -340,7 +346,7 @@ class NeuralReadMapper(OperatorModule):
         self.embedding_dim = config.embedding_dim
         self.num_heads = config.num_heads
         self.num_layers = config.num_layers
-        self.temperature = config.temperature
+        # Temperature is now managed by TemperatureOperator via self._temperature
 
         # Read encoder
         self.read_encoder = SequenceEncoder(
@@ -460,7 +466,8 @@ class NeuralReadMapper(OperatorModule):
         )
 
         # Position probabilities via softmax
-        position_probs = jax.nn.softmax(scores / self.temperature, axis=-1)
+        # Use inherited _temperature property from TemperatureOperator
+        position_probs = jax.nn.softmax(scores / self._temperature, axis=-1)
 
         # Best position (argmax)
         best_position = jnp.argmax(position_probs, axis=-1)

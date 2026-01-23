@@ -9,6 +9,11 @@ profiles using attention mechanisms.
 
 Applications: Cell type mapping in spatial transcriptomics, tissue
 composition analysis, spatial cell-cell interaction studies.
+
+Inherits from TemperatureOperator to get:
+- _temperature property for temperature-controlled smoothing
+- soft_max() for logsumexp-based smooth maximum
+- soft_argmax() for soft position selection
 """
 
 from dataclasses import dataclass
@@ -17,9 +22,10 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
+
+from diffbio.core.base_operators import TemperatureOperator
 
 
 @dataclass
@@ -132,7 +138,7 @@ class SpatialEncoder(nnx.Module):
         return x
 
 
-class SpatialDeconvolution(OperatorModule):
+class SpatialDeconvolution(TemperatureOperator):
     """Differentiable spatial transcriptomics deconvolution.
 
     This operator performs cell type deconvolution of spatial
@@ -146,6 +152,11 @@ class SpatialDeconvolution(OperatorModule):
     4. Compute attention to reference cell type profiles
     5. Apply softmax for cell type proportions
     6. Reconstruct expression from proportions
+
+    Inherits from TemperatureOperator to get:
+    - _temperature property for temperature-controlled smoothing
+    - soft_max() for logsumexp-based smooth maximum
+    - soft_argmax() for soft position selection
 
     Args:
         config: SpatialDeconvolutionConfig with model parameters.
@@ -179,7 +190,7 @@ class SpatialDeconvolution(OperatorModule):
             rngs = nnx.Rngs(0)
 
         self.hidden_dim = config.hidden_dim
-        self.temperature = config.temperature
+        # Temperature is now managed by TemperatureOperator via self._temperature
 
         # Expression encoder
         self.spot_encoder = SpotEncoder(
@@ -270,7 +281,8 @@ class SpatialDeconvolution(OperatorModule):
         scores = jnp.einsum("sh,ch->sc", combined, ref_emb)
 
         # Cell type proportions via softmax
-        cell_proportions = jax.nn.softmax(scores / self.temperature, axis=-1)
+        # Use inherited _temperature property from TemperatureOperator
+        cell_proportions = jax.nn.softmax(scores / self._temperature, axis=-1)
 
         # Reconstruct expression: proportions @ reference_profiles
         # (n_spots, n_cell_types) @ (n_cell_types, n_genes) -> (n_spots, n_genes)

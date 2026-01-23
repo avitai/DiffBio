@@ -7,6 +7,11 @@ Key technique: Replace hard cluster assignment with softmax-based
 soft assignments for fully differentiable clustering.
 
 Applications: Cell type clustering, Leiden-like community detection.
+
+Inherits from TemperatureOperator to get:
+- _temperature property for temperature-controlled smoothing
+- soft_max() for logsumexp-based smooth maximum
+- soft_argmax() for soft position selection
 """
 
 from dataclasses import dataclass
@@ -15,9 +20,10 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
+
+from diffbio.core.base_operators import TemperatureOperator
 
 
 @dataclass
@@ -37,7 +43,7 @@ class SoftClusteringConfig(OperatorConfig):
     learnable_centroids: bool = True
 
 
-class SoftKMeansClustering(OperatorModule):
+class SoftKMeansClustering(TemperatureOperator):
     """Differentiable soft k-means clustering.
 
     This operator implements soft k-means with learnable cluster centroids.
@@ -48,6 +54,11 @@ class SoftKMeansClustering(OperatorModule):
     1. Compute squared distances from cells to centroids
     2. Apply softmax for soft assignments: P(k|x) = softmax(-||x - c_k||² / T)
     3. Optionally update centroids based on weighted means
+
+    Inherits from TemperatureOperator to get:
+    - _temperature property for temperature-controlled smoothing
+    - soft_max() for logsumexp-based smooth maximum
+    - soft_argmax() for soft position selection
 
     Args:
         config: SoftClusteringConfig with model parameters.
@@ -82,7 +93,7 @@ class SoftKMeansClustering(OperatorModule):
 
         self.n_clusters = config.n_clusters
         self.n_features = config.n_features
-        self.temperature = config.temperature
+        # Temperature is now managed by TemperatureOperator via self._temperature
 
         # Initialize cluster centroids
         key = rngs.params()
@@ -128,7 +139,8 @@ class SoftKMeansClustering(OperatorModule):
         distances_sq = self.compute_distances(embeddings)
 
         # Soft assignments via softmax over negative distances
-        assignments = jax.nn.softmax(-distances_sq / self.temperature, axis=-1)
+        # Use inherited _temperature property from TemperatureOperator
+        assignments = jax.nn.softmax(-distances_sq / self._temperature, axis=-1)
 
         return assignments
 

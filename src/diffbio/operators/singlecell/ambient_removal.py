@@ -9,6 +9,11 @@ quantification.
 
 Applications: Removing ambient RNA contamination from single-cell RNA-seq data,
 improving cell type identification and differential expression analysis.
+
+Inherits from EncoderDecoderOperator to get:
+- reparameterize() for sampling with reparameterization trick
+- kl_divergence() for KL from standard normal
+- elbo_loss() for combining reconstruction and KL losses
 """
 
 from dataclasses import dataclass, field
@@ -17,9 +22,10 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
+
+from diffbio.core.base_operators import EncoderDecoderOperator
 
 
 @dataclass
@@ -176,7 +182,7 @@ class AmbientDecoder(nnx.Module):
         return log_rate
 
 
-class DifferentiableAmbientRemoval(OperatorModule):
+class DifferentiableAmbientRemoval(EncoderDecoderOperator):
     """Differentiable ambient RNA removal using VAE.
 
     This operator removes ambient RNA contamination from single-cell
@@ -188,6 +194,11 @@ class DifferentiableAmbientRemoval(OperatorModule):
     2. Sample latent (reparameterization trick)
     3. Decode to cell-intrinsic expression rate
     4. Compute decontaminated counts by subtracting ambient contribution
+
+    Inherits from EncoderDecoderOperator to get:
+    - reparameterize() for sampling with reparameterization trick
+    - kl_divergence() for KL from standard normal
+    - elbo_loss() for combining reconstruction and KL losses
 
     Args:
         config: AmbientRemovalConfig with model parameters.
@@ -220,7 +231,6 @@ class DifferentiableAmbientRemoval(OperatorModule):
         if rngs is None:
             rngs = nnx.Rngs(0)
 
-        self.latent_dim = config.latent_dim
         self.ambient_prior = config.ambient_prior
         self.stochastic = config.stochastic
 
@@ -240,27 +250,9 @@ class DifferentiableAmbientRemoval(OperatorModule):
             rngs=rngs,
         )
 
-    def _reparameterize(
-        self,
-        mean: Float[Array, "n_cells latent_dim"],
-        logvar: Float[Array, "n_cells latent_dim"],
-        key: jax.Array | None,
-    ) -> Float[Array, "n_cells latent_dim"]:
-        """Reparameterization trick for VAE.
-
-        Args:
-            mean: Latent mean.
-            logvar: Latent log-variance.
-            key: Random key for sampling.
-
-        Returns:
-            Sampled latent.
-        """
-        if key is not None and self.stochastic:
-            std = jnp.exp(0.5 * logvar)
-            eps = jax.random.normal(key, mean.shape)
-            return mean + std * eps
-        return mean
+    # reparameterize() is inherited from EncoderDecoderOperator
+    # kl_divergence() is inherited from EncoderDecoderOperator
+    # elbo_loss() is inherited from EncoderDecoderOperator
 
     def apply(
         self,
@@ -289,6 +281,8 @@ class DifferentiableAmbientRemoval(OperatorModule):
                     - "decontaminated_counts": Decontaminated counts
                     - "contamination_fraction": Estimated contamination per cell
                     - "latent": Latent representation
+                    - "latent_mean": Mean of latent distribution
+                    - "latent_logvar": Log variance of latent distribution
                     - "reconstructed": Reconstructed expression
                 - state is passed through unchanged
                 - metadata is passed through unchanged
@@ -299,9 +293,8 @@ class DifferentiableAmbientRemoval(OperatorModule):
         # Encode
         mean, logvar, contamination = self.encoder(counts)
 
-        # Sample latent
-        key = random_params if random_params is not None else None
-        z = self._reparameterize(mean, logvar, key)
+        # Sample latent using inherited reparameterize (uses self.rngs)
+        z = self.reparameterize(mean, logvar)
 
         # Decode to cell-intrinsic expression rate
         log_rate = self.decoder(z)
@@ -325,6 +318,8 @@ class DifferentiableAmbientRemoval(OperatorModule):
             "decontaminated_counts": decontaminated,
             "contamination_fraction": contamination,
             "latent": z,
+            "latent_mean": mean,
+            "latent_logvar": logvar,
             "reconstructed": reconstructed,
         }
 

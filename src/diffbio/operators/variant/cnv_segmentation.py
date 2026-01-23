@@ -7,6 +7,11 @@ Key technique: Attention mechanism identifies segment boundaries softly,
 enabling gradient flow through the segmentation process.
 
 Applications: CNV analysis, coverage depth segmentation, breakpoint detection.
+
+Inherits from TemperatureOperator to get:
+- _temperature property for temperature-controlled smoothing
+- soft_max() for logsumexp-based smooth maximum
+- soft_argmax() for soft position selection
 """
 
 from dataclasses import dataclass
@@ -15,9 +20,10 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
+
+from diffbio.core.base_operators import TemperatureOperator
 
 
 @dataclass
@@ -37,7 +43,7 @@ class CNVSegmentationConfig(OperatorConfig):
     temperature: float = 1.0
 
 
-class DifferentiableCNVSegmentation(OperatorModule):
+class DifferentiableCNVSegmentation(TemperatureOperator):
     """Soft CNV segmentation using attention-based changepoint detection.
 
     This operator identifies segment boundaries in coverage data using
@@ -49,6 +55,11 @@ class DifferentiableCNVSegmentation(OperatorModule):
     2. Use self-attention to identify changepoint positions
     3. Compute soft segment assignments via attention
     4. Compute segment means as weighted averages
+
+    Inherits from TemperatureOperator to get:
+    - _temperature property for temperature-controlled smoothing
+    - soft_max() for logsumexp-based smooth maximum
+    - soft_argmax() for soft position selection
 
     Args:
         config: CNVSegmentationConfig with model parameters.
@@ -84,7 +95,7 @@ class DifferentiableCNVSegmentation(OperatorModule):
         self.max_segments = config.max_segments
         self.hidden_dim = config.hidden_dim
         self.attention_heads = config.attention_heads
-        self.temperature = config.temperature
+        # Temperature is now managed by TemperatureOperator via self._temperature
 
         # Input projection: coverage value -> hidden
         self.input_proj = nnx.Linear(1, config.hidden_dim, rngs=rngs)
@@ -162,7 +173,7 @@ class DifferentiableCNVSegmentation(OperatorModule):
         attn_scores = jnp.einsum("nhd,mhd->nhm", Q, K) / scale
 
         # Soft attention weights
-        attn_weights = jax.nn.softmax(attn_scores / self.temperature, axis=-1)
+        attn_weights = jax.nn.softmax(attn_scores / self._temperature, axis=-1)
 
         # Attend to values
         attended = jnp.einsum("nhm,mhd->nhd", attn_weights, V)
@@ -196,7 +207,7 @@ class DifferentiableCNVSegmentation(OperatorModule):
         similarities = jnp.einsum("nh,sh->ns", embeddings, centroids)
 
         # Soft assignments via softmax
-        assignments = jax.nn.softmax(similarities / self.temperature, axis=-1)
+        assignments = jax.nn.softmax(similarities / self._temperature, axis=-1)
 
         return assignments
 

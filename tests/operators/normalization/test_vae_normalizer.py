@@ -96,9 +96,10 @@ class TestVAENormalizer:
 
         mean = jnp.zeros(10)
         logvar = jnp.zeros(10)
-        key = jax.random.key(0)
 
-        z = op.reparameterize(mean, logvar, key)
+        # Uses inherited reparameterize() from EncoderDecoderOperator
+        # (uses self.rngs internally, no key argument)
+        z = op.reparameterize(mean, logvar)
 
         assert z.shape == (10,)
         # z should be different from mean due to sampling
@@ -157,7 +158,8 @@ class TestVAELoss:
         counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         library_size = jnp.sum(counts)
 
-        loss = op.compute_elbo_loss(counts, library_size, jax.random.key(1))
+        # Uses inherited reparameterize() internally (no key argument needed)
+        loss = op.compute_elbo_loss(counts, library_size)
 
         assert loss.shape == ()
         assert jnp.isfinite(loss)
@@ -172,7 +174,8 @@ class TestVAELoss:
 
         # Get reconstruction
         mean, logvar = op.encode(counts)
-        z = op.reparameterize(mean, logvar, jax.random.key(1))
+        # Uses inherited reparameterize() from EncoderDecoderOperator (no key argument)
+        z = op.reparameterize(mean, logvar)
         log_rate = op.decode(z, library_size)
 
         recon_loss = op.reconstruction_loss(counts, log_rate)
@@ -209,8 +212,9 @@ class TestGradientFlow:
         counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         library_size = jnp.sum(counts)
 
+        # Uses inherited reparameterize() internally (no key argument needed)
         def loss_fn(c):
-            return op.compute_elbo_loss(c, library_size, jax.random.key(1))
+            return op.compute_elbo_loss(c, library_size)
 
         grad = jax.grad(loss_fn)(counts)
         assert grad is not None
