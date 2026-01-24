@@ -130,6 +130,12 @@ DiffBio provides a collection of differentiable operators for bioinformatics ana
 |----------|-------------|--------|
 | `DifferentiableSecondaryStructure` | PyDSSP-style DSSP with continuous H-bond matrix | <span class="diff-high">Implemented</span> |
 
+### [Language Model Operators](language-models.md)
+
+| Operator | Description | Status |
+|----------|-------------|--------|
+| `TransformerSequenceEncoder` | DNABERT/RNA-FM-style transformer for sequence embedding | <span class="diff-high">Implemented</span> |
+
 ## Operator Interface
 
 All DiffBio operators implement the Datarax `OperatorModule` interface:

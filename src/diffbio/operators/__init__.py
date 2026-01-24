@@ -17,6 +17,7 @@ from diffbio.operators import alignment
 from diffbio.operators import assembly
 from diffbio.operators import crispr
 from diffbio.operators import epigenomics
+from diffbio.operators import language_models
 from diffbio.operators import mapping
 from diffbio.operators import metabolomics
 from diffbio.operators import multiomics
@@ -38,6 +39,7 @@ __all__ = [
     "assembly",
     "crispr",
     "epigenomics",
+    "language_models",
     "mapping",
     "metabolomics",
     "multiomics",
