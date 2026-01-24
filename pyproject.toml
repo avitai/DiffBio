@@ -87,6 +87,12 @@ docs = [
   "pymdown-extensions>=10.14.3"
 ]
 gpu = ["jax[cuda12]>=0.6.1", "jaxlib>=0.6.1"]
+benchmark = [
+  "deepchem>=2.8.0",
+  "pandas>=2.0",
+  "matplotlib>=3.7",
+  "tabulate>=0.9",
+]
 test = [
   "beartype>=0.14.1",
   "coverage>=7",

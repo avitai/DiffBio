@@ -209,3 +209,6 @@ __marimo__/
 
 memory-bank/
 temp/
+
+# Benchmark results (generated)
+benchmarks/results/

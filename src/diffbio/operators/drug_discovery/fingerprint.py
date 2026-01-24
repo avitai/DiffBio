@@ -13,6 +13,7 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
@@ -291,6 +292,7 @@ class CircularFingerprintOperator(OperatorModule):
                     "requires RDKit: pip install rdkit"
                 ) from e
 
+    @nnx.jit
     def _compute_differentiable_fp(
         self,
         node_features: jnp.ndarray,
@@ -298,7 +300,7 @@ class CircularFingerprintOperator(OperatorModule):
         edge_features: jnp.ndarray | None = None,
         node_mask: jnp.ndarray | None = None,
     ) -> jnp.ndarray:
-        """Compute differentiable circular fingerprint.
+        """Compute differentiable circular fingerprint (JIT compiled).
 
         Uses message passing to aggregate local substructure information,
         then applies learned hash functions for soft bit assignment.
@@ -370,12 +372,11 @@ class CircularFingerprintOperator(OperatorModule):
                 useBondTypes=self.config.use_bond_types,
             )
 
-        # Convert to JAX array
-        arr = jnp.zeros(self.config.n_bits, dtype=jnp.float32)
-        on_bits = list(fp.GetOnBits())
-        if on_bits:
-            arr = arr.at[jnp.array(on_bits)].set(1.0)
-        return arr
+        # Convert to numpy first (faster), then to JAX
+        # RDKit provides efficient conversion to numpy
+        arr = np.zeros(self.config.n_bits, dtype=np.float32)
+        self._AllChem.DataStructs.ConvertToNumpyArray(fp, arr)
+        return jnp.asarray(arr)
 
     def apply(
         self,
@@ -412,9 +413,7 @@ class CircularFingerprintOperator(OperatorModule):
             edge_features = data.get("edge_features")
             node_mask = data.get("node_mask")
 
-            fp = self._compute_differentiable_fp(
-                node_features, adjacency, edge_features, node_mask
-            )
+            fp = self._compute_differentiable_fp(node_features, adjacency, edge_features, node_mask)
         else:
             smiles = data["smiles"]
             fp = self._compute_rdkit_fp(smiles)
