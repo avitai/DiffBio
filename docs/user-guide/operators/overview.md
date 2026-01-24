@@ -136,6 +136,12 @@ DiffBio provides a collection of differentiable operators for bioinformatics ana
 |----------|-------------|--------|
 | `TransformerSequenceEncoder` | DNABERT/RNA-FM-style transformer for sequence embedding | <span class="diff-high">Implemented</span> |
 
+### [RNA Structure Operators](rna-structure.md)
+
+| Operator | Description | Status |
+|----------|-------------|--------|
+| `DifferentiableRNAFold` | McCaskill-style partition function for base pair probabilities | <span class="diff-high">Implemented</span> |
+
 ## Operator Interface
 
 All DiffBio operators implement the Datarax `OperatorModule` interface:

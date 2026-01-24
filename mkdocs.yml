@@ -107,6 +107,7 @@ nav:
           - CRISPR: user-guide/operators/crispr.md
           - Protein Structure: user-guide/operators/protein.md
           - Language Models: user-guide/operators/language-models.md
+          - RNA Structure: user-guide/operators/rna-structure.md
       - Pipelines:
           - Pipeline Overview: user-guide/pipelines/overview.md
           - Variant Calling: user-guide/pipelines/variant-calling.md
@@ -147,6 +148,7 @@ nav:
           - CRISPR: api/operators/crispr.md
           - Protein Structure: api/operators/protein.md
           - Language Models: api/operators/language-models.md
+          - RNA Structure: api/operators/rna-structure.md
       - Pipelines:
           - Variant Calling: api/pipelines/variant-calling.md
           - Enhanced Variant Calling: api/pipelines/enhanced-variant-calling.md

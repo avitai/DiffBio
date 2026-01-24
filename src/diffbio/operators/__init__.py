@@ -25,6 +25,7 @@ from diffbio.operators import normalization
 from diffbio.operators import population
 from diffbio.operators import preprocessing
 from diffbio.operators import protein
+from diffbio.operators import rna_structure
 from diffbio.operators import rnaseq
 from diffbio.operators import singlecell
 from diffbio.operators import statistical
@@ -47,6 +48,7 @@ __all__ = [
     "population",
     "preprocessing",
     "protein",
+    "rna_structure",
     "rnaseq",
     "singlecell",
     "statistical",

@@ -87,9 +87,7 @@ class TestTransformerSequenceEncoder:
         # Create one-hot encoded sequence
         seq_len = 50
         batch_size = 2
-        sequences = jax.random.uniform(
-            jax.random.PRNGKey(0), (batch_size, seq_len, 4)
-        )
+        sequences = jax.random.uniform(jax.random.PRNGKey(0), (batch_size, seq_len, 4))
         sequences = jax.nn.softmax(sequences, axis=-1)  # Normalize to valid probs
 
         data = {"sequence": sequences}
@@ -363,9 +361,7 @@ class TestTransformerComponents:
         batch_size = 1
 
         # Create mock hidden states with batch dimension
-        hidden = jax.random.normal(
-            jax.random.PRNGKey(0), (batch_size, seq_len, hidden_dim)
-        )
+        hidden = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, hidden_dim))
 
         # Apply transformer
         output = encoder.transformer(hidden, deterministic=True)

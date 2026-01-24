@@ -113,9 +113,7 @@ class TransformerSequenceEncoder(SequenceOperator):
         )
 
         # CLS token embedding (learnable)
-        self.cls_token = nnx.Param(
-            jax.random.normal(rngs.params(), (config.hidden_dim,)) * 0.02
-        )
+        self.cls_token = nnx.Param(jax.random.normal(rngs.params(), (config.hidden_dim,)) * 0.02)
 
         # Compute MLP ratio from intermediate_dim
         mlp_ratio = config.intermediate_dim / config.hidden_dim
@@ -150,9 +148,7 @@ class TransformerSequenceEncoder(SequenceOperator):
         """
         hidden_dim = self.config.hidden_dim
         position = jnp.arange(seq_len)[:, None]
-        div_term = jnp.exp(
-            jnp.arange(0, hidden_dim, 2) * -(jnp.log(10000.0) / hidden_dim)
-        )
+        div_term = jnp.exp(jnp.arange(0, hidden_dim, 2) * -(jnp.log(10000.0) / hidden_dim))
 
         pe = jnp.zeros((seq_len, hidden_dim))
         pe = pe.at[:, 0::2].set(jnp.sin(position * div_term))
@@ -211,9 +207,7 @@ class TransformerSequenceEncoder(SequenceOperator):
                 mask_1d = mask[0]
                 mask_expanded = mask_1d[:, None]
                 masked_hidden = hidden * mask_expanded
-                global_embedding = jnp.sum(masked_hidden, axis=0) / (
-                    jnp.sum(mask_1d) + 1e-9
-                )
+                global_embedding = jnp.sum(masked_hidden, axis=0) / (jnp.sum(mask_1d) + 1e-9)
             else:
                 global_embedding = jnp.mean(hidden, axis=0)
             position_embeddings = hidden
@@ -245,9 +239,7 @@ class TransformerSequenceEncoder(SequenceOperator):
         # Prepend CLS token for CLS pooling
         if self.config.pooling == "cls":
             cls_token = self.cls_token[...][None, None, :]  # (1, 1, hidden_dim)
-            cls_tokens = jnp.broadcast_to(
-                cls_token, (batch_size, 1, self.config.hidden_dim)
-            )
+            cls_tokens = jnp.broadcast_to(cls_token, (batch_size, 1, self.config.hidden_dim))
             hidden = jnp.concatenate([cls_tokens, hidden], axis=1)
 
             # Extend masks if provided
