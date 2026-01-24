@@ -105,6 +105,8 @@ nav:
       - Pipelines:
           - Pipeline Overview: user-guide/pipelines/overview.md
           - Variant Calling: user-guide/pipelines/variant-calling.md
+          - Enhanced Variant Calling: user-guide/pipelines/enhanced-variant-calling.md
+          - Single-Cell Analysis: user-guide/pipelines/single-cell.md
           - Preprocessing: user-guide/pipelines/preprocessing.md
           - Differential Expression: user-guide/pipelines/differential-expression.md
       - Losses:
@@ -137,6 +139,8 @@ nav:
           - Variant: api/operators/variant.md
       - Pipelines:
           - Variant Calling: api/pipelines/variant-calling.md
+          - Enhanced Variant Calling: api/pipelines/enhanced-variant-calling.md
+          - Single-Cell: api/pipelines/single-cell.md
           - Preprocessing: api/pipelines/preprocessing.md
           - Differential Expression: api/pipelines/differential-expression.md
       - Losses:
