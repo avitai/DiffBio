@@ -128,14 +128,14 @@ class DifferentiableSpatialGeneDetector(TemperatureOperator):
 
     @property
     def lengthscale(self) -> Float[Array, ""] | float:
-        """Current lengthscale (characteristic length for RBF kernel)."""
+        """Get the characteristic length for RBF kernel."""
         if hasattr(self, "log_lengthscale"):
             return jnp.exp(self.log_lengthscale.value)
         return self._lengthscale
 
     @property
     def variance(self) -> Float[Array, ""] | float:
-        """Current signal variance (sigma^2_s)."""
+        """Get the signal variance parameter."""
         if hasattr(self, "log_variance"):
             return jnp.exp(self.log_variance.value)
         return self._variance

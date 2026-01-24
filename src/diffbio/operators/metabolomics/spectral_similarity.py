@@ -100,9 +100,7 @@ class DifferentiableSpectralSimilarity(OperatorModule):
         >>> similarity = result["similarity_scores"]  # (5,) in [-1, 1]
     """
 
-    def __init__(
-        self, config: SpectralSimilarityConfig, *, rngs: nnx.Rngs
-    ) -> None:
+    def __init__(self, config: SpectralSimilarityConfig, *, rngs: nnx.Rngs) -> None:
         """Initialize the spectral similarity operator.
 
         Args:
@@ -120,9 +118,7 @@ class DifferentiableSpectralSimilarity(OperatorModule):
         in_features = config.n_bins
         for hidden_dim in config.hidden_dims:
             # Add L1/L2 regularization to first layer (as in MS2DeepScore)
-            encoder_layers.append(
-                nnx.Linear(in_features, hidden_dim, rngs=rngs)
-            )
+            encoder_layers.append(nnx.Linear(in_features, hidden_dim, rngs=rngs))
 
             if config.use_batch_norm:
                 encoder_bn.append(nnx.BatchNorm(hidden_dim, rngs=rngs))
@@ -130,9 +126,7 @@ class DifferentiableSpectralSimilarity(OperatorModule):
                 encoder_bn.append(None)
 
             if config.dropout_rate > 0:
-                encoder_dropout.append(
-                    nnx.Dropout(rate=config.dropout_rate, rngs=rngs)
-                )
+                encoder_dropout.append(nnx.Dropout(rate=config.dropout_rate, rngs=rngs))
             else:
                 encoder_dropout.append(None)
 
@@ -143,9 +137,7 @@ class DifferentiableSpectralSimilarity(OperatorModule):
         self.encoder_dropout = nnx.List(encoder_dropout)
 
         # Final embedding layer (no batch norm or dropout after this)
-        self.embedding_layer = nnx.Linear(
-            in_features, config.embedding_dim, rngs=rngs
-        )
+        self.embedding_layer = nnx.Linear(in_features, config.embedding_dim, rngs=rngs)
 
     def encode(self, spectra: jnp.ndarray) -> jnp.ndarray:
         """Encode binned spectra into embeddings.
@@ -207,9 +199,7 @@ class DifferentiableSpectralSimilarity(OperatorModule):
         embeddings_b_normalized = embeddings_b / norm_b
 
         # Compute cosine similarity
-        similarity = jnp.sum(
-            embeddings_a_normalized * embeddings_b_normalized, axis=-1
-        )
+        similarity = jnp.sum(embeddings_a_normalized * embeddings_b_normalized, axis=-1)
 
         return similarity
 

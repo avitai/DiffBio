@@ -124,6 +124,12 @@ DiffBio provides a collection of differentiable operators for bioinformatics ana
 |----------|-------------|--------|
 | `DifferentiableSpectralSimilarity` | MS2DeepScore-style Siamese network for MS/MS similarity | <span class="diff-high">Implemented</span> |
 
+### [Protein Structure Operators](protein.md)
+
+| Operator | Description | Status |
+|----------|-------------|--------|
+| `DifferentiableSecondaryStructure` | PyDSSP-style DSSP with continuous H-bond matrix | <span class="diff-high">Implemented</span> |
+
 ## Operator Interface
 
 All DiffBio operators implement the Datarax `OperatorModule` interface:

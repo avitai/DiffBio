@@ -188,9 +188,7 @@ class TestSpectrumBinning:
         mz_values = jnp.array([100.0, 200.0, 300.0, 400.0, 500.0])
         intensities = jnp.array([0.5, 1.0, 0.3, 0.8, 0.6])
 
-        binned = bin_spectrum(
-            mz_values, intensities, n_bins=100, min_mz=0.0, max_mz=1000.0
-        )
+        binned = bin_spectrum(mz_values, intensities, n_bins=100, min_mz=0.0, max_mz=1000.0)
 
         assert binned.shape == (100,)
         # Bins 10, 20, 30, 40, 50 should have values (100/10=10, etc.)
@@ -217,9 +215,7 @@ class TestFactoryFunction:
         """Test factory function creates operator."""
         from diffbio.operators.metabolomics import create_spectral_similarity
 
-        operator = create_spectral_similarity(
-            n_bins=500, embedding_dim=128, hidden_dims=(256, 128)
-        )
+        operator = create_spectral_similarity(n_bins=500, embedding_dim=128, hidden_dims=(256, 128))
 
         assert operator is not None
 
