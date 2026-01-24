@@ -142,6 +142,13 @@ DiffBio provides a collection of differentiable operators for bioinformatics ana
 |----------|-------------|--------|
 | `DifferentiableRNAFold` | McCaskill-style partition function for base pair probabilities | <span class="diff-high">Implemented</span> |
 
+### [Molecular Dynamics Operators](molecular-dynamics.md)
+
+| Operator | Description | Status |
+|----------|-------------|--------|
+| `ForceFieldOperator` | Differentiable force field (LJ, Morse, Soft Sphere) using JAX-MD | <span class="diff-high">Implemented</span> |
+| `MDIntegratorOperator` | Time integration for MD (velocity Verlet, Langevin) using JAX-MD | <span class="diff-high">Implemented</span> |
+
 ## Operator Interface
 
 All DiffBio operators implement the Datarax `OperatorModule` interface:

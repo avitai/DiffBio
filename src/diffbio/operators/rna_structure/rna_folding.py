@@ -214,9 +214,7 @@ def mccaskill_partition_function(
                     0.0,  # Empty inside, log(1) = 0
                 )
                 # log(1 + Q) = log(exp(0) + exp(log_Q)) = logsumexp([0, log_Q])
-                log_one_plus_inside = jax.scipy.special.logsumexp(
-                    jnp.array([0.0, log_inside_q])
-                )
+                log_one_plus_inside = jax.scipy.special.logsumexp(jnp.array([0.0, log_inside_q]))
 
                 return log_left + log_bp + log_one_plus_inside
 
@@ -240,18 +238,14 @@ def mccaskill_partition_function(
             j = i + d
             valid = j < n
             new_val = jax.lax.cond(valid, lambda: compute_entry(i), lambda: 0.0)
-            log_Q = jax.lax.cond(
-                valid, lambda q: q.at[i, j].set(new_val), lambda q: q, log_Q
-            )
+            log_Q = jax.lax.cond(valid, lambda q: q.at[i, j].set(new_val), lambda q: q, log_Q)
             return log_Q
 
         log_Q = jax.lax.fori_loop(0, n, body_fn, log_Q)
         return log_Q, None
 
     # Fill for all lengths from min_hairpin+1 to n-1
-    log_Q, _ = jax.lax.scan(
-        fill_length, log_Q, jnp.arange(min_hairpin + 1, n)
-    )
+    log_Q, _ = jax.lax.scan(fill_length, log_Q, jnp.arange(min_hairpin + 1, n))
 
     # Total partition function is Q[0, n-1]
     log_Z = log_Q[0, n - 1]
@@ -307,9 +301,7 @@ def compute_base_pair_probabilities(
 
     # The partition function is the sum of Boltzmann weights
     # log_Z = logsumexp(-E/T) over valid pairs
-    log_Z = jax.scipy.special.logsumexp(
-        jnp.where(valid_mask > 0.5, log_weights, -jnp.inf)
-    )
+    log_Z = jax.scipy.special.logsumexp(jnp.where(valid_mask > 0.5, log_weights, -jnp.inf))
 
     # Ensure symmetry (A pairs with B == B pairs with A)
     bp_probs = (bp_probs + bp_probs.T) / 2

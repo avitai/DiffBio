@@ -45,7 +45,8 @@ dependencies = [
   "biopython>=1.81",
   # Development essentials
   "pre-commit>=4.3.0",
-  "ruff>=0.1.5"
+  "ruff>=0.1.5",
+  "jax-md>=0.2.27"
 ]
 description = "DiffBio: End-to-end differentiable bioinformatics pipelines built on Datarax"
 keywords = ["jax", "flax", "bioinformatics", "differentiable", "variant-calling", "alignment", "machine-learning"]

@@ -20,6 +20,7 @@ from diffbio.operators import epigenomics
 from diffbio.operators import language_models
 from diffbio.operators import mapping
 from diffbio.operators import metabolomics
+from diffbio.operators import molecular_dynamics
 from diffbio.operators import multiomics
 from diffbio.operators import normalization
 from diffbio.operators import population
@@ -43,6 +44,7 @@ __all__ = [
     "language_models",
     "mapping",
     "metabolomics",
+    "molecular_dynamics",
     "multiomics",
     "normalization",
     "population",
