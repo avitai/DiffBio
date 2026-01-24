@@ -52,9 +52,7 @@ DEFAULT_ATOM_FEATURES = DEFAULT_ATOM_CONFIG.total_features  # 34 features
 ATOM_TYPES = ["C", "N", "O", "S", "F", "Cl", "Br", "I", "P", "Si", "B", "Other"]
 
 
-def get_atom_features(
-    atom: Any, config: AtomFeatureConfig | None = None
-) -> jnp.ndarray:
+def get_atom_features(atom: Any, config: AtomFeatureConfig | None = None) -> jnp.ndarray:
     """Extract features from an RDKit atom object.
 
     Features include:

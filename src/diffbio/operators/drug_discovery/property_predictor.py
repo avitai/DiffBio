@@ -63,9 +63,7 @@ class MolecularPropertyPredictor(OperatorModule):
         >>> predictions = result["predictions"]  # shape: (3,)
     """
 
-    def __init__(
-        self, config: MolecularPropertyConfig, *, rngs: nnx.Rngs | None = None
-    ):
+    def __init__(self, config: MolecularPropertyConfig, *, rngs: nnx.Rngs | None = None):
         """Initialize molecular property predictor.
 
         Args:

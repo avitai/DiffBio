@@ -96,9 +96,7 @@ class MessagePassingLayer(nnx.Module):
             edge_hidden = nnx.relu(self.edge_encoder(edge_features))
         else:
             # Use zeros if no edge features provided
-            edge_hidden = jnp.zeros(
-                (num_nodes, num_nodes, self.hidden_dim), dtype=jnp.float32
-            )
+            edge_hidden = jnp.zeros((num_nodes, num_nodes, self.hidden_dim), dtype=jnp.float32)
 
         # Compute messages for all pairs
         # For each edge (i, j), message = f(node_i, edge_ij, node_j)

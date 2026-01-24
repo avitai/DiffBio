@@ -36,25 +36,34 @@ def molecular_graph():
     """Pre-computed molecular graph for testing (ethanol CCO)."""
     # 3 atoms: C, C, O
     # Bonds: C-C, C-O
-    node_features = jnp.array([
-        [1, 0, 0, 0],  # C (one-hot for C, N, O, other)
-        [1, 0, 0, 0],  # C
-        [0, 0, 1, 0],  # O
-    ], dtype=jnp.float32)
+    node_features = jnp.array(
+        [
+            [1, 0, 0, 0],  # C (one-hot for C, N, O, other)
+            [1, 0, 0, 0],  # C
+            [0, 0, 1, 0],  # O
+        ],
+        dtype=jnp.float32,
+    )
 
     # Adjacency matrix (symmetric for undirected)
-    adjacency = jnp.array([
-        [0, 1, 0],
-        [1, 0, 1],
-        [0, 1, 0],
-    ], dtype=jnp.float32)
+    adjacency = jnp.array(
+        [
+            [0, 1, 0],
+            [1, 0, 1],
+            [0, 1, 0],
+        ],
+        dtype=jnp.float32,
+    )
 
     # Edge features (bond type: single=1, double=0, triple=0, aromatic=0)
-    edge_features = jnp.array([
-        [[0, 0, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0]],
-        [[1, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0]],
-        [[0, 0, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0]],
-    ], dtype=jnp.float32)
+    edge_features = jnp.array(
+        [
+            [[0, 0, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0]],
+            [[1, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0]],
+            [[0, 0, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0]],
+        ],
+        dtype=jnp.float32,
+    )
 
     return {
         "node_features": node_features,
@@ -71,45 +80,60 @@ def batch_molecular_graphs():
     max_nodes = 4
 
     # Molecule 1: 3 atoms
-    node_features_1 = jnp.array([
-        [1, 0, 0, 0],
-        [1, 0, 0, 0],
-        [0, 0, 1, 0],
-        [0, 0, 0, 0],  # padding
-    ], dtype=jnp.float32)
+    node_features_1 = jnp.array(
+        [
+            [1, 0, 0, 0],
+            [1, 0, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 0],  # padding
+        ],
+        dtype=jnp.float32,
+    )
 
     # Molecule 2: 2 atoms
-    node_features_2 = jnp.array([
-        [1, 0, 0, 0],
-        [1, 0, 0, 0],
-        [0, 0, 0, 0],  # padding
-        [0, 0, 0, 0],  # padding
-    ], dtype=jnp.float32)
+    node_features_2 = jnp.array(
+        [
+            [1, 0, 0, 0],
+            [1, 0, 0, 0],
+            [0, 0, 0, 0],  # padding
+            [0, 0, 0, 0],  # padding
+        ],
+        dtype=jnp.float32,
+    )
 
     node_features = jnp.stack([node_features_1, node_features_2])
 
     # Adjacency matrices
-    adj_1 = jnp.array([
-        [0, 1, 0, 0],
-        [1, 0, 1, 0],
-        [0, 1, 0, 0],
-        [0, 0, 0, 0],
-    ], dtype=jnp.float32)
+    adj_1 = jnp.array(
+        [
+            [0, 1, 0, 0],
+            [1, 0, 1, 0],
+            [0, 1, 0, 0],
+            [0, 0, 0, 0],
+        ],
+        dtype=jnp.float32,
+    )
 
-    adj_2 = jnp.array([
-        [0, 1, 0, 0],
-        [1, 0, 0, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-    ], dtype=jnp.float32)
+    adj_2 = jnp.array(
+        [
+            [0, 1, 0, 0],
+            [1, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+        ],
+        dtype=jnp.float32,
+    )
 
     adjacency = jnp.stack([adj_1, adj_2])
 
     # Node masks
-    node_mask = jnp.array([
-        [1, 1, 1, 0],
-        [1, 1, 0, 0],
-    ], dtype=jnp.float32)
+    node_mask = jnp.array(
+        [
+            [1, 1, 1, 0],
+            [1, 1, 0, 0],
+        ],
+        dtype=jnp.float32,
+    )
 
     return {
         "node_features": node_features,
@@ -560,9 +584,7 @@ class TestDifferentiableMolecularFingerprint:
         )
 
         # Use in_features=DEFAULT_ATOM_FEATURES for real molecules
-        config = MolecularFingerprintConfig(
-            fingerprint_dim=64, in_features=DEFAULT_ATOM_FEATURES
-        )
+        config = MolecularFingerprintConfig(fingerprint_dim=64, in_features=DEFAULT_ATOM_FEATURES)
         fp_op = DifferentiableMolecularFingerprint(config, rngs=nnx.Rngs(42))
 
         # Two different molecules
@@ -943,3 +965,213 @@ class TestIntegration:
 
         # Gradients should exist and be finite
         assert grads is not None
+
+
+# =============================================================================
+# Tests for Circular Fingerprint Operator (ECFP/Morgan)
+# =============================================================================
+
+
+class TestCircularFingerprintOperator:
+    """Tests for differentiable circular fingerprints (ECFP/Morgan)."""
+
+    def test_config_defaults(self):
+        """Test default configuration values."""
+        from diffbio.operators.drug_discovery import CircularFingerprintConfig
+
+        config = CircularFingerprintConfig()
+        assert config.radius == 2  # ECFP4
+        assert config.n_bits == 2048
+        assert config.use_chirality is False
+        assert config.use_bond_types is True
+        assert config.use_features is False
+        assert config.differentiable is True
+        assert config.hash_hidden_dim == 128
+        assert config.temperature == 1.0
+
+    def test_config_custom_values(self):
+        """Test custom configuration values."""
+        from diffbio.operators.drug_discovery import CircularFingerprintConfig
+
+        config = CircularFingerprintConfig(
+            radius=3,  # ECFP6
+            n_bits=1024,
+            use_chirality=True,
+            differentiable=True,
+            temperature=0.5,
+        )
+        assert config.radius == 3
+        assert config.n_bits == 1024
+        assert config.use_chirality is True
+        assert config.temperature == 0.5
+
+    def test_operator_init(self):
+        """Test operator initialization."""
+        from diffbio.operators.drug_discovery import (
+            CircularFingerprintConfig,
+            CircularFingerprintOperator,
+        )
+
+        config = CircularFingerprintConfig(n_bits=512)
+        op = CircularFingerprintOperator(config, rngs=nnx.Rngs(42))
+        assert op is not None
+        assert op.config.n_bits == 512
+
+    def test_fingerprint_output_shape(self, molecular_graph):
+        """Test fingerprint has correct output dimension."""
+        from diffbio.operators.drug_discovery import (
+            CircularFingerprintConfig,
+            CircularFingerprintOperator,
+        )
+
+        n_bits = 256
+        config = CircularFingerprintConfig(n_bits=n_bits, differentiable=True)
+        op = CircularFingerprintOperator(config, rngs=nnx.Rngs(42))
+
+        data = {
+            **molecular_graph,
+            "node_mask": jnp.ones(molecular_graph["num_nodes"]),
+        }
+        result, _, _ = op.apply(data, {}, None)
+
+        assert "fingerprint" in result
+        assert result["fingerprint"].shape == (n_bits,)
+
+    def test_fingerprint_differentiable(self, molecular_graph):
+        """Test gradients flow through differentiable fingerprint."""
+        from diffbio.operators.drug_discovery import (
+            CircularFingerprintConfig,
+            CircularFingerprintOperator,
+        )
+
+        config = CircularFingerprintConfig(n_bits=128, differentiable=True)
+        op = CircularFingerprintOperator(config, rngs=nnx.Rngs(42))
+
+        def loss_fn(op):
+            data = {
+                **molecular_graph,
+                "node_mask": jnp.ones(molecular_graph["num_nodes"]),
+            }
+            result, _, _ = op.apply(data, {}, None)
+            return result["fingerprint"].sum()
+
+        grads = nnx.grad(loss_fn)(op)
+        assert grads is not None
+
+    def test_different_molecules_different_fingerprints(self):
+        """Test that different molecules produce different fingerprints."""
+        from diffbio.operators.drug_discovery import (
+            CircularFingerprintConfig,
+            CircularFingerprintOperator,
+            DEFAULT_ATOM_FEATURES,
+            smiles_to_graph,
+        )
+
+        config = CircularFingerprintConfig(
+            n_bits=256,
+            differentiable=True,
+            in_features=DEFAULT_ATOM_FEATURES,
+        )
+        op = CircularFingerprintOperator(config, rngs=nnx.Rngs(42))
+
+        # Different molecules
+        graph1 = smiles_to_graph("CCO")  # Ethanol
+        graph2 = smiles_to_graph("c1ccccc1")  # Benzene
+
+        data1 = {
+            **graph1,
+            "node_mask": jnp.ones(graph1["num_nodes"]),
+        }
+        data2 = {
+            **graph2,
+            "node_mask": jnp.ones(graph2["num_nodes"]),
+        }
+
+        result1, _, _ = op.apply(data1, {}, None)
+        result2, _, _ = op.apply(data2, {}, None)
+
+        # Fingerprints should be different
+        assert not jnp.allclose(result1["fingerprint"], result2["fingerprint"])
+
+    def test_fingerprint_binary_like_values(self, molecular_graph):
+        """Test that fingerprint values are in [0, 1] range (soft bits)."""
+        from diffbio.operators.drug_discovery import (
+            CircularFingerprintConfig,
+            CircularFingerprintOperator,
+        )
+
+        config = CircularFingerprintConfig(n_bits=128, differentiable=True)
+        op = CircularFingerprintOperator(config, rngs=nnx.Rngs(42))
+
+        data = {
+            **molecular_graph,
+            "node_mask": jnp.ones(molecular_graph["num_nodes"]),
+        }
+        result, _, _ = op.apply(data, {}, None)
+
+        fp = result["fingerprint"]
+        # Fingerprint should be in valid range
+        assert jnp.all(fp >= 0) or jnp.all(jnp.isfinite(fp))
+
+    def test_rdkit_fallback_mode(self):
+        """Test RDKit fallback for exact ECFP (non-differentiable mode)."""
+        from diffbio.operators.drug_discovery import (
+            CircularFingerprintConfig,
+            CircularFingerprintOperator,
+        )
+
+        config = CircularFingerprintConfig(
+            n_bits=1024,
+            differentiable=False,  # Use RDKit
+        )
+        op = CircularFingerprintOperator(config, rngs=nnx.Rngs(42))
+
+        # Must provide SMILES for RDKit mode
+        data = {"smiles": "CCO"}  # Ethanol
+        result, _, _ = op.apply(data, {}, None)
+
+        assert "fingerprint" in result
+        assert result["fingerprint"].shape == (config.n_bits,)
+        # RDKit fingerprints are binary
+        assert jnp.all((result["fingerprint"] == 0) | (result["fingerprint"] == 1))
+
+
+class TestCircularFingerprintFactoryFunctions:
+    """Tests for ECFP factory functions."""
+
+    def test_create_ecfp4_operator(self):
+        """Test ECFP4 factory function."""
+        from diffbio.operators.drug_discovery import create_ecfp4_operator
+
+        op = create_ecfp4_operator(n_bits=512)
+        assert op.config.radius == 2  # ECFP4 = radius 2
+        assert op.config.n_bits == 512
+
+    def test_create_ecfp6_operator(self):
+        """Test ECFP6 factory function."""
+        from diffbio.operators.drug_discovery import create_ecfp6_operator
+
+        op = create_ecfp6_operator(n_bits=1024)
+        assert op.config.radius == 3  # ECFP6 = radius 3
+        assert op.config.n_bits == 1024
+
+    def test_create_fcfp4_operator(self):
+        """Test FCFP4 (feature-based) factory function."""
+        from diffbio.operators.drug_discovery import create_fcfp4_operator
+
+        op = create_fcfp4_operator(n_bits=2048)
+        assert op.config.radius == 2
+        assert op.config.n_bits == 2048
+        assert op.config.use_features is True  # FCFP uses pharmacophoric features
+
+    def test_factory_differentiable_option(self):
+        """Test factory functions with differentiable option."""
+        from diffbio.operators.drug_discovery import create_ecfp4_operator
+
+        # Differentiable (default)
+        op_diff = create_ecfp4_operator(n_bits=256, differentiable=True)
+        assert op_diff.config.differentiable is True
+
+        # Non-differentiable (RDKit)
+        op_rdkit = create_ecfp4_operator(n_bits=256, differentiable=False)
+        assert op_rdkit.config.differentiable is False

@@ -10,6 +10,7 @@ Drug discovery operators enable gradient-based optimization for chemoinformatics
 
 - **MolecularPropertyPredictor**: ChemProp-style D-MPNN for property prediction
 - **DifferentiableMolecularFingerprint**: Learned neural graph fingerprints
+- **CircularFingerprintOperator**: Differentiable ECFP/Morgan fingerprints
 - **MolecularSimilarityOperator**: Differentiable Tanimoto/cosine/Dice similarity
 
 ## Architecture
@@ -44,7 +45,9 @@ SMILES String
       │
       ├─── MolecularPropertyPredictor → predictions
       │
-      └─── DifferentiableMolecularFingerprint → fingerprint
+      ├─── DifferentiableMolecularFingerprint → learned fingerprint
+      │
+      └─── CircularFingerprintOperator → ECFP-style fingerprint
                     │
                     ▼
            MolecularSimilarityOperator
@@ -244,6 +247,172 @@ fp2 = result2["fingerprint"]
 # Cosine similarity
 similarity = jnp.dot(fp1, fp2) / (jnp.linalg.norm(fp1) * jnp.linalg.norm(fp2))
 ```
+
+## CircularFingerprintOperator (ECFP/Morgan)
+
+Differentiable implementation of Extended-Connectivity Fingerprints (ECFP), also known as Morgan fingerprints. These are the industry standard for molecular similarity and virtual screening.
+
+### What are Circular Fingerprints?
+
+Circular fingerprints encode molecular structure by:
+
+1. **Starting from each atom**: Each atom becomes a center
+2. **Expanding in circles**: Collect neighbors at radius 0, 1, 2, ...
+3. **Hashing to bits**: Each substructure maps to a bit position
+
+```
+Radius 0: Just the atom
+    C
+
+Radius 1: Atom + immediate neighbors
+    O-C-C
+
+Radius 2: Atom + neighbors + next neighbors
+    H-O-C-C-H
+        |
+        H
+```
+
+### Quick Start
+
+```python
+from diffbio.operators.drug_discovery import (
+    CircularFingerprintOperator,
+    CircularFingerprintConfig,
+    create_ecfp4_operator,
+    smiles_to_graph,
+    DEFAULT_ATOM_FEATURES,
+)
+from flax import nnx
+
+# Using factory function (recommended)
+ecfp4_op = create_ecfp4_operator(n_bits=2048)
+
+# Convert SMILES to graph
+node_features, adjacency, _ = smiles_to_graph("CCO")  # Ethanol
+
+# Compute fingerprint
+data = {
+    "node_features": node_features,
+    "adjacency": adjacency,
+}
+result, _, _ = ecfp4_op.apply(data, {}, None)
+fingerprint = result["fingerprint"]  # (2048,) soft probabilities
+```
+
+### Fingerprint Types
+
+| Type | Factory Function | Radius | Description |
+|------|-----------------|--------|-------------|
+| ECFP4 | `create_ecfp4_operator()` | 2 | Standard for similarity search |
+| ECFP6 | `create_ecfp6_operator()` | 3 | Larger context, more specific |
+| FCFP4 | `create_fcfp4_operator()` | 2 | Feature-based (pharmacophore) |
+
+```python
+from diffbio.operators.drug_discovery import (
+    create_ecfp4_operator,
+    create_ecfp6_operator,
+    create_fcfp4_operator,
+)
+
+# ECFP4: Standard choice for most applications
+ecfp4 = create_ecfp4_operator(n_bits=2048)
+
+# ECFP6: More specific substructures
+ecfp6 = create_ecfp6_operator(n_bits=2048)
+
+# FCFP4: Pharmacophore-aware features
+fcfp4 = create_fcfp4_operator(n_bits=2048)
+```
+
+### Differentiable vs RDKit Mode
+
+The operator supports two modes:
+
+**Differentiable Mode** (default): Uses learned hash functions with softmax for gradient flow.
+
+```python
+config = CircularFingerprintConfig(
+    radius=2,
+    n_bits=2048,
+    differentiable=True,  # Learned hash functions
+    hash_hidden_dim=128,  # Hash network hidden dimension
+    temperature=1.0,      # Softmax temperature (lower = sharper)
+    in_features=DEFAULT_ATOM_FEATURES,
+)
+fp_op = CircularFingerprintOperator(config, rngs=nnx.Rngs(42))
+
+# Input: molecular graph
+data = {"node_features": node_features, "adjacency": adjacency}
+result, _, _ = fp_op.apply(data, {}, None)
+# Output: soft probabilities in [0, 1]
+```
+
+**RDKit Mode**: Uses exact RDKit fingerprints (non-differentiable).
+
+```python
+config = CircularFingerprintConfig(
+    radius=2,
+    n_bits=2048,
+    differentiable=False,  # Use RDKit
+)
+fp_op = CircularFingerprintOperator(config)
+
+# Input: SMILES string
+data = {"smiles": "CCO"}
+result, _, _ = fp_op.apply(data, {}, None)
+# Output: binary fingerprint
+```
+
+### Configuration Options
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `radius` | int | 2 | Neighborhood radius (ECFP4=2, ECFP6=3) |
+| `n_bits` | int | 2048 | Output fingerprint dimension |
+| `use_chirality` | bool | False | Include stereochemistry |
+| `use_bond_types` | bool | True | Distinguish bond types |
+| `use_features` | bool | False | Use pharmacophore features (FCFP) |
+| `differentiable` | bool | True | Use learned hash functions |
+| `hash_hidden_dim` | int | 128 | Hidden dimension for hash network |
+| `temperature` | float | 1.0 | Softmax temperature |
+| `in_features` | int | 4 | Input node feature dimension |
+
+### Gradient-Based Optimization
+
+```python
+import jax
+from flax import nnx
+
+# Create differentiable fingerprint operator
+ecfp4_op = create_ecfp4_operator(n_bits=256)
+
+def similarity_loss(fp_op, query_data, target_data):
+    """Optimize fingerprint similarity."""
+    query_result, _, _ = fp_op.apply(query_data, {}, None)
+    target_result, _, _ = fp_op.apply(target_data, {}, None)
+
+    query_fp = query_result["fingerprint"]
+    target_fp = target_result["fingerprint"]
+
+    # Tanimoto similarity (differentiable)
+    dot = jnp.dot(query_fp, target_fp)
+    norm_sq = jnp.sum(query_fp**2) + jnp.sum(target_fp**2)
+    return 1.0 - dot / (norm_sq - dot + 1e-8)
+
+# Compute gradients
+grads = nnx.grad(similarity_loss)(ecfp4_op, query_data, target_data)
+```
+
+### Use Cases
+
+| Application | Fingerprint | Why |
+|-------------|-------------|-----|
+| Similarity search | ECFP4 | Good balance of specificity/generality |
+| Scaffold hopping | FCFP4 | Focus on pharmacophore |
+| Activity cliffs | ECFP6 | Fine-grained differences |
+| Virtual screening | ECFP4 | Fast, reliable |
+| End-to-end learning | Differentiable | Gradient flow |
 
 ## MolecularSimilarityOperator
 

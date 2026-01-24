@@ -212,7 +212,8 @@ markers = [
   "unit: marks tests as unit tests",
   "benchmark: marks tests as performance benchmarks",
   "e2e: marks tests as end-to-end tests",
-  "performance: marks tests as performance tests"
+  "performance: marks tests as performance tests",
+  "network: marks tests that require network access (deselect with '-m \"not network\"')"
 ]
 minversion = "6.0"
 python_classes = "Test*"

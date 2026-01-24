@@ -110,9 +110,7 @@ class MolecularSimilarityOperator(OperatorModule):
         >>> similarity = result["similarity"]  # scalar in [0, 1]
     """
 
-    def __init__(
-        self, config: MolecularSimilarityConfig, *, rngs: nnx.Rngs | None = None
-    ):
+    def __init__(self, config: MolecularSimilarityConfig, *, rngs: nnx.Rngs | None = None):
         """Initialize similarity operator.
 
         Args:

@@ -36,6 +36,23 @@ Differentiable operators for molecular property prediction, fingerprint computat
       show_root_heading: true
       members: []
 
+## CircularFingerprintOperator
+
+::: diffbio.operators.drug_discovery.fingerprint.CircularFingerprintOperator
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## CircularFingerprintConfig
+
+::: diffbio.operators.drug_discovery.fingerprint.CircularFingerprintConfig
+    options:
+      show_root_heading: true
+      members: []
+
 ## MolecularSimilarityOperator
 
 ::: diffbio.operators.drug_discovery.similarity.MolecularSimilarityOperator
@@ -86,6 +103,24 @@ Differentiable operators for molecular property prediction, fingerprint computat
 ### create_fingerprint_operator
 
 ::: diffbio.operators.drug_discovery.fingerprint.create_fingerprint_operator
+    options:
+      show_root_heading: true
+
+### create_ecfp4_operator
+
+::: diffbio.operators.drug_discovery.fingerprint.create_ecfp4_operator
+    options:
+      show_root_heading: true
+
+### create_ecfp6_operator
+
+::: diffbio.operators.drug_discovery.fingerprint.create_ecfp6_operator
+    options:
+      show_root_heading: true
+
+### create_fcfp4_operator
+
+::: diffbio.operators.drug_discovery.fingerprint.create_fcfp4_operator
     options:
       show_root_heading: true
 
@@ -213,6 +248,56 @@ result, _, _ = fp_op.apply(data, {}, None)
 fingerprint = result["fingerprint"]  # (256,)
 ```
 
+### Circular Fingerprint (ECFP/Morgan)
+
+```python
+from diffbio.operators.drug_discovery import (
+    CircularFingerprintOperator,
+    CircularFingerprintConfig,
+    create_ecfp4_operator,
+    create_ecfp6_operator,
+    create_fcfp4_operator,
+    smiles_to_graph,
+    DEFAULT_ATOM_FEATURES,
+)
+from flax import nnx
+
+# Using factory function for ECFP4-like fingerprints
+ecfp4_op = create_ecfp4_operator(n_bits=2048)
+
+# Or with full configuration
+config = CircularFingerprintConfig(
+    radius=2,              # ECFP4 (2 * radius = 4)
+    n_bits=2048,           # Fingerprint dimension
+    use_chirality=False,   # Include stereochemistry
+    use_features=False,    # Use FCFP instead of ECFP
+    differentiable=True,   # Use learned hash functions
+    hash_hidden_dim=128,   # Hidden dim for hash network
+    temperature=1.0,       # Softmax temperature
+    in_features=DEFAULT_ATOM_FEATURES,
+)
+fp_op = CircularFingerprintOperator(config, rngs=nnx.Rngs(42))
+
+# Compute fingerprint from molecular graph
+node_features, adjacency, _ = smiles_to_graph("c1ccccc1")
+data = {
+    "node_features": node_features,
+    "adjacency": adjacency,
+}
+result, _, _ = fp_op.apply(data, {}, None)
+fingerprint = result["fingerprint"]  # (2048,)
+
+# Or compute directly from SMILES (RDKit mode)
+config_rdkit = CircularFingerprintConfig(
+    radius=2,
+    n_bits=2048,
+    differentiable=False,  # Use RDKit exact fingerprint
+)
+fp_op_rdkit = CircularFingerprintOperator(config_rdkit)
+data = {"smiles": "c1ccccc1"}
+result, _, _ = fp_op_rdkit.apply(data, {}, None)
+```
+
 ### Similarity Computation
 
 ```python
@@ -307,6 +392,22 @@ grads = nnx.grad(loss_fn)(predictor, data)
 | `edge_features` | (n, n, num_edge_features) | float32 | Optional bond features |
 | `node_mask` | (n,) | float32 | Optional mask for valid atoms |
 
+### CircularFingerprintOperator
+
+**Differentiable mode** (`differentiable=True`):
+
+| Key | Shape | Type | Description |
+|-----|-------|------|-------------|
+| `node_features` | (n, in_features) | float32 | Atom feature vectors |
+| `adjacency` | (n, n) | float32 | Adjacency matrix |
+| `node_mask` | (n,) | float32 | Optional mask for valid atoms |
+
+**RDKit mode** (`differentiable=False`):
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `smiles` | str | SMILES string |
+
 ### MolecularSimilarityOperator
 
 | Key | Shape | Type | Description |
@@ -328,6 +429,12 @@ grads = nnx.grad(loss_fn)(predictor, data)
 | Key | Shape | Type | Description |
 |-----|-------|------|-------------|
 | `fingerprint` | (fingerprint_dim,) | float32 | Molecular fingerprint |
+
+### CircularFingerprintOperator
+
+| Key | Shape | Type | Description |
+|-----|-------|------|-------------|
+| `fingerprint` | (n_bits,) | float32 | Circular fingerprint (soft probabilities in differentiable mode, binary in RDKit mode) |
 
 ### MolecularSimilarityOperator
 

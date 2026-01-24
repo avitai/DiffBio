@@ -124,6 +124,9 @@ nav:
       - Training:
           - Training Overview: user-guide/training/overview.md
           - Training Utilities: user-guide/training/utilities.md
+      - Data:
+          - Data Sources: user-guide/sources.md
+          - Dataset Splitters: user-guide/splitters.md
 
   - API Reference:
       - Core:
@@ -166,6 +169,9 @@ nav:
           - Statistical Losses: api/losses/statistical.md
       - Utils:
           - Training Utilities: api/utils/training.md
+      - Data:
+          - Data Sources: api/sources.md
+          - Dataset Splitters: api/splitters.md
 
   - Design Documents:
       - End-to-End Differentiable Pipelines: design-docs/differentiable-pipelines.md

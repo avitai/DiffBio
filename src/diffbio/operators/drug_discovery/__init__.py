@@ -6,6 +6,7 @@ fingerprint computation, and similarity scoring.
 Operators:
     MolecularPropertyPredictor: ChemProp-style MPNN for property prediction
     DifferentiableMolecularFingerprint: Neural graph fingerprints
+    CircularFingerprintOperator: Differentiable ECFP/Morgan fingerprints
     MolecularSimilarityOperator: Differentiable Tanimoto/cosine similarity
 
 Utilities:
@@ -14,8 +15,13 @@ Utilities:
 """
 
 from diffbio.operators.drug_discovery.fingerprint import (
+    CircularFingerprintConfig,
+    CircularFingerprintOperator,
     DifferentiableMolecularFingerprint,
     MolecularFingerprintConfig,
+    create_ecfp4_operator,
+    create_ecfp6_operator,
+    create_fcfp4_operator,
     create_fingerprint_operator,
 )
 from diffbio.operators.drug_discovery.message_passing import (
@@ -57,10 +63,16 @@ __all__ = [
     "MolecularPropertyConfig",
     "MolecularPropertyPredictor",
     "create_property_predictor",
-    # Fingerprints
+    # Neural Fingerprints
     "MolecularFingerprintConfig",
     "DifferentiableMolecularFingerprint",
     "create_fingerprint_operator",
+    # Circular Fingerprints (ECFP/Morgan)
+    "CircularFingerprintConfig",
+    "CircularFingerprintOperator",
+    "create_ecfp4_operator",
+    "create_ecfp6_operator",
+    "create_fcfp4_operator",
     # Similarity
     "MolecularSimilarityConfig",
     "MolecularSimilarityOperator",
