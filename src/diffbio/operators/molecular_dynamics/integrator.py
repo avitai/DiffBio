@@ -177,9 +177,7 @@ class MDIntegratorOperator(OperatorModule):
         )
 
         # Stack trajectory (including initial position)
-        full_trajectory = jnp.concatenate(
-            [positions[jnp.newaxis, ...], traj_positions], axis=0
-        )
+        full_trajectory = jnp.concatenate([positions[jnp.newaxis, ...], traj_positions], axis=0)
 
         result = {
             **data,

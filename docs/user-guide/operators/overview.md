@@ -149,6 +149,14 @@ DiffBio provides a collection of differentiable operators for bioinformatics ana
 | `ForceFieldOperator` | Differentiable force field (LJ, Morse, Soft Sphere) using JAX-MD | <span class="diff-high">Implemented</span> |
 | `MDIntegratorOperator` | Time integration for MD (velocity Verlet, Langevin) using JAX-MD | <span class="diff-high">Implemented</span> |
 
+### [Drug Discovery Operators](drug-discovery.md)
+
+| Operator | Description | Status |
+|----------|-------------|--------|
+| `MolecularPropertyPredictor` | ChemProp-style D-MPNN for molecular property prediction | <span class="diff-high">Implemented</span> |
+| `DifferentiableMolecularFingerprint` | Neural graph fingerprints as alternative to ECFP/Morgan | <span class="diff-high">Implemented</span> |
+| `MolecularSimilarityOperator` | Differentiable Tanimoto/cosine/Dice similarity | <span class="diff-high">Implemented</span> |
+
 ## Operator Interface
 
 All DiffBio operators implement the Datarax `OperatorModule` interface:

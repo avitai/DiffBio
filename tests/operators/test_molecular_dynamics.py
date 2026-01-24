@@ -718,9 +718,7 @@ class TestTechnicalVerification:
         """Test that enum and string potential types produce same results."""
         positions = jnp.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]])
 
-        config_enum = ForceFieldConfig(
-            potential_type=PotentialType.LENNARD_JONES, box_size=10.0
-        )
+        config_enum = ForceFieldConfig(potential_type=PotentialType.LENNARD_JONES, box_size=10.0)
         config_str = ForceFieldConfig(potential_type="lennard_jones", box_size=10.0)
 
         op_enum = ForceFieldOperator(config_enum, rngs=nnx.Rngs(42))

@@ -16,6 +16,7 @@ from diffbio.operators.quality_filter import (
 from diffbio.operators import alignment
 from diffbio.operators import assembly
 from diffbio.operators import crispr
+from diffbio.operators import drug_discovery
 from diffbio.operators import epigenomics
 from diffbio.operators import language_models
 from diffbio.operators import mapping
@@ -40,6 +41,7 @@ __all__ = [
     "alignment",
     "assembly",
     "crispr",
+    "drug_discovery",
     "epigenomics",
     "language_models",
     "mapping",
