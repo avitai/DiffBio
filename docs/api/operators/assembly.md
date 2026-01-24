@@ -1,6 +1,6 @@
 # Assembly Operators API
 
-Differentiable operators for genome assembly using graph neural networks.
+Differentiable operators for genome assembly using graph neural networks and VAE-based binning.
 
 ## GNNAssemblyNavigator
 
@@ -18,6 +18,33 @@ Differentiable operators for genome assembly using graph neural networks.
     options:
       show_root_heading: true
       members: []
+
+## DifferentiableMetagenomicBinner
+
+::: diffbio.operators.assembly.metagenomic_binning.DifferentiableMetagenomicBinner
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+        - encode
+        - decode
+        - soft_cluster
+
+## MetagenomicBinnerConfig
+
+::: diffbio.operators.assembly.metagenomic_binning.MetagenomicBinnerConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## create_metagenomic_binner
+
+::: diffbio.operators.assembly.metagenomic_binning.create_metagenomic_binner
+    options:
+      show_root_heading: true
+      show_source: false
 
 ## Usage Examples
 
@@ -62,4 +89,42 @@ node_features = jnp.concatenate([
 
 # Create edges for k-1 overlaps
 edge_index = find_overlapping_kmers(kmers, k-1)
+```
+
+### Metagenomic Binning
+
+```python
+from flax import nnx
+from diffbio.operators.assembly import (
+    DifferentiableMetagenomicBinner,
+    MetagenomicBinnerConfig,
+    create_metagenomic_binner,
+)
+
+# Using config
+config = MetagenomicBinnerConfig(
+    n_tnf_features=136,
+    n_abundance_features=10,
+    latent_dim=32,
+    n_clusters=100,
+)
+binner = DifferentiableMetagenomicBinner(config, rngs=nnx.Rngs(42))
+
+# Or using factory function
+binner = create_metagenomic_binner(
+    n_abundance_features=10,
+    n_clusters=100,
+    latent_dim=32,
+)
+
+# Apply binning
+data = {
+    "tnf": tnf_features,      # (n_contigs, 136)
+    "abundance": abundances,   # (n_contigs, n_samples)
+}
+result, _, _ = binner.apply(data, {}, None)
+
+# Get cluster assignments
+bins = result["cluster_assignments"].argmax(axis=-1)
+latent = result["latent_z"]
 ```

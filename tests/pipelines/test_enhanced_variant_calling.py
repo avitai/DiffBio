@@ -88,9 +88,7 @@ class TestEnhancedVariantCallingPipeline:
         reads = jax.nn.one_hot(base_indices, 4)
 
         # Read positions on reference
-        positions = jax.random.randint(
-            keys[1], (num_reads,), 0, reference_length - read_length
-        )
+        positions = jax.random.randint(keys[1], (num_reads,), 0, reference_length - read_length)
 
         # Quality scores
         quality = jax.random.uniform(keys[2], (num_reads, read_length), minval=20, maxval=40)

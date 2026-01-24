@@ -15,10 +15,12 @@ from diffbio.operators.quality_filter import (
 # Import submodules for convenient access
 from diffbio.operators import alignment
 from diffbio.operators import assembly
+from diffbio.operators import crispr
 from diffbio.operators import epigenomics
 from diffbio.operators import mapping
 from diffbio.operators import multiomics
 from diffbio.operators import normalization
+from diffbio.operators import population
 from diffbio.operators import preprocessing
 from diffbio.operators import rnaseq
 from diffbio.operators import singlecell
@@ -32,10 +34,12 @@ __all__ = [
     # Submodules
     "alignment",
     "assembly",
+    "crispr",
     "epigenomics",
     "mapping",
     "multiomics",
     "normalization",
+    "population",
     "preprocessing",
     "rnaseq",
     "singlecell",

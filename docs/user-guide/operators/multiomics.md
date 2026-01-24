@@ -10,6 +10,7 @@ Multi-omics operators enable end-to-end optimization of:
 
 - **SpatialDeconvolution**: Cell type deconvolution for spatial transcriptomics
 - **HiCContactAnalysis**: Chromatin contact analysis for Hi-C data
+- **DifferentiableSpatialGeneDetector**: SpatialDE-style spatial gene detection
 
 ## SpatialDeconvolution
 
@@ -183,6 +184,122 @@ def hic_loss(hic_model, contact_matrix, known_loops):
     return loop_loss
 ```
 
+## DifferentiableSpatialGeneDetector
+
+SpatialDE-style differentiable spatial gene detection using Gaussian processes. Identifies spatially variable genes by decomposing expression variability into spatial and non-spatial components.
+
+### Quick Start
+
+```python
+from flax import nnx
+from diffbio.operators.multiomics import (
+    DifferentiableSpatialGeneDetector,
+    SpatialGeneDetectorConfig,
+)
+
+# Configure detector
+config = SpatialGeneDetectorConfig(
+    n_genes=2000,
+    lengthscale=1.0,          # RBF kernel lengthscale
+    variance=1.0,             # Signal variance
+    noise_variance=0.1,       # Noise variance
+    hidden_dims=[64, 32],     # Smoothing network layers
+    temperature=1.0,          # Classification temperature
+    pvalue_threshold=0.05,    # Spatial gene threshold
+)
+
+# Create operator
+rngs = nnx.Rngs(42)
+detector = DifferentiableSpatialGeneDetector(config, rngs=rngs)
+
+# Apply spatial gene detection
+data = {
+    "spatial_coords": coords,       # (n_spots, 2) - Spatial coordinates
+    "expression": expression,        # (n_spots, n_genes) - Gene expression
+    "total_counts": total_counts,   # (n_spots,) - Optional normalization
+}
+result, state, metadata = detector.apply(data, {}, None)
+
+# Get results
+fsv = result["fsv"]                      # Fraction of Spatial Variance
+spatial_pvalues = result["spatial_pvalues"]  # P-values for spatial patterns
+is_spatial = result["is_spatial"]        # Soft spatial gene indicator
+smoothed = result["smoothed_expression"] # GP-smoothed expression
+```
+
+### Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `n_genes` | int | 2000 | Number of genes to analyze |
+| `lengthscale` | float | 1.0 | RBF kernel lengthscale (spatial range) |
+| `variance` | float | 1.0 | Signal variance (σ²_s) |
+| `noise_variance` | float | 0.1 | Noise variance (σ²_e) |
+| `hidden_dims` | list[int] | [64, 32] | Smoothing network dimensions |
+| `temperature` | float | 1.0 | Temperature for soft thresholding |
+| `pvalue_threshold` | float | 0.05 | Threshold for spatial classification |
+| `learnable_kernel` | bool | True | Whether kernel params are learnable |
+
+### Spatial Variance Model
+
+The model decomposes gene expression as:
+
+$$y = f(x) + \epsilon$$
+
+Where:
+- $f(x) \sim \mathcal{GP}(0, K)$ is the spatial component with RBF kernel
+- $\epsilon \sim \mathcal{N}(0, \sigma^2_e)$ is the non-spatial noise
+
+The **Fraction of Spatial Variance (FSV)** quantifies spatial structure:
+
+$$\text{FSV} = \frac{\sigma^2_s}{\sigma^2_s + \sigma^2_e}$$
+
+### RBF Kernel
+
+The squared exponential (RBF) kernel models spatial covariance:
+
+$$K(x_1, x_2) = \sigma^2_s \exp\left(-\frac{||x_1 - x_2||^2}{2\ell^2}\right)$$
+
+Where:
+- $\sigma^2_s$ = signal variance (spatial component strength)
+- $\ell$ = lengthscale (characteristic spatial range)
+
+### Training for Spatial Detection
+
+```python
+def spatial_loss(detector, data):
+    """Train spatial gene detector."""
+    result, _, _ = detector.apply(data, {}, None)
+
+    # Maximize spatial variance detection
+    fsv_loss = -result["fsv"].mean()
+
+    # Smoothing quality (reconstruction)
+    smooth_loss = jnp.mean((result["smoothed_expression"] - data["expression"]) ** 2)
+
+    return fsv_loss + 0.1 * smooth_loss
+```
+
+### Interpreting Results
+
+```python
+# Identify spatially variable genes
+spatial_genes = result["is_spatial"] > 0.5
+n_spatial = spatial_genes.sum()
+
+# Get top spatial genes by FSV
+top_spatial_idx = jnp.argsort(result["fsv"])[::-1][:100]
+
+# Visualize smoothed expression
+import matplotlib.pyplot as plt
+gene_idx = top_spatial_idx[0]
+plt.scatter(
+    data["spatial_coords"][:, 0],
+    data["spatial_coords"][:, 1],
+    c=result["smoothed_expression"][:, gene_idx],
+)
+```
+
 ## Multi-omics Integration
 
 Combine multiple data modalities:
@@ -223,6 +340,8 @@ combined_features = jnp.concatenate([
 | Chromatin structure | HiCContactAnalysis | 3D genome organization |
 | Enhancer-promoter | HiCContactAnalysis | Find regulatory contacts |
 | TAD analysis | HiCContactAnalysis | Domain boundaries |
+| Spatial gene detection | DifferentiableSpatialGeneDetector | Find spatially variable genes |
+| Spatial patterns | DifferentiableSpatialGeneDetector | Identify spatial expression patterns |
 
 ## Next Steps
 

@@ -102,6 +102,8 @@ nav:
           - Assembly & Mapping: user-guide/operators/assembly-mapping.md
           - Multi-omics: user-guide/operators/multiomics.md
           - Variant: user-guide/operators/variant.md
+          - Population Genetics: user-guide/operators/population.md
+          - CRISPR: user-guide/operators/crispr.md
       - Pipelines:
           - Pipeline Overview: user-guide/pipelines/overview.md
           - Variant Calling: user-guide/pipelines/variant-calling.md
@@ -137,6 +139,8 @@ nav:
           - Mapping: api/operators/mapping.md
           - Multi-omics: api/operators/multiomics.md
           - Variant: api/operators/variant.md
+          - Population Genetics: api/operators/population.md
+          - CRISPR: api/operators/crispr.md
       - Pipelines:
           - Variant Calling: api/pipelines/variant-calling.md
           - Enhanced Variant Calling: api/pipelines/enhanced-variant-calling.md

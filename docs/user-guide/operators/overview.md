@@ -88,6 +88,7 @@ DiffBio provides a collection of differentiable operators for bioinformatics ana
 |----------|-------------|--------|
 | `GNNAssemblyNavigator` | GNN for assembly graph traversal | <span class="diff-high">Implemented</span> |
 | `NeuralReadMapper` | Cross-attention based read mapping | <span class="diff-high">Implemented</span> |
+| `DifferentiableMetagenomicBinner` | VAMB-style VAE for metagenomic binning | <span class="diff-high">Implemented</span> |
 
 ### [Multi-omics Operators](multiomics.md)
 
@@ -95,6 +96,7 @@ DiffBio provides a collection of differentiable operators for bioinformatics ana
 |----------|-------------|--------|
 | `SpatialDeconvolution` | Cell type deconvolution for spatial transcriptomics | <span class="diff-high">Implemented</span> |
 | `HiCContactAnalysis` | Chromatin contact analysis for Hi-C data | <span class="diff-high">Implemented</span> |
+| `DifferentiableSpatialGeneDetector` | SpatialDE-style spatial gene detection | <span class="diff-high">Implemented</span> |
 
 ### [Variant Operators](variant.md)
 
@@ -103,6 +105,18 @@ DiffBio provides a collection of differentiable operators for bioinformatics ana
 | `CNNVariantClassifier` | CNN-based variant classification | <span class="diff-high">Implemented</span> |
 | `CNVSegmentation` | Copy number variation segmentation | <span class="diff-high">Implemented</span> |
 | `QualityRecalibration` | Base quality score recalibration | <span class="diff-high">Implemented</span> |
+
+### [Population Genetics Operators](population.md)
+
+| Operator | Description | Status |
+|----------|-------------|--------|
+| `DifferentiableAncestryEstimator` | Neural ADMIXTURE-style ancestry estimation | <span class="diff-high">Implemented</span> |
+
+### [CRISPR Operators](crispr.md)
+
+| Operator | Description | Status |
+|----------|-------------|--------|
+| `DifferentiableCRISPRScorer` | DeepCRISPR-style guide RNA efficiency prediction | <span class="diff-high">Implemented</span> |
 
 ## Operator Interface
 

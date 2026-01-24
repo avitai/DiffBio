@@ -10,6 +10,7 @@ Assembly and mapping operators enable end-to-end optimization of:
 
 - **GNNAssemblyNavigator**: GNN for assembly graph traversal
 - **NeuralReadMapper**: Cross-attention based read mapping
+- **DifferentiableMetagenomicBinner**: VAMB-style VAE for metagenomic binning
 
 ## GNNAssemblyNavigator
 
@@ -158,6 +159,113 @@ position_weights = jax.nn.softmax(position_logits / temperature, axis=-1)
 soft_position = jnp.sum(position_weights * positions, axis=-1)
 ```
 
+## DifferentiableMetagenomicBinner
+
+VAMB-style Variational Autoencoder for metagenomic binning. Encodes tetranucleotide frequencies (TNF) and abundance profiles into a latent space where contigs from the same genome cluster together.
+
+### Quick Start
+
+```python
+from flax import nnx
+from diffbio.operators.assembly import (
+    DifferentiableMetagenomicBinner,
+    MetagenomicBinnerConfig,
+)
+
+# Configure binner
+config = MetagenomicBinnerConfig(
+    n_tnf_features=136,          # Tetranucleotide frequencies
+    n_abundance_features=10,     # Sample abundance features
+    latent_dim=32,               # Latent space dimension
+    hidden_dims=[512, 256],      # Encoder/decoder layers
+    n_clusters=100,              # Number of bins
+    temperature=1.0,             # Clustering temperature
+)
+
+# Create operator
+rngs = nnx.Rngs(42)
+binner = DifferentiableMetagenomicBinner(config, rngs=rngs)
+
+# Apply binning
+data = {
+    "tnf": tnf_features,        # (n_contigs, 136) - TNF frequencies
+    "abundance": abundances,     # (n_contigs, n_samples) - Sample abundances
+}
+result, state, metadata = binner.apply(data, {}, None)
+
+# Get binning results
+latent_z = result["latent_z"]                    # Latent representations
+cluster_assignments = result["cluster_assignments"]  # Soft bin assignments
+bins = cluster_assignments.argmax(axis=-1)       # Hard bin assignments
+```
+
+### Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `n_tnf_features` | int | 136 | Number of TNF features (4^4/2 canonical k-mers) |
+| `n_abundance_features` | int | 10 | Number of sample abundance features |
+| `latent_dim` | int | 32 | Dimension of latent space |
+| `hidden_dims` | list[int] | [512, 256] | Hidden layer dimensions |
+| `n_clusters` | int | 100 | Number of clusters/bins |
+| `temperature` | float | 1.0 | Temperature for soft clustering |
+| `dropout_rate` | float | 0.2 | Dropout rate for regularization |
+| `beta` | float | 1.0 | KL divergence weight (beta-VAE) |
+
+### VAE Architecture
+
+```
+TNF Features ──┐
+               ├──→ Encoder ──→ μ, σ ──→ Reparameterize ──→ z ──→ Decoder ──→ Reconstructed
+Abundance ─────┘                                              │
+                                                              ↓
+                                                    Soft Clustering ──→ Bin Assignments
+```
+
+The binner uses:
+1. **Encoder**: Maps TNF + abundance to latent distribution (μ, σ)
+2. **Reparameterization**: Samples z = μ + σ * ε for differentiability
+3. **Decoder**: Reconstructs TNF (softmax) and abundance (softplus)
+4. **Soft clustering**: Distance-based assignment to learnable centroids
+
+### Training/Evaluation Mode
+
+Use NNX's built-in `train()` and `eval()` methods:
+
+```python
+# Training mode: stochastic sampling, dropout enabled
+binner.train()
+result, _, _ = binner.apply(data, {}, None)
+
+# Evaluation mode: deterministic (z = μ), dropout disabled
+binner.eval()
+result, _, _ = binner.apply(data, {}, None)
+```
+
+### Training for Binning
+
+```python
+def binning_loss(binner, data):
+    """Combined VAE + clustering loss."""
+    result, _, _ = binner.apply(data, {}, None)
+
+    # Reconstruction loss
+    tnf_loss = jnp.mean((result["reconstructed_tnf"] - data["tnf"]) ** 2)
+    abundance_loss = jnp.mean(
+        (result["reconstructed_abundance"] - data["abundance"]) ** 2
+    )
+
+    # KL divergence
+    mu, logvar = result["latent_mu"], result["latent_logvar"]
+    kl_loss = -0.5 * jnp.mean(1 + logvar - mu**2 - jnp.exp(logvar))
+
+    # Clustering compactness (entropy minimization)
+    assignments = result["cluster_assignments"]
+    entropy = -jnp.mean(jnp.sum(assignments * jnp.log(assignments + 1e-10), axis=-1))
+
+    return tnf_loss + abundance_loss + config.beta * kl_loss + 0.1 * entropy
+```
+
 ## Training Assembly/Mapping Models
 
 ### GNN Training for Assembly
@@ -195,6 +303,8 @@ def mapping_loss(mapper, reads, reference, true_positions):
 | Repeat resolution | GNNAssemblyNavigator | Handle repetitive regions |
 | Read mapping | NeuralReadMapper | Align reads to reference |
 | Variant discovery | NeuralReadMapper | Find mapping differences |
+| Metagenomic binning | DifferentiableMetagenomicBinner | Cluster contigs by genome |
+| MAG recovery | DifferentiableMetagenomicBinner | Metagenome-assembled genomes |
 
 ## Advanced Usage
 
