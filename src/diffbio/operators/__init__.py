@@ -18,6 +18,7 @@ from diffbio.operators import assembly
 from diffbio.operators import crispr
 from diffbio.operators import epigenomics
 from diffbio.operators import mapping
+from diffbio.operators import metabolomics
 from diffbio.operators import multiomics
 from diffbio.operators import normalization
 from diffbio.operators import population
@@ -37,6 +38,7 @@ __all__ = [
     "crispr",
     "epigenomics",
     "mapping",
+    "metabolomics",
     "multiomics",
     "normalization",
     "population",

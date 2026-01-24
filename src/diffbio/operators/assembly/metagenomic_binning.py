@@ -111,9 +111,7 @@ class DifferentiableMetagenomicBinner(EncoderDecoderOperator):
         self.encoder_bn = nnx.List(encoder_bn)
         self.encoder_dropout = nnx.Dropout(rate=config.dropout_rate, rngs=rngs)
         self.fc_mu = nnx.Linear(config.hidden_dims[-1], config.latent_dim, rngs=rngs)
-        self.fc_logvar = nnx.Linear(
-            config.hidden_dims[-1], config.latent_dim, rngs=rngs
-        )
+        self.fc_logvar = nnx.Linear(config.hidden_dims[-1], config.latent_dim, rngs=rngs)
 
         # Build decoder (using nnx.List for proper pytree handling)
         decoder_linear = []
@@ -126,17 +124,14 @@ class DifferentiableMetagenomicBinner(EncoderDecoderOperator):
         self.decoder_linear = nnx.List(decoder_linear)
         self.decoder_bn = nnx.List(decoder_bn)
         self.decoder_dropout = nnx.Dropout(rate=config.dropout_rate, rngs=rngs)
-        self.fc_tnf = nnx.Linear(
-            config.hidden_dims[0], config.n_tnf_features, rngs=rngs
-        )
+        self.fc_tnf = nnx.Linear(config.hidden_dims[0], config.n_tnf_features, rngs=rngs)
         self.fc_abundance = nnx.Linear(
             config.hidden_dims[0], config.n_abundance_features, rngs=rngs
         )
 
         # Learnable cluster centroids
         self.centroids = nnx.Param(
-            jax.random.normal(rngs.params(), (config.n_clusters, config.latent_dim))
-            * 0.1
+            jax.random.normal(rngs.params(), (config.n_clusters, config.latent_dim)) * 0.1
         )
 
         # Temperature for soft clustering
@@ -189,9 +184,7 @@ class DifferentiableMetagenomicBinner(EncoderDecoderOperator):
 
         return tnf_recon, abundance_recon
 
-    def soft_cluster(
-        self, z: Float[Array, "batch latent"]
-    ) -> Float[Array, "batch n_clusters"]:
+    def soft_cluster(self, z: Float[Array, "batch latent"]) -> Float[Array, "batch n_clusters"]:
         """Compute soft cluster assignments.
 
         Args:

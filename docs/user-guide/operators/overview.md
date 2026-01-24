@@ -118,6 +118,12 @@ DiffBio provides a collection of differentiable operators for bioinformatics ana
 |----------|-------------|--------|
 | `DifferentiableCRISPRScorer` | DeepCRISPR-style guide RNA efficiency prediction | <span class="diff-high">Implemented</span> |
 
+### [Metabolomics Operators](metabolomics.md)
+
+| Operator | Description | Status |
+|----------|-------------|--------|
+| `DifferentiableSpectralSimilarity` | MS2DeepScore-style Siamese network for MS/MS similarity | <span class="diff-high">Implemented</span> |
+
 ## Operator Interface
 
 All DiffBio operators implement the Datarax `OperatorModule` interface:

@@ -111,9 +111,7 @@ class DifferentiableSpatialGeneDetector(TemperatureOperator):
         if config.learnable_kernel:
             self.log_lengthscale = nnx.Param(jnp.log(jnp.array(config.lengthscale)))
             self.log_variance = nnx.Param(jnp.log(jnp.array(config.variance)))
-            self.log_noise_variance = nnx.Param(
-                jnp.log(jnp.array(config.noise_variance))
-            )
+            self.log_noise_variance = nnx.Param(jnp.log(jnp.array(config.noise_variance)))
         else:
             self._lengthscale = config.lengthscale
             self._variance = config.variance
@@ -130,14 +128,14 @@ class DifferentiableSpatialGeneDetector(TemperatureOperator):
 
     @property
     def lengthscale(self) -> Float[Array, ""] | float:
-        """Get current lengthscale (characteristic length for RBF kernel)."""
+        """Current lengthscale (characteristic length for RBF kernel)."""
         if hasattr(self, "log_lengthscale"):
             return jnp.exp(self.log_lengthscale.value)
         return self._lengthscale
 
     @property
     def variance(self) -> Float[Array, ""] | float:
-        """Get current signal variance (sigma^2_s)."""
+        """Current signal variance (sigma^2_s)."""
         if hasattr(self, "log_variance"):
             return jnp.exp(self.log_variance.value)
         return self._variance
@@ -238,9 +236,7 @@ class DifferentiableSpatialGeneDetector(TemperatureOperator):
             Smoothed expression.
         """
         # Normalize coordinates for stable training
-        coords_norm = (coords - jnp.mean(coords, axis=0)) / (
-            jnp.std(coords, axis=0) + 1e-6
-        )
+        coords_norm = (coords - jnp.mean(coords, axis=0)) / (jnp.std(coords, axis=0) + 1e-6)
 
         # Apply smoothing network
         h = coords_norm

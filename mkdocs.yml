@@ -101,6 +101,7 @@ nav:
           - Statistical: user-guide/operators/statistical.md
           - Assembly & Mapping: user-guide/operators/assembly-mapping.md
           - Multi-omics: user-guide/operators/multiomics.md
+          - Metabolomics: user-guide/operators/metabolomics.md
           - Variant: user-guide/operators/variant.md
           - Population Genetics: user-guide/operators/population.md
           - CRISPR: user-guide/operators/crispr.md
@@ -138,6 +139,7 @@ nav:
           - Assembly: api/operators/assembly.md
           - Mapping: api/operators/mapping.md
           - Multi-omics: api/operators/multiomics.md
+          - Metabolomics: api/operators/metabolomics.md
           - Variant: api/operators/variant.md
           - Population Genetics: api/operators/population.md
           - CRISPR: api/operators/crispr.md

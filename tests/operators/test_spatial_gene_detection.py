@@ -62,9 +62,7 @@ class TestSpatialGeneDetectorBasic:
         # Spatial coordinates (2D)
         coords = jax.random.uniform(k1, (n_spots, 2), minval=0, maxval=10)
         # Gene expression counts
-        expression = jax.random.poisson(k2, lam=10.0, shape=(n_spots, n_genes)).astype(
-            jnp.float32
-        )
+        expression = jax.random.poisson(k2, lam=10.0, shape=(n_spots, n_genes)).astype(jnp.float32)
         # Total counts per spot (for normalization)
         total_counts = jnp.sum(expression, axis=1)
 
@@ -136,9 +134,9 @@ class TestSpatialGeneDetectorDifferentiability:
 
         return {
             "spatial_coords": jax.random.uniform(k1, (n_spots, 2), minval=0, maxval=10),
-            "expression": jax.random.poisson(
-                k2, lam=10.0, shape=(n_spots, n_genes)
-            ).astype(jnp.float32),
+            "expression": jax.random.poisson(k2, lam=10.0, shape=(n_spots, n_genes)).astype(
+                jnp.float32
+            ),
             "total_counts": jnp.ones(n_spots) * n_genes * 10,
         }
 
@@ -193,9 +191,9 @@ class TestSpatialGeneDetectorJIT:
         k1, k2 = jax.random.split(key)
         data = {
             "spatial_coords": jax.random.uniform(k1, (n_spots, 2), minval=0, maxval=10),
-            "expression": jax.random.poisson(
-                k2, lam=10.0, shape=(n_spots, n_genes)
-            ).astype(jnp.float32),
+            "expression": jax.random.poisson(k2, lam=10.0, shape=(n_spots, n_genes)).astype(
+                jnp.float32
+            ),
             "total_counts": jnp.ones(n_spots) * n_genes * 10,
         }
 
@@ -256,16 +254,12 @@ class TestSpatialGeneDetectorKernel:
 
         # Short lengthscale
         config_short = SpatialGeneDetectorConfig(n_genes=10, lengthscale=0.1)
-        detector_short = DifferentiableSpatialGeneDetector(
-            config_short, rngs=nnx.Rngs(42)
-        )
+        detector_short = DifferentiableSpatialGeneDetector(config_short, rngs=nnx.Rngs(42))
         K_short = detector_short.compute_kernel(coords, coords)
 
         # Long lengthscale
         config_long = SpatialGeneDetectorConfig(n_genes=10, lengthscale=10.0)
-        detector_long = DifferentiableSpatialGeneDetector(
-            config_long, rngs=nnx.Rngs(42)
-        )
+        detector_long = DifferentiableSpatialGeneDetector(config_long, rngs=nnx.Rngs(42))
         K_long = detector_long.compute_kernel(coords, coords)
 
         # Longer lengthscale should have higher off-diagonal values

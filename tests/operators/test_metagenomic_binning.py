@@ -191,15 +191,15 @@ class TestMetagenomicBinnerDifferentiability:
 
         # Check encoder_linear has gradients
         encoder_grads = jax.tree.leaves(grads.encoder_linear)
-        assert any(
-            hasattr(g, "shape") and jnp.any(g != 0) for g in encoder_grads
-        ), "Encoder should have non-zero gradients"
+        assert any(hasattr(g, "shape") and jnp.any(g != 0) for g in encoder_grads), (
+            "Encoder should have non-zero gradients"
+        )
 
         # Check decoder_linear has gradients
         decoder_grads = jax.tree.leaves(grads.decoder_linear)
-        assert any(
-            hasattr(g, "shape") and jnp.any(g != 0) for g in decoder_grads
-        ), "Decoder should have non-zero gradients"
+        assert any(hasattr(g, "shape") and jnp.any(g != 0) for g in decoder_grads), (
+            "Decoder should have non-zero gradients"
+        )
 
     def test_clustering_loss_gradient(self, binner, sample_data):
         """Test gradient through clustering loss."""
