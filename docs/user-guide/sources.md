@@ -582,3 +582,22 @@ for batch in sampler:
 | MolNet benchmarks | MolNetSource |
 | Split views | IndexedViewSource (via splitter) |
 | Custom datasets | Extend DataSourceModule |
+
+## Related Resources
+
+### Dataset Splitting
+
+- **[Dataset Splitters](splitters.md)**: Domain-aware splitting for unbiased evaluation
+- **[ScaffoldSplitter](splitters.md#scaffoldsplitter)**: Drug discovery scaffold-based splitting
+- **[SequenceIdentitySplitter](splitters.md#sequenceidentitysplitter)**: Bioinformatics sequence-based splitting
+
+### Operators
+
+- **[Drug Discovery Operators](operators/drug-discovery.md)**: Use molecular graphs from MolNetSource
+- **[Alignment Operators](operators/alignment.md)**: Align sequences from FastaSource
+- **[Variant Operators](operators/variant.md)**: Process reads from BAMSource
+
+### API Reference
+
+- **[Data Sources API](../api/sources.md)**: Complete API documentation for all data sources
+- **[Dataset Splitters API](../api/splitters.md)**: Complete API documentation for all splitters

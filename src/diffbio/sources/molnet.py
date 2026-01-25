@@ -234,11 +234,18 @@ class MolNetSource(DataSourceModule):
             url: URL to download from
             data_path: Local path to save to
         """
+        from urllib.parse import urlparse
+
+        # Validate URL scheme for security
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError(f"Invalid URL scheme: {parsed.scheme}. Only http/https allowed.")
+
         # Create directory
         data_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Download file
-        urllib.request.urlretrieve(url, data_path)
+        urllib.request.urlretrieve(url, data_path)  # nosec B310
 
     def _parse_csv(self, data_path: Path, dataset_info: dict) -> list[Element]:
         """Parse CSV file into Elements.

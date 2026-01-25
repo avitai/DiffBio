@@ -335,3 +335,23 @@ for epoch in range(10):
 | Lead optimization | TanimotoClusterSplitter |
 | Protein function prediction | SequenceIdentitySplitter |
 | Genomic sequence analysis | SequenceIdentitySplitter |
+
+## Related Resources
+
+### Data Sources
+
+- **[Data Sources Overview](sources.md)**: Load data before splitting
+- **[MolNet Datasets](sources.md#molnet-benchmark-datasets)**: MoleculeNet benchmark datasets
+- **[BAMSource](sources.md#bamsource---aligned-reads)**: Load aligned reads from BAM files
+- **[FastaSource](sources.md#fastasource---reference-sequences)**: Load sequences from FASTA files
+
+### Operators
+
+- **[Drug Discovery Operators](operators/drug-discovery.md)**: Process split molecular datasets
+- **[ADMETPredictor](operators/drug-discovery.md#admetpredictor)**: Multi-task ADMET prediction
+- **[AttentiveFP](operators/drug-discovery.md#attentivefp)**: Attention-based molecular fingerprints
+
+### API Reference
+
+- **[Dataset Splitters API](../api/splitters.md)**: Complete API documentation for all splitters
+- **[Data Sources API](../api/sources.md)**: Complete API documentation for all data sources

@@ -105,6 +105,7 @@ DiffBio provides a collection of differentiable operators for bioinformatics ana
 | `CNNVariantClassifier` | CNN-based variant classification | <span class="diff-high">Implemented</span> |
 | `CNVSegmentation` | Copy number variation segmentation | <span class="diff-high">Implemented</span> |
 | `QualityRecalibration` | Base quality score recalibration | <span class="diff-high">Implemented</span> |
+| `DeepVariantStylePileup` | Multi-channel pileup image generation for DeepVariant-style CNNs | <span class="diff-high">Implemented</span> |
 
 ### [Population Genetics Operators](population.md)
 
@@ -154,7 +155,11 @@ DiffBio provides a collection of differentiable operators for bioinformatics ana
 | Operator | Description | Status |
 |----------|-------------|--------|
 | `MolecularPropertyPredictor` | ChemProp-style D-MPNN for molecular property prediction | <span class="diff-high">Implemented</span> |
+| `ADMETPredictor` | Multi-task ADMET prediction (22 TDC endpoints) | <span class="diff-high">Implemented</span> |
 | `DifferentiableMolecularFingerprint` | Neural graph fingerprints as alternative to ECFP/Morgan | <span class="diff-high">Implemented</span> |
+| `CircularFingerprintOperator` | Differentiable ECFP/Morgan circular fingerprints | <span class="diff-high">Implemented</span> |
+| `MACCSKeysOperator` | Differentiable MACCS 166 structural keys fingerprint | <span class="diff-high">Implemented</span> |
+| `AttentiveFP` | Attention-based graph fingerprint with GRU (Xiong et al. 2019) | <span class="diff-high">Implemented</span> |
 | `MolecularSimilarityOperator` | Differentiable Tanimoto/cosine/Dice similarity | <span class="diff-high">Implemented</span> |
 
 ## Operator Interface
@@ -395,3 +400,21 @@ def process_batch(operator, batch_data):
 - Learn about the [Smith-Waterman](smith-waterman.md) alignment operator
 - Explore the [Pileup](pileup.md) operator for variant calling
 - See the [Quality Filter](quality-filter.md) for preprocessing
+
+## Related Resources
+
+### Data Loading
+
+- **[Data Sources](../sources.md)**: Load genomics data (BAM, FASTA) and molecular datasets (MolNet)
+- **[Dataset Splitters](../splitters.md)**: Domain-aware dataset splitting (scaffold, sequence identity)
+
+### Pipelines
+
+- **[Pipeline Overview](../pipelines/overview.md)**: End-to-end differentiable bioinformatics pipelines
+- **[Variant Calling Pipeline](../pipelines/variant-calling.md)**: Complete variant calling workflow
+- **[Single-Cell Pipeline](../pipelines/single-cell.md)**: Single-cell RNA-seq analysis
+
+### Training
+
+- **[Training Overview](../training/overview.md)**: Training DiffBio models
+- **[Training Utilities](../training/utilities.md)**: Trainer class and configuration

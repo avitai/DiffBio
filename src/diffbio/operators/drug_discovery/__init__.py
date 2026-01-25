@@ -7,6 +7,9 @@ Operators:
     MolecularPropertyPredictor: ChemProp-style MPNN for property prediction
     DifferentiableMolecularFingerprint: Neural graph fingerprints
     CircularFingerprintOperator: Differentiable ECFP/Morgan fingerprints
+    MACCSKeysOperator: Differentiable MACCS 166 structural keys
+    AttentiveFP: Attention-based molecular fingerprint (Xiong et al. 2019)
+    ADMETPredictor: Multi-task ADMET property prediction
     MolecularSimilarityOperator: Differentiable Tanimoto/cosine similarity
 
 Utilities:
@@ -14,6 +17,18 @@ Utilities:
     batch_smiles_to_graphs: Batch conversion with padding
 """
 
+from diffbio.operators.drug_discovery.admet_predictor import (
+    ADMET_TASK_NAMES,
+    ADMET_TASK_TYPES,
+    ADMETConfig,
+    ADMETPredictor,
+    create_admet_predictor,
+)
+from diffbio.operators.drug_discovery.attentive_fp import (
+    AttentiveFP,
+    AttentiveFPConfig,
+    create_attentive_fp,
+)
 from diffbio.operators.drug_discovery.fingerprint import (
     CircularFingerprintConfig,
     CircularFingerprintOperator,
@@ -23,6 +38,11 @@ from diffbio.operators.drug_discovery.fingerprint import (
     create_ecfp6_operator,
     create_fcfp4_operator,
     create_fingerprint_operator,
+)
+from diffbio.operators.drug_discovery.maccs_keys import (
+    MACCSKeysConfig,
+    MACCSKeysOperator,
+    create_maccs_operator,
 )
 from diffbio.operators.drug_discovery.message_passing import (
     MessagePassingLayer,
@@ -63,6 +83,12 @@ __all__ = [
     "MolecularPropertyConfig",
     "MolecularPropertyPredictor",
     "create_property_predictor",
+    # ADMET Prediction
+    "ADMETConfig",
+    "ADMETPredictor",
+    "create_admet_predictor",
+    "ADMET_TASK_NAMES",
+    "ADMET_TASK_TYPES",
     # Neural Fingerprints
     "MolecularFingerprintConfig",
     "DifferentiableMolecularFingerprint",
@@ -73,6 +99,14 @@ __all__ = [
     "create_ecfp4_operator",
     "create_ecfp6_operator",
     "create_fcfp4_operator",
+    # MACCS Keys
+    "MACCSKeysConfig",
+    "MACCSKeysOperator",
+    "create_maccs_operator",
+    # AttentiveFP
+    "AttentiveFPConfig",
+    "AttentiveFP",
+    "create_attentive_fp",
     # Similarity
     "MolecularSimilarityConfig",
     "MolecularSimilarityOperator",

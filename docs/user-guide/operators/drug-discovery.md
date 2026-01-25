@@ -9,8 +9,11 @@ DiffBio provides differentiable operators for molecular property prediction, fin
 Drug discovery operators enable gradient-based optimization for chemoinformatics tasks:
 
 - **MolecularPropertyPredictor**: ChemProp-style D-MPNN for property prediction
+- **ADMETPredictor**: Multi-task ADMET property prediction (22 TDC endpoints)
 - **DifferentiableMolecularFingerprint**: Learned neural graph fingerprints
 - **CircularFingerprintOperator**: Differentiable ECFP/Morgan fingerprints
+- **MACCSKeysOperator**: Differentiable MACCS 166 structural keys
+- **AttentiveFP**: Attention-based molecular fingerprint with GRU
 - **MolecularSimilarityOperator**: Differentiable Tanimoto/cosine/Dice similarity
 
 ## Architecture
@@ -178,6 +181,264 @@ predictor = MolecularPropertyPredictor(config, rngs=nnx.Rngs(42))
 result, _, _ = predictor.apply(data, {}, None)
 predictions = result["predictions"]  # (5,)
 ```
+
+## ADMETPredictor
+
+Multi-task predictor for Absorption, Distribution, Metabolism, Excretion, and Toxicity (ADMET) properties following the TDC benchmark with 22 standard endpoints.
+
+### What is ADMET?
+
+ADMET properties determine a drug's pharmacokinetic profile:
+
+- **Absorption**: How the drug enters the bloodstream (Caco2, HIA, Pgp, Bioavailability, etc.)
+- **Distribution**: How the drug spreads through the body (BBB, PPBR, VDss)
+- **Metabolism**: How the drug is broken down (CYP450 enzymes)
+- **Excretion**: How the drug is eliminated (Half-life, Clearance)
+- **Toxicity**: Adverse effects (hERG, AMES, DILI, LD50)
+
+### Quick Start
+
+```python
+from flax import nnx
+from diffbio.operators.drug_discovery import (
+    ADMETPredictor,
+    ADMETConfig,
+    create_admet_predictor,
+    ADMET_TASK_NAMES,
+    ADMET_TASK_TYPES,
+    smiles_to_graph,
+)
+
+# Create predictor (quick start)
+admet = create_admet_predictor(hidden_dim=256, num_layers=3)
+
+# Or with full configuration
+config = ADMETConfig(
+    hidden_dim=300,
+    num_message_passing_steps=3,
+    num_tasks=22,  # Standard TDC benchmark
+    dropout_rate=0.1,
+    in_features=34,  # Real molecule features
+)
+admet = ADMETPredictor(config, rngs=nnx.Rngs(42))
+
+# Predict ADMET properties
+node_features, adjacency, edge_features = smiles_to_graph("CCO")
+data = {
+    "node_features": node_features,
+    "adjacency": adjacency,
+    "edge_features": edge_features,
+}
+result, _, _ = admet.apply(data, {}, None)
+
+predictions = result["predictions"]  # (22,) for all ADMET tasks
+print(f"BBB permeability: {predictions[6]:.3f}")  # BBB_Martins is index 6
+```
+
+### TDC ADMET Endpoints
+
+| Task | Index | Type | Description |
+|------|-------|------|-------------|
+| Caco2_Wang | 0 | Regression | Intestinal permeability |
+| HIA_Hou | 1 | Classification | Human intestinal absorption |
+| Pgp_Broccatelli | 2 | Classification | P-glycoprotein inhibition |
+| Bioavailability_Ma | 3 | Classification | Oral bioavailability |
+| Lipophilicity_AstraZeneca | 4 | Regression | LogD7.4 |
+| Solubility_AqSolDB | 5 | Regression | Aqueous solubility |
+| BBB_Martins | 6 | Classification | Blood-brain barrier |
+| PPBR_AZ | 7 | Regression | Plasma protein binding |
+| VDss_Lombardo | 8 | Regression | Volume of distribution |
+| CYP2C9_Veith | 9 | Classification | CYP2C9 inhibition |
+| CYP2D6_Veith | 10 | Classification | CYP2D6 inhibition |
+| CYP3A4_Veith | 11 | Classification | CYP3A4 inhibition |
+| Half_Life_Obach | 15 | Regression | Half-life |
+| hERG | 19 | Classification | hERG channel inhibition (cardiotox) |
+| AMES | 20 | Classification | Mutagenicity |
+| DILI | 21 | Classification | Drug-induced liver injury |
+
+### Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `hidden_dim` | int | 300 | Hidden dimension for message passing |
+| `num_message_passing_steps` | int | 3 | D-MPNN iterations |
+| `num_tasks` | int | 22 | Number of ADMET tasks |
+| `dropout_rate` | float | 0.0 | Dropout for regularization |
+| `ffn_hidden_dim` | int | None | FFN hidden dim (defaults to hidden_dim) |
+| `ffn_num_layers` | int | 2 | Number of FFN layers |
+| `apply_task_activations` | bool | False | Apply sigmoid for classification tasks |
+
+## MACCSKeysOperator
+
+Differentiable implementation of MACCS (Molecular ACCess System) 166 structural keys fingerprint.
+
+### What are MACCS Keys?
+
+MACCS keys are 166 predefined structural patterns that encode the presence/absence of specific molecular substructures:
+
+- Atom types (C, N, O, S, halides)
+- Functional groups (carbonyl, hydroxyl, amine)
+- Ring systems (aromatic, aliphatic)
+- Bond patterns and connectivity
+
+### Quick Start
+
+```python
+from flax import nnx
+from diffbio.operators.drug_discovery import (
+    MACCSKeysOperator,
+    MACCSKeysConfig,
+    create_maccs_operator,
+    smiles_to_graph,
+)
+
+# Create operator (quick start)
+maccs = create_maccs_operator(differentiable=True, temperature=1.0)
+
+# Or with configuration
+config = MACCSKeysConfig(
+    n_bits=166,  # Standard MACCS keys
+    differentiable=True,
+    temperature=1.0,  # Lower = sharper bit assignment
+    hidden_dim=64,
+    num_layers=2,
+    in_features=34,
+)
+maccs = MACCSKeysOperator(config, rngs=nnx.Rngs(42))
+
+# Compute fingerprint
+node_features, adjacency, _ = smiles_to_graph("c1ccccc1")  # Benzene
+data = {
+    "node_features": node_features,
+    "adjacency": adjacency,
+}
+result, _, _ = maccs.apply(data, {}, None)
+
+fingerprint = result["fingerprint"]  # (166,) soft bits in [0, 1]
+```
+
+### Differentiable vs RDKit Mode
+
+**Differentiable Mode** (default): Uses learned pattern detectors with temperature-controlled soft assignment.
+
+```python
+config = MACCSKeysConfig(
+    differentiable=True,
+    temperature=0.5,  # Lower = more binary-like
+)
+maccs = MACCSKeysOperator(config, rngs=nnx.Rngs(42))
+
+# Input: molecular graph
+data = {"node_features": node_features, "adjacency": adjacency}
+result, _, _ = maccs.apply(data, {}, None)
+# Output: soft probabilities in [0, 1]
+```
+
+**RDKit Mode**: Uses exact RDKit MACCS implementation (non-differentiable).
+
+```python
+config = MACCSKeysConfig(differentiable=False)
+maccs = MACCSKeysOperator(config)
+
+# Input: SMILES string
+data = {"smiles": "CCO"}
+result, _, _ = maccs.apply(data, {}, None)
+# Output: binary fingerprint
+```
+
+### Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `n_bits` | int | 166 | Output fingerprint bits |
+| `differentiable` | bool | True | Use learned pattern matching |
+| `temperature` | float | 1.0 | Softmax temperature |
+| `hidden_dim` | int | 64 | Hidden dim for pattern networks |
+| `num_layers` | int | 2 | Message passing layers |
+| `in_features` | int | 4 | Input node features |
+
+## AttentiveFP
+
+Attention-based graph fingerprint following the AttentiveFP architecture from Xiong et al. 2019, combining graph attention with GRU cells for molecular representation learning.
+
+### Architecture
+
+AttentiveFP uses a two-level attention mechanism:
+
+1. **Atom-level**: GATE convolutions with GRU refinement
+2. **Molecule-level**: Attention-weighted aggregation with GRU
+
+The model provides interpretable attention weights showing atom importance.
+
+### Quick Start
+
+```python
+from flax import nnx
+from diffbio.operators.drug_discovery import (
+    AttentiveFP,
+    AttentiveFPConfig,
+    create_attentive_fp,
+    smiles_to_graph,
+)
+
+# Create operator (quick start)
+afp = create_attentive_fp(hidden_dim=200, out_dim=256, num_layers=2)
+
+# Or with configuration
+config = AttentiveFPConfig(
+    hidden_dim=200,
+    out_dim=256,
+    num_layers=2,  # Atom-level attention layers
+    num_timesteps=2,  # Molecule-level GRU iterations
+    dropout_rate=0.0,
+    in_features=34,
+    edge_dim=4,
+)
+afp = AttentiveFP(config, rngs=nnx.Rngs(42))
+
+# Compute fingerprint
+node_features, adjacency, edge_features = smiles_to_graph("c1ccccc1")
+data = {
+    "node_features": node_features,
+    "adjacency": adjacency,
+    "edge_features": edge_features,
+}
+result, _, _ = afp.apply(data, {}, None)
+
+fingerprint = result["fingerprint"]  # (256,)
+attention = result["attention_weights"]  # Interpretability
+mol_attention = result["molecule_attention"]  # Atom importance
+```
+
+### Interpretability
+
+AttentiveFP provides attention weights for understanding which atoms contribute most:
+
+```python
+# Get atom importance scores
+mol_attention = result["molecule_attention"]  # (n_atoms,)
+
+# Find most important atoms
+top_atoms = jnp.argsort(mol_attention)[::-1][:5]
+print(f"Top 5 important atom indices: {top_atoms}")
+```
+
+### Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `hidden_dim` | int | 200 | Hidden dimension for GNN |
+| `out_dim` | int | 200 | Output fingerprint dimension |
+| `num_layers` | int | 2 | Atom-level attention layers |
+| `num_timesteps` | int | 2 | Molecule-level GRU iterations |
+| `dropout_rate` | float | 0.0 | Dropout for regularization |
+| `in_features` | int | 39 | Input node features |
+| `edge_dim` | int | 10 | Edge feature dimension |
+| `negative_slope` | float | 0.2 | LeakyReLU negative slope |
+
+### References
+
+- Xiong et al. "Pushing the Boundaries of Molecular Representation for Drug Discovery with the Graph Attention Mechanism" JCIM 2019
 
 ## DifferentiableMolecularFingerprint
 
@@ -696,3 +957,20 @@ grads = nnx.grad(end_to_end_loss)(predictor, fingerprint_op, sim_op, data1, data
 - See [Protein Structure Operators](protein.md) for structure prediction
 - Explore [Molecular Dynamics Operators](molecular-dynamics.md) for simulations
 - Check [Statistical Operators](statistical.md) for analysis methods
+
+## Related Resources
+
+### Data Loading
+
+- **[MolNet Datasets](../sources.md#molnet-benchmark-datasets)**: Load MoleculeNet benchmark datasets for training and evaluation
+- **[Data Sources Overview](../sources.md)**: All available data source modules
+
+### Dataset Splitting
+
+- **[ScaffoldSplitter](../splitters.md#scaffoldsplitter)**: Structure-aware splitting for drug discovery benchmarks
+- **[TanimotoClusterSplitter](../splitters.md#tanimotoclustersplitter)**: Fingerprint similarity-based splitting
+- **[Dataset Splitters Overview](../splitters.md)**: All available splitting strategies
+
+### API Reference
+
+- **[Drug Discovery API](../../api/operators/drug-discovery.md)**: Complete API documentation for all drug discovery operators

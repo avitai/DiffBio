@@ -121,7 +121,7 @@ class SplitterModule(StructuralModule):
         raise NotImplementedError("Subclasses must implement split()")
 
     def process(self, data_source: DataSourceModule) -> SplitResult:
-        """StructuralModule interface - delegates to split().
+        """Process data source using the split method.
 
         Args:
             data_source: Datarax DataSourceModule to split

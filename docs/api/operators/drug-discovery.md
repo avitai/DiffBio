@@ -19,6 +19,57 @@ Differentiable operators for molecular property prediction, fingerprint computat
       show_root_heading: true
       members: []
 
+## ADMETPredictor
+
+::: diffbio.operators.drug_discovery.admet_predictor.ADMETPredictor
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## ADMETConfig
+
+::: diffbio.operators.drug_discovery.admet_predictor.ADMETConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## MACCSKeysOperator
+
+::: diffbio.operators.drug_discovery.maccs_keys.MACCSKeysOperator
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## MACCSKeysConfig
+
+::: diffbio.operators.drug_discovery.maccs_keys.MACCSKeysConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## AttentiveFP
+
+::: diffbio.operators.drug_discovery.attentive_fp.AttentiveFP
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## AttentiveFPConfig
+
+::: diffbio.operators.drug_discovery.attentive_fp.AttentiveFPConfig
+    options:
+      show_root_heading: true
+      members: []
+
 ## DifferentiableMolecularFingerprint
 
 ::: diffbio.operators.drug_discovery.fingerprint.DifferentiableMolecularFingerprint
@@ -127,6 +178,24 @@ Differentiable operators for molecular property prediction, fingerprint computat
 ### create_similarity_operator
 
 ::: diffbio.operators.drug_discovery.similarity.create_similarity_operator
+    options:
+      show_root_heading: true
+
+### create_admet_predictor
+
+::: diffbio.operators.drug_discovery.admet_predictor.create_admet_predictor
+    options:
+      show_root_heading: true
+
+### create_maccs_operator
+
+::: diffbio.operators.drug_discovery.maccs_keys.create_maccs_operator
+    options:
+      show_root_heading: true
+
+### create_attentive_fp
+
+::: diffbio.operators.drug_discovery.attentive_fp.create_attentive_fp
     options:
       show_root_heading: true
 
