@@ -30,8 +30,10 @@ class NegativeBinomialLoss(nnx.Module):
         rngs: Flax NNX random number generators.
 
     Example:
-        >>> loss_fn = NegativeBinomialLoss(rngs=nnx.Rngs(42))
-        >>> loss = loss_fn(counts, mu, theta)
+        ```python
+        loss_fn = NegativeBinomialLoss(rngs=nnx.Rngs(42))
+        loss = loss_fn(counts, mu, theta)
+        ```
     """
 
     def __init__(
@@ -103,8 +105,10 @@ class VAELoss(nnx.Module):
         rngs: Flax NNX random number generators.
 
     Example:
-        >>> loss_fn = VAELoss(kl_weight=1.0, rngs=nnx.Rngs(42))
-        >>> loss = loss_fn(x, x_recon, mean, logvar)
+        ```python
+        loss_fn = VAELoss(kl_weight=1.0, rngs=nnx.Rngs(42))
+        loss = loss_fn(x, x_recon, mean, logvar)
+        ```
     """
 
     def __init__(
@@ -171,8 +175,10 @@ class HMMLikelihoodLoss(nnx.Module):
         rngs: Flax NNX random number generators.
 
     Example:
-        >>> loss_fn = HMMLikelihoodLoss(n_states=3, n_emissions=4, rngs=rnx.Rngs(42))
-        >>> nll = loss_fn(observations)
+        ```python
+        loss_fn = HMMLikelihoodLoss(n_states=3, n_emissions=4, rngs=rnx.Rngs(42))
+        nll = loss_fn(observations)
+        ```
     """
 
     def __init__(

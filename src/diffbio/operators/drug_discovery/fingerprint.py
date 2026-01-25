@@ -58,11 +58,13 @@ class DifferentiableMolecularFingerprint(OperatorModule):
     4. Optional L2 normalization
 
     Example:
-        >>> config = MolecularFingerprintConfig(fingerprint_dim=128)
-        >>> fp_op = DifferentiableMolecularFingerprint(config, rngs=nnx.Rngs(42))
-        >>> data = {"node_features": nodes, "adjacency": adj, "node_mask": mask}
-        >>> result, _, _ = fp_op.apply(data, {}, None)
-        >>> fingerprint = result["fingerprint"]  # shape: (128,)
+        ```python
+        config = MolecularFingerprintConfig(fingerprint_dim=128)
+        fp_op = DifferentiableMolecularFingerprint(config, rngs=nnx.Rngs(42))
+        data = {"node_features": nodes, "adjacency": adj, "node_mask": mask}
+        result, _, _ = fp_op.apply(data, {}, None)
+        fingerprint = result["fingerprint"]  # shape: (128,)
+        ```
     """
 
     def __init__(self, config: MolecularFingerprintConfig, *, rngs: nnx.Rngs | None = None):
@@ -230,11 +232,13 @@ class CircularFingerprintOperator(OperatorModule):
     enabling end-to-end optimization of the fingerprint representation.
 
     Example:
-        >>> config = CircularFingerprintConfig(radius=2, n_bits=1024)
-        >>> fp_op = CircularFingerprintOperator(config, rngs=nnx.Rngs(0))
-        >>> data = {"node_features": node_feats, "adjacency": adj}
-        >>> result, state, meta = fp_op.apply(data, {}, None)
-        >>> fingerprint = result["fingerprint"]  # Shape: (n_bits,)
+        ```python
+        config = CircularFingerprintConfig(radius=2, n_bits=1024)
+        fp_op = CircularFingerprintOperator(config, rngs=nnx.Rngs(0))
+        data = {"node_features": node_feats, "adjacency": adj}
+        result, state, meta = fp_op.apply(data, {}, None)
+        fingerprint = result["fingerprint"]  # Shape: (n_bits,)
+        ```
 
     References:
         Rogers, David, and Mathew Hahn. "Extended-connectivity fingerprints."

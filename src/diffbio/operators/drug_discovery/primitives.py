@@ -17,6 +17,7 @@ class AtomFeatureConfig:
     """Configuration for atom feature extraction.
 
     The default configuration produces 34 features:
+
     - Atom type: 12 dimensions (C, N, O, S, F, Cl, Br, I, P, Si, B, Other)
     - Degree: 7 dimensions (0-6)
     - Formal charge: 5 dimensions (-2 to +2)

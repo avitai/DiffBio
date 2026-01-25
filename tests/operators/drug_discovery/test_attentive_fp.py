@@ -94,9 +94,7 @@ class TestAttentiveFP:
         num_features = 4
         edge_dim = 4
 
-        node_features = jax.random.uniform(
-            jax.random.PRNGKey(0), (num_atoms, num_features)
-        )
+        node_features = jax.random.uniform(jax.random.PRNGKey(0), (num_atoms, num_features))
         # Create adjacency matrix with some bonds
         adjacency = jnp.zeros((num_atoms, num_atoms))
         adjacency = adjacency.at[0, 1].set(1.0)
@@ -107,9 +105,7 @@ class TestAttentiveFP:
         adjacency = adjacency.at[3, 2].set(1.0)
 
         # Edge features
-        edge_features = jax.random.uniform(
-            jax.random.PRNGKey(1), (num_atoms, num_atoms, edge_dim)
-        )
+        edge_features = jax.random.uniform(jax.random.PRNGKey(1), (num_atoms, num_atoms, edge_dim))
         node_mask = jnp.ones(num_atoms)
 
         return {
@@ -182,15 +178,11 @@ class TestAttentiveFPDifferentiability:
         num_features = 4
         edge_dim = 4
 
-        node_features = jax.random.uniform(
-            jax.random.PRNGKey(0), (num_atoms, num_features)
-        )
+        node_features = jax.random.uniform(jax.random.PRNGKey(0), (num_atoms, num_features))
         adjacency = jnp.zeros((num_atoms, num_atoms))
         adjacency = adjacency.at[0, 1].set(1.0)
         adjacency = adjacency.at[1, 0].set(1.0)
-        edge_features = jax.random.uniform(
-            jax.random.PRNGKey(1), (num_atoms, num_atoms, edge_dim)
-        )
+        edge_features = jax.random.uniform(jax.random.PRNGKey(1), (num_atoms, num_atoms, edge_dim))
         node_mask = jnp.ones(num_atoms)
 
         def loss_fn(node_feats):
@@ -214,15 +206,11 @@ class TestAttentiveFPDifferentiability:
         num_features = 4
         edge_dim = 4
 
-        node_features = jax.random.uniform(
-            jax.random.PRNGKey(0), (num_atoms, num_features)
-        )
+        node_features = jax.random.uniform(jax.random.PRNGKey(0), (num_atoms, num_features))
         adjacency = jnp.zeros((num_atoms, num_atoms))
         adjacency = adjacency.at[0, 1].set(1.0)
         adjacency = adjacency.at[1, 0].set(1.0)
-        edge_features = jax.random.uniform(
-            jax.random.PRNGKey(1), (num_atoms, num_atoms, edge_dim)
-        )
+        edge_features = jax.random.uniform(jax.random.PRNGKey(1), (num_atoms, num_atoms, edge_dim))
         node_mask = jnp.ones(num_atoms)
 
         def loss_fn(edge_feats):

@@ -1,6 +1,7 @@
 """Differentiable normalization and embedding operators.
 
 This module provides operators for:
+
 - VAE-based count normalization (scVI-style)
 - Sequence embedding with learned representations
 - Differentiable dimensionality reduction

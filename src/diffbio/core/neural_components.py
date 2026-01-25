@@ -68,6 +68,7 @@ class GumbelSoftmaxModule(nnx.Module):
     providing differentiable categorical sampling during forward pass.
 
     Useful for:
+
     - Discrete latent variable models (VQ-VAE variants)
     - Hard attention mechanisms
     - Discrete sequence generation
@@ -78,9 +79,11 @@ class GumbelSoftmaxModule(nnx.Module):
         rngs: Flax NNX random number generators.
 
     Example:
-        >>> module = GumbelSoftmaxModule(temperature=0.5, rngs=nnx.Rngs(42))
-        >>> logits = jnp.array([[1.0, 2.0, 3.0]])
-        >>> samples = module(logits)
+        ```python
+        module = GumbelSoftmaxModule(temperature=0.5, rngs=nnx.Rngs(42))
+        logits = jnp.array([[1.0, 2.0, 3.0]])
+        samples = module(logits)
+        ```
     """
 
     def __init__(
@@ -133,14 +136,16 @@ class GraphMessagePassing(nnx.Module):
         rngs: Flax NNX random number generators.
 
     Example:
-        >>> layer = GraphMessagePassing(
-        ...     node_features=32, edge_features=8, hidden_dim=64,
-        ...     rngs=nnx.Rngs(42)
-        ... )
-        >>> node_feat = jnp.ones((5, 32))  # 5 nodes
-        >>> edge_feat = jnp.ones((8, 8))   # 8 edges
-        >>> edge_index = jnp.array([[0,0,1,1,2,2,3,4], [1,2,2,3,3,4,4,0]])
-        >>> output = layer(node_feat, edge_feat, edge_index)
+        ```python
+        layer = GraphMessagePassing(
+            node_features=32, edge_features=8, hidden_dim=64,
+            rngs=nnx.Rngs(42)
+        )
+        node_feat = jnp.ones((5, 32))  # 5 nodes
+        edge_feat = jnp.ones((8, 8))   # 8 edges
+        edge_index = jnp.array([[0,0,1,1,2,2,3,4], [1,2,2,3,3,4,4,0]])
+        output = layer(node_feat, edge_feat, edge_index)
+        ```
     """
 
     def __init__(

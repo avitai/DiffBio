@@ -103,11 +103,13 @@ class MolecularSimilarityOperator(OperatorModule):
     differentiable metrics. Supports Tanimoto, cosine, and Dice similarity.
 
     Example:
-        >>> config = MolecularSimilarityConfig(similarity_type="tanimoto")
-        >>> sim_op = MolecularSimilarityOperator(config, rngs=nnx.Rngs(42))
-        >>> data = {"fingerprint_a": fp1, "fingerprint_b": fp2}
-        >>> result, _, _ = sim_op.apply(data, {}, None)
-        >>> similarity = result["similarity"]  # scalar in [0, 1]
+        ```python
+        config = MolecularSimilarityConfig(similarity_type="tanimoto")
+        sim_op = MolecularSimilarityOperator(config, rngs=nnx.Rngs(42))
+        data = {"fingerprint_a": fp1, "fingerprint_b": fp2}
+        result, _, _ = sim_op.apply(data, {}, None)
+        similarity = result["similarity"]  # scalar in [0, 1]
+        ```
     """
 
     def __init__(self, config: MolecularSimilarityConfig, *, rngs: nnx.Rngs | None = None):

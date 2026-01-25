@@ -62,6 +62,7 @@ Counts → Encoder → μ, σ → z ~ N(μ, σ²) → Decoder → Normalized Cou
 ```
 
 The VAE learns to:
+
 1. Remove technical variation (library size, batch effects)
 2. Preserve biological variation in latent space
 3. Output normalized expression values
@@ -114,6 +115,7 @@ The differentiable UMAP optimizes a cross-entropy loss:
 $$L = -\sum_{ij} [p_{ij} \log q_{ij} + (1-p_{ij}) \log(1-q_{ij})]$$
 
 Where:
+
 - $p_{ij}$ = high-dimensional similarity (fuzzy set membership)
 - $q_{ij}$ = low-dimensional similarity
 

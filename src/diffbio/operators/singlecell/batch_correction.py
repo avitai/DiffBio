@@ -9,6 +9,7 @@ the entire batch correction process.
 Applications: Multi-sample integration, batch effect removal.
 
 Inherits from TemperatureOperator to get:
+
 - _temperature property for temperature-controlled smoothing
 - soft_max() for logsumexp-based smooth maximum
 - soft_argmax() for soft position selection
@@ -64,6 +65,7 @@ class DifferentiableHarmony(TemperatureOperator):
     5. Repeat for n_iterations
 
     Inherits from TemperatureOperator to get:
+
     - _temperature property for temperature-controlled smoothing
     - soft_max() for logsumexp-based smooth maximum
     - soft_argmax() for soft position selection
@@ -74,10 +76,12 @@ class DifferentiableHarmony(TemperatureOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = BatchCorrectionConfig(n_clusters=100, n_batches=3)
-        >>> harmony = DifferentiableHarmony(config, rngs=nnx.Rngs(42))
-        >>> data = {"embeddings": X, "batch_labels": batch}
-        >>> result, state, meta = harmony.apply(data, {}, None)
+        ```python
+        config = BatchCorrectionConfig(n_clusters=100, n_batches=3)
+        harmony = DifferentiableHarmony(config, rngs=nnx.Rngs(42))
+        data = {"embeddings": X, "batch_labels": batch}
+        result, state, meta = harmony.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -245,6 +249,7 @@ class DifferentiableHarmony(TemperatureOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "embeddings": Original embeddings
                     - "batch_labels": Original batch labels
                     - "corrected_embeddings": Batch-corrected embeddings

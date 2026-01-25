@@ -37,6 +37,7 @@ Negative binomial log-likelihood:
 $$\log P(y | \mu, \alpha) = \log\Gamma(y + \frac{1}{\alpha}) - \log\Gamma(y+1) - \log\Gamma(\frac{1}{\alpha}) + \frac{1}{\alpha}\log(\frac{1}{1+\alpha\mu}) + y\log(\frac{\alpha\mu}{1+\alpha\mu})$$
 
 Where:
+
 - $y$ = observed count
 - $\mu$ = predicted mean
 - $\alpha$ = dispersion (overdispersion parameter)
@@ -102,6 +103,7 @@ ELBO loss:
 $$L_{ELBO} = L_{recon} + \beta \cdot D_{KL}(q(z|x) || p(z))$$
 
 Where:
+
 - $L_{recon}$ = reconstruction loss (MSE or NB)
 - $D_{KL}$ = KL divergence to prior
 - $\beta$ = KL weight (set > 1 for disentanglement)

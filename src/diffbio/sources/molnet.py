@@ -144,15 +144,18 @@ class MolNetSource(DataSourceModule):
     train/valid/test splits. Supports automatic downloading and caching.
 
     Inherits from DataSourceModule (StructuralModule) because:
+
     - Non-parametric: data loading is deterministic
     - Frozen config: dataset parameters don't change
     - Domain-specific: requires molecular data handling
 
     Example:
-        >>> config = MolNetSourceConfig(dataset_name="bbbp", split="train")
-        >>> source = MolNetSource(config)
-        >>> for element in source:
-        ...     print(element.data["smiles"], element.data["y"])
+        ```python
+        config = MolNetSourceConfig(dataset_name="bbbp", split="train")
+        source = MolNetSource(config)
+        for element in source:
+            print(element.data["smiles"], element.data["y"])
+        ```
 
     References:
         Wu et al. "MoleculeNet: A Benchmark for Molecular Machine Learning"

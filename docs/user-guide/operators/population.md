@@ -65,6 +65,7 @@ The operator implements the classic ADMIXTURE generative model:
 $$G_{ij} = \sum_k Q_{ik} \cdot P_{kj}$$
 
 Where:
+
 - $G$ = genotype matrix (individuals × SNPs)
 - $Q$ = ancestry proportion matrix (individuals × K)
 - $P$ = population allele frequency matrix (K × SNPs)

@@ -176,10 +176,12 @@ class DifferentiableVelocity(OperatorModule):
         name: Optional operator name.
 
     Example:
-        >>> config = VelocityConfig(n_genes=2000)
-        >>> velocity = DifferentiableVelocity(config, rngs=nnx.Rngs(42))
-        >>> data = {"spliced": spliced, "unspliced": unspliced}
-        >>> result, state, meta = velocity.apply(data, {}, None)
+        ```python
+        config = VelocityConfig(n_genes=2000)
+        velocity = DifferentiableVelocity(config, rngs=nnx.Rngs(42))
+        data = {"spliced": spliced, "unspliced": unspliced}
+        result, state, meta = velocity.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -306,6 +308,7 @@ class DifferentiableVelocity(OperatorModule):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "spliced": Original spliced counts
                     - "unspliced": Original unspliced counts
                     - "velocity": RNA velocity estimates

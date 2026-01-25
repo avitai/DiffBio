@@ -99,10 +99,12 @@ class SingleCellPipeline(OperatorModule):
     - Multi-task learning across batches
 
     Example:
-        >>> config = SingleCellPipelineConfig(n_genes=2000, n_clusters=10)
-        >>> pipeline = SingleCellPipeline(config, rngs=nnx.Rngs(42))
-        >>> result, state, meta = pipeline.apply(data, {}, None)
-        >>> clusters = result["cluster_assignments"]
+        ```python
+        config = SingleCellPipelineConfig(n_genes=2000, n_clusters=10)
+        pipeline = SingleCellPipeline(config, rngs=nnx.Rngs(42))
+        result, state, meta = pipeline.apply(data, {}, None)
+        clusters = result["cluster_assignments"]
+        ```
     """
 
     def __init__(

@@ -8,6 +8,7 @@ Key technique: Use SmoothSmithWaterman for adapter matching, then apply
 sigmoid-weighted soft trimming based on the match position.
 
 Inherits from TemperatureOperator to get:
+
 - _temperature property for temperature-controlled smoothing
 - soft_max() for logsumexp-based smooth maximum
 - soft_argmax() for soft position selection
@@ -63,10 +64,12 @@ class SoftAdapterRemoval(TemperatureOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = AdapterRemovalConfig(adapter_sequence="AGATCGGAAGAG")
-        >>> remover = SoftAdapterRemoval(config)
-        >>> data = {"sequence": encoded_seq, "quality_scores": quality}
-        >>> result, state, meta = remover.apply(data, {}, None)
+        ```python
+        config = AdapterRemovalConfig(adapter_sequence="AGATCGGAAGAG")
+        remover = SoftAdapterRemoval(config)
+        data = {"sequence": encoded_seq, "quality_scores": quality}
+        result, state, meta = remover.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -271,6 +274,7 @@ class SoftAdapterRemoval(TemperatureOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "sequence": Soft-trimmed sequence
                     - "quality_scores": Soft-trimmed quality scores
                     - "adapter_score": Maximum adapter match score

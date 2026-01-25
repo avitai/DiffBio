@@ -4,6 +4,7 @@ This module implements a CNN-based differentiable peak caller that can be
 used for ChIP-seq and ATAC-seq analysis with end-to-end gradient flow.
 
 Inherits from TemperatureOperator to get:
+
 - _temperature property for temperature-controlled smoothing
 - soft_max() for logsumexp-based smooth maximum
 - soft_argmax() for soft position selection
@@ -263,6 +264,7 @@ class DifferentiablePeakCaller(TemperatureOperator):
 
         Returns:
             Tuple of (output_data, state, metadata) where output_data contains:
+
                 - 'coverage': Original coverage signal
                 - 'peak_scores': Raw peak detection scores
                 - 'peak_probabilities': Soft peak probabilities

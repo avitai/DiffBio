@@ -83,10 +83,12 @@ class DifferentiableSpatialGeneDetector(TemperatureOperator):
         - fsv: Float[Array, "n_genes"] - Fraction of Spatial Variance
 
     Example:
-        >>> config = SpatialGeneDetectorConfig(n_genes=2000)
-        >>> detector = DifferentiableSpatialGeneDetector(config, rngs=nnx.Rngs(42))
-        >>> result, state, meta = detector.apply(data, {}, None)
-        >>> spatial_genes = result["is_spatial"] > 0.5
+        ```python
+        config = SpatialGeneDetectorConfig(n_genes=2000)
+        detector = DifferentiableSpatialGeneDetector(config, rngs=nnx.Rngs(42))
+        result, state, meta = detector.apply(data, {}, None)
+        spatial_genes = result["is_spatial"] > 0.5
+        ```
     """
 
     def __init__(

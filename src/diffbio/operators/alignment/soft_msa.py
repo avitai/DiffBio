@@ -11,6 +11,7 @@ Applications: Multiple sequence alignment for homology detection, phylogenetic
 analysis, and protein family characterization.
 
 Inherits from TemperatureOperator to get:
+
 - _temperature property for temperature-controlled smoothing
 - soft_max() for logsumexp-based smooth maximum
 - soft_argmax() for soft position selection
@@ -201,6 +202,7 @@ class SoftProgressiveMSA(TemperatureOperator):
     5. Build consensus profile
 
     Inherits from TemperatureOperator to get:
+
     - _temperature property for temperature-controlled smoothing
     - soft_max() for logsumexp-based smooth maximum
     - soft_argmax() for soft position selection
@@ -211,10 +213,12 @@ class SoftProgressiveMSA(TemperatureOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = SoftProgressiveMSAConfig(max_seq_length=100)
-        >>> msa = SoftProgressiveMSA(config, rngs=nnx.Rngs(42))
-        >>> data = {"sequences": seqs}  # (n_seqs, seq_len, alphabet_size)
-        >>> result, state, meta = msa.apply(data, {}, None)
+        ```python
+        config = SoftProgressiveMSAConfig(max_seq_length=100)
+        msa = SoftProgressiveMSA(config, rngs=nnx.Rngs(42))
+        data = {"sequences": seqs}  # (n_seqs, seq_len, alphabet_size)
+        result, state, meta = msa.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -356,6 +360,7 @@ class SoftProgressiveMSA(TemperatureOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "sequences": Original sequences
                     - "aligned_sequences": Soft-aligned sequences
                     - "pairwise_distances": Guide tree distances

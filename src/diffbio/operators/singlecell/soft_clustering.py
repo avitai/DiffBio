@@ -9,6 +9,7 @@ soft assignments for fully differentiable clustering.
 Applications: Cell type clustering, Leiden-like community detection.
 
 Inherits from TemperatureOperator to get:
+
 - _temperature property for temperature-controlled smoothing
 - soft_max() for logsumexp-based smooth maximum
 - soft_argmax() for soft position selection
@@ -56,6 +57,7 @@ class SoftKMeansClustering(TemperatureOperator):
     3. Optionally update centroids based on weighted means
 
     Inherits from TemperatureOperator to get:
+
     - _temperature property for temperature-controlled smoothing
     - soft_max() for logsumexp-based smooth maximum
     - soft_argmax() for soft position selection
@@ -66,10 +68,12 @@ class SoftKMeansClustering(TemperatureOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = SoftClusteringConfig(n_clusters=10, n_features=50)
-        >>> clusterer = SoftKMeansClustering(config, rngs=nnx.Rngs(42))
-        >>> data = {"embeddings": cell_embeddings}
-        >>> result, state, meta = clusterer.apply(data, {}, None)
+        ```python
+        config = SoftClusteringConfig(n_clusters=10, n_features=50)
+        clusterer = SoftKMeansClustering(config, rngs=nnx.Rngs(42))
+        data = {"embeddings": cell_embeddings}
+        result, state, meta = clusterer.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -179,6 +183,7 @@ class SoftKMeansClustering(TemperatureOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "embeddings": Original embeddings
                     - "cluster_assignments": Soft assignment probabilities
                     - "cluster_labels": Hard cluster labels

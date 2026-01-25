@@ -31,6 +31,7 @@ class ScaffoldSplitter(SplitterModule):
     """Split molecules by Bemis-Murcko scaffold.
 
     Inherits from SplitterModule (StructuralModule) because:
+
     - Non-parametric: scaffold extraction is deterministic
     - Frozen config: splitting strategy doesn't change
     - Domain-specific: requires RDKit and molecular knowledge
@@ -42,9 +43,11 @@ class ScaffoldSplitter(SplitterModule):
     Requires RDKit installation.
 
     Example:
-        >>> config = ScaffoldSplitterConfig(smiles_key="mol_smiles")
-        >>> splitter = ScaffoldSplitter(config)
-        >>> result = splitter.split(molecule_source)
+        ```python
+        config = ScaffoldSplitterConfig(smiles_key="mol_smiles")
+        splitter = ScaffoldSplitter(config)
+        result = splitter.split(molecule_source)
+        ```
 
     References:
         Bemis, Guy W., and Mark A. Murcko. "The properties of known drugs.
@@ -176,6 +179,7 @@ class TanimotoClusterSplitter(SplitterModule):
     diversity between splits.
 
     Inherits from SplitterModule (StructuralModule) because:
+
     - Non-parametric: clustering is deterministic given fingerprints
     - Frozen config: splitting strategy doesn't change
     - Domain-specific: requires RDKit fingerprints
@@ -183,9 +187,11 @@ class TanimotoClusterSplitter(SplitterModule):
     Requires RDKit installation.
 
     Example:
-        >>> config = TanimotoClusterSplitterConfig(similarity_cutoff=0.6)
-        >>> splitter = TanimotoClusterSplitter(config)
-        >>> result = splitter.split(molecule_source)
+        ```python
+        config = TanimotoClusterSplitterConfig(similarity_cutoff=0.6)
+        splitter = TanimotoClusterSplitter(config)
+        result = splitter.split(molecule_source)
+        ```
 
     References:
         Butina, Darko. "Unsupervised data base clustering based on daylight's

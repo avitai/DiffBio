@@ -9,6 +9,7 @@ differentiable profile-sequence alignment scoring.
 Applications: Protein domain detection, remote homology search.
 
 Inherits from TemperatureOperator to get:
+
 - _temperature property for temperature-controlled smoothing
 - soft_max() for logsumexp-based smooth maximum
 - soft_argmax() for soft position selection
@@ -61,6 +62,7 @@ class ProfileHMMSearch(TemperatureOperator):
     - D->M, D->D (from delete)
 
     Inherits from TemperatureOperator to get:
+
     - _temperature property for temperature-controlled smoothing
     - soft_max() for logsumexp-based smooth maximum
     - soft_argmax() for soft position selection
@@ -71,10 +73,12 @@ class ProfileHMMSearch(TemperatureOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = ProfileHMMConfig(profile_length=100, alphabet_size=20)
-        >>> profiler = ProfileHMMSearch(config, rngs=nnx.Rngs(42))
-        >>> data = {"sequence": one_hot_sequence}
-        >>> result, state, meta = profiler.apply(data, {}, None)
+        ```python
+        config = ProfileHMMConfig(profile_length=100, alphabet_size=20)
+        profiler = ProfileHMMSearch(config, rngs=nnx.Rngs(42))
+        data = {"sequence": one_hot_sequence}
+        result, state, meta = profiler.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -317,6 +321,7 @@ class ProfileHMMSearch(TemperatureOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "sequence": Original sequence
                     - "score": Profile alignment score
                     - "state_posteriors": Soft state assignments

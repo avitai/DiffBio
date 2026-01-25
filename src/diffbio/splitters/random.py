@@ -38,10 +38,12 @@ class RandomSplitter(SplitterModule):
     according to the configured fractions.
 
     Example:
-        >>> config = RandomSplitterConfig(train_frac=0.8, valid_frac=0.1, test_frac=0.1, seed=42)
-        >>> splitter = RandomSplitter(config)
-        >>> result = splitter.split(data_source)
-        >>> print(f"Train size: {result.train_size}")
+        ```python
+        config = RandomSplitterConfig(train_frac=0.8, valid_frac=0.1, test_frac=0.1, seed=42)
+        splitter = RandomSplitter(config)
+        result = splitter.split(data_source)
+        print(f"Train size: {result.train_size}")
+        ```
     """
 
     def __init__(
@@ -141,9 +143,11 @@ class StratifiedSplitter(SplitterModule):
     as the original dataset. Useful for imbalanced classification tasks.
 
     Example:
-        >>> config = StratifiedSplitterConfig(seed=42, label_key="target")
-        >>> splitter = StratifiedSplitter(config)
-        >>> result = splitter.split(data_source)
+        ```python
+        config = StratifiedSplitterConfig(seed=42, label_key="target")
+        splitter = StratifiedSplitter(config)
+        result = splitter.split(data_source)
+        ```
     """
 
     def __init__(

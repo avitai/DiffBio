@@ -4,6 +4,7 @@ This module implements a differentiable version of motif discovery with
 PWM (Position Weight Matrix) learning for end-to-end gradient flow.
 
 Inherits from TemperatureOperator to get:
+
 - _temperature property for temperature-controlled smoothing
 - soft_max() for logsumexp-based smooth maximum
 - soft_argmax() for soft position selection
@@ -220,6 +221,7 @@ class DifferentiableMotifDiscovery(TemperatureOperator):
 
         Returns:
             Tuple of (output_data, state, metadata) where output_data contains:
+
                 - 'sequence': Original sequence data
                 - 'motif_scores': Log-odds scores at each position
                 - 'motif_positions': Soft motif occurrence indicators

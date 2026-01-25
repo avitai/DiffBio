@@ -24,7 +24,7 @@ DiffBio provides differentiable implementations of bioinformatics algorithms, en
 
 ### Operator Hierarchy
 
-```
+```text
 datarax.core.operator.OperatorModule
     │
     ├── diffbio.operators.DifferentiableQualityFilter
@@ -40,7 +40,7 @@ datarax.core.operator.OperatorModule
 
 ### Data Flow
 
-```
+```text
 Input Data (dict)
     │
     ▼
@@ -110,11 +110,13 @@ All smooth approximations use temperature parameter $\tau$:
 **Decision**: All DiffBio operators inherit from `datarax.core.operator.OperatorModule`
 
 **Rationale**:
+
 - Consistent `apply()` interface
 - Batch processing via `apply_batch()`
 - Integration with Datarax composition utilities
 
 **Trade-offs**:
+
 - Dependency on Datarax
 - Must follow Datarax conventions
 
@@ -125,11 +127,13 @@ All smooth approximations use temperature parameter $\tau$:
 **Decision**: Use `flax.nnx.Param` for all learnable parameters
 
 **Rationale**:
+
 - Clean separation of parameters and logic
 - Integration with JAX transformations
 - Familiar patterns for deep learning users
 
 **Trade-offs**:
+
 - Requires Flax dependency
 - NNX is newer, less documentation than Linen
 
@@ -140,11 +144,13 @@ All smooth approximations use temperature parameter $\tau$:
 **Decision**: Sequences are one-hot encoded (length, alphabet_size)
 
 **Rationale**:
+
 - Enables gradient flow through sequence operations
 - Works naturally with scoring matrices
 - Supports soft/probabilistic sequences
 
 **Trade-offs**:
+
 - Higher memory than integer encoding
 - Requires conversion from string sequences
 
@@ -155,11 +161,13 @@ All smooth approximations use temperature parameter $\tau$:
 **Decision**: Data is passed as dictionaries with string keys
 
 **Rationale**:
+
 - Flexible, extensible format
 - Easy to add new fields
 - Works well with Datarax
 
 **Trade-offs**:
+
 - Runtime key lookup overhead
 - Less type safety than named tuples
 
@@ -225,6 +233,7 @@ batch_align = jax.vmap(lambda s1, s2: aligner.align(s1, s2))
 ### Memory Management
 
 For large datasets:
+
 - Process in chunks
 - Use gradient checkpointing if needed
 - Consider float16 for memory-constrained scenarios
@@ -252,4 +261,4 @@ For large datasets:
 
 2. Mensch & Blondel (2018). "Differentiable Dynamic Programming for Structured Prediction and Attention."
 
-3. Datarax documentation: https://github.com/mahdi-shafiei/datarax
+3. Datarax documentation: <https://github.com/mahdi-shafiei/datarax>

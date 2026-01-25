@@ -59,26 +59,31 @@ class BAMSource(DataSourceModule):
     """BAM/CRAM file data source extending Datarax DataSourceModule.
 
     Provides efficient access to aligned sequencing reads with:
+
     - Lazy loading using pysam iterators
     - Indexed random access via BAI/CRAI files
     - Quality filtering at load time
     - One-hot encoded sequence output
 
     Inherits from DataSourceModule (StructuralModule) because:
+
     - Non-parametric: BAM reading is deterministic
     - Frozen config: file parameters don't change
     - Domain-specific: requires genomics-specific handling
 
     Example:
-        >>> config = BAMSourceConfig(file_path=Path("sample.bam"))
-        >>> source = BAMSource(config)
-        >>> for element in source:
-        ...     print(element.data["read_name"], element.data["sequence"].shape)
+        ```python
+        config = BAMSourceConfig(file_path=Path("sample.bam"))
+        source = BAMSource(config)
+        for element in source:
+            print(element.data["read_name"], element.data["sequence"].shape)
+        ```
 
     Performance Tips (from pysam best practices):
-        - Use indexed BAM files for random access
-        - Filter by region to reduce data loading
-        - Set min_mapping_quality to filter at read time
+
+    - Use indexed BAM files for random access
+    - Filter by region to reduce data loading
+    - Set min_mapping_quality to filter at read time
     """
 
     # Annotate data storage for Flax NNX

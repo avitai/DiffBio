@@ -358,6 +358,7 @@ The quality filtering produces subtle but measurable changes in the pileup:
 - **Max change (0.0936)**: At some positions, probabilities change by up to ~9.4%. These are positions where low-quality bases were significantly down-weighted.
 
 The small mean change with larger max change is expected behavior:
+
 - Most positions have high-quality coverage, so filtering has minimal effect
 - Positions with poor-quality reads show larger corrections
 - This differential effect is exactly what quality filtering should achieve

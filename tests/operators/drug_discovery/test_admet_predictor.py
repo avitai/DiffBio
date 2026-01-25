@@ -102,9 +102,7 @@ class TestADMETPredictor:
         num_features = 4
 
         # Simple molecular graph
-        node_features = jax.random.uniform(
-            jax.random.PRNGKey(0), (num_atoms, num_features)
-        )
+        node_features = jax.random.uniform(jax.random.PRNGKey(0), (num_atoms, num_features))
         adjacency = jnp.eye(num_atoms)
         adjacency = adjacency.at[0, 1].set(1.0)
         adjacency = adjacency.at[1, 0].set(1.0)
@@ -179,9 +177,7 @@ class TestADMETPredictorDifferentiability:
         num_atoms = 8
         num_features = 4
 
-        node_features = jax.random.uniform(
-            jax.random.PRNGKey(0), (num_atoms, num_features)
-        )
+        node_features = jax.random.uniform(jax.random.PRNGKey(0), (num_atoms, num_features))
         adjacency = jnp.eye(num_atoms)
         adjacency = adjacency.at[0, 1].set(1.0)
         adjacency = adjacency.at[1, 0].set(1.0)

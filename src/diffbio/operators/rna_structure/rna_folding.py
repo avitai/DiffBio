@@ -9,6 +9,7 @@ The McCaskill algorithm (1990) computes:
 - P^bp[i,j]: Probability that positions i and j are base-paired
 
 Key features:
+
 - McCaskill-style inside-outside computation
 - Base pair probability matrix
 - Temperature-controlled smoothing for differentiability
@@ -338,11 +339,13 @@ class DifferentiableRNAFold(TemperatureOperator):
         - partition_function: Float[Array, ""] - Log partition function
 
     Example:
-        >>> config = RNAFoldConfig(temperature=1.0)
-        >>> predictor = DifferentiableRNAFold(config, rngs=nnx.Rngs(42))
-        >>> sequence = jax.nn.one_hot(seq_indices, num_classes=4)
-        >>> result, _, _ = predictor.apply({"sequence": sequence}, {}, None)
-        >>> bp_probs = result["bp_probs"]  # (length, length)
+        ```python
+        config = RNAFoldConfig(temperature=1.0)
+        predictor = DifferentiableRNAFold(config, rngs=nnx.Rngs(42))
+        sequence = jax.nn.one_hot(seq_indices, num_classes=4)
+        result, _, _ = predictor.apply({"sequence": sequence}, {}, None)
+        bp_probs = result["bp_probs"]  # (length, length)
+        ```
     """
 
     def __init__(
@@ -415,6 +418,7 @@ class DifferentiableRNAFold(TemperatureOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - All original keys from data
                     - "bp_probs": Base pair probability matrix
                     - "partition_function": Log partition function
@@ -468,8 +472,10 @@ def create_rna_fold_predictor(
         Configured DifferentiableRNAFold instance.
 
     Example:
-        >>> predictor = create_rna_fold_predictor(temperature=0.5)
-        >>> result, _, _ = predictor.apply({"sequence": seq}, {}, None)
+        ```python
+        predictor = create_rna_fold_predictor(temperature=0.5)
+        result, _, _ = predictor.apply({"sequence": seq}, {}, None)
+        ```
     """
     if rngs is None:
         rngs = nnx.Rngs(0)

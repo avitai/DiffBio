@@ -11,6 +11,7 @@ Applications: Chromatin compartment identification, TAD boundary detection,
 3D genome structure prediction.
 
 Inherits from TemperatureOperator to get:
+
 - _temperature property for temperature-controlled smoothing
 - soft_max() for logsumexp-based smooth maximum
 - soft_argmax() for soft position selection
@@ -228,10 +229,12 @@ class HiCContactAnalysis(TemperatureOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = HiCContactAnalysisConfig(n_bins=1000)
-        >>> analyzer = HiCContactAnalysis(config, rngs=nnx.Rngs(42))
-        >>> data = {"contact_matrix": contacts, "bin_features": features}
-        >>> result, state, meta = analyzer.apply(data, {}, None)
+        ```python
+        config = HiCContactAnalysisConfig(n_bins=1000)
+        analyzer = HiCContactAnalysis(config, rngs=nnx.Rngs(42))
+        data = {"contact_matrix": contacts, "bin_features": features}
+        result, state, meta = analyzer.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -320,6 +323,7 @@ class HiCContactAnalysis(TemperatureOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "contact_matrix": Original contacts
                     - "bin_features": Original features
                     - "bin_embeddings": Learned bin embeddings

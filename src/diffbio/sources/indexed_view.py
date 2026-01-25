@@ -38,17 +38,20 @@ class IndexedViewSource(DataSourceModule):
     from the underlying source, enabling lazy loading for large datasets.
 
     Key Features:
-        - LAZY LOADING: Elements fetched from underlying source only when accessed
-        - Memory efficient: Only stores indices, not actual data
-        - Preserves underlying source's lazy loading behavior
-        - Supports shuffling of view indices (not underlying data)
+
+    - LAZY LOADING: Elements fetched from underlying source only when accessed
+    - Memory efficient: Only stores indices, not actual data
+    - Preserves underlying source's lazy loading behavior
+    - Supports shuffling of view indices (not underlying data)
 
     Example:
-        >>> # Create view of first 1000 elements
-        >>> indices = jnp.arange(1000)
-        >>> config = IndexedViewSourceConfig()
-        >>> view = IndexedViewSource(config, original_source, indices)
-        >>> view[0]  # Fetches original_source[indices[0]] lazily
+        ```python
+        # Create view of first 1000 elements
+        indices = jnp.arange(1000)
+        config = IndexedViewSourceConfig()
+        view = IndexedViewSource(config, original_source, indices)
+        view[0]  # Fetches original_source[indices[0]] lazily
+        ```
 
     Args:
         config: Configuration for the view source

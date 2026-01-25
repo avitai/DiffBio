@@ -6,6 +6,7 @@ encoded nucleotide sequences into dense embeddings suitable for
 downstream bioinformatics tasks.
 
 Key features:
+
 - Multi-head self-attention for capturing sequence dependencies
 - Sinusoidal positional encoding for position awareness
 - Configurable architecture (layers, heads, dimensions)
@@ -75,11 +76,13 @@ class TransformerSequenceEncoder(SequenceOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = TransformerSequenceEncoderConfig(hidden_dim=256)
-        >>> encoder = TransformerSequenceEncoder(config, rngs=nnx.Rngs(42))
-        >>> data = {"sequence": one_hot_sequence}
-        >>> result, state, meta = encoder.apply(data, {}, None)
-        >>> embedding = result["embedding"]
+        ```python
+        config = TransformerSequenceEncoderConfig(hidden_dim=256)
+        encoder = TransformerSequenceEncoder(config, rngs=nnx.Rngs(42))
+        data = {"sequence": one_hot_sequence}
+        result, state, meta = encoder.apply(data, {}, None)
+        embedding = result["embedding"]
+        ```
     """
 
     def __init__(
@@ -293,6 +296,7 @@ class TransformerSequenceEncoder(SequenceOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - All original keys from data
                     - "embedding": Global sequence embedding
                     - "position_embeddings": Per-position hidden states
@@ -352,9 +356,11 @@ def create_dna_encoder(
         Configured TransformerSequenceEncoder for DNA.
 
     Example:
-        >>> encoder = create_dna_encoder(hidden_dim=256, num_layers=6)
-        >>> data = {"sequence": dna_one_hot}
-        >>> result, _, _ = encoder.apply(data, {}, None)
+        ```python
+        encoder = create_dna_encoder(hidden_dim=256, num_layers=6)
+        data = {"sequence": dna_one_hot}
+        result, _, _ = encoder.apply(data, {}, None)
+        ```
     """
     if intermediate_dim is None:
         intermediate_dim = 4 * hidden_dim
@@ -406,9 +412,11 @@ def create_rna_encoder(
         Configured TransformerSequenceEncoder for RNA.
 
     Example:
-        >>> encoder = create_rna_encoder(hidden_dim=640, num_layers=12)
-        >>> data = {"sequence": rna_one_hot}
-        >>> result, _, _ = encoder.apply(data, {}, None)
+        ```python
+        encoder = create_rna_encoder(hidden_dim=640, num_layers=12)
+        data = {"sequence": rna_one_hot}
+        result, _, _ = encoder.apply(data, {}, None)
+        ```
     """
     if intermediate_dim is None:
         intermediate_dim = 4 * hidden_dim

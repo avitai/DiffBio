@@ -125,6 +125,7 @@ The NB-GLM models counts as:
 $$Y_{ij} \sim NB(\mu_{ij}, \phi_j)$$
 
 Where:
+
 - $\mu_{ij} = s_i \cdot \exp(X_i \cdot \beta_j)$
 - $s_i$ = size factor for sample $i$
 - $\phi_j$ = dispersion for gene $j$

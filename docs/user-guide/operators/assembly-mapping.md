@@ -70,6 +70,7 @@ Edge Features ─┴────────┘                          │
 ```
 
 The GNN uses graph attention to learn:
+
 1. Which edges to follow in the assembly graph
 2. How to handle repeat regions
 3. Optimal path through branching points
@@ -143,6 +144,7 @@ Reference ──────→ Ref Encoder ───┘
 ```
 
 The mapper uses:
+
 1. **Read encoder**: Encode reads to embeddings
 2. **Reference encoder**: Encode reference positions
 3. **Cross-attention**: Match reads to reference positions
@@ -223,6 +225,7 @@ Abundance ─────┘                                              │
 ```
 
 The binner uses:
+
 1. **Encoder**: Maps TNF + abundance to latent distribution (μ, σ)
 2. **Reparameterization**: Samples z = μ + σ * ε for differentiability
 3. **Decoder**: Reconstructs TNF (softmax) and abundance (softplus)

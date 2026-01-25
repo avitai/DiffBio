@@ -54,10 +54,12 @@ class SequenceEmbedding(OperatorModule):
         name: Optional operator name.
 
     Example:
-        >>> config = SequenceEmbeddingConfig(embedding_dim=64)
-        >>> embedder = SequenceEmbedding(config, rngs=nnx.Rngs(42))
-        >>> data = {"sequence": encoded_seq}
-        >>> result, state, meta = embedder.apply(data, {}, None)
+        ```python
+        config = SequenceEmbeddingConfig(embedding_dim=64)
+        embedder = SequenceEmbedding(config, rngs=nnx.Rngs(42))
+        data = {"sequence": encoded_seq}
+        result, state, meta = embedder.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -183,6 +185,7 @@ class SequenceEmbedding(OperatorModule):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "sequence": Original sequence
                     - "embedding": Global sequence embedding (embedding_dim,)
                     - "position_embeddings": Per-position features (length, embedding_dim)

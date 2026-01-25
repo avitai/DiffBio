@@ -9,6 +9,7 @@ to maintain numerical stability and enable gradient flow.
 Applications: Gene finding, chromatin state annotation, profile search.
 
 Inherits from HMMOperator to get:
+
 - forward_pass() for likelihood computation
 - forward_backward_posteriors() for posterior computation
 - get_log_transition_matrix(), get_log_emission_matrix(),
@@ -62,6 +63,7 @@ class DifferentiableHMM(HMMOperator):
     log_alpha[t, j] = logsumexp_i(log_alpha[t-1, i] + log_A[i,j]) + log_B[j, o_t]
 
     Inherits from HMMOperator to get:
+
     - forward_pass() for likelihood computation
     - forward_backward_posteriors() for posterior computation
     - get_log_transition_matrix(), get_log_emission_matrix(),
@@ -73,10 +75,12 @@ class DifferentiableHMM(HMMOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = HMMConfig(num_states=3, num_emissions=4)
-        >>> hmm = DifferentiableHMM(config, rngs=nnx.Rngs(42))
-        >>> data = {"observations": jnp.array([0, 1, 2, 3])}
-        >>> result, state, meta = hmm.apply(data, {}, None)
+        ```python
+        config = HMMConfig(num_states=3, num_emissions=4)
+        hmm = DifferentiableHMM(config, rngs=nnx.Rngs(42))
+        data = {"observations": jnp.array([0, 1, 2, 3])}
+        result, state, meta = hmm.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -200,6 +204,7 @@ class DifferentiableHMM(HMMOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "observations": Original observations
                     - "log_likelihood": Log probability of sequence
                     - "state_posteriors": P(state | observations) at each position

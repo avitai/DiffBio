@@ -104,19 +104,19 @@ class Trainer:
     - Supports gradient clipping and metric logging
 
     Example:
-        >>> pipeline = create_variant_calling_pipeline(reference_length=100)
-        >>> trainer = Trainer(pipeline, TrainingConfig(learning_rate=1e-3))
-        >>>
-        >>> # Define loss function
-        >>> def loss_fn(predictions, targets):
-        ...     return cross_entropy_loss(
-        ...         predictions["logits"],
-        ...         targets["labels"],
-        ...     )
-        >>>
-        >>> # Train
-        >>> trainer.train(data_iterator_fn, loss_fn)
-        >>> trained_pipeline = trainer.pipeline
+        ```python
+        pipeline = create_variant_calling_pipeline(reference_length=100)
+        trainer = Trainer(pipeline, TrainingConfig(learning_rate=1e-3))
+        # Define loss function
+        def loss_fn(predictions, targets):
+            return cross_entropy_loss(
+                predictions["logits"],
+                targets["labels"],
+            )
+        # Train
+        trainer.train(data_iterator_fn, loss_fn)
+        trained_pipeline = trainer.pipeline
+        ```
     """
 
     def __init__(

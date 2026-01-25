@@ -66,6 +66,7 @@ class SmoothSmithWaterman(TemperatureOperator):
     - temperature -> inf: Uniform averaging
 
     Inherits from TemperatureOperator to get:
+
     - Learnable temperature parameter management
     - soft_max() method using logsumexp relaxation
 
@@ -76,11 +77,13 @@ class SmoothSmithWaterman(TemperatureOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = SmithWatermanConfig(temperature=1.0)
-        >>> scoring = create_dna_scoring_matrix(match=2.0, mismatch=-1.0)
-        >>> aligner = SmoothSmithWaterman(config, scoring_matrix=scoring)
-        >>> result = aligner.align(seq1, seq2)
-        >>> print(result.score)
+        ```python
+        config = SmithWatermanConfig(temperature=1.0)
+        scoring = create_dna_scoring_matrix(match=2.0, mismatch=-1.0)
+        aligner = SmoothSmithWaterman(config, scoring_matrix=scoring)
+        result = aligner.align(seq1, seq2)
+        print(result.score)
+        ```
     """
 
     def __init__(

@@ -5,6 +5,7 @@ which combines graph attention mechanisms with GRU cells for molecular
 representation learning.
 
 The architecture provides:
+
     - Interpretable attention weights showing atom importance
     - Two-level aggregation (atom-level and molecule-level)
     - GRU-based state updates for iterative refinement
@@ -175,12 +176,14 @@ class AttentiveFP(OperatorModule):
     which atoms contribute most to the molecular representation.
 
     Example:
-        >>> config = AttentiveFPConfig(hidden_dim=128, out_dim=256)
-        >>> afp = AttentiveFP(config, rngs=nnx.Rngs(42))
-        >>> data = {"node_features": nodes, "adjacency": adj, "edge_features": edges}
-        >>> result, _, _ = afp.apply(data, {}, None)
-        >>> fingerprint = result["fingerprint"]  # (256,)
-        >>> attn = result["attention_weights"]  # interpretability
+        ```python
+        config = AttentiveFPConfig(hidden_dim=128, out_dim=256)
+        afp = AttentiveFP(config, rngs=nnx.Rngs(42))
+        data = {"node_features": nodes, "adjacency": adj, "edge_features": edges}
+        result, _, _ = afp.apply(data, {}, None)
+        fingerprint = result["fingerprint"]  # (256,)
+        attn = result["attention_weights"]  # interpretability
+        ```
 
     References:
         - Xiong et al. JCIM 2019

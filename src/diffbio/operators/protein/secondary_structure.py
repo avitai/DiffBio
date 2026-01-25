@@ -129,11 +129,13 @@ class DifferentiableSecondaryStructure(OperatorModule):
         - ss_indices: Int[Array, "batch length"] - Hard SS assignments (0=loop, 1=helix, 2=strand)
 
     Example:
-        >>> config = SecondaryStructureConfig(margin=1.0, cutoff=-0.5)
-        >>> predictor = DifferentiableSecondaryStructure(config, rngs=nnx.Rngs(42))
-        >>> coords = jax.random.uniform(key, (1, 50, 4, 3)) * 10  # 50 residues
-        >>> result, _, _ = predictor.apply({"coordinates": coords}, {}, None)
-        >>> ss_probs = result["ss_onehot"]  # (1, 50, 3)
+        ```python
+        config = SecondaryStructureConfig(margin=1.0, cutoff=-0.5)
+        predictor = DifferentiableSecondaryStructure(config, rngs=nnx.Rngs(42))
+        coords = jax.random.uniform(key, (1, 50, 4, 3)) * 10  # 50 residues
+        result, _, _ = predictor.apply({"coordinates": coords}, {}, None)
+        ss_probs = result["ss_onehot"]  # (1, 50, 3)
+        ```
     """
 
     def __init__(

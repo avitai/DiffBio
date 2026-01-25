@@ -34,7 +34,9 @@ def encode_dna_string(sequence: str, handle_n: Literal["uniform", "zero"] = "uni
         Columns represent A, C, G, T in that order.
 
     Example:
-        >>> encode_dna_string("ACGT")
+        ```python
+        encode_dna_string("ACGT")
+        ```
         Array([[1, 0, 0, 0],
                [0, 1, 0, 0],
                [0, 0, 1, 0],

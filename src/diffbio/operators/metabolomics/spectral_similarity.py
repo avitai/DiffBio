@@ -13,6 +13,7 @@ Architecture based on:
     measure to compare tandem mass spectra." Journal of Cheminformatics.
 
 Key features:
+
 - Siamese architecture with shared weights for spectrum encoding
 - 200-dimensional spectral embeddings
 - Cosine similarity for structure prediction
@@ -83,21 +84,21 @@ class DifferentiableSpectralSimilarity(OperatorModule):
         embedding_layer: Final layer producing embeddings.
 
     Example:
-        >>> config = SpectralSimilarityConfig(n_bins=1000, embedding_dim=200)
-        >>> operator = DifferentiableSpectralSimilarity(config, rngs=nnx.Rngs(42))
-        >>>
-        >>> # Get embeddings for spectra
-        >>> spectra = jax.random.uniform(jax.random.PRNGKey(0), (10, 1000))
-        >>> result, _, _ = operator.apply({"spectra": spectra}, {}, None)
-        >>> embeddings = result["embeddings"]  # (10, 200)
-        >>>
-        >>> # Compute pairwise similarity
-        >>> spectra_a = jax.random.uniform(jax.random.PRNGKey(0), (5, 1000))
-        >>> spectra_b = jax.random.uniform(jax.random.PRNGKey(1), (5, 1000))
-        >>> result, _, _ = operator.apply(
-        ...     {"spectra_a": spectra_a, "spectra_b": spectra_b}, {}, None
-        ... )
-        >>> similarity = result["similarity_scores"]  # (5,) in [-1, 1]
+        ```python
+        config = SpectralSimilarityConfig(n_bins=1000, embedding_dim=200)
+        operator = DifferentiableSpectralSimilarity(config, rngs=nnx.Rngs(42))
+        # Get embeddings for spectra
+        spectra = jax.random.uniform(jax.random.PRNGKey(0), (10, 1000))
+        result, _, _ = operator.apply({"spectra": spectra}, {}, None)
+        embeddings = result["embeddings"]  # (10, 200)
+        # Compute pairwise similarity
+        spectra_a = jax.random.uniform(jax.random.PRNGKey(0), (5, 1000))
+        spectra_b = jax.random.uniform(jax.random.PRNGKey(1), (5, 1000))
+        result, _, _ = operator.apply(
+            {"spectra_a": spectra_a, "spectra_b": spectra_b}, {}, None
+        )
+        similarity = result["similarity_scores"]  # (5,) in [-1, 1]
+        ```
     """
 
     def __init__(self, config: SpectralSimilarityConfig, *, rngs: nnx.Rngs) -> None:
@@ -290,10 +291,12 @@ def bin_spectrum(
         Binned spectrum with shape (n_bins,).
 
     Example:
-        >>> mz = jnp.array([100.0, 200.0, 300.0])
-        >>> intensity = jnp.array([0.5, 1.0, 0.3])
-        >>> binned = bin_spectrum(mz, intensity, n_bins=100)
-        >>> binned.shape
+        ```python
+        mz = jnp.array([100.0, 200.0, 300.0])
+        intensity = jnp.array([0.5, 1.0, 0.3])
+        binned = bin_spectrum(mz, intensity, n_bins=100)
+        binned.shape
+        ```
         (100,)
     """
     # Compute bin edges
@@ -339,9 +342,11 @@ def create_spectral_similarity(
         Configured DifferentiableSpectralSimilarity operator.
 
     Example:
-        >>> operator = create_spectral_similarity(n_bins=500, embedding_dim=128)
-        >>> spectra = jax.random.uniform(jax.random.PRNGKey(0), (10, 500))
-        >>> result, _, _ = operator.apply({"spectra": spectra}, {}, None)
+        ```python
+        operator = create_spectral_similarity(n_bins=500, embedding_dim=128)
+        spectra = jax.random.uniform(jax.random.PRNGKey(0), (10, 500))
+        result, _, _ = operator.apply({"spectra": spectra}, {}, None)
+        ```
     """
     config = SpectralSimilarityConfig(
         n_bins=n_bins,

@@ -8,6 +8,7 @@ Key technique: Soft clustering of reads by sequence similarity with weights
 inversely proportional to cluster size.
 
 Inherits from TemperatureOperator to get:
+
 - _temperature property for temperature-controlled smoothing
 - soft_max() for logsumexp-based smooth maximum
 - soft_argmax() for soft position selection
@@ -64,10 +65,12 @@ class DifferentiableDuplicateWeighting(TemperatureOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = DuplicateWeightingConfig(similarity_threshold=0.9)
-        >>> weighter = DifferentiableDuplicateWeighting(config, rngs=nnx.Rngs(42))
-        >>> data = {"sequence": encoded_seq, "quality_scores": quality}
-        >>> result, state, meta = weighter.apply(data, {}, None)
+        ```python
+        config = DuplicateWeightingConfig(similarity_threshold=0.9)
+        weighter = DifferentiableDuplicateWeighting(config, rngs=nnx.Rngs(42))
+        data = {"sequence": encoded_seq, "quality_scores": quality}
+        result, state, meta = weighter.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -238,6 +241,7 @@ class DifferentiableDuplicateWeighting(TemperatureOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "sequence": Original sequence (unchanged)
                     - "quality_scores": Original quality scores (unchanged)
                     - "uniqueness_weight": Weight based on uniqueness

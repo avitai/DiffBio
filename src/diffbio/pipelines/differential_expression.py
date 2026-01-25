@@ -221,6 +221,7 @@ class DifferentialExpressionPipeline(OperatorModule):
 
         Returns:
             Tuple of (output_data, state, metadata) where output_data contains:
+
                 - 'counts': Original count matrix
                 - 'design': Original design matrix
                 - 'size_factors': Computed size factors

@@ -77,6 +77,7 @@ class SplitterModule(StructuralModule):
     """Base class for dataset splitters.
 
     Inherits from StructuralModule because:
+
     - Non-parametric (no learnable parameters)
     - Frozen config (splitting strategy is fixed)
     - Uses process() method pattern

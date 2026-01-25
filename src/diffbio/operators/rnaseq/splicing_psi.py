@@ -4,6 +4,7 @@ This module implements a differentiable PSI calculation operator for
 alternative splicing analysis with end-to-end gradient flow.
 
 Inherits from TemperatureOperator to get:
+
 - _temperature property for temperature-controlled smoothing
 - soft_max() for logsumexp-based smooth maximum
 - soft_argmax() for soft position selection
@@ -173,6 +174,7 @@ class SplicingPSI(TemperatureOperator):
 
         Returns:
             Tuple of (output_data, state, metadata) where output_data contains:
+
                 - 'inclusion_counts': Original inclusion counts
                 - 'exclusion_counts': Original exclusion counts
                 - 'psi': Computed PSI values

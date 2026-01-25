@@ -11,6 +11,7 @@ Applications: Differentiable genome assembly, assembly polishing,
 scaffolding optimization.
 
 Inherits from GraphOperator to get:
+
 - scatter_aggregate() for message aggregation
 - global_pool() for graph-level pooling
 """
@@ -295,6 +296,7 @@ class GNNAssemblyNavigator(GraphOperator):
     5. Compute path confidence from edge scores
 
     Inherits from GraphOperator to get:
+
     - scatter_aggregate() for message aggregation utilities
     - global_pool() for graph-level pooling
 
@@ -307,10 +309,12 @@ class GNNAssemblyNavigator(GraphOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = GNNAssemblyNavigatorConfig(hidden_dim=128)
-        >>> navigator = GNNAssemblyNavigator(config, rngs=nnx.Rngs(42))
-        >>> data = {"node_features": nodes, "edge_index": edges, "edge_features": edge_attr}
-        >>> result, state, meta = navigator.apply(data, {}, None)
+        ```python
+        config = GNNAssemblyNavigatorConfig(hidden_dim=128)
+        navigator = GNNAssemblyNavigator(config, rngs=nnx.Rngs(42))
+        data = {"node_features": nodes, "edge_index": edges, "edge_features": edge_attr}
+        result, state, meta = navigator.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -426,6 +430,7 @@ class GNNAssemblyNavigator(GraphOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "node_features": Original node features
                     - "edge_index": Original edge indices
                     - "edge_features": Original edge features

@@ -114,6 +114,7 @@ The hydrogen bond energy is computed using the Kabsch-Sander electrostatic formu
 $$E = q_1 q_2 \cdot f \cdot \left(\frac{1}{r_{ON}} + \frac{1}{r_{CH}} - \frac{1}{r_{OH}} - \frac{1}{r_{CN}}\right)$$
 
 Where:
+
 - $q_1 q_2 = 0.084$ (partial charges in electron units)
 - $f = 332$ (conversion factor to kcal/mol)
 - $r_{XY}$ = distance between atoms X and Y

@@ -96,10 +96,12 @@ class EnhancedVariantCallingPipeline(OperatorModule):
     to optimize all components jointly.
 
     Example:
-        >>> config = EnhancedVariantCallingPipelineConfig(reference_length=1000)
-        >>> pipeline = EnhancedVariantCallingPipeline(config, rngs=nnx.Rngs(42))
-        >>> result, state, meta = pipeline.apply(data, {}, None)
-        >>> probs = result["probabilities"]
+        ```python
+        config = EnhancedVariantCallingPipelineConfig(reference_length=1000)
+        pipeline = EnhancedVariantCallingPipeline(config, rngs=nnx.Rngs(42))
+        result, state, meta = pipeline.apply(data, {}, None)
+        probs = result["probabilities"]
+        ```
     """
 
     def __init__(

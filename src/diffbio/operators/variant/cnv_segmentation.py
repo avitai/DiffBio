@@ -9,6 +9,7 @@ enabling gradient flow through the segmentation process.
 Applications: CNV analysis, coverage depth segmentation, breakpoint detection.
 
 Inherits from TemperatureOperator to get:
+
 - _temperature property for temperature-controlled smoothing
 - soft_max() for logsumexp-based smooth maximum
 - soft_argmax() for soft position selection
@@ -57,6 +58,7 @@ class DifferentiableCNVSegmentation(TemperatureOperator):
     4. Compute segment means as weighted averages
 
     Inherits from TemperatureOperator to get:
+
     - _temperature property for temperature-controlled smoothing
     - soft_max() for logsumexp-based smooth maximum
     - soft_argmax() for soft position selection
@@ -67,10 +69,12 @@ class DifferentiableCNVSegmentation(TemperatureOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = CNVSegmentationConfig(max_segments=50)
-        >>> segmenter = DifferentiableCNVSegmentation(config, rngs=nnx.Rngs(42))
-        >>> data = {"coverage": coverage_signal}  # (n_positions,)
-        >>> result, state, meta = segmenter.apply(data, {}, None)
+        ```python
+        config = CNVSegmentationConfig(max_segments=50)
+        segmenter = DifferentiableCNVSegmentation(config, rngs=nnx.Rngs(42))
+        data = {"coverage": coverage_signal}  # (n_positions,)
+        result, state, meta = segmenter.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -275,6 +279,7 @@ class DifferentiableCNVSegmentation(TemperatureOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "coverage": Original coverage
                     - "boundary_probs": Soft boundary probabilities
                     - "segment_assignments": Soft segment memberships

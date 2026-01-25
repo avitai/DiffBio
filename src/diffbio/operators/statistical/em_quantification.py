@@ -9,6 +9,7 @@ through all steps of the algorithm.
 Applications: RNA-seq transcript quantification, isoform abundance estimation.
 
 Inherits from TemperatureOperator to get:
+
 - _temperature property for temperature-controlled smoothing
 - soft_max() for logsumexp-based smooth maximum
 - soft_argmax() for soft position selection
@@ -59,6 +60,7 @@ class DifferentiableEMQuantifier(TemperatureOperator):
     4. Repeat for n_iterations
 
     Inherits from TemperatureOperator to get:
+
     - _temperature property for temperature-controlled smoothing
     - soft_max() for logsumexp-based smooth maximum
     - soft_argmax() for soft position selection
@@ -69,10 +71,12 @@ class DifferentiableEMQuantifier(TemperatureOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = EMQuantifierConfig(n_transcripts=1000, n_iterations=10)
-        >>> quantifier = DifferentiableEMQuantifier(config, rngs=nnx.Rngs(42))
-        >>> data = {"compatibility": compat_matrix, "effective_lengths": eff_lens}
-        >>> result, state, meta = quantifier.apply(data, {}, None)
+        ```python
+        config = EMQuantifierConfig(n_transcripts=1000, n_iterations=10)
+        quantifier = DifferentiableEMQuantifier(config, rngs=nnx.Rngs(42))
+        data = {"compatibility": compat_matrix, "effective_lengths": eff_lens}
+        result, state, meta = quantifier.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -225,6 +229,7 @@ class DifferentiableEMQuantifier(TemperatureOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "compatibility": Original compatibility matrix
                     - "effective_lengths": Original effective lengths
                     - "abundances": Estimated transcript abundances

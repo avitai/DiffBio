@@ -52,26 +52,31 @@ class FastaSource(DataSourceModule):
     """FASTA file data source extending Datarax DataSourceModule.
 
     Provides efficient access to DNA/RNA sequences with:
+
     - Lazy loading using samtools-compatible .fai index
     - Dictionary-like access by sequence name
     - One-hot encoded sequence output
     - Support for compressed BGZF files
 
     Inherits from DataSourceModule (StructuralModule) because:
+
     - Non-parametric: FASTA reading is deterministic
     - Frozen config: file parameters don't change
     - Domain-specific: requires genomics-specific handling
 
     Example:
-        >>> config = FastaSourceConfig(file_path=Path("genome.fasta"))
-        >>> source = FastaSource(config)
-        >>> elem = source.get_by_name("chr1")
-        >>> print(elem.data["sequence"].shape)
+        ```python
+        config = FastaSourceConfig(file_path=Path("genome.fasta"))
+        source = FastaSource(config)
+        elem = source.get_by_name("chr1")
+        print(elem.data["sequence"].shape)
+        ```
 
     Performance Tips (from pyfaidx best practices):
-        - Use indexed FASTA files (.fai) for random access
-        - Access regions with slicing for large chromosomes
-        - BGZF compression reduces disk space while maintaining random access
+
+    - Use indexed FASTA files (.fai) for random access
+    - Access regions with slicing for large chromosomes
+    - BGZF compression reduces disk space while maintaining random access
     """
 
     # Annotate data storage for Flax NNX

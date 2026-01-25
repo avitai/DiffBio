@@ -103,6 +103,7 @@ The compactness loss:
 $$L_{compact} = L_{intra} - L_{inter}$$
 
 Where:
+
 - $L_{intra}$ = average distance to cluster centroid (minimize)
 - $L_{inter}$ = average distance between cluster centroids (maximize)
 

@@ -308,6 +308,7 @@ class NeuralReadMapper(TemperatureOperator):
     5. Compute mapping quality from confidence
 
     Inherits from TemperatureOperator to get:
+
     - _temperature property for temperature-controlled smoothing
     - soft_max() for logsumexp-based smooth maximum
     - soft_argmax() for soft position selection
@@ -318,10 +319,12 @@ class NeuralReadMapper(TemperatureOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = NeuralReadMapperConfig(embedding_dim=64)
-        >>> mapper = NeuralReadMapper(config, rngs=nnx.Rngs(42))
-        >>> data = {"read": read_onehot, "reference": ref_onehot}
-        >>> result, state, meta = mapper.apply(data, {}, None)
+        ```python
+        config = NeuralReadMapperConfig(embedding_dim=64)
+        mapper = NeuralReadMapper(config, rngs=nnx.Rngs(42))
+        data = {"read": read_onehot, "reference": ref_onehot}
+        result, state, meta = mapper.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -447,6 +450,7 @@ class NeuralReadMapper(TemperatureOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "read": Original read
                     - "reference": Original reference
                     - "alignment_scores": Scores for each reference position

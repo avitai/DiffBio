@@ -87,10 +87,12 @@ class PreprocessingPipeline(OperatorModule):
     to optimize all preprocessing components jointly.
 
     Example:
-        >>> config = PreprocessingPipelineConfig(read_length=150)
-        >>> pipeline = PreprocessingPipeline(config, rngs=nnx.Rngs(42))
-        >>> result, state, meta = pipeline.apply(data, {}, None)
-        >>> processed = result["preprocessed_reads"]
+        ```python
+        config = PreprocessingPipelineConfig(read_length=150)
+        pipeline = PreprocessingPipeline(config, rngs=nnx.Rngs(42))
+        result, state, meta = pipeline.apply(data, {}, None)
+        processed = result["preprocessed_reads"]
+        ```
     """
 
     def __init__(

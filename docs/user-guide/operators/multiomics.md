@@ -62,6 +62,7 @@ The deconvolution estimates cell type proportions $\pi$ such that:
 $$X_{spot} \approx \sum_k \pi_k \cdot R_k$$
 
 Where:
+
 - $X_{spot}$ = observed expression at spot
 - $\pi_k$ = proportion of cell type $k$
 - $R_k$ = reference profile for cell type $k$
@@ -247,6 +248,7 @@ The model decomposes gene expression as:
 $$y = f(x) + \epsilon$$
 
 Where:
+
 - $f(x) \sim \mathcal{GP}(0, K)$ is the spatial component with RBF kernel
 - $\epsilon \sim \mathcal{N}(0, \sigma^2_e)$ is the non-spatial noise
 
@@ -261,6 +263,7 @@ The squared exponential (RBF) kernel models spatial covariance:
 $$K(x_1, x_2) = \sigma^2_s \exp\left(-\frac{||x_1 - x_2||^2}{2\ell^2}\right)$$
 
 Where:
+
 - $\sigma^2_s$ = signal variance (spatial component strength)
 - $\ell$ = lengthscale (characteristic spatial range)
 

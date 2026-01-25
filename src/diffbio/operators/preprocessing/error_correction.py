@@ -9,6 +9,7 @@ from a sliding window of sequence and quality data.
 Inspired by DeepConsensus approach for consensus calling.
 
 Inherits from TemperatureOperator to get:
+
 - _temperature property for temperature-controlled smoothing
 - soft_max() for logsumexp-based smooth maximum
 - soft_argmax() for soft position selection
@@ -66,10 +67,12 @@ class SoftErrorCorrection(TemperatureOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = ErrorCorrectionConfig(window_size=11, hidden_dim=64)
-        >>> corrector = SoftErrorCorrection(config, rngs=nnx.Rngs(42))
-        >>> data = {"sequence": encoded_seq, "quality_scores": quality}
-        >>> result, state, meta = corrector.apply(data, {}, None)
+        ```python
+        config = ErrorCorrectionConfig(window_size=11, hidden_dim=64)
+        corrector = SoftErrorCorrection(config, rngs=nnx.Rngs(42))
+        data = {"sequence": encoded_seq, "quality_scores": quality}
+        result, state, meta = corrector.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -243,6 +246,7 @@ class SoftErrorCorrection(TemperatureOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "sequence": Corrected soft one-hot sequence
                     - "quality_scores": Original quality scores
                     - "correction_confidence": Average correction weight

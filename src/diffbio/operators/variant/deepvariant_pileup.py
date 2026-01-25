@@ -77,23 +77,26 @@ class DeepVariantStylePileup(TemperatureOperator):
     each read occupies a row and each column represents a base position.
 
     Inherits from TemperatureOperator to get:
+
     - _temperature property for temperature-controlled smoothing
     - soft_max() for logsumexp-based smooth maximum
     - soft_argmax() for soft position selection
 
     Example:
-        >>> config = DeepVariantPileupConfig(window_size=101, max_reads=50)
-        >>> pileup = DeepVariantStylePileup(config)
-        >>> data = {
-        ...     "reads": reads,  # (num_reads, read_length, 4)
-        ...     "reference": reference,  # (window_size, 4)
-        ...     "base_qualities": qualities,  # (num_reads, read_length)
-        ...     "mapping_qualities": mapq,  # (num_reads,)
-        ...     "strands": strands,  # (num_reads,)
-        ...     "positions": positions,  # (num_reads,)
-        ... }
-        >>> result, _, _ = pileup.apply(data, {}, None)
-        >>> pileup_image = result["pileup_image"]  # (50, 101, num_channels)
+        ```python
+        config = DeepVariantPileupConfig(window_size=101, max_reads=50)
+        pileup = DeepVariantStylePileup(config)
+        data = {
+            "reads": reads,  # (num_reads, read_length, 4)
+            "reference": reference,  # (window_size, 4)
+            "base_qualities": qualities,  # (num_reads, read_length)
+            "mapping_qualities": mapq,  # (num_reads,)
+            "strands": strands,  # (num_reads,)
+            "positions": positions,  # (num_reads,)
+        }
+        result, _, _ = pileup.apply(data, {}, None)
+        pileup_image = result["pileup_image"]  # (50, 101, num_channels)
+        ```
     """
 
     def __init__(

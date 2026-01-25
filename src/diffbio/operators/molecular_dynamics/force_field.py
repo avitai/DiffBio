@@ -59,12 +59,14 @@ class ForceFieldOperator(OperatorModule):
         - soft_sphere: Soft repulsive potential
 
     Example:
-        >>> config = ForceFieldConfig(potential_type="lennard_jones", box_size=10.0)
-        >>> operator = ForceFieldOperator(config, rngs=nnx.Rngs(42))
-        >>> data = {"positions": positions}  # (n_particles, dim)
-        >>> result, state, meta = operator.apply(data, {}, None)
-        >>> energy = result["energy"]  # scalar
-        >>> forces = result["forces"]  # (n_particles, dim)
+        ```python
+        config = ForceFieldConfig(potential_type="lennard_jones", box_size=10.0)
+        operator = ForceFieldOperator(config, rngs=nnx.Rngs(42))
+        data = {"positions": positions}  # (n_particles, dim)
+        result, state, meta = operator.apply(data, {}, None)
+        energy = result["energy"]  # scalar
+        forces = result["forces"]  # (n_particles, dim)
+        ```
     """
 
     def __init__(self, config: ForceFieldConfig, *, rngs: nnx.Rngs | None = None):

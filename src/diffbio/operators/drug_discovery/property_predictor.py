@@ -52,15 +52,17 @@ class MolecularPropertyPredictor(OperatorModule):
     3. Feed-forward network for property prediction
 
     Example:
-        >>> config = MolecularPropertyConfig(hidden_dim=64, num_output_tasks=3)
-        >>> predictor = MolecularPropertyPredictor(config, rngs=nnx.Rngs(42))
-        >>> data = {
-        ...     "node_features": node_features,
-        ...     "adjacency": adjacency,
-        ...     "node_mask": mask,
-        ... }
-        >>> result, state, meta = predictor.apply(data, {}, None)
-        >>> predictions = result["predictions"]  # shape: (3,)
+        ```python
+        config = MolecularPropertyConfig(hidden_dim=64, num_output_tasks=3)
+        predictor = MolecularPropertyPredictor(config, rngs=nnx.Rngs(42))
+        data = {
+            "node_features": node_features,
+            "adjacency": adjacency,
+            "node_mask": mask,
+        }
+        result, state, meta = predictor.apply(data, {}, None)
+        predictions = result["predictions"]  # shape: (3,)
+        ```
     """
 
     def __init__(self, config: MolecularPropertyConfig, *, rngs: nnx.Rngs | None = None):

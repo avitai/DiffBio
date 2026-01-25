@@ -109,6 +109,7 @@ $$Y_{ij} \sim NB(\mu_{ij}, \alpha_j)$$
 $$\log(\mu_{ij}) = \log(s_i) + X_i \cdot \beta_j$$
 
 Where:
+
 - $s_i$ = size factor for sample $i$
 - $X_i$ = design matrix row
 - $\beta_j$ = coefficients for gene $j$

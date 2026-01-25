@@ -32,8 +32,10 @@ class BatchMixingLoss(nnx.Module):
         rngs: Flax NNX random number generators.
 
     Example:
-        >>> loss_fn = BatchMixingLoss(n_neighbors=15, n_batches=3, rngs=nnx.Rngs(42))
-        >>> loss = loss_fn(embeddings, batch_labels)
+        ```python
+        loss_fn = BatchMixingLoss(n_neighbors=15, n_batches=3, rngs=nnx.Rngs(42))
+        loss = loss_fn(embeddings, batch_labels)
+        ```
     """
 
     def __init__(
@@ -136,8 +138,10 @@ class ClusteringCompactnessLoss(nnx.Module):
         rngs: Flax NNX random number generators.
 
     Example:
-        >>> loss_fn = ClusteringCompactnessLoss(rngs=nnx.Rngs(42))
-        >>> loss = loss_fn(embeddings, soft_assignments)
+        ```python
+        loss_fn = ClusteringCompactnessLoss(rngs=nnx.Rngs(42))
+        loss = loss_fn(embeddings, soft_assignments)
+        ```
     """
 
     def __init__(
@@ -229,8 +233,10 @@ class VelocityConsistencyLoss(nnx.Module):
         rngs: Flax NNX random number generators.
 
     Example:
-        >>> loss_fn = VelocityConsistencyLoss(rngs=nnx.Rngs(42))
-        >>> loss = loss_fn(expression, velocity, future_expression)
+        ```python
+        loss_fn = VelocityConsistencyLoss(rngs=nnx.Rngs(42))
+        loss = loss_fn(expression, velocity, future_expression)
+        ```
     """
 
     def __init__(

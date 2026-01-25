@@ -11,6 +11,7 @@ Applications: Cell type mapping in spatial transcriptomics, tissue
 composition analysis, spatial cell-cell interaction studies.
 
 Inherits from TemperatureOperator to get:
+
 - _temperature property for temperature-controlled smoothing
 - soft_max() for logsumexp-based smooth maximum
 - soft_argmax() for soft position selection
@@ -154,6 +155,7 @@ class SpatialDeconvolution(TemperatureOperator):
     6. Reconstruct expression from proportions
 
     Inherits from TemperatureOperator to get:
+
     - _temperature property for temperature-controlled smoothing
     - soft_max() for logsumexp-based smooth maximum
     - soft_argmax() for soft position selection
@@ -164,10 +166,12 @@ class SpatialDeconvolution(TemperatureOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = SpatialDeconvolutionConfig(n_cell_types=10)
-        >>> deconv = SpatialDeconvolution(config, rngs=nnx.Rngs(42))
-        >>> data = {"spot_expression": spots, "reference_profiles": refs, "coordinates": coords}
-        >>> result, state, meta = deconv.apply(data, {}, None)
+        ```python
+        config = SpatialDeconvolutionConfig(n_cell_types=10)
+        deconv = SpatialDeconvolution(config, rngs=nnx.Rngs(42))
+        data = {"spot_expression": spots, "reference_profiles": refs, "coordinates": coords}
+        result, state, meta = deconv.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -250,6 +254,7 @@ class SpatialDeconvolution(TemperatureOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "spot_expression": Original expression
                     - "reference_profiles": Original references
                     - "coordinates": Original coordinates

@@ -85,13 +85,14 @@ class VariantCallingPipeline(OperatorModule):
     to optimize quality filtering, pileup aggregation, and classification jointly.
 
     Example:
-        >>> config = VariantCallingPipelineConfig(reference_length=100)
-        >>> pipeline = VariantCallingPipeline(config, rngs=nnx.Rngs(42))
-        >>> pipeline.eval_mode()  # Disable dropout for inference
-        >>>
-        >>> # Process a batch of samples
-        >>> result_batch = pipeline(input_batch)
-        >>> probs = result_batch.data.get_value()["probabilities"]
+        ```python
+        config = VariantCallingPipelineConfig(reference_length=100)
+        pipeline = VariantCallingPipeline(config, rngs=nnx.Rngs(42))
+        pipeline.eval_mode()  # Disable dropout for inference
+        # Process a batch of samples
+        result_batch = pipeline(input_batch)
+        probs = result_batch.data.get_value()["probabilities"]
+        ```
     """
 
     def __init__(

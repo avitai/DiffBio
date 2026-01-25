@@ -54,10 +54,12 @@ class DifferentiableNBGLM(OperatorModule):
         name: Optional operator name.
 
     Example:
-        >>> config = NBGLMConfig(n_features=2000, n_covariates=2)
-        >>> glm = DifferentiableNBGLM(config, rngs=nnx.Rngs(42))
-        >>> data = {"counts": counts, "design": design_row, "size_factor": sf}
-        >>> result, state, meta = glm.apply(data, {}, None)
+        ```python
+        config = NBGLMConfig(n_features=2000, n_covariates=2)
+        glm = DifferentiableNBGLM(config, rngs=nnx.Rngs(42))
+        data = {"counts": counts, "design": design_row, "size_factor": sf}
+        result, state, meta = glm.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -233,6 +235,7 @@ class DifferentiableNBGLM(OperatorModule):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "counts": Original counts
                     - "log_likelihood": Log probability of counts
                     - "predicted_mean": Predicted expression

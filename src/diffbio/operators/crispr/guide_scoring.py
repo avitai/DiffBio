@@ -78,15 +78,17 @@ class DifferentiableCRISPRScorer(OperatorModule):
         output_head: Final output layer.
 
     Example:
-        >>> from diffbio.operators.crispr import (
-        ...     DifferentiableCRISPRScorer,
-        ...     CRISPRScorerConfig,
-        ... )
-        >>> config = CRISPRScorerConfig(guide_length=23)
-        >>> scorer = DifferentiableCRISPRScorer(config, rngs=nnx.Rngs(42))
-        >>> data = {"guides": guide_sequences}  # (n_guides, length, 4)
-        >>> result, _, _ = scorer.apply(data, {}, None)
-        >>> scores = result["efficiency_scores"]  # (n_guides,)
+        ```python
+        from diffbio.operators.crispr import (
+            DifferentiableCRISPRScorer,
+            CRISPRScorerConfig,
+        )
+        config = CRISPRScorerConfig(guide_length=23)
+        scorer = DifferentiableCRISPRScorer(config, rngs=nnx.Rngs(42))
+        data = {"guides": guide_sequences}  # (n_guides, length, 4)
+        result, _, _ = scorer.apply(data, {}, None)
+        scores = result["efficiency_scores"]  # (n_guides,)
+        ```
     """
 
     def __init__(
@@ -210,6 +212,7 @@ class DifferentiableCRISPRScorer(OperatorModule):
         Returns:
             Tuple of (transformed_data, state, metadata) where transformed_data
             contains:
+
                 - "guides": Original guide sequences.
                 - "efficiency_scores": Predicted efficiency (n_guides,).
                 - "features": Extracted feature vectors.
@@ -252,8 +255,10 @@ def create_crispr_scorer(
         Configured DifferentiableCRISPRScorer instance.
 
     Example:
-        >>> scorer = create_crispr_scorer(guide_length=23)
-        >>> result, _, _ = scorer.apply({"guides": data}, {}, None)
+        ```python
+        scorer = create_crispr_scorer(guide_length=23)
+        result, _, _ = scorer.apply({"guides": data}, {}, None)
+        ```
     """
     config = CRISPRScorerConfig(
         guide_length=guide_length,

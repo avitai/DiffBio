@@ -137,11 +137,13 @@ class ADMETPredictor(OperatorModule):
         - Toxicity: LD50, hERG, AMES, DILI
 
     Example:
-        >>> config = ADMETConfig(hidden_dim=256, num_tasks=22)
-        >>> predictor = ADMETPredictor(config, rngs=nnx.Rngs(42))
-        >>> data = {"node_features": nodes, "adjacency": adj, "node_mask": mask}
-        >>> result, _, _ = predictor.apply(data, {}, None)
-        >>> predictions = result["predictions"]  # shape: (22,)
+        ```python
+        config = ADMETConfig(hidden_dim=256, num_tasks=22)
+        predictor = ADMETPredictor(config, rngs=nnx.Rngs(42))
+        data = {"node_features": nodes, "adjacency": adj, "node_mask": mask}
+        result, _, _ = predictor.apply(data, {}, None)
+        predictions = result["predictions"]  # shape: (22,)
+        ```
 
     References:
         - https://tdcommons.ai/benchmark/admet_group/overview/
@@ -190,9 +192,7 @@ class ADMETPredictor(OperatorModule):
 
         # Task-specific output heads (one per ADMET task)
         last_hidden = ffn_hidden if config.ffn_num_layers > 1 else config.hidden_dim
-        task_heads = [
-            nnx.Linear(last_hidden, 1, rngs=rngs) for _ in range(config.num_tasks)
-        ]
+        task_heads = [nnx.Linear(last_hidden, 1, rngs=rngs) for _ in range(config.num_tasks)]
         self.task_heads = nnx.List(task_heads)
 
         # Dropout
@@ -262,9 +262,7 @@ class ADMETPredictor(OperatorModule):
 
             # Apply activation for classification tasks if configured
             if self.config.apply_task_activations:
-                task_name = (
-                    ADMET_TASK_NAMES[i] if i < len(ADMET_TASK_NAMES) else f"task_{i}"
-                )
+                task_name = ADMET_TASK_NAMES[i] if i < len(ADMET_TASK_NAMES) else f"task_{i}"
                 if ADMET_TASK_TYPES.get(task_name) == "classification":
                     pred = nnx.sigmoid(pred)
 

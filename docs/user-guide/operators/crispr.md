@@ -84,6 +84,7 @@ Guides (n, 23, 4) ──→ Conv1D ──→ BN ──→ ReLU ──┐
 ```
 
 The architecture consists of:
+
 1. **1D Convolutional layers**: Extract sequence motif patterns
 2. **Batch normalization**: Stabilize training
 3. **Fully connected layers**: Map features to efficiency score

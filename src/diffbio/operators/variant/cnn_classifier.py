@@ -67,10 +67,12 @@ class CNNVariantClassifier(OperatorModule):
         name: Optional operator name.
 
     Example:
-        >>> config = CNNVariantClassifierConfig(num_classes=3)
-        >>> classifier = CNNVariantClassifier(config, rngs=nnx.Rngs(42))
-        >>> data = {"pileup_image": image_batch}  # (B, H, W, C)
-        >>> result, state, meta = classifier.apply(data, {}, None)
+        ```python
+        config = CNNVariantClassifierConfig(num_classes=3)
+        classifier = CNNVariantClassifier(config, rngs=nnx.Rngs(42))
+        data = {"pileup_image": image_batch}  # (B, H, W, C)
+        result, state, meta = classifier.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -222,6 +224,7 @@ class CNNVariantClassifier(OperatorModule):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "pileup_image": Original input
                     - "logits": Raw classification scores
                     - "class_probs": Softmax probabilities

@@ -68,15 +68,17 @@ class DifferentiableAncestryEstimator(OperatorModule):
         temperature: Temperature parameter for softmax.
 
     Example:
-        >>> from diffbio.operators.population import (
-        ...     DifferentiableAncestryEstimator,
-        ...     AncestryEstimatorConfig,
-        ... )
-        >>> config = AncestryEstimatorConfig(n_snps=1000, n_populations=5)
-        >>> estimator = DifferentiableAncestryEstimator(config, rngs=nnx.Rngs(42))
-        >>> data = {"genotypes": genotype_matrix}  # (n_samples, n_snps)
-        >>> result, _, _ = estimator.apply(data, {}, None)
-        >>> ancestry = result["ancestry_proportions"]  # (n_samples, K)
+        ```python
+        from diffbio.operators.population import (
+            DifferentiableAncestryEstimator,
+            AncestryEstimatorConfig,
+        )
+        config = AncestryEstimatorConfig(n_snps=1000, n_populations=5)
+        estimator = DifferentiableAncestryEstimator(config, rngs=nnx.Rngs(42))
+        data = {"genotypes": genotype_matrix}  # (n_samples, n_snps)
+        result, _, _ = estimator.apply(data, {}, None)
+        ancestry = result["ancestry_proportions"]  # (n_samples, K)
+        ```
     """
 
     def __init__(
@@ -210,6 +212,7 @@ class DifferentiableAncestryEstimator(OperatorModule):
         Returns:
             Tuple of (transformed_data, state, metadata) where transformed_data
             contains:
+
                 - "genotypes": Original genotype matrix.
                 - "ancestry_proportions": Estimated ancestry (n_samples, K).
                 - "reconstructed": Reconstructed genotypes (n_samples, n_snps).
@@ -259,11 +262,13 @@ def create_ancestry_estimator(
         Configured DifferentiableAncestryEstimator instance.
 
     Example:
-        >>> estimator = create_ancestry_estimator(
-        ...     n_snps=10000,
-        ...     n_populations=5,
-        ... )
-        >>> result, _, _ = estimator.apply({"genotypes": data}, {}, None)
+        ```python
+        estimator = create_ancestry_estimator(
+            n_snps=10000,
+            n_populations=5,
+        )
+        result, _, _ = estimator.apply({"genotypes": data}, {}, None)
+        ```
     """
     config = AncestryEstimatorConfig(
         n_snps=n_snps,

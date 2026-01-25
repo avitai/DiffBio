@@ -9,6 +9,7 @@ quality distributions, with sigmoid thresholds maintaining gradients.
 Applications: VQSR-style variant filtering, quality score recalibration.
 
 Inherits from TemperatureOperator to get:
+
 - _temperature property for temperature-controlled smoothing
 - soft_max() for logsumexp-based smooth maximum
 - soft_argmax() for soft position selection
@@ -62,10 +63,12 @@ class SoftVariantQualityFilter(TemperatureOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = VariantQualityFilterConfig(n_components=3)
-        >>> filter_op = SoftVariantQualityFilter(config, rngs=nnx.Rngs(42))
-        >>> data = {"variant_features": features}  # (n_variants, n_features)
-        >>> result, state, meta = filter_op.apply(data, {}, None)
+        ```python
+        config = VariantQualityFilterConfig(n_components=3)
+        filter_op = SoftVariantQualityFilter(config, rngs=nnx.Rngs(42))
+        data = {"variant_features": features}  # (n_variants, n_features)
+        result, state, meta = filter_op.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -235,6 +238,7 @@ class SoftVariantQualityFilter(TemperatureOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "variant_features": Original features
                     - "quality_scores": Computed quality scores [0, 1]
                     - "filter_weights": Soft filter weights [0, 1]

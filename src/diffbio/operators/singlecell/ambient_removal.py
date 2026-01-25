@@ -11,6 +11,7 @@ Applications: Removing ambient RNA contamination from single-cell RNA-seq data,
 improving cell type identification and differential expression analysis.
 
 Inherits from EncoderDecoderOperator to get:
+
 - reparameterize() for sampling with reparameterization trick
 - kl_divergence() for KL from standard normal
 - elbo_loss() for combining reconstruction and KL losses
@@ -196,6 +197,7 @@ class DifferentiableAmbientRemoval(EncoderDecoderOperator):
     4. Compute decontaminated counts by subtracting ambient contribution
 
     Inherits from EncoderDecoderOperator to get:
+
     - reparameterize() for sampling with reparameterization trick
     - kl_divergence() for KL from standard normal
     - elbo_loss() for combining reconstruction and KL losses
@@ -206,10 +208,12 @@ class DifferentiableAmbientRemoval(EncoderDecoderOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = AmbientRemovalConfig(n_genes=2000)
-        >>> remover = DifferentiableAmbientRemoval(config, rngs=nnx.Rngs(42))
-        >>> data = {"counts": counts, "ambient_profile": ambient}
-        >>> result, state, meta = remover.apply(data, {}, None)
+        ```python
+        config = AmbientRemovalConfig(n_genes=2000)
+        remover = DifferentiableAmbientRemoval(config, rngs=nnx.Rngs(42))
+        data = {"counts": counts, "ambient_profile": ambient}
+        result, state, meta = remover.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -276,6 +280,7 @@ class DifferentiableAmbientRemoval(EncoderDecoderOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "counts": Original counts
                     - "ambient_profile": Original ambient profile
                     - "decontaminated_counts": Decontaminated counts

@@ -22,8 +22,10 @@ def init_learnable_param(value: float) -> nnx.Param:
         An nnx.Param wrapping a JAX array containing the value.
 
     Example:
-        >>> temperature = init_learnable_param(1.0)
-        >>> threshold = init_learnable_param(20.0)
+        ```python
+        temperature = init_learnable_param(1.0)
+        threshold = init_learnable_param(20.0)
+        ```
     """
     return nnx.Param(jnp.array(value))
 
@@ -39,8 +41,10 @@ def ensure_rngs(rngs: nnx.Rngs | None, seed: int = 0) -> nnx.Rngs:
         The provided rngs if not None, otherwise a new nnx.Rngs instance.
 
     Example:
-        >>> rngs = ensure_rngs(rngs)  # Use passed rngs or create default
-        >>> layer = nnx.Linear(10, 20, rngs=rngs)
+        ```python
+        rngs = ensure_rngs(rngs)  # Use passed rngs or create default
+        layer = nnx.Linear(10, 20, rngs=rngs)
+        ```
     """
     if rngs is not None:
         return rngs
@@ -63,8 +67,10 @@ def get_rng_key(
         A JAX PRNG key.
 
     Example:
-        >>> key = get_rng_key(rngs, "sample")
-        >>> noise = jax.random.normal(key, shape)
+        ```python
+        key = get_rng_key(rngs, "sample")
+        noise = jax.random.normal(key, shape)
+        ```
     """
     if rngs is not None and stream_name in rngs:
         return getattr(rngs, stream_name)()
@@ -100,16 +106,18 @@ def build_mlp_layers(
             - output_dim: Output dimension after all layers
 
     Example:
-        >>> layers, dropouts, out_dim = build_mlp_layers(
-        ...     in_features=84,
-        ...     hidden_dim=64,
-        ...     num_layers=2,
-        ...     rngs=rngs,
-        ...     with_dropout=True,
-        ... )
-        >>> for layer, dropout in zip(layers, dropouts):
-        ...     x = nnx.relu(layer(x))
-        ...     x = dropout(x)
+        ```python
+        layers, dropouts, out_dim = build_mlp_layers(
+            in_features=84,
+            hidden_dim=64,
+            num_layers=2,
+            rngs=rngs,
+            with_dropout=True,
+        )
+        for layer, dropout in zip(layers, dropouts):
+            x = nnx.relu(layer(x))
+            x = dropout(x)
+        ```
     """
     layers: list[nnx.Linear] = []
     dropout_layers: list[nnx.Dropout] | None = [] if with_dropout else None
@@ -147,8 +155,10 @@ def soft_threshold(
         Soft thresholded values in [0, 1].
 
     Example:
-        >>> weights = soft_threshold(quality_scores, threshold=20.0, temperature=1.0)
-        >>> filtered = sequence * weights[:, None]
+        ```python
+        weights = soft_threshold(quality_scores, threshold=20.0, temperature=1.0)
+        filtered = sequence * weights[:, None]
+        ```
     """
     return jax.nn.sigmoid((values - threshold) / temperature)
 
@@ -245,9 +255,11 @@ def extract_windows_1d(
         Windows of shape (length, window_size, features).
 
     Example:
-        >>> signal = jnp.ones((100, 4))  # 100 positions, 4 features
-        >>> windows = extract_windows_1d(signal, window_size=11)
-        >>> assert windows.shape == (100, 11, 4)
+        ```python
+        signal = jnp.ones((100, 4))  # 100 positions, 4 features
+        windows = extract_windows_1d(signal, window_size=11)
+        assert windows.shape == (100, 11, 4)
+        ```
     """
     length = signal.shape[0]
     num_features = signal.shape[1]

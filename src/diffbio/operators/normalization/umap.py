@@ -240,6 +240,7 @@ class DifferentiableUMAP(OperatorModule):
 
         Returns:
             Tuple of (output_data, state, metadata) where output_data contains:
+
                 - 'features': Original high-dimensional features
                 - 'embedding': Low-dimensional embedding
                 - 'high_dim_similarities': Fuzzy set memberships (p_ij)

@@ -66,17 +66,20 @@ class MACCSKeysOperator(OperatorModule):
     of traditional MACCS keys.
 
     MACCS keys encode various structural features:
+
         - Atom types (C, N, O, S, halides, etc.)
         - Functional groups (carbonyl, hydroxyl, amine, etc.)
         - Ring systems (aromatic, aliphatic)
         - Bond patterns and connectivity
 
     Example:
-        >>> config = MACCSKeysConfig(temperature=1.0)
-        >>> op = MACCSKeysOperator(config, rngs=nnx.Rngs(42))
-        >>> data = {"node_features": nodes, "adjacency": adj}
-        >>> result, _, _ = op.apply(data, {}, None)
-        >>> fingerprint = result["fingerprint"]  # shape: (166,)
+        ```python
+        config = MACCSKeysConfig(temperature=1.0)
+        op = MACCSKeysOperator(config, rngs=nnx.Rngs(42))
+        data = {"node_features": nodes, "adjacency": adj}
+        result, _, _ = op.apply(data, {}, None)
+        fingerprint = result["fingerprint"]  # shape: (166,)
+        ```
 
     References:
         - Durant et al. "Reoptimization of MDL Keys" JCIM 2002
@@ -129,8 +132,7 @@ class MACCSKeysOperator(OperatorModule):
                 self._MACCSkeys = RDKitMACCS
             except ImportError as e:
                 raise ImportError(
-                    "MACCSKeysOperator with differentiable=False "
-                    "requires RDKit: pip install rdkit"
+                    "MACCSKeysOperator with differentiable=False requires RDKit: pip install rdkit"
                 ) from e
 
     def _compute_differentiable_fp(
@@ -211,9 +213,7 @@ class MACCSKeysOperator(OperatorModule):
             edge_features = data.get("edge_features")
             node_mask = data.get("node_mask")
 
-            fp = self._compute_differentiable_fp(
-                node_features, adjacency, edge_features, node_mask
-            )
+            fp = self._compute_differentiable_fp(node_features, adjacency, edge_features, node_mask)
         else:
             smiles = data["smiles"]
             fp = self._compute_rdkit_fp(smiles)

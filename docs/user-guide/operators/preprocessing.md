@@ -171,6 +171,7 @@ Context Window → Convolution → Dense → Corrected Base Probabilities
 ```
 
 The model uses quality scores to weight corrections:
+
 - Low quality positions: more likely to be corrected
 - High quality positions: corrections are suppressed
 

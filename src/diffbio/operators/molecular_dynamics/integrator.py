@@ -65,12 +65,14 @@ class MDIntegratorOperator(OperatorModule):
         - nvt_langevin: Langevin dynamics for NVT ensemble
 
     Example:
-        >>> config = MDIntegratorConfig(dt=0.001, n_steps=1000, box_size=10.0)
-        >>> integrator = MDIntegratorOperator(config, rngs=nnx.Rngs(42))
-        >>> data = {"positions": positions, "velocities": velocities}
-        >>> result, state, meta = integrator.apply(data, {}, None)
-        >>> final_positions = result["positions"]
-        >>> trajectory = result["trajectory"]
+        ```python
+        config = MDIntegratorConfig(dt=0.001, n_steps=1000, box_size=10.0)
+        integrator = MDIntegratorOperator(config, rngs=nnx.Rngs(42))
+        data = {"positions": positions, "velocities": velocities}
+        result, state, meta = integrator.apply(data, {}, None)
+        final_positions = result["positions"]
+        trajectory = result["trajectory"]
+        ```
     """
 
     def __init__(self, config: MDIntegratorConfig, *, rngs: nnx.Rngs | None = None):

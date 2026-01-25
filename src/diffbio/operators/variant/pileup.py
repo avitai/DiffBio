@@ -4,6 +4,7 @@ This module provides a differentiable approximation of pileup generation,
 which aggregates aligned reads at each position of a reference sequence.
 
 Inherits from TemperatureOperator to get:
+
 - _temperature property for temperature-controlled smoothing
 - soft_max() for logsumexp-based smooth maximum
 - soft_argmax() for soft position selection
@@ -65,6 +66,7 @@ class DifferentiablePileup(TemperatureOperator):
     allows gradients to flow through.
 
     Inherits from TemperatureOperator to get:
+
     - _temperature property for temperature-controlled smoothing
     - soft_max() for logsumexp-based smooth maximum
     - soft_argmax() for soft position selection

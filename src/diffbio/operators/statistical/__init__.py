@@ -1,6 +1,7 @@
 """Differentiable statistical model operators.
 
 This module provides operators for:
+
 - Hidden Markov Models with differentiable forward algorithm
 - Negative Binomial GLM for differential expression
 - Unrolled EM for transcript quantification

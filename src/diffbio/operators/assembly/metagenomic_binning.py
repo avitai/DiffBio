@@ -73,10 +73,12 @@ class DifferentiableMetagenomicBinner(EncoderDecoderOperator):
         - reconstructed_abundance: Float[Array, "n_contigs n_samples"] - Recon. abundance
 
     Example:
-        >>> config = MetagenomicBinnerConfig(n_abundance_features=5, n_clusters=50)
-        >>> binner = DifferentiableMetagenomicBinner(config, rngs=nnx.Rngs(42))
-        >>> result, state, meta = binner.apply(data, {}, None)
-        >>> bins = result["cluster_assignments"].argmax(axis=-1)
+        ```python
+        config = MetagenomicBinnerConfig(n_abundance_features=5, n_clusters=50)
+        binner = DifferentiableMetagenomicBinner(config, rngs=nnx.Rngs(42))
+        result, state, meta = binner.apply(data, {}, None)
+        bins = result["cluster_assignments"].argmax(axis=-1)
+        ```
     """
 
     def __init__(

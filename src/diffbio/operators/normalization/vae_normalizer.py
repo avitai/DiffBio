@@ -53,6 +53,7 @@ class VAENormalizer(EncoderDecoderOperator):
     - Decoder: z -> gene expression rates
 
     Inherits from EncoderDecoderOperator to get:
+
     - reparameterize() for sampling with reparameterization trick
     - kl_divergence() for KL from standard normal
     - elbo_loss() for combining reconstruction and KL losses
@@ -63,10 +64,12 @@ class VAENormalizer(EncoderDecoderOperator):
         name: Optional operator name.
 
     Example:
-        >>> config = VAENormalizerConfig(n_genes=2000, latent_dim=10)
-        >>> normalizer = VAENormalizer(config, rngs=nnx.Rngs(42))
-        >>> data = {"counts": counts, "library_size": lib_size}
-        >>> result, state, meta = normalizer.apply(data, {}, None)
+        ```python
+        config = VAENormalizerConfig(n_genes=2000, latent_dim=10)
+        normalizer = VAENormalizer(config, rngs=nnx.Rngs(42))
+        data = {"counts": counts, "library_size": lib_size}
+        result, state, meta = normalizer.apply(data, {}, None)
+        ```
     """
 
     def __init__(
@@ -261,6 +264,7 @@ class VAENormalizer(EncoderDecoderOperator):
         Returns:
             Tuple of (transformed_data, state, metadata):
                 - transformed_data contains:
+
                     - "counts": Original counts
                     - "normalized": Normalized expression
                     - "latent_z": Sampled latent representation

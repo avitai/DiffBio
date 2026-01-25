@@ -43,6 +43,7 @@ class SequenceIdentitySplitter(SplitterModule):
     similar sequences appearing in different splits.
 
     Inherits from SplitterModule (StructuralModule) because:
+
     - Non-parametric: clustering is deterministic
     - Frozen config: splitting strategy doesn't change
     - Domain-specific: requires sequence comparison
@@ -50,9 +51,11 @@ class SequenceIdentitySplitter(SplitterModule):
     Similar to CD-HIT or MMseqs2 clustering approach.
 
     Example:
-        >>> config = SequenceIdentitySplitterConfig(identity_threshold=0.3)
-        >>> splitter = SequenceIdentitySplitter(config)
-        >>> result = splitter.split(sequence_source)
+        ```python
+        config = SequenceIdentitySplitterConfig(identity_threshold=0.3)
+        splitter = SequenceIdentitySplitter(config)
+        result = splitter.split(sequence_source)
+        ```
 
     References:
         Li, Weizhong, and Adam Godzik. "Cd-hit: a fast program for clustering

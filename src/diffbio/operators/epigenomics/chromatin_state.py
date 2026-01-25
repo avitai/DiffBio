@@ -4,6 +4,7 @@ This module implements a differentiable HMM-based chromatin state annotator
 that can be used for learning chromatin states from histone modification data.
 
 Inherits from TemperatureOperator to get:
+
 - _temperature property for temperature-controlled smoothing
 - soft_max() for logsumexp-based smooth maximum
 - soft_argmax() for soft Viterbi decoding
@@ -53,6 +54,7 @@ class ChromatinStateAnnotator(TemperatureOperator):
     - Learnable initial state distribution
 
     Inherits from TemperatureOperator to get:
+
     - _temperature property for temperature-controlled smoothing
     - soft_max() for logsumexp-based smooth maximum
     - soft_argmax() for soft Viterbi decoding
@@ -329,6 +331,7 @@ class ChromatinStateAnnotator(TemperatureOperator):
 
         Returns:
             Tuple of (output_data, state, metadata) where output_data contains:
+
                 - 'histone_marks': Original histone mark signals
                 - 'state_probabilities': State probabilities at each position
                 - 'state_posteriors': Posterior state probabilities

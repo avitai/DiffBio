@@ -52,9 +52,11 @@ def logsumexp_smooth_max(
         Smooth maximum value(s).
 
     Example:
-        >>> values = jnp.array([1.0, 5.0, 2.0])
-        >>> logsumexp_smooth_max(values, temperature=0.1)  # Close to 5.0
-        >>> logsumexp_smooth_max(values, temperature=10.0)  # More averaged
+        ```python
+        values = jnp.array([1.0, 5.0, 2.0])
+        logsumexp_smooth_max(values, temperature=0.1)  # Close to 5.0
+        logsumexp_smooth_max(values, temperature=10.0)  # More averaged
+        ```
     """
     return temperature * jax.scipy.special.logsumexp(values / temperature, axis=axis)
 
@@ -81,8 +83,10 @@ def soft_argmax(
         Soft argmax position(s).
 
     Example:
-        >>> logits = jnp.array([1.0, 5.0, 2.0])
-        >>> soft_argmax(logits, temperature=0.1)  # Close to 1.0
+        ```python
+        logits = jnp.array([1.0, 5.0, 2.0])
+        soft_argmax(logits, temperature=0.1)  # Close to 1.0
+        ```
     """
     # Get weights via softmax
     weights = jax.nn.softmax(logits / temperature, axis=axis)
@@ -117,8 +121,10 @@ def soft_sort(
         Softly sorted values (approximately ascending order).
 
     Example:
-        >>> values = jnp.array([3.0, 1.0, 4.0, 1.0, 5.0])
-        >>> soft_sort(values, temperature=0.01)  # Close to [1.0, 1.0, 3.0, 4.0, 5.0]
+        ```python
+        values = jnp.array([3.0, 1.0, 4.0, 1.0, 5.0])
+        soft_sort(values, temperature=0.01)  # Close to [1.0, 1.0, 3.0, 4.0, 5.0]
+        ```
     """
     n = values.shape[0]
 
@@ -166,10 +172,12 @@ def segment_softmax(
         Softmax probabilities normalized within each segment.
 
     Example:
-        >>> logits = jnp.array([1.0, 2.0, 3.0, 1.0, 2.0])
-        >>> segment_ids = jnp.array([0, 0, 0, 1, 1])
-        >>> result = segment_softmax(logits, segment_ids)
-        >>> # result[:3].sum() == 1.0, result[3:].sum() == 1.0
+        ```python
+        logits = jnp.array([1.0, 2.0, 3.0, 1.0, 2.0])
+        segment_ids = jnp.array([0, 0, 0, 1, 1])
+        result = segment_softmax(logits, segment_ids)
+        # result[:3].sum() == 1.0, result[3:].sum() == 1.0
+        ```
     """
     # Scale by temperature
     scaled = logits / temperature
@@ -212,9 +220,11 @@ def gumbel_softmax(
         Soft (or hard with soft gradients) categorical samples.
 
     Example:
-        >>> logits = jnp.array([1.0, 2.0, 3.0])
-        >>> key = jax.random.PRNGKey(42)
-        >>> sample = gumbel_softmax(logits, key, temperature=0.5)
+        ```python
+        logits = jnp.array([1.0, 2.0, 3.0])
+        key = jax.random.PRNGKey(42)
+        sample = gumbel_softmax(logits, key, temperature=0.5)
+        ```
     """
     # Sample Gumbel noise
     gumbel_noise = jax.random.gumbel(key, logits.shape)
@@ -257,13 +267,15 @@ def differentiable_scan(
         Tuple of (final_carry, stacked_outputs).
 
     Example:
-        >>> def cumsum_step(carry, x):
-        ...     new_carry = carry + x
-        ...     return new_carry, new_carry
-        >>> init = jnp.array(0.0)
-        >>> xs = jnp.array([1.0, 2.0, 3.0])
-        >>> final, outputs = differentiable_scan(cumsum_step, init, xs)
-        >>> # outputs = [1.0, 3.0, 6.0]
+        ```python
+        def cumsum_step(carry, x):
+            new_carry = carry + x
+            return new_carry, new_carry
+        init = jnp.array(0.0)
+        xs = jnp.array([1.0, 2.0, 3.0])
+        final, outputs = differentiable_scan(cumsum_step, init, xs)
+        # outputs = [1.0, 3.0, 6.0]
+        ```
     """
     return jax.lax.scan(step_fn, init, xs, unroll=unroll)
 
@@ -287,9 +299,11 @@ def soft_one_hot(
         Soft one-hot encodings.
 
     Example:
-        >>> index = jnp.array(1.5)  # Between class 1 and 2
-        >>> soft_one_hot(index, num_classes=4, temperature=0.1)
-        >>> # Returns distribution peaked between indices 1 and 2
+        ```python
+        index = jnp.array(1.5)  # Between class 1 and 2
+        soft_one_hot(index, num_classes=4, temperature=0.1)
+        # Returns distribution peaked between indices 1 and 2
+        ```
     """
     # Create class indices
     class_indices = jnp.arange(num_classes, dtype=indices.dtype)

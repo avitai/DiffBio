@@ -50,10 +50,12 @@ class DifferentiableQualityFilter(OperatorModule):
         rngs: Flax NNX random number generators
 
     Example:
-        >>> config = QualityFilterConfig(initial_threshold=20.0)
-        >>> filter_op = DifferentiableQualityFilter(config, rngs=nnx.Rngs(42))
-        >>> data = {"sequence": encoded_seq, "quality_scores": quality}
-        >>> filtered_data, state, meta = filter_op.apply(data, {}, None, None)
+        ```python
+        config = QualityFilterConfig(initial_threshold=20.0)
+        filter_op = DifferentiableQualityFilter(config, rngs=nnx.Rngs(42))
+        data = {"sequence": encoded_seq, "quality_scores": quality}
+        filtered_data, state, meta = filter_op.apply(data, {}, None, None)
+        ```
     """
 
     def __init__(
