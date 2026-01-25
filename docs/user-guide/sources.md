@@ -17,8 +17,214 @@ Data sources in DiffBio extend `datarax.core.data_source.DataSourceModule`, prov
 
 ```
 DataSourceModule (Datarax)
+├── BAMSource             # BAM/CRAM file reading
+├── FastaSource           # FASTA file reading
 ├── MolNetSource          # MoleculeNet benchmark datasets
 └── IndexedViewSource     # Lazy view over subset of another source
+```
+
+## Genomics Sources
+
+DiffBio provides optimized data sources for common genomics file formats, built on state-of-the-art libraries.
+
+### BAMSource - Aligned Reads
+
+BAMSource reads aligned sequencing reads from BAM/CRAM files using [pysam](https://pysam.readthedocs.io/), a lightweight wrapper around HTSlib.
+
+#### Quick Start
+
+```python
+from pathlib import Path
+from diffbio.sources import BAMSource, BAMSourceConfig
+
+# Load aligned reads
+config = BAMSourceConfig(
+    file_path=Path("sample.bam"),
+    min_mapping_quality=20,
+)
+source = BAMSource(config)
+
+print(f"Reads: {len(source)}")
+
+for element in source:
+    seq = element.data["sequence"]       # One-hot encoded (length, 4)
+    qual = element.data["quality_scores"]  # Phred scores (length,)
+    name = element.data["read_name"]
+```
+
+#### Configuration Options
+
+```python
+from pathlib import Path
+from diffbio.sources import BAMSourceConfig
+
+config = BAMSourceConfig(
+    # Required: path to BAM/CRAM file
+    file_path=Path("sample.bam"),
+
+    # Optional: reference FASTA (required for CRAM)
+    reference_path=Path("reference.fa"),
+
+    # Filter reads by mapping quality
+    min_mapping_quality=20,
+
+    # Include unmapped reads
+    include_unmapped=False,
+
+    # Query specific region only
+    region="chr1:1000000-2000000",
+
+    # How to handle N nucleotides
+    handle_n="uniform",  # or "zero"
+)
+```
+
+#### Data Element Format
+
+```python
+element = source[0]
+
+# Read sequence as one-hot encoding
+sequence = element.data["sequence"]       # shape: (read_length, 4)
+quality = element.data["quality_scores"]  # shape: (read_length,)
+name = element.data["read_name"]          # str
+
+# Metadata
+idx = element.metadata["idx"]
+reference = element.metadata["reference_name"]  # e.g., "chr1"
+position = element.metadata["reference_start"]  # 0-based
+mapq = element.metadata["mapping_quality"]
+```
+
+#### Performance Tips
+
+1. **Use indexed BAM files**: Ensure `.bai` index exists for random access
+2. **Filter by region**: Use `region` parameter to load only needed reads
+3. **Filter at load time**: Use `min_mapping_quality` instead of post-filtering
+4. **Use iterators**: Process reads one at a time, don't load all into memory
+
+### FastaSource - Reference Sequences
+
+FastaSource reads DNA/RNA sequences from FASTA files using [pyfaidx](https://github.com/mdshw5/pyfaidx), providing samtools-compatible indexed access.
+
+#### Quick Start
+
+```python
+from pathlib import Path
+from diffbio.sources import FastaSource, FastaSourceConfig
+
+# Load reference genome
+config = FastaSourceConfig(
+    file_path=Path("genome.fasta"),
+)
+source = FastaSource(config)
+
+print(f"Chromosomes: {source.sequence_names}")
+
+# Access by name
+chr1 = source.get_by_name("chr1")
+sequence = chr1.data["sequence"]  # One-hot encoded
+```
+
+#### Configuration Options
+
+```python
+from pathlib import Path
+from diffbio.sources import FastaSourceConfig
+
+config = FastaSourceConfig(
+    # Required: path to FASTA file
+    file_path=Path("genome.fasta"),
+
+    # How to handle N nucleotides
+    handle_n="uniform",  # [0.25, 0.25, 0.25, 0.25]
+    # handle_n="zero",   # [0, 0, 0, 0]
+
+    # Create .fai index if missing
+    create_index=True,
+)
+```
+
+#### Data Element Format
+
+```python
+element = source[0]
+
+# Sequence as one-hot encoding
+sequence = element.data["sequence"]     # shape: (seq_length, 4)
+seq_id = element.data["sequence_id"]    # str: "chr1"
+description = element.data["description"]  # str: full header
+
+# Metadata
+idx = element.metadata["idx"]
+length = element.metadata["length"]
+```
+
+#### Access Patterns
+
+```python
+from diffbio.sources import FastaSource, FastaSourceConfig
+
+config = FastaSourceConfig(file_path=Path("genome.fasta"))
+source = FastaSource(config)
+
+# 1. Iterate over all sequences
+for element in source:
+    print(f"{element.data['sequence_id']}: {element.metadata['length']} bp")
+
+# 2. Access by index
+first_seq = source[0]
+
+# 3. Access by name
+chr1 = source.get_by_name("chr1")
+
+# 4. List all sequence names
+names = source.sequence_names  # ["chr1", "chr2", ...]
+
+# 5. Batch access
+batch = source.get_batch(10)
+```
+
+#### Performance Tips
+
+1. **Use indexed FASTA**: `.fai` index enables O(1) random access
+2. **Lazy loading**: Sequences loaded only when accessed
+3. **Access by name**: Use `get_by_name()` for specific chromosomes
+4. **BGZF compression**: Works with bgzip-compressed files
+
+### Integration with DiffBio Operators
+
+Genomics sources output one-hot encoded sequences compatible with DiffBio operators:
+
+```python
+from diffbio.sources import FastaSource, FastaSourceConfig
+from diffbio.operators.alignment import SmoothSmithWaterman, SmithWatermanConfig
+
+# Load sequences
+fasta = FastaSource(FastaSourceConfig(file_path=Path("genome.fasta")))
+seq1 = fasta.get_by_name("seq1").data["sequence"]
+seq2 = fasta.get_by_name("seq2").data["sequence"]
+
+# Align with differentiable Smith-Waterman
+aligner = SmoothSmithWaterman(SmithWatermanConfig())
+result, _, _ = aligner.apply(
+    {"query": seq1, "reference": seq2},
+    {},
+    None,
+)
+score = result["score"]
+```
+
+### Installation
+
+Genomics sources require optional dependencies:
+
+```bash
+# Install genomics dependencies
+uv pip install -e ".[genomics]"
+
+# Or install individually
+pip install pysam pyfaidx
 ```
 
 ## MolNet Benchmark Datasets
@@ -371,6 +577,8 @@ for batch in sampler:
 
 | Use Case | Recommended Source |
 |----------|-------------------|
+| BAM/CRAM aligned reads | BAMSource |
+| FASTA reference sequences | FastaSource |
 | MolNet benchmarks | MolNetSource |
 | Split views | IndexedViewSource (via splitter) |
 | Custom datasets | Extend DataSourceModule |

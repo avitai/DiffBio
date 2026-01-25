@@ -196,12 +196,8 @@ class SplitterModule(StructuralModule):
             # EAGER LOADING: Load all elements into memory (faster iteration)
             from datarax.sources import MemorySource, MemorySourceConfig
 
-            train_elements = [
-                data_source[int(i)] for i in split_result.train_indices
-            ]
-            valid_elements = [
-                data_source[int(i)] for i in split_result.valid_indices
-            ]
+            train_elements = [data_source[int(i)] for i in split_result.train_indices]
+            valid_elements = [data_source[int(i)] for i in split_result.valid_indices]
             test_elements = [data_source[int(i)] for i in split_result.test_indices]
 
             train_config = MemorySourceConfig(shuffle=True, seed=self.config.seed)

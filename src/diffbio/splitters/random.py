@@ -178,9 +178,7 @@ class StratifiedSplitter(SplitterModule):
 
         # Group indices by class
         unique_labels = jnp.unique(labels)
-        class_indices = {
-            int(label): jnp.where(labels == label)[0] for label in unique_labels
-        }
+        class_indices = {int(label): jnp.where(labels == label)[0] for label in unique_labels}
 
         # Use JAX RNG
         if self.config.seed is not None:

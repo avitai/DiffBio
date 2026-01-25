@@ -150,9 +150,7 @@ class IndexedViewSource(DataSourceModule):
             if seed is not None:
                 # Update seed and reshuffle
                 key = jax.random.key(seed)
-                self._view_indices = jax.random.permutation(
-                    key, jnp.arange(len(self._indices))
-                )
+                self._view_indices = jax.random.permutation(key, jnp.arange(len(self._indices)))
             else:
                 self._shuffle_view()
 

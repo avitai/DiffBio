@@ -457,7 +457,5 @@ class TestSequenceIdentitySplitterEdgeCases:
             # Both should be in same split
             valid_set = set(int(i) for i in result.valid_indices)
             test_set = set(int(i) for i in result.test_indices)
-            same_split = (
-                (0 in valid_set and 2 in valid_set) or (0 in test_set and 2 in test_set)
-            )
+            same_split = (0 in valid_set and 2 in valid_set) or (0 in test_set and 2 in test_set)
             assert same_split

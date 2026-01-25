@@ -76,9 +76,7 @@ class ScaffoldSplitter(SplitterModule):
             self._Chem = Chem
             self._MurckoScaffold = MurckoScaffold
         except ImportError as e:
-            raise ImportError(
-                "ScaffoldSplitter requires RDKit: pip install rdkit"
-            ) from e
+            raise ImportError("ScaffoldSplitter requires RDKit: pip install rdkit") from e
 
     def _generate_scaffolds(self, smiles_list: Sequence[str]) -> dict[str, list[int]]:
         """Generate Bemis-Murcko scaffolds for molecules.
@@ -118,9 +116,7 @@ class ScaffoldSplitter(SplitterModule):
             SplitResult with scaffold-based train/valid/test indices
         """
         # Extract SMILES from data source
-        smiles_list = [
-            data_source[i].data[self.config.smiles_key] for i in range(len(data_source))
-        ]
+        smiles_list = [data_source[i].data[self.config.smiles_key] for i in range(len(data_source))]
 
         scaffolds = self._generate_scaffolds(smiles_list)
 
@@ -225,9 +221,7 @@ class TanimotoClusterSplitter(SplitterModule):
             self._MACCSkeys = MACCSkeys
             self._Butina = Butina
         except ImportError as e:
-            raise ImportError(
-                "TanimotoClusterSplitter requires RDKit: pip install rdkit"
-            ) from e
+            raise ImportError("TanimotoClusterSplitter requires RDKit: pip install rdkit") from e
 
     def _compute_fingerprint(self, mol: Any) -> Any | None:
         """Compute fingerprint for a molecule.
@@ -249,21 +243,15 @@ class TanimotoClusterSplitter(SplitterModule):
                     nBits=self.config.fingerprint_bits,
                 )
             elif self.config.fingerprint_type == "rdkit":
-                return self._Chem.RDKFingerprint(
-                    mol, fpSize=self.config.fingerprint_bits
-                )
+                return self._Chem.RDKFingerprint(mol, fpSize=self.config.fingerprint_bits)
             elif self.config.fingerprint_type == "maccs":
                 return self._MACCSkeys.GenMACCSKeys(mol)
             else:
-                raise ValueError(
-                    f"Unknown fingerprint type: {self.config.fingerprint_type}"
-                )
+                raise ValueError(f"Unknown fingerprint type: {self.config.fingerprint_type}")
         except Exception:
             return None
 
-    def _compute_fingerprints(
-        self, smiles_list: Sequence[str]
-    ) -> list[tuple[int, Any]]:
+    def _compute_fingerprints(self, smiles_list: Sequence[str]) -> list[tuple[int, Any]]:
         """Compute fingerprints for all molecules.
 
         Args:
@@ -290,19 +278,14 @@ class TanimotoClusterSplitter(SplitterModule):
             SplitResult with cluster-based train/valid/test indices
         """
         # Extract SMILES from data source
-        smiles_list = [
-            data_source[i].data[self.config.smiles_key]
-            for i in range(len(data_source))
-        ]
+        smiles_list = [data_source[i].data[self.config.smiles_key] for i in range(len(data_source))]
 
         # Compute fingerprints
         valid_fps = self._compute_fingerprints(smiles_list)
 
         # Track invalid molecules (those without valid fingerprints)
         valid_indices = {idx for idx, _ in valid_fps}
-        invalid_indices = [
-            i for i in range(len(data_source)) if i not in valid_indices
-        ]
+        invalid_indices = [i for i in range(len(data_source)) if i not in valid_indices]
 
         if len(valid_fps) == 0:
             # No valid fingerprints - return all as train
@@ -328,9 +311,7 @@ class TanimotoClusterSplitter(SplitterModule):
         # Cluster using Butina algorithm
         # similarity_cutoff is converted to distance threshold
         dist_threshold = 1 - self.config.similarity_cutoff
-        clusters = self._Butina.ClusterData(
-            dists, n_valid, dist_threshold, isDistData=True
-        )
+        clusters = self._Butina.ClusterData(dists, n_valid, dist_threshold, isDistData=True)
 
         # Sort clusters by size (largest first)
         sorted_clusters = sorted(clusters, key=len, reverse=True)

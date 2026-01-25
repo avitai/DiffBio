@@ -186,8 +186,7 @@ class MolNetSource(DataSourceModule):
         if config.dataset_name not in MOLNET_DATASETS:
             available = ", ".join(sorted(MOLNET_DATASETS.keys()))
             raise ValueError(
-                f"Unknown dataset: '{config.dataset_name}'. "
-                f"Available datasets: {available}"
+                f"Unknown dataset: '{config.dataset_name}'. Available datasets: {available}"
             )
 
         # Set up data directory

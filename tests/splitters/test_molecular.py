@@ -186,9 +186,7 @@ class TestScaffoldSplitter:
         result = splitter.split(molecule_data_source)
 
         assert isinstance(result, SplitResult)
-        assert result.train_size + result.valid_size + result.test_size == len(
-            molecule_data_source
-        )
+        assert result.train_size + result.valid_size + result.test_size == len(molecule_data_source)
 
     def test_split_no_overlap(self, molecule_data_source):
         """Test that scaffold splits have no overlapping indices."""
@@ -511,9 +509,7 @@ class TestTanimotoClusterSplitter:
         result = splitter.split(molecule_data_source)
 
         assert isinstance(result, SplitResult)
-        assert result.train_size + result.valid_size + result.test_size == len(
-            molecule_data_source
-        )
+        assert result.train_size + result.valid_size + result.test_size == len(molecule_data_source)
 
     def test_split_no_overlap(self, molecule_data_source):
         """Test that Tanimoto splits have no overlapping indices."""
@@ -607,9 +603,7 @@ class TestTanimotoClusterSplitterEdgeCases:
                 self._idx += 1
                 return elem
 
-        config = TanimotoClusterSplitterConfig(
-            train_frac=0.5, valid_frac=0.25, test_frac=0.25
-        )
+        config = TanimotoClusterSplitterConfig(train_frac=0.5, valid_frac=0.25, test_frac=0.25)
         splitter = TanimotoClusterSplitter(config)
         source = MixedValiditySource(MockConfig())
 

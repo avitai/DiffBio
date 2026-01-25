@@ -2,6 +2,52 @@
 
 Data source modules for loading bioinformatics and drug discovery datasets, extending Datarax's DataSourceModule.
 
+## Genomics Sources
+
+### BAMSource
+
+::: diffbio.sources.bam.BAMSource
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - __len__
+        - __getitem__
+        - __iter__
+        - reset
+        - get_batch
+
+### BAMSourceConfig
+
+::: diffbio.sources.bam.BAMSourceConfig
+    options:
+      show_root_heading: true
+      members: []
+
+### FastaSource
+
+::: diffbio.sources.fasta.FastaSource
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - __len__
+        - __getitem__
+        - __iter__
+        - reset
+        - get_batch
+        - get_by_name
+        - sequence_names
+
+### FastaSourceConfig
+
+::: diffbio.sources.fasta.FastaSourceConfig
+    options:
+      show_root_heading: true
+      members: []
+
 ## MolNet Benchmark Source
 
 ### MolNetSource
@@ -47,6 +93,79 @@ Data source modules for loading bioinformatics and drug discovery datasets, exte
       members: []
 
 ## Usage Examples
+
+### Reading BAM/CRAM Files
+
+```python
+from pathlib import Path
+from diffbio.sources import BAMSource, BAMSourceConfig
+
+# Load aligned reads from a BAM file
+config = BAMSourceConfig(
+    file_path=Path("sample.bam"),
+    min_mapping_quality=20,  # Filter low-quality alignments
+    include_unmapped=False,  # Skip unmapped reads
+)
+source = BAMSource(config)
+
+print(f"Number of reads: {len(source)}")
+
+# Access reads
+for element in source:
+    # One-hot encoded sequence (length, 4)
+    sequence = element.data["sequence"]
+    # Phred quality scores (length,)
+    quality = element.data["quality_scores"]
+    # Read name
+    name = element.data["read_name"]
+
+    print(f"Read {name}: {sequence.shape}, avg quality: {quality.mean():.1f}")
+```
+
+### Reading FASTA Files
+
+```python
+from pathlib import Path
+from diffbio.sources import FastaSource, FastaSourceConfig
+
+# Load sequences from a FASTA file
+config = FastaSourceConfig(
+    file_path=Path("genome.fasta"),
+    handle_n="uniform",  # or "zero" for N nucleotides
+    create_index=True,   # Create .fai index for random access
+)
+source = FastaSource(config)
+
+print(f"Number of sequences: {len(source)}")
+print(f"Sequence names: {source.sequence_names}")
+
+# Access by index
+for element in source:
+    seq_id = element.data["sequence_id"]
+    sequence = element.data["sequence"]  # One-hot encoded
+    print(f"{seq_id}: {sequence.shape[0]} bp")
+
+# Access by name
+chr1 = source.get_by_name("chr1")
+if chr1 is not None:
+    print(f"Chromosome 1 length: {chr1.data['sequence'].shape[0]}")
+```
+
+### Region-Based BAM Access
+
+```python
+from pathlib import Path
+from diffbio.sources import BAMSource, BAMSourceConfig
+
+# Load only reads from a specific region
+config = BAMSourceConfig(
+    file_path=Path("sample.bam"),
+    region="chr1:1000000-2000000",  # 1Mb region on chr1
+)
+source = BAMSource(config)
+
+print(f"Reads in region: {len(source)}")
+```
 
 ### Loading MolNet Benchmarks
 

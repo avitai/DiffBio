@@ -186,9 +186,7 @@ class SequenceIdentitySplitter(SplitterModule):
             SplitResult with identity-based train/valid/test indices
         """
         # Extract sequences from data source
-        sequences = [
-            data_source[i].data[self.config.sequence_key] for i in range(len(data_source))
-        ]
+        sequences = [data_source[i].data[self.config.sequence_key] for i in range(len(data_source))]
 
         # Cluster by identity
         clusters = self._cluster_by_identity(sequences)

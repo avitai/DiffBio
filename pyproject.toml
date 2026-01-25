@@ -58,7 +58,13 @@ requires-python = ">=3.11"
 version = "0.1.0"
 
 [project.optional-dependencies]
-all = ["diffbio[dev,docs,gpu,test]"]
+all = ["diffbio[dev,docs,genomics,gpu,test]"]
+benchmark = [
+  "deepchem>=2.8.0",
+  "pandas>=2.0",
+  "matplotlib>=3.7",
+  "tabulate>=0.9"
+]
 cuda-dev = ["diffbio[dev,gpu]"]
 dev = [
   "build>=1.0.3",
@@ -86,13 +92,11 @@ docs = [
   "mkdocstrings-python>=1.1.2",
   "pymdown-extensions>=10.14.3"
 ]
-gpu = ["jax[cuda12]>=0.6.1", "jaxlib>=0.6.1"]
-benchmark = [
-  "deepchem>=2.8.0",
-  "pandas>=2.0",
-  "matplotlib>=3.7",
-  "tabulate>=0.9",
+genomics = [
+  "pysam>=0.22.0",
+  "pyfaidx>=0.8.0"
 ]
+gpu = ["jax[cuda12]>=0.6.1", "jaxlib>=0.6.1"]
 test = [
   "beartype>=0.14.1",
   "coverage>=7",

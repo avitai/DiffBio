@@ -237,9 +237,7 @@ class TestSplitterCreateSplitSources:
         config = SplitterConfig()
         splitter = SimpleSplitter(config)
 
-        train_src, valid_src, test_src = splitter.create_split_sources(
-            mock_data_source, lazy=True
-        )
+        train_src, valid_src, test_src = splitter.create_split_sources(mock_data_source, lazy=True)
 
         # Should return IndexedViewSource instances
         assert isinstance(train_src, IndexedViewSource)
@@ -270,9 +268,7 @@ class TestSplitterCreateSplitSources:
         config = SplitterConfig()
         splitter = SimpleSplitter(config)
 
-        train_src, valid_src, test_src = splitter.create_split_sources(
-            mock_data_source, lazy=False
-        )
+        train_src, valid_src, test_src = splitter.create_split_sources(mock_data_source, lazy=False)
 
         # Should return MemorySource instances
         assert isinstance(train_src, MemorySource)
@@ -294,9 +290,7 @@ class TestSplitterCreateSplitSources:
         config = SplitterConfig(train_frac=0.5, valid_frac=0.33, test_frac=0.17)
         splitter = SimpleSplitter(config)
 
-        train_src, valid_src, test_src = splitter.create_split_sources(
-            mock_data_source, lazy=True
-        )
+        train_src, valid_src, test_src = splitter.create_split_sources(mock_data_source, lazy=True)
 
         # Check train has correct values
         train_values = [int(elem.data["value"]) for elem in train_src]
@@ -325,9 +319,7 @@ class TestSplitterCreateSplitSources:
         config = SplitterConfig()
         splitter = SimpleSplitter(config, rngs=nnx.Rngs(42, shuffle=42))
 
-        train_src, valid_src, test_src = splitter.create_split_sources(
-            mock_data_source, lazy=True
-        )
+        train_src, valid_src, test_src = splitter.create_split_sources(mock_data_source, lazy=True)
 
         # Valid and test should preserve order
         valid_values = [int(elem.data["value"]) for elem in valid_src]

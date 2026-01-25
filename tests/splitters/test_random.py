@@ -38,15 +38,11 @@ def imbalanced_elements():
         )
     for i in range(20):
         elements.append(
-            Element(
-                data={"value": jnp.array(70 + i), "y": 1}, state={}, metadata={"idx": 70 + i}
-            )
+            Element(data={"value": jnp.array(70 + i), "y": 1}, state={}, metadata={"idx": 70 + i})
         )
     for i in range(10):
         elements.append(
-            Element(
-                data={"value": jnp.array(90 + i), "y": 2}, state={}, metadata={"idx": 90 + i}
-            )
+            Element(data={"value": jnp.array(90 + i), "y": 2}, state={}, metadata={"idx": 90 + i})
         )
     return elements
 
@@ -338,15 +334,9 @@ class TestStratifiedSplitter:
         result = splitter.split(imbalanced_data_source)
 
         # Get labels for each split
-        train_labels = [
-            int(imbalanced_data_source[int(i)].data["y"]) for i in result.train_indices
-        ]
-        valid_labels = [
-            int(imbalanced_data_source[int(i)].data["y"]) for i in result.valid_indices
-        ]
-        test_labels = [
-            int(imbalanced_data_source[int(i)].data["y"]) for i in result.test_indices
-        ]
+        train_labels = [int(imbalanced_data_source[int(i)].data["y"]) for i in result.train_indices]
+        valid_labels = [int(imbalanced_data_source[int(i)].data["y"]) for i in result.valid_indices]
+        test_labels = [int(imbalanced_data_source[int(i)].data["y"]) for i in result.test_indices]
 
         # Calculate class proportions
         def get_proportions(labels):
