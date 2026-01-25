@@ -404,8 +404,222 @@ def fast_pileup(reads, positions, quality):
 pileup = fast_pileup(reads, positions, quality)
 ```
 
+---
+
+## DeepVariant-Style Pileup Images
+
+For CNN-based variant calling, DiffBio provides `DeepVariantStylePileup` that generates multi-channel pileup images compatible with DeepVariant's architecture.
+
+<span class="operator-pileup">DeepVariant Pileup</span> <span class="diff-high">Fully Differentiable</span>
+
+### Overview
+
+DeepVariant uses pileup "images" where each aligned read is a row and each column is a genomic position. Multiple channels encode different features:
+
+| Channel | Description | Values |
+|---------|-------------|--------|
+| Base (A/C/G/T) | 4 one-hot channels for nucleotide identity | 0 or 1 |
+| Base Quality | Phred score normalized to [0,1] | [0, 1] |
+| Mapping Quality | MAPQ normalized to [0,1] | [0, 1] |
+| Strand | Read orientation | 0=forward, 1=reverse |
+| Supports Variant | Soft mismatch indicator | [0, 1] |
+| Differs from Ref | Reference mismatch | [0, 1] |
+
+### Quick Start
+
+```python
+import jax
+import jax.numpy as jnp
+from diffbio.operators.variant import DeepVariantStylePileup, DeepVariantPileupConfig
+
+# Configure pileup
+config = DeepVariantPileupConfig(
+    window_size=221,  # Standard DeepVariant window
+    max_reads=100,    # Maximum reads per pileup
+)
+
+# Create operator
+pileup_op = DeepVariantStylePileup(config)
+
+# Prepare data
+num_reads = 30
+read_length = 50
+window_size = 221
+
+reads = jax.nn.softmax(
+    jax.random.uniform(jax.random.PRNGKey(0), (num_reads, read_length, 4)),
+    axis=-1
+)
+reference = jax.nn.softmax(
+    jax.random.uniform(jax.random.PRNGKey(1), (window_size, 4)),
+    axis=-1
+)
+base_qualities = jax.random.uniform(jax.random.PRNGKey(2), (num_reads, read_length)) * 40
+mapping_qualities = jax.random.uniform(jax.random.PRNGKey(3), (num_reads,)) * 60
+strands = (jax.random.uniform(jax.random.PRNGKey(4), (num_reads,)) > 0.5).astype(jnp.float32)
+positions = jax.random.randint(jax.random.PRNGKey(5), (num_reads,), 0, window_size - read_length)
+
+# Generate pileup image
+data = {
+    "reads": reads,
+    "reference": reference,
+    "base_qualities": base_qualities,
+    "mapping_qualities": mapping_qualities,
+    "strands": strands,
+    "positions": positions,
+}
+
+result, _, _ = pileup_op.apply(data, {}, None)
+print(f"Pileup image shape: {result['pileup_image'].shape}")  # (100, 221, 9)
+```
+
+### Configuration
+
+#### DeepVariantPileupConfig
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `window_size` | int | 221 | Width of pileup in base pairs |
+| `max_reads` | int | 100 | Maximum reads (image height) |
+| `include_base_channels` | bool | True | Include 4 A/C/G/T channels |
+| `include_base_quality` | bool | True | Include base quality channel |
+| `include_mapping_quality` | bool | True | Include mapping quality channel |
+| `include_strand` | bool | True | Include strand orientation channel |
+| `include_supports_variant` | bool | True | Include variant support channel |
+| `include_differs_from_ref` | bool | True | Include reference mismatch channel |
+| `quality_max` | float | 40.0 | Max quality for normalization |
+| `mapq_max` | float | 60.0 | Max MAPQ for normalization |
+| `temperature` | float | 1.0 | Temperature for soft operations |
+
+### Channel Details
+
+#### Base Identity Channels (4 channels)
+
+Each base position is encoded as a one-hot vector over {A, C, G, T}:
+
+```python
+# Example: Read with sequence "ACG"
+# Position 0: [1, 0, 0, 0]  # A
+# Position 1: [0, 1, 0, 0]  # C
+# Position 2: [0, 0, 1, 0]  # G
+```
+
+#### Quality Channels
+
+Quality scores are normalized to [0, 1]:
+
+```python
+# Base quality: normalized by quality_max (default 40)
+normalized_bq = base_quality / 40.0
+
+# Mapping quality: normalized by mapq_max (default 60)
+normalized_mapq = mapping_quality / 60.0
+```
+
+#### Variant Support Channel
+
+Uses soft comparison for differentiability:
+
+```python
+# Soft mismatch: 1 - dot product of one-hot vectors
+match_score = jnp.sum(read_base * ref_base)
+mismatch = 1.0 - match_score
+```
+
+### Integration with CNN Classifiers
+
+```python
+from flax import nnx
+from diffbio.operators.variant import (
+    DeepVariantStylePileup,
+    DeepVariantPileupConfig,
+    CNNVariantClassifier,
+    CNNVariantClassifierConfig,
+)
+
+# Create pileup generator
+pileup_config = DeepVariantPileupConfig(window_size=101, max_reads=50)
+pileup_op = DeepVariantStylePileup(pileup_config)
+
+# Create CNN classifier
+classifier_config = CNNVariantClassifierConfig(
+    num_classes=3,  # ref/het/hom_alt
+    window_size=101,
+    num_channels=pileup_op.num_channels,
+)
+classifier = CNNVariantClassifier(classifier_config, rngs=nnx.Rngs(42))
+
+# End-to-end pipeline
+def variant_pipeline(reads, reference, base_qualities, mapping_qualities, strands, positions):
+    # Generate pileup image
+    pileup_data = {
+        "reads": reads,
+        "reference": reference,
+        "base_qualities": base_qualities,
+        "mapping_qualities": mapping_qualities,
+        "strands": strands,
+        "positions": positions,
+    }
+    pileup_result, _, _ = pileup_op.apply(pileup_data, {}, None)
+
+    # Classify variants
+    # Reshape for batch processing: (1, height, width, channels)
+    pileup_batch = pileup_result["pileup_image"][None, ...]
+    classifier_data = {"pileup_tensor": pileup_batch}
+    result, _, _ = classifier.apply(classifier_data, {}, None)
+
+    return result["predictions"]  # (1, 3)
+```
+
+### Differentiability
+
+The entire pileup generation is differentiable, enabling end-to-end training:
+
+```python
+import jax
+
+def loss_fn(pileup_op, data, targets):
+    result, _, _ = pileup_op.apply(data, {}, None)
+    pileup_image = result["pileup_image"]
+    # Example: minimize difference from target
+    return jnp.mean((pileup_image - targets) ** 2)
+
+# Compute gradients
+grads = jax.grad(loss_fn)(pileup_op, data, target_image)
+```
+
+### Performance Tips
+
+1. **JIT Compilation**: Always JIT compile for production use:
+
+```python
+@jax.jit
+def fast_pileup(data):
+    result, _, _ = pileup_op.apply(data, {}, None)
+    return result["pileup_image"]
+```
+
+2. **Channel Selection**: Disable unused channels to reduce memory:
+
+```python
+# Minimal configuration for base-only analysis
+config = DeepVariantPileupConfig(
+    include_base_channels=True,
+    include_base_quality=False,
+    include_mapping_quality=False,
+    include_strand=False,
+    include_supports_variant=False,
+    include_differs_from_ref=False,
+)
+# Only 4 channels instead of 9
+```
+
+3. **Window Size**: Match window size to your variant calling context (221 for SNPs, larger for indels).
+
 ## References
 
 1. Li, H. et al. (2009). "The Sequence Alignment/Map format and SAMtools."
 
 2. Poplin, R. et al. (2018). "A universal SNP and small-indel variant caller using deep neural networks."
+
+3. Google DeepVariant (2020). "Looking through DeepVariant's eyes." https://google.github.io/deepvariant/posts/2020-02-20-looking-through-deepvariants-eyes/
