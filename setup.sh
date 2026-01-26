@@ -309,28 +309,35 @@ export PATH="${VENV_CUDA_BASE}/cuda_nvcc/bin:${PATH}"
 export CUDA_CACHE_DISABLE="1"
 export CUDA_MODULE_LOADING="LAZY"
 
-# JAX Configuration for CUDA
-export JAX_PLATFORMS="cuda,cpu"
-export XLA_PYTHON_CLIENT_PREALLOCATE="false"
-export XLA_PYTHON_CLIENT_MEM_FRACTION="0.9"
-export XLA_FLAGS="--xla_gpu_strict_conv_algorithm_picker=false"
+# === CUDA Performance Settings ===
+export CUDA_MODULE_LOADING="LAZY"       # Faster startup, reduced memory
+export CUDA_CACHE_DISABLE="1"           # Use JAX cache instead
 
-# JAX CUDA Plugin Configuration
+# === JAX Platform Configuration ===
+export JAX_PLATFORMS="cuda,cpu"
+export JAX_ENABLE_X64="0"               # Keep 32-bit for performance
+
+# === JAX Memory Management ===
+export XLA_PYTHON_CLIENT_PREALLOCATE="false"
+export XLA_PYTHON_CLIENT_MEM_FRACTION="0.85"  # Best practice: room for lazy-loaded CUDA kernels
+
+# === JAX Compilation Cache (LOCAL - optimal for single-machine dev) ===
+export JAX_COMPILATION_CACHE_DIR="${PROJECT_DIR}/.cache/jax"
+export XLA_CACHE_DIR="${PROJECT_DIR}/.cache/xla"
+
+# === XLA Performance Flags (AMD/NVIDIA compatible - no Triton flags) ===
+# Note: Async collectives are enabled by default in JAX 0.9+
+export XLA_FLAGS="--xla_gpu_strict_conv_algorithm_picker=false --xla_gpu_enable_latency_hiding_scheduler=true"
+
+# === JAX CUDA Plugin ===
 export JAX_CUDA_PLUGIN_VERIFY="false"
 
-# Reduce CUDA warnings
+# === Logging (reduce noise) ===
 export TF_CPP_MIN_LOG_LEVEL="1"
 
-# Performance settings
-export JAX_ENABLE_X64="0"
-
-# Development settings
+# === Development Settings ===
 export PYTHONPATH="${PYTHONPATH:+${PYTHONPATH}:}${PROJECT_DIR}"
-
-# Testing configuration
 export PYTEST_CUDA_ENABLED="true"
-
-# Protobuf Configuration
 export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION="python"
 EOF
             verbose_log "Created GPU-enabled .env configuration from embedded template"
@@ -533,6 +540,10 @@ setup_environment() {
 
     log_step "Creating virtual environment..."
     uv venv
+
+    # Create cache directories for JAX compilation
+    verbose_log "Creating JAX compilation cache directories"
+    mkdir -p .cache/jax .cache/xla
 
     # Activate the environment for installation
     source .venv/bin/activate

@@ -210,5 +210,9 @@ __marimo__/
 memory-bank/
 temp/
 
+# JAX compilation cache
+.cache/jax/
+.cache/xla/
+
 # Benchmark results (generated)
 benchmarks/results/

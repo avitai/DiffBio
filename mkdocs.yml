@@ -179,13 +179,26 @@ nav:
   - Examples:
       - Overview: examples/overview.md
       - Basic:
-          - Simple Alignment: examples/basic/simple-alignment.md
+          - MolNet Data Loading: examples/basic/molnet-data-loading.md
+          - Molecular Fingerprints: examples/basic/molecular-fingerprints.md
+          - Molecular Similarity: examples/basic/molecular-similarity.md
+          - Scaffold Splitting: examples/basic/scaffold-splitting.md
+          - DNA Encoding: examples/basic/dna-encoding.md
+          - Sequence Alignment: examples/basic/simple-alignment.md
           - Pileup Generation: examples/basic/pileup-generation.md
           - Single-Cell Clustering: examples/basic/single-cell-clustering.md
+          - RNA Structure: examples/basic/rna-structure.md
+          - Protein Structure: examples/basic/protein-structure.md
+          - HMM Sequence Model: examples/basic/hmm-sequence-model.md
           - Preprocessing: examples/basic/preprocessing.md
       - Advanced:
+          - Drug Discovery Workflow: examples/advanced/drug-discovery-workflow.md
+          - ADMET Prediction: examples/advanced/admet-prediction.md
+          - AttentiveFP: examples/advanced/attentive-fp.md
           - Variant Calling Pipeline: examples/advanced/variant-calling.md
+          - Single-Cell Batch Correction: examples/advanced/singlecell-batch-correction.md
           - Differential Expression: examples/advanced/differential-expression.md
+          - RNA Velocity: examples/advanced/rna-velocity.md
           - Epigenomics Analysis: examples/advanced/epigenomics-analysis.md
           - Multi-omics Integration: examples/advanced/multiomics-integration.md
 

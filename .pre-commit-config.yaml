@@ -144,13 +144,23 @@ repos:
         pass_filenames: true
         always_run: false
 
-# CI configuration
+  # File length check
+  - repo: local
+    hooks:
+      - id: check-file-length
+        name: Check file length
+        entry: bash -c 'for f in "$@"; do lines=$(wc -l < "$f"); if [ "$lines" -gt 2000 ]; then echo "FAIL: $f has $lines lines (max 2000)"; exit 1; elif [ "$lines" -gt 1500 ]; then echo "WARN: $f has $lines lines (consider splitting)"; fi; done'
+        language: system
+        types: [python]
+        exclude: ^(memory-bank)/
+
+# CI configuration - no autofix, manual testing before commits
 ci:
   autofix_commit_msg: |
     [pre-commit.ci] auto fixes from pre-commit.com hooks
 
     for more information, see https://pre-commit.ci
-  autofix_prs: true
+  autofix_prs: false
   autoupdate_branch: ""
   autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
   autoupdate_schedule: weekly
