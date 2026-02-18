@@ -188,8 +188,8 @@ class DifferentiableUMAP(OperatorModule):
         distances_sq = jnp.sum(diff**2, axis=-1)
 
         # UMAP similarity kernel
-        a = jnp.abs(self.a_param.value) + 1e-6
-        b = jnp.abs(self.b_param.value) + 1e-6
+        a = jnp.abs(self.a_param[...]) + 1e-6
+        b = jnp.abs(self.b_param[...]) + 1e-6
 
         q_ij = 1.0 / (1.0 + a * jnp.power(distances_sq + 1e-8, b))
 

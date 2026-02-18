@@ -23,40 +23,20 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import jax
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
 import numpy as np
 from flax import nnx
 
-# Set up paths
-SCRIPT_DIR = Path(__file__).parent
-PROJECT_ROOT = SCRIPT_DIR.parent
-ASSETS_DIR = PROJECT_ROOT / "docs" / "assets" / "images" / "examples"
-
-# Ensure assets directory exists
-ASSETS_DIR.mkdir(parents=True, exist_ok=True)
-
-# Matplotlib setup for headless rendering
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-
-# Use a colorblind-friendly style
-plt.style.use("seaborn-v0_8-whitegrid")
-
-# Common plot settings
-PLOT_DPI = 150
-CMAP_SEQUENTIAL = "viridis"
-CMAP_DIVERGING = "RdBu_r"
-
-
-def save_plot(filename: str, fig=None, dpi: int = PLOT_DPI):
-    """Save a plot to the assets directory."""
-    if fig is None:
-        fig = plt.gcf()
-    filepath = ASSETS_DIR / filename
-    fig.savefig(filepath, dpi=dpi, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    print(f"  Saved: {filename}")
+from _plot_helpers import (  # pyright: ignore[reportMissingImports]
+    ASSETS_DIR,
+    save_plot,
+)
+from _advanced_plots import (  # pyright: ignore[reportMissingImports]
+    generate_admet_prediction_plots,
+    generate_attentivefp_plots,
+    generate_rna_velocity_plots,
+    generate_singlecell_batch_correction_plots,
+)
 
 
 # =============================================================================
@@ -134,7 +114,7 @@ def generate_dna_encoding_plots():
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
     # Original
-    im0 = axes[0].imshow(np.array(seq_enc.T), aspect="auto", cmap="Blues")
+    axes[0].imshow(np.array(seq_enc.T), aspect="auto", cmap="Blues")
     axes[0].set_xlabel("Position")
     axes[0].set_ylabel("Nucleotide")
     axes[0].set_yticks([0, 1, 2, 3])
@@ -144,7 +124,7 @@ def generate_dna_encoding_plots():
     axes[0].set_title(f'Original: "{seq}"')
 
     # Reverse complement
-    im1 = axes[1].imshow(np.array(rc_enc.T), aspect="auto", cmap="Oranges")
+    axes[1].imshow(np.array(rc_enc.T), aspect="auto", cmap="Oranges")
     axes[1].set_xlabel("Position")
     axes[1].set_ylabel("Nucleotide")
     axes[1].set_yticks([0, 1, 2, 3])
@@ -252,9 +232,7 @@ def generate_molecular_fingerprint_plots():
     axes[0].set_xlim(0, 167)
 
     # MACCS Keys
-    axes[1].bar(
-        range(len(maccs_fp)), np.array(maccs_fp), color="darkorange", width=1.0, alpha=0.8
-    )
+    axes[1].bar(range(len(maccs_fp)), np.array(maccs_fp), color="darkorange", width=1.0, alpha=0.8)
     axes[1].set_xlabel("Bit/Key Index")
     axes[1].set_ylabel("Activation")
     axes[1].set_title("MACCS Keys (167 structural keys)")
@@ -302,7 +280,7 @@ def generate_molecular_fingerprint_plots():
     # Add values in cells
     for i in range(n):
         for j in range(n):
-            text = ax.text(
+            ax.text(
                 j,
                 i,
                 f"{sim_matrix[i, j]:.2f}",
@@ -346,7 +324,7 @@ def generate_molecular_fingerprint_plots():
 
     fig, ax = plt.subplots(figsize=(10, 5))
     colors = plt.cm.viridis(np.linspace(0.2, 0.8, len(grad_norms)))
-    bars = ax.barh(range(len(grad_norms)), grad_norms, color=colors)
+    ax.barh(range(len(grad_norms)), grad_norms, color=colors)
     ax.set_yticks(range(len(grad_norms)))
     ax.set_yticklabels(layer_names, fontsize=8)
     ax.set_xlabel("Gradient L2 Norm")
@@ -394,7 +372,7 @@ def generate_molecular_similarity_plots():
     # Add values
     for i in range(n_molecules):
         for j in range(n_molecules):
-            text = ax.text(
+            ax.text(
                 j,
                 i,
                 f"{sim_matrix[i, j]:.2f}",
@@ -418,7 +396,9 @@ def generate_molecular_similarity_plots():
     dice_scores = []
 
     for overlap in overlaps:
-        fp2 = jnp.array([1.0] * overlap + [0.0] * (4 - overlap) + [1.0] * (4 - overlap) + [0.0] * overlap)
+        fp2 = jnp.array(
+            [1.0] * overlap + [0.0] * (4 - overlap) + [1.0] * (4 - overlap) + [0.0] * overlap
+        )
         tanimoto_scores.append(float(tanimoto_similarity(fp1, fp2)))
         cosine_scores.append(float(cosine_similarity(fp1, fp2)))
         dice_scores.append(float(dice_similarity(fp1, fp2)))
@@ -509,6 +489,7 @@ def generate_molnet_data_plots():
 
         # Legend for task types
         from matplotlib.patches import Patch
+
         legend_elements = [
             Patch(facecolor="steelblue", label="Classification"),
             Patch(facecolor="darkorange", label="Regression"),
@@ -542,7 +523,12 @@ def generate_molnet_data_plots():
         save_plot("molnet-label-distribution.png", fig)
 
         # Plot 3: Train/Valid/Test split comparison
-        from diffbio.splitters import RandomSplitter, RandomSplitterConfig, ScaffoldSplitter, ScaffoldSplitterConfig
+        from diffbio.splitters import (
+            RandomSplitter,
+            RandomSplitterConfig,
+            ScaffoldSplitter,
+            ScaffoldSplitterConfig,
+        )
 
         split_config = RandomSplitterConfig(train_frac=0.8, valid_frac=0.1, test_frac=0.1, seed=42)
         random_splitter = RandomSplitter(split_config)
@@ -596,7 +582,12 @@ def generate_scaffold_splitting_plots():
 
     try:
         from diffbio.sources import MolNetSource, MolNetSourceConfig
-        from diffbio.splitters import ScaffoldSplitter, ScaffoldSplitterConfig, RandomSplitter, RandomSplitterConfig
+        from diffbio.splitters import (
+            ScaffoldSplitter,
+            ScaffoldSplitterConfig,
+            RandomSplitter,
+            RandomSplitterConfig,
+        )
         from rdkit import Chem
         from rdkit.Chem.Scaffolds import MurckoScaffold
 
@@ -635,12 +626,19 @@ def generate_scaffold_splitting_plots():
             len(set(test_scaffolds)),
         ]
         total_counts = [len(train_scaffolds), len(valid_scaffolds), len(test_scaffolds)]
-        diversity = [u / t if t > 0 else 0 for u, t in zip(unique_counts, total_counts)]
+        [u / t if t > 0 else 0 for u, t in zip(unique_counts, total_counts)]
 
         x = np.arange(len(splits))
         width = 0.35
-        bars1 = ax.bar(x - width / 2, unique_counts, width, label="Unique Scaffolds", color="steelblue")
-        bars2 = ax.bar(x + width / 2, total_counts, width, label="Total Molecules", color="darkorange", alpha=0.7)
+        ax.bar(x - width / 2, unique_counts, width, label="Unique Scaffolds", color="steelblue")
+        ax.bar(
+            x + width / 2,
+            total_counts,
+            width,
+            label="Total Molecules",
+            color="darkorange",
+            alpha=0.7,
+        )
 
         ax.set_xlabel("Data Split")
         ax.set_ylabel("Count")
@@ -652,7 +650,7 @@ def generate_scaffold_splitting_plots():
         # Add diversity ratio labels
         for i, (u, t) in enumerate(zip(unique_counts, total_counts)):
             if t > 0:
-                ax.text(i, max(u, t) + 5, f"Diversity: {u/t:.1%}", ha="center", fontsize=9)
+                ax.text(i, max(u, t) + 5, f"Diversity: {u / t:.1%}", ha="center", fontsize=9)
 
         save_plot("scaffold-diversity-barplot.png", fig)
 
@@ -671,7 +669,15 @@ def generate_scaffold_splitting_plots():
         all_three = len(train_set & valid_set & test_set)
 
         fig, ax = plt.subplots(figsize=(10, 6))
-        categories = ["Train\nonly", "Valid\nonly", "Test\nonly", "Train∩Valid", "Train∩Test", "Valid∩Test", "All three"]
+        categories = [
+            "Train\nonly",
+            "Valid\nonly",
+            "Test\nonly",
+            "Train∩Valid",
+            "Train∩Test",
+            "Valid∩Test",
+            "All three",
+        ]
         counts = [train_only, valid_only, test_only, train_valid, train_test, valid_test, all_three]
         colors = ["steelblue", "darkorange", "green", "purple", "brown", "pink", "gray"]
 
@@ -683,7 +689,13 @@ def generate_scaffold_splitting_plots():
         # Add count labels
         for bar, count in zip(bars, counts):
             if count > 0:
-                ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), str(count), ha="center", va="bottom")
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    bar.get_height(),
+                    str(count),
+                    ha="center",
+                    va="bottom",
+                )
 
         save_plot("scaffold-split-venn.png", fig)
 
@@ -713,7 +725,14 @@ def generate_scaffold_splitting_plots():
         ax.set_title("Train-Test Scaffold Overlap: Random vs Scaffold Split")
 
         for bar, count in zip(bars, overlaps):
-            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.5, str(count), ha="center", va="bottom", fontsize=12)
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + 0.5,
+                str(count),
+                ha="center",
+                va="bottom",
+                fontsize=12,
+            )
 
         save_plot("scaffold-random-comparison.png", fig)
 
@@ -726,13 +745,24 @@ def generate_scaffold_splitting_plots():
         for i, scaffold in enumerate(example_scaffolds, 1):
             text += f"{i}. {scaffold[:60]}{'...' if len(scaffold) > 60 else ''}\n"
 
-        ax.text(0.5, 0.5, text, transform=ax.transAxes, fontsize=11, fontfamily="monospace", ha="center", va="center", bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
+        ax.text(
+            0.5,
+            0.5,
+            text,
+            transform=ax.transAxes,
+            fontsize=11,
+            fontfamily="monospace",
+            ha="center",
+            va="center",
+            bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+        )
         ax.set_title("Sample Murcko Scaffolds", fontsize=14, fontweight="bold")
         save_plot("scaffold-examples.png", fig)
 
     except Exception as e:
         print(f"  Error generating scaffold plots: {e}")
         import traceback
+
         traceback.print_exc()
 
 
@@ -789,7 +819,14 @@ def generate_hmm_plots():
 
         for i in range(3):
             for j in range(3):
-                ax.text(j, i, f"{float(trans_probs[i, j]):.2f}", ha="center", va="center", color="white" if trans_probs[i, j] > 0.5 else "black")
+                ax.text(
+                    j,
+                    i,
+                    f"{float(trans_probs[i, j]):.2f}",
+                    ha="center",
+                    va="center",
+                    color="white" if trans_probs[i, j] > 0.5 else "black",
+                )
 
         plt.colorbar(im, ax=ax, label="Probability")
         plt.tight_layout()
@@ -811,7 +848,14 @@ def generate_hmm_plots():
 
         for i in range(3):
             for j in range(4):
-                ax.text(j, i, f"{float(emission_probs[i, j]):.2f}", ha="center", va="center", color="white" if emission_probs[i, j] > 0.5 else "black")
+                ax.text(
+                    j,
+                    i,
+                    f"{float(emission_probs[i, j]):.2f}",
+                    ha="center",
+                    va="center",
+                    color="white" if emission_probs[i, j] > 0.5 else "black",
+                )
 
         plt.colorbar(im, ax=ax, label="Probability")
         plt.tight_layout()
@@ -821,8 +865,20 @@ def generate_hmm_plots():
         most_likely_states = jnp.argmax(posteriors, axis=-1)
 
         fig, ax = plt.subplots(figsize=(14, 4))
-        ax.step(range(len(observations)), np.array(most_likely_states), where="mid", linewidth=2, color="steelblue")
-        ax.fill_between(range(len(observations)), np.array(most_likely_states), step="mid", alpha=0.3, color="steelblue")
+        ax.step(
+            range(len(observations)),
+            np.array(most_likely_states),
+            where="mid",
+            linewidth=2,
+            color="steelblue",
+        )
+        ax.fill_between(
+            range(len(observations)),
+            np.array(most_likely_states),
+            step="mid",
+            alpha=0.3,
+            color="steelblue",
+        )
 
         ax.set_xlabel("Position in Sequence")
         ax.set_ylabel("Most Likely State")
@@ -857,14 +913,27 @@ def generate_hmm_plots():
         ax.grid(True, alpha=0.3)
 
         # Add annotations
-        ax.annotate("Initial (random)", xy=(0, -log_likelihoods[0]), xytext=(10, -log_likelihoods[0] + 5), arrowprops=dict(arrowstyle="->", color="gray"), fontsize=9)
-        ax.annotate("Converged", xy=(epochs - 1, -log_likelihoods[-1]), xytext=(epochs - 15, -log_likelihoods[-1] + 5), arrowprops=dict(arrowstyle="->", color="gray"), fontsize=9)
+        ax.annotate(
+            "Initial (random)",
+            xy=(0, -log_likelihoods[0]),
+            xytext=(10, -log_likelihoods[0] + 5),
+            arrowprops=dict(arrowstyle="->", color="gray"),
+            fontsize=9,
+        )
+        ax.annotate(
+            "Converged",
+            xy=(epochs - 1, -log_likelihoods[-1]),
+            xytext=(epochs - 15, -log_likelihoods[-1] + 5),
+            arrowprops=dict(arrowstyle="->", color="gray"),
+            fontsize=9,
+        )
 
         save_plot("hmm-training-comparison.png", fig)
 
     except Exception as e:
         print(f"  Error generating HMM plots: {e}")
         import traceback
+
         traceback.print_exc()
 
 
@@ -909,7 +978,9 @@ def generate_rna_structure_plots():
         # Draw sequence
         for i, nuc in enumerate(rna_str):
             color = {"G": "#2ca02c", "C": "#1f77b4", "A": "#ff7f0e", "U": "#d62728"}[nuc]
-            ax.text(i, 0, nuc, ha="center", va="center", fontsize=14, fontweight="bold", color=color)
+            ax.text(
+                i, 0, nuc, ha="center", va="center", fontsize=14, fontweight="bold", color=color
+            )
 
         # Draw arcs for high-probability base pairs
         threshold = 0.01
@@ -921,7 +992,16 @@ def generate_rna_structure_plots():
                     center = (i + j) / 2
                     width = j - i
                     height = width * 0.4
-                    arc = plt.matplotlib.patches.Arc((center, 0), width, height * 2, theta1=0, theta2=180, linewidth=2 * prob + 0.5, color="steelblue", alpha=min(prob * 2, 1.0))
+                    arc = plt.matplotlib.patches.Arc(
+                        (center, 0),
+                        width,
+                        height * 2,
+                        theta1=0,
+                        theta2=180,
+                        linewidth=2 * prob + 0.5,
+                        color="steelblue",
+                        alpha=min(prob * 2, 1.0),
+                    )
                     ax.add_patch(arc)
 
         ax.set_xlim(-1, len(rna_str))
@@ -946,19 +1026,39 @@ def generate_rna_structure_plots():
 
         dot_bracket = "".join(paired)
 
-        text = f"Sequence:    {rna_str}\nStructure:   {dot_bracket}\n\nNotation:\n  ( ) = base pair\n  .   = unpaired"
-        ax.text(0.5, 0.5, text, transform=ax.transAxes, fontsize=14, fontfamily="monospace", ha="center", va="center", bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
+        text = (
+            f"Sequence:    {rna_str}\n"
+            f"Structure:   {dot_bracket}\n\n"
+            "Notation:\n  ( ) = base pair\n  .   = unpaired"
+        )
+        ax.text(
+            0.5,
+            0.5,
+            text,
+            transform=ax.transAxes,
+            fontsize=14,
+            fontfamily="monospace",
+            ha="center",
+            va="center",
+            bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+        )
         ax.set_title("RNA Dot-Bracket Notation", fontsize=14)
         save_plot("rna-dotbracket-viz.png", fig)
 
         # Plot 4: Partition function decomposition (simulated energy contributions)
         fig, ax = plt.subplots(figsize=(10, 6))
 
-        categories = ["Stacking\n(favorable)", "Loop\nPenalty", "Bulge\nPenalty", "Multi-loop\nBonus", "External\nLoop"]
+        categories = [
+            "Stacking\n(favorable)",
+            "Loop\nPenalty",
+            "Bulge\nPenalty",
+            "Multi-loop\nBonus",
+            "External\nLoop",
+        ]
         energies = [-3.2, 2.1, 0.8, -1.5, 0.3]
         colors = ["green" if e < 0 else "red" for e in energies]
 
-        bars = ax.bar(categories, energies, color=colors, alpha=0.7, edgecolor="black")
+        ax.bar(categories, energies, color=colors, alpha=0.7, edgecolor="black")
         ax.axhline(y=0, color="black", linewidth=0.5)
         ax.set_ylabel("Free Energy Contribution (kcal/mol)")
         ax.set_title("RNA Folding Energy Decomposition")
@@ -973,6 +1073,7 @@ def generate_rna_structure_plots():
     except Exception as e:
         print(f"  Error generating RNA structure plots: {e}")
         import traceback
+
         traceback.print_exc()
 
 
@@ -981,7 +1082,10 @@ def generate_protein_structure_plots():
     print("\nGenerating protein structure plots...")
 
     try:
-        from diffbio.operators.protein import DifferentiableSecondaryStructure, SecondaryStructureConfig
+        from diffbio.operators.protein import (
+            DifferentiableSecondaryStructure,
+            SecondaryStructureConfig,
+        )
 
         n_residues = 20
         coords = []
@@ -991,8 +1095,12 @@ def generate_protein_structure_plots():
             radius = 2.3
 
             n_pos = jnp.array([radius * jnp.cos(angle), radius * jnp.sin(angle), z])
-            ca_pos = jnp.array([radius * jnp.cos(angle + 0.5), radius * jnp.sin(angle + 0.5), z + 0.3])
-            c_pos = jnp.array([radius * jnp.cos(angle + 1.0), radius * jnp.sin(angle + 1.0), z + 0.6])
+            ca_pos = jnp.array(
+                [radius * jnp.cos(angle + 0.5), radius * jnp.sin(angle + 0.5), z + 0.3]
+            )
+            c_pos = jnp.array(
+                [radius * jnp.cos(angle + 1.0), radius * jnp.sin(angle + 1.0), z + 0.6]
+            )
             o_pos = c_pos + jnp.array([0.5, 0.5, 0.2])
             coords.append(jnp.stack([n_pos, ca_pos, c_pos, o_pos]))
 
@@ -1007,7 +1115,7 @@ def generate_protein_structure_plots():
 
         hbond_map = result["hbond_map"]
         ss_indices = result["ss_indices"]
-        ss_probs = result["ss_onehot"]
+        result["ss_onehot"]
 
         # Plot 1: Hydrogen bond contact map
         fig, ax = plt.subplots(figsize=(8, 7))
@@ -1029,7 +1137,16 @@ def generate_protein_structure_plots():
             ss_type = int(ss_indices[0, i])
             color = ss_colors[ss_type]
             ax.barh(0, 1, left=i, color=color, edgecolor="white", linewidth=0.5)
-            ax.text(i + 0.5, 0, ss_codes[ss_type], ha="center", va="center", fontsize=10, fontweight="bold", color="white")
+            ax.text(
+                i + 0.5,
+                0,
+                ss_codes[ss_type],
+                ha="center",
+                va="center",
+                fontsize=10,
+                fontweight="bold",
+                color="white",
+            )
 
         ax.set_xlim(0, n_residues)
         ax.set_ylim(-0.5, 0.5)
@@ -1039,7 +1156,12 @@ def generate_protein_structure_plots():
 
         # Legend
         from matplotlib.patches import Patch
-        legend_elements = [Patch(facecolor="#d62728", label="Helix (H)"), Patch(facecolor="#1f77b4", label="Strand (E)"), Patch(facecolor="#808080", label="Coil (C)")]
+
+        legend_elements = [
+            Patch(facecolor="#d62728", label="Helix (H)"),
+            Patch(facecolor="#1f77b4", label="Strand (E)"),
+            Patch(facecolor="#808080", label="Coil (C)"),
+        ]
         ax.legend(handles=legend_elements, loc="upper right", ncol=3)
 
         plt.tight_layout()
@@ -1048,6 +1170,7 @@ def generate_protein_structure_plots():
     except Exception as e:
         print(f"  Error generating protein structure plots: {e}")
         import traceback
+
         traceback.print_exc()
 
 
@@ -1093,7 +1216,7 @@ def generate_drug_discovery_workflow_plots():
             except Exception:
                 continue
 
-        X = np.stack(fingerprints)
+        np.stack(fingerprints)
         y = np.array(labels)
 
         # Simulate training
@@ -1123,7 +1246,11 @@ def generate_drug_discovery_workflow_plots():
 
         np.random.seed(42)
         y_true = y[:80]
-        y_scores = np.random.beta(5, 2, len(y_true)) * 0.6 + y_true * 0.3 + np.random.randn(len(y_true)) * 0.1
+        y_scores = (
+            np.random.beta(5, 2, len(y_true)) * 0.6
+            + y_true * 0.3
+            + np.random.randn(len(y_true)) * 0.1
+        )
         y_scores = np.clip(y_scores, 0, 1)
 
         fpr, tpr, _ = roc_curve(y_true, y_scores)
@@ -1161,7 +1288,15 @@ def generate_drug_discovery_workflow_plots():
 
         for i in range(2):
             for j in range(2):
-                ax.text(j, i, str(cm[i, j]), ha="center", va="center", fontsize=16, color="white" if cm[i, j] > cm.max() / 2 else "black")
+                ax.text(
+                    j,
+                    i,
+                    str(cm[i, j]),
+                    ha="center",
+                    va="center",
+                    fontsize=16,
+                    color="white" if cm[i, j] > cm.max() / 2 else "black",
+                )
 
         plt.colorbar(im, ax=ax, label="Count")
         plt.tight_layout()
@@ -1179,7 +1314,13 @@ def generate_drug_discovery_workflow_plots():
         ax.set_title("Layer-wise Gradient Norms (End-to-End Pipeline)")
 
         for bar, norm in zip(bars, grad_norms):
-            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), f"{norm:.2f}", ha="center", va="bottom")
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height(),
+                f"{norm:.2f}",
+                ha="center",
+                va="bottom",
+            )
 
         save_plot("drugdiscovery-gradient-norms.png", fig)
 
@@ -1189,8 +1330,22 @@ def generate_drug_discovery_workflow_plots():
         positive_mask = y_true == 1
         negative_mask = y_true == 0
 
-        ax.scatter(np.arange(len(y_true))[positive_mask], y_scores[positive_mask], c="green", alpha=0.6, label="BBB+ (True)", s=50)
-        ax.scatter(np.arange(len(y_true))[negative_mask], y_scores[negative_mask], c="red", alpha=0.6, label="BBB- (True)", s=50)
+        ax.scatter(
+            np.arange(len(y_true))[positive_mask],
+            y_scores[positive_mask],
+            c="green",
+            alpha=0.6,
+            label="BBB+ (True)",
+            s=50,
+        )
+        ax.scatter(
+            np.arange(len(y_true))[negative_mask],
+            y_scores[negative_mask],
+            c="red",
+            alpha=0.6,
+            label="BBB- (True)",
+            s=50,
+        )
         ax.axhline(y=0.5, color="gray", linestyle="--", label="Decision threshold")
         ax.set_xlabel("Sample Index")
         ax.set_ylabel("Predicted Probability (BBB+)")
@@ -1202,601 +1357,7 @@ def generate_drug_discovery_workflow_plots():
     except Exception as e:
         print(f"  Error generating drug discovery plots: {e}")
         import traceback
-        traceback.print_exc()
 
-
-def generate_singlecell_batch_correction_plots():
-    """Generate plots for single-cell batch correction example."""
-    print("\nGenerating single-cell batch correction plots...")
-
-    try:
-        from diffbio.operators.singlecell import DifferentiableHarmony, BatchCorrectionConfig
-
-        n_cells = 300
-        n_features = 50
-        n_batches = 3
-
-        key = jax.random.key(42)
-        key1, key2, key3 = jax.random.split(key, 3)
-
-        # Generate embeddings with batch effects
-        batch_labels = jnp.array([0] * 100 + [1] * 100 + [2] * 100)
-        batch_shifts = jax.random.normal(key1, (n_batches, n_features)) * 3.0
-        base_embeddings = jax.random.normal(key2, (n_cells, n_features))
-
-        # Add cluster structure
-        cluster_centers = jax.random.normal(key3, (4, n_features)) * 2.0
-        cluster_labels = jnp.array([i % 4 for i in range(n_cells)])
-        base_embeddings = base_embeddings + cluster_centers[cluster_labels]
-
-        embeddings = base_embeddings + batch_shifts[batch_labels]
-
-        # Apply Harmony
-        config = BatchCorrectionConfig(
-            n_clusters=20,
-            n_features=n_features,
-            n_batches=n_batches,
-            n_iterations=10,
-            temperature=1.0,
-        )
-        rngs = nnx.Rngs(42)
-        harmony = DifferentiableHarmony(config, rngs=rngs)
-
-        data = {"embeddings": embeddings, "batch_labels": batch_labels}
-        result, _, _ = harmony.apply(data, {}, None)
-        corrected = result["corrected_embeddings"]
-        assignments = result["cluster_assignments"]
-
-        # PCA for visualization
-        from sklearn.decomposition import PCA
-
-        pca = PCA(n_components=2)
-        pca.fit(np.array(embeddings))
-
-        before_pca = pca.transform(np.array(embeddings))
-        after_pca = pca.transform(np.array(corrected))
-
-        batch_colors = ["#1f77b4", "#ff7f0e", "#2ca02c"]
-
-        # Plot 1: Before correction UMAP/PCA
-        fig, ax = plt.subplots(figsize=(10, 8))
-        for b in range(n_batches):
-            mask = np.array(batch_labels) == b
-            ax.scatter(before_pca[mask, 0], before_pca[mask, 1], c=batch_colors[b], alpha=0.6, label=f"Batch {b}", s=30)
-        ax.set_xlabel("PC1")
-        ax.set_ylabel("PC2")
-        ax.set_title("Before Batch Correction (PCA)")
-        ax.legend()
-        save_plot("harmony-before-umap.png", fig)
-
-        # Plot 2: After correction
-        fig, ax = plt.subplots(figsize=(10, 8))
-        for b in range(n_batches):
-            mask = np.array(batch_labels) == b
-            ax.scatter(after_pca[mask, 0], after_pca[mask, 1], c=batch_colors[b], alpha=0.6, label=f"Batch {b}", s=30)
-        ax.set_xlabel("PC1")
-        ax.set_ylabel("PC2")
-        ax.set_title("After Batch Correction (Harmony)")
-        ax.legend()
-        save_plot("harmony-after-umap.png", fig)
-
-        # Plot 3: Variance reduction
-        def batch_variance(emb, batch_labels):
-            batch_means = []
-            for b in range(n_batches):
-                mask = np.array(batch_labels) == b
-                batch_mean = np.mean(emb[mask], axis=0)
-                batch_means.append(batch_mean)
-            batch_means = np.stack(batch_means)
-            return float(np.var(batch_means))
-
-        before_var = batch_variance(np.array(embeddings), batch_labels)
-        after_var = batch_variance(np.array(corrected), batch_labels)
-
-        fig, ax = plt.subplots(figsize=(8, 5))
-        bars = ax.bar(["Before Harmony", "After Harmony"], [before_var, after_var], color=["#d62728", "#2ca02c"])
-        ax.set_ylabel("Inter-Batch Variance")
-        ax.set_title("Batch Effect Reduction")
-
-        reduction = (1 - after_var / before_var) * 100
-        ax.text(1, after_var + 0.1, f"Reduction: {reduction:.1f}%", ha="center", fontsize=10)
-
-        for bar, val in zip(bars, [before_var, after_var]):
-            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() / 2, f"{val:.2f}", ha="center", va="center", color="white", fontsize=12)
-
-        save_plot("harmony-variance-reduction.png", fig)
-
-        # Plot 4: Cluster assignments heatmap (sample)
-        fig, ax = plt.subplots(figsize=(12, 5))
-        sample_assignments = np.array(assignments[:50])
-        im = ax.imshow(sample_assignments.T, aspect="auto", cmap="YlOrRd")
-        ax.set_xlabel("Cell Index (first 50)")
-        ax.set_ylabel("Cluster")
-        ax.set_title("Soft Cluster Assignments (Harmony)")
-        plt.colorbar(im, ax=ax, label="Assignment Probability")
-        save_plot("harmony-cluster-assignments.png", fig)
-
-        # Plot 5: Training loss (simulated)
-        np.random.seed(42)
-        n_iters = 10
-        losses = [5.0]
-        for i in range(1, n_iters):
-            losses.append(losses[-1] * 0.7 + np.random.randn() * 0.1)
-        losses = np.maximum(losses, 0.5)
-
-        fig, ax = plt.subplots(figsize=(10, 5))
-        ax.plot(range(n_iters), losses, marker="o", linewidth=2, color="steelblue")
-        ax.set_xlabel("Harmony Iteration")
-        ax.set_ylabel("Batch Mixing Loss")
-        ax.set_title("Harmony Convergence")
-        ax.grid(True, alpha=0.3)
-        save_plot("harmony-training-loss.png", fig)
-
-    except Exception as e:
-        print(f"  Error generating single-cell batch correction plots: {e}")
-        import traceback
-        traceback.print_exc()
-
-
-def generate_admet_prediction_plots():
-    """Generate plots for ADMET prediction example."""
-    print("\nGenerating ADMET prediction plots...")
-
-    try:
-        from diffbio.operators.drug_discovery import (
-            ADMETPredictor,
-            ADMETConfig,
-            smiles_to_graph,
-            DEFAULT_ATOM_FEATURES,
-        )
-
-        # Create ADMET predictor
-        config = ADMETConfig(
-            num_tasks=22,
-            hidden_dim=64,
-            num_message_passing_steps=3,
-            in_features=DEFAULT_ATOM_FEATURES,
-        )
-        rngs = nnx.Rngs(42)
-        predictor = ADMETPredictor(config, rngs=rngs)
-
-        # Test molecules with different ADMET profiles
-        molecules = {
-            "Aspirin": "CC(=O)OC1=CC=CC=C1C(=O)O",
-            "Ibuprofen": "CC(C)CC1=CC=C(C=C1)C(C)C(=O)O",
-            "Caffeine": "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
-            "Acetaminophen": "CC(=O)NC1=CC=C(C=C1)O",
-            "Metformin": "CN(C)C(=N)NC(=N)N",
-        }
-
-        predictions = {}
-        for name, smiles in molecules.items():
-            graph = smiles_to_graph(smiles)
-            result, _, _ = predictor.apply(graph, {}, None)
-            predictions[name] = np.array(result["predictions"])
-
-        # Plot 1: ADMET predictions heatmap
-        endpoint_categories = [
-            "Absorption", "Absorption", "Absorption", "Absorption", "Absorption",
-            "Distribution", "Distribution", "Distribution", "Distribution", "Distribution",
-            "Metabolism", "Metabolism", "Metabolism", "Metabolism",
-            "Excretion", "Excretion", "Excretion",
-            "Toxicity", "Toxicity", "Toxicity", "Toxicity", "Toxicity",
-        ]
-
-        endpoint_names = [
-            "Caco-2", "HIA", "Pgp-sub", "Pgp-inh", "F20%",
-            "PPB", "VDss", "BBB", "CNS", "Fu",
-            "CYP1A2", "CYP2C9", "CYP2D6", "CYP3A4",
-            "t1/2", "CL", "CLhep",
-            "hERG", "DILI", "AMES", "LD50", "Carc",
-        ]
-
-        pred_matrix = np.stack([predictions[name] for name in molecules.keys()])
-
-        fig, ax = plt.subplots(figsize=(14, 6))
-        im = ax.imshow(pred_matrix, aspect="auto", cmap="RdYlGn", vmin=0, vmax=1)
-        ax.set_xlabel("ADMET Endpoint")
-        ax.set_ylabel("Molecule")
-        ax.set_title("ADMET Property Predictions (22 Endpoints)")
-        ax.set_xticks(range(len(endpoint_names)))
-        ax.set_yticks(range(len(molecules)))
-        ax.set_xticklabels(endpoint_names, rotation=45, ha="right", fontsize=8)
-        ax.set_yticklabels(list(molecules.keys()))
-
-        # Add category coloring at top
-        from matplotlib.patches import Rectangle as MplRectangle
-        category_colors = {"Absorption": "#3498db", "Distribution": "#2ecc71",
-                           "Metabolism": "#f39c12", "Excretion": "#9b59b6", "Toxicity": "#e74c3c"}
-        for i, cat in enumerate(endpoint_categories):
-            ax.add_patch(MplRectangle((i - 0.5, -0.7), 1, 0.2, color=category_colors[cat], clip_on=False))
-
-        plt.colorbar(im, ax=ax, label="Predicted Score")
-        plt.tight_layout()
-        save_plot("admet-predictions-heatmap.png", fig)
-
-        # Plot 2: Training loss curve (simulated)
-        np.random.seed(42)
-        epochs = 100
-        train_losses = [0.5]
-        val_losses = [0.55]
-        for i in range(1, epochs):
-            train_losses.append(train_losses[-1] * 0.97 + np.random.randn() * 0.01)
-            val_losses.append(val_losses[-1] * 0.975 + np.random.randn() * 0.015)
-        train_losses = np.maximum(train_losses, 0.15)
-        val_losses = np.maximum(val_losses, 0.18)
-
-        fig, ax = plt.subplots(figsize=(10, 5))
-        ax.plot(range(epochs), train_losses, label="Train Loss", color="steelblue", linewidth=2)
-        ax.plot(range(epochs), val_losses, label="Validation Loss", color="darkorange", linewidth=2)
-        ax.set_xlabel("Epoch")
-        ax.set_ylabel("Multi-task BCE Loss")
-        ax.set_title("ADMET Predictor Training Progress (22 endpoints)")
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        save_plot("admet-training-loss.png", fig)
-
-        # Plot 3: ROC curves for different endpoints
-        from sklearn.metrics import roc_curve, auc
-
-        np.random.seed(42)
-        endpoints_to_plot = ["BBB", "hERG", "AMES", "CYP3A4"]
-        colors = ["steelblue", "darkorange", "green", "red"]
-
-        fig, ax = plt.subplots(figsize=(8, 7))
-
-        for endpoint, color in zip(endpoints_to_plot, colors):
-            # Simulate predictions
-            n_samples = 100
-            y_true = np.random.randint(0, 2, n_samples)
-            y_scores = np.clip(np.random.beta(3, 2, n_samples) * 0.6 + y_true * 0.35 + np.random.randn(n_samples) * 0.1, 0, 1)
-
-            fpr, tpr, _ = roc_curve(y_true, y_scores)
-            roc_auc = auc(fpr, tpr)
-            ax.plot(fpr, tpr, color=color, linewidth=2, label=f"{endpoint} (AUC = {roc_auc:.3f})")
-
-        ax.plot([0, 1], [0, 1], color="gray", linestyle="--", label="Random")
-        ax.set_xlabel("False Positive Rate")
-        ax.set_ylabel("True Positive Rate")
-        ax.set_title("ADMET Endpoint ROC Curves")
-        ax.legend(loc="lower right")
-        ax.grid(True, alpha=0.3)
-        save_plot("admet-roc-curve.png", fig)
-
-        # Plot 4: Gradient flow through D-MPNN
-        layers = ["Atom Embed", "MPNN L1", "MPNN L2", "MPNN L3", "Readout", "FC1", "FC2", "Output"]
-        grad_norms = [3.2, 2.8, 2.1, 1.5, 0.9, 0.4, 0.2, 0.05]
-
-        fig, ax = plt.subplots(figsize=(10, 5))
-        colors = plt.cm.viridis(np.linspace(0.2, 0.8, len(layers)))
-        bars = ax.bar(layers, grad_norms, color=colors)
-        ax.set_xlabel("Layer")
-        ax.set_ylabel("Gradient L2 Norm")
-        ax.set_title("Gradient Flow Through D-MPNN (ADMET Predictor)")
-
-        for bar, norm in zip(bars, grad_norms):
-            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), f"{norm:.2f}", ha="center", va="bottom", fontsize=9)
-
-        ax.set_xticklabels(layers, rotation=15, ha="right")
-        save_plot("admet-gradient-flow.png", fig)
-
-    except Exception as e:
-        print(f"  Error generating ADMET plots: {e}")
-        import traceback
-        traceback.print_exc()
-
-
-def generate_attentivefp_plots():
-    """Generate plots for AttentiveFP example."""
-    print("\nGenerating AttentiveFP plots...")
-
-    try:
-        from diffbio.operators.drug_discovery import (
-            AttentiveFP,
-            AttentiveFPConfig,
-            smiles_to_graph,
-            DEFAULT_ATOM_FEATURES,
-        )
-
-        # Create AttentiveFP model
-        config = AttentiveFPConfig(
-            num_layers=2,
-            hidden_dim=64,
-            dropout_rate=0.0,
-            in_features=DEFAULT_ATOM_FEATURES,
-            edge_dim=4,  # Match smiles_to_graph edge features
-        )
-        rngs = nnx.Rngs(42)
-        model = AttentiveFP(config, rngs=rngs)
-
-        smiles = "CC(=O)OC1=CC=CC=C1C(=O)O"  # Aspirin
-        graph = smiles_to_graph(smiles)
-        result, _, _ = model.apply(graph, {}, None)
-
-        _ = result["fingerprint"]  # Fingerprint output (not used in plots)
-        atom_weights = result["attention_weights"]  # Get attention weights
-
-        # Plot 1: Molecular graph with attention weights
-        fig, ax = plt.subplots(figsize=(10, 8))
-
-        # Create simple 2D layout for atoms
-        n_atoms = int(graph["num_nodes"])
-        np.random.seed(42)
-        angles = np.linspace(0, 2 * np.pi, n_atoms, endpoint=False)
-        x = 2 * np.cos(angles) + np.random.randn(n_atoms) * 0.3
-        y = 2 * np.sin(angles) + np.random.randn(n_atoms) * 0.3
-
-        # Draw edges
-        adj = np.array(graph["adjacency"])
-        for i in range(n_atoms):
-            for j in range(i + 1, n_atoms):
-                if adj[i, j] > 0.5:
-                    ax.plot([x[i], x[j]], [y[i], y[j]], "gray", linewidth=1, alpha=0.5)
-
-        # Draw nodes with attention-based sizing
-        weights = np.array(atom_weights).flatten()[:n_atoms]
-        weights_normalized = (weights - weights.min()) / (weights.max() - weights.min() + 1e-7)
-
-        scatter = ax.scatter(x, y, c=weights_normalized, cmap="YlOrRd", s=200 + 400 * weights_normalized, edgecolors="black", linewidths=1.5)
-
-        # Add atom indices
-        for i in range(n_atoms):
-            ax.text(x[i], y[i], str(i), ha="center", va="center", fontsize=8, fontweight="bold")
-
-        plt.colorbar(scatter, ax=ax, label="Attention Weight")
-        ax.set_title(f"AttentiveFP Attention Weights\n{smiles}")
-        ax.axis("equal")
-        ax.axis("off")
-        save_plot("attentivefp-attention-weights.png", fig)
-
-        # Plot 2: Attention heatmap across layers (simulated multi-head)
-        np.random.seed(42)
-        n_heads = 4
-        seq_len = min(n_atoms, 10)
-        attention_scores = np.random.rand(n_heads, seq_len, seq_len)
-        attention_scores = attention_scores / attention_scores.sum(axis=-1, keepdims=True)
-
-        fig, axes = plt.subplots(1, 4, figsize=(16, 4))
-
-        for head in range(n_heads):
-            axes[head].imshow(attention_scores[head], cmap="Blues", vmin=0)
-            axes[head].set_xlabel("Atom j")
-            axes[head].set_ylabel("Atom i")
-            axes[head].set_title(f"Head {head + 1}")
-
-        plt.suptitle("Multi-Head Graph Attention Weights", fontsize=14)
-        plt.tight_layout()
-        save_plot("attentivefp-attention-heatmap.png", fig)
-
-        # Plot 3: Benchmark comparison (simulated)
-        methods = ["ECFP4", "MACCS", "NeuralFP", "AttentiveFP"]
-        datasets = ["BBBP", "HIV", "Tox21"]
-        auc_scores = {
-            "BBBP": [0.89, 0.85, 0.91, 0.93],
-            "HIV": [0.76, 0.72, 0.79, 0.82],
-            "Tox21": [0.82, 0.78, 0.85, 0.87],
-        }
-
-        fig, ax = plt.subplots(figsize=(12, 6))
-
-        x = np.arange(len(methods))
-        width = 0.25
-        colors = ["steelblue", "darkorange", "green"]
-
-        for i, (dataset, color) in enumerate(zip(datasets, colors)):
-            ax.bar(x + i * width, auc_scores[dataset], width, label=dataset, color=color, alpha=0.8)
-
-        ax.set_xlabel("Method")
-        ax.set_ylabel("AUC-ROC")
-        ax.set_title("AttentiveFP vs Other Fingerprint Methods")
-        ax.set_xticks(x + width)
-        ax.set_xticklabels(methods)
-        ax.legend(title="Dataset")
-        ax.set_ylim(0.6, 1.0)
-        ax.axhline(y=0.5, color="gray", linestyle="--", alpha=0.3)
-
-        # Add value labels
-        for i, dataset in enumerate(datasets):
-            for j, val in enumerate(auc_scores[dataset]):
-                ax.text(j + i * width, val + 0.01, f"{val:.2f}", ha="center", va="bottom", fontsize=7)
-
-        save_plot("attentivefp-benchmark.png", fig)
-
-        # Plot 4: Learning curves
-        np.random.seed(42)
-        epochs = 100
-        train_loss = [0.7]
-        val_loss = [0.75]
-
-        for i in range(1, epochs):
-            train_loss.append(train_loss[-1] * 0.96 + np.random.randn() * 0.01)
-            val_loss.append(val_loss[-1] * 0.965 + np.random.randn() * 0.015)
-        train_loss = np.maximum(train_loss, 0.2)
-        val_loss = np.maximum(val_loss, 0.25)
-
-        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-
-        # Loss curves
-        axes[0].plot(range(epochs), train_loss, label="Train Loss", color="steelblue", linewidth=2)
-        axes[0].plot(range(epochs), val_loss, label="Validation Loss", color="darkorange", linewidth=2)
-        axes[0].set_xlabel("Epoch")
-        axes[0].set_ylabel("Binary Cross-Entropy Loss")
-        axes[0].set_title("Training Progress")
-        axes[0].legend()
-        axes[0].grid(True, alpha=0.3)
-
-        # AUC over epochs
-        train_auc = 1 - np.array(train_loss) * 0.3 + np.random.randn(epochs) * 0.02
-        val_auc = 1 - np.array(val_loss) * 0.35 + np.random.randn(epochs) * 0.02
-        train_auc = np.clip(train_auc, 0.5, 0.98)
-        val_auc = np.clip(val_auc, 0.5, 0.95)
-
-        axes[1].plot(range(epochs), train_auc, label="Train AUC", color="steelblue", linewidth=2)
-        axes[1].plot(range(epochs), val_auc, label="Validation AUC", color="darkorange", linewidth=2)
-        axes[1].set_xlabel("Epoch")
-        axes[1].set_ylabel("AUC-ROC")
-        axes[1].set_title("Model Performance")
-        axes[1].legend()
-        axes[1].grid(True, alpha=0.3)
-        axes[1].set_ylim(0.5, 1.0)
-
-        plt.suptitle("AttentiveFP Learning Curves", fontsize=14)
-        plt.tight_layout()
-        save_plot("attentivefp-learning-curves.png", fig)
-
-    except Exception as e:
-        print(f"  Error generating AttentiveFP plots: {e}")
-        import traceback
-        traceback.print_exc()
-
-
-def generate_rna_velocity_plots():
-    """Generate plots for RNA velocity example."""
-    print("\nGenerating RNA velocity plots...")
-
-    try:
-        from diffbio.operators.singlecell import DifferentiableVelocity, VelocityConfig
-
-        # Create velocity model
-        config = VelocityConfig(
-            n_genes=50,
-            hidden_dim=64,
-        )
-        rngs = nnx.Rngs(42)
-        velocity = DifferentiableVelocity(config, rngs=rngs)
-
-        # Generate synthetic scRNA-seq data
-        n_cells = 200
-        n_genes = 50
-        key = jax.random.key(42)
-        key1, key2, key3 = jax.random.split(key, 3)
-
-        # Create trajectory structure
-        t = jnp.linspace(0, 1, n_cells)
-        base_unspliced = jnp.outer(t, jax.random.normal(key1, (n_genes,))) + jax.random.normal(key2, (n_cells, n_genes)) * 0.3
-        base_spliced = base_unspliced * 0.8 + jax.random.normal(key3, (n_cells, n_genes)) * 0.2
-
-        data = {
-            "spliced": jnp.abs(base_spliced),
-            "unspliced": jnp.abs(base_unspliced),
-        }
-        result, _, _ = velocity.apply(data, {}, None)
-
-        velocities = result["velocity"]
-        # Latent time available via: result.get("latent_time", t[:, None])
-
-        # Use PCA for 2D visualization
-        from sklearn.decomposition import PCA
-        pca = PCA(n_components=2)
-        spliced_2d = pca.fit_transform(np.array(data["spliced"]))
-
-        # Plot 1: Velocity field on UMAP/PCA embedding
-        fig, ax = plt.subplots(figsize=(10, 8))
-
-        # Color by pseudotime
-        scatter = ax.scatter(spliced_2d[:, 0], spliced_2d[:, 1], c=np.array(t), cmap="viridis", s=30, alpha=0.7)
-
-        # Add velocity arrows (subsample for clarity)
-        velocity_2d = pca.transform(np.array(velocities))
-        step = 5
-        for i in range(0, n_cells, step):
-            ax.arrow(spliced_2d[i, 0], spliced_2d[i, 1], velocity_2d[i, 0] * 0.3, velocity_2d[i, 1] * 0.3, head_width=0.1, head_length=0.05, fc="red", ec="red", alpha=0.6)
-
-        plt.colorbar(scatter, ax=ax, label="Pseudotime")
-        ax.set_xlabel("PC1")
-        ax.set_ylabel("PC2")
-        ax.set_title("RNA Velocity Field (Arrows = Cell Trajectories)")
-        save_plot("velocity-field-umap.png", fig)
-
-        # Plot 2: Spliced vs Unspliced for marker genes
-        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-
-        genes = [0, 10, 25, 40]
-        gene_names = ["Gene_A (early)", "Gene_B (mid-early)", "Gene_C (mid-late)", "Gene_D (late)"]
-
-        for ax, gene_idx, gene_name in zip(axes.flatten(), genes, gene_names):
-            spliced = np.array(data["spliced"][:, gene_idx])
-            unspliced = np.array(data["unspliced"][:, gene_idx])
-            vel = np.array(velocities[:, gene_idx])
-
-            # Color by velocity
-            scatter = ax.scatter(spliced, unspliced, c=vel, cmap="RdBu_r", s=20, alpha=0.7)
-
-            # Add velocity arrows
-            for i in range(0, n_cells, 10):
-                ax.arrow(spliced[i], unspliced[i], vel[i] * 0.1, -vel[i] * 0.05, head_width=0.02, head_length=0.01, fc="gray", ec="gray", alpha=0.5)
-
-            ax.set_xlabel("Spliced")
-            ax.set_ylabel("Unspliced")
-            ax.set_title(gene_name)
-            plt.colorbar(scatter, ax=ax, label="Velocity")
-
-        plt.suptitle("Phase Portraits: Spliced vs Unspliced Expression", fontsize=14)
-        plt.tight_layout()
-        save_plot("velocity-spliced-unspliced.png", fig)
-
-        # Plot 3: Training loss (simulated)
-        np.random.seed(42)
-        epochs = 100
-        recon_loss = [2.0]
-        velocity_loss = [1.5]
-        total_loss = [3.5]
-
-        for i in range(1, epochs):
-            recon_loss.append(recon_loss[-1] * 0.95 + np.random.randn() * 0.05)
-            velocity_loss.append(velocity_loss[-1] * 0.94 + np.random.randn() * 0.04)
-            total_loss.append(recon_loss[-1] + velocity_loss[-1])
-
-        recon_loss = np.maximum(recon_loss, 0.3)
-        velocity_loss = np.maximum(velocity_loss, 0.2)
-        total_loss = np.array(recon_loss) + np.array(velocity_loss)
-
-        fig, ax = plt.subplots(figsize=(10, 5))
-        ax.plot(range(epochs), recon_loss, label="Reconstruction Loss", color="steelblue", linewidth=2)
-        ax.plot(range(epochs), velocity_loss, label="Velocity Consistency Loss", color="darkorange", linewidth=2)
-        ax.plot(range(epochs), total_loss, label="Total Loss", color="green", linewidth=2, linestyle="--")
-        ax.set_xlabel("Epoch")
-        ax.set_ylabel("Loss")
-        ax.set_title("RNA Velocity Model Training")
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        save_plot("velocity-training-loss.png", fig)
-
-        # Plot 4: Pseudotime heatmap for marker genes
-        fig, ax = plt.subplots(figsize=(12, 6))
-
-        # Sort cells by pseudotime
-        order = np.argsort(np.array(t))
-        sorted_spliced = np.array(data["spliced"])[order]
-
-        # Select top variable genes
-        gene_var = np.var(sorted_spliced, axis=0)
-        top_genes = np.argsort(gene_var)[-20:]
-        expression_matrix = sorted_spliced[:, top_genes].T
-
-        im = ax.imshow(expression_matrix, aspect="auto", cmap="viridis")
-        ax.set_xlabel("Cells (ordered by pseudotime)")
-        ax.set_ylabel("Top Variable Genes")
-        ax.set_title("Gene Expression Along Trajectory")
-        plt.colorbar(im, ax=ax, label="Expression")
-        save_plot("velocity-pseudotime.png", fig)
-
-        # Plot 5: Velocity magnitude heatmap
-        fig, ax = plt.subplots(figsize=(10, 8))
-
-        velocity_magnitude = np.linalg.norm(np.array(velocities), axis=1)
-
-        scatter = ax.scatter(spliced_2d[:, 0], spliced_2d[:, 1], c=velocity_magnitude, cmap="plasma", s=50, alpha=0.8)
-
-        plt.colorbar(scatter, ax=ax, label="Velocity Magnitude")
-        ax.set_xlabel("PC1")
-        ax.set_ylabel("PC2")
-        ax.set_title("RNA Velocity Magnitude Across Cells")
-        save_plot("velocity-magnitude-heatmap.png", fig)
-
-    except Exception as e:
-        print(f"  Error generating RNA velocity plots: {e}")
-        import traceback
         traceback.print_exc()
 
 

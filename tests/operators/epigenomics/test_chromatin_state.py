@@ -212,7 +212,7 @@ class TestChromatinStateDifferentiability:
         grads = nnx.grad(loss_fn)(annotator, marks)
 
         assert hasattr(grads, "transition_logits")
-        assert grads.transition_logits.value is not None
+        assert grads.transition_logits[...] is not None
 
     def test_gradient_wrt_emissions(self, config, rngs):
         """Test gradient with respect to emission parameters."""
@@ -229,7 +229,7 @@ class TestChromatinStateDifferentiability:
         grads = nnx.grad(loss_fn)(annotator, marks)
 
         assert hasattr(grads, "emission_logits")
-        assert grads.emission_logits.value is not None
+        assert grads.emission_logits[...] is not None
 
     def test_gradient_wrt_input(self, config, rngs):
         """Test gradient with respect to input histone marks."""

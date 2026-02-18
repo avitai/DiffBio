@@ -132,21 +132,21 @@ class DifferentiableSpatialGeneDetector(TemperatureOperator):
     def lengthscale(self) -> Float[Array, ""] | float:
         """Get the characteristic length for RBF kernel."""
         if hasattr(self, "log_lengthscale"):
-            return jnp.exp(self.log_lengthscale.value)
+            return jnp.exp(self.log_lengthscale[...])
         return self._lengthscale
 
     @property
     def variance(self) -> Float[Array, ""] | float:
         """Get the signal variance parameter."""
         if hasattr(self, "log_variance"):
-            return jnp.exp(self.log_variance.value)
+            return jnp.exp(self.log_variance[...])
         return self._variance
 
     @property
     def noise_variance(self) -> Float[Array, ""] | float:
         """Get current noise variance (sigma^2_e)."""
         if hasattr(self, "log_noise_variance"):
-            return jnp.exp(self.log_noise_variance.value)
+            return jnp.exp(self.log_noise_variance[...])
         return self._noise_variance
 
     def compute_kernel(

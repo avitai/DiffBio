@@ -30,17 +30,17 @@ class TestInitLearnableParam:
     def test_correct_value(self):
         """Should contain the correct value."""
         param = init_learnable_param(42.5)
-        assert float(param.value) == pytest.approx(42.5)
+        assert float(param[...]) == pytest.approx(42.5)
 
     def test_negative_value(self):
         """Should handle negative values."""
         param = init_learnable_param(-10.0)
-        assert float(param.value) == pytest.approx(-10.0)
+        assert float(param[...]) == pytest.approx(-10.0)
 
     def test_zero_value(self):
         """Should handle zero value."""
         param = init_learnable_param(0.0)
-        assert float(param.value) == pytest.approx(0.0)
+        assert float(param[...]) == pytest.approx(0.0)
 
 
 class TestEnsureRngs:
@@ -469,7 +469,7 @@ class TestEdgeCases:
     def test_init_learnable_param_large_value(self):
         """Test init learnable param with large value."""
         param = init_learnable_param(1e10)
-        assert float(param.value) == pytest.approx(1e10)
+        assert float(param[...]) == pytest.approx(1e10)
 
     def test_ensure_rngs_different_seeds(self):
         """Test ensure rngs produces different values for different seeds."""

@@ -245,8 +245,8 @@ class DifferentialExpressionPipeline(OperatorModule):
 
         # Fit NB GLM for each sample
         # The NB GLM expects single samples, so we process in batch
-        beta = self.nb_glm.beta.value
-        dispersion = jnp.exp(self.nb_glm.log_dispersion.value)
+        beta = self.nb_glm.beta[...]
+        dispersion = jnp.exp(self.nb_glm.log_dispersion[...])
 
         # Compute predicted means
         log_mu = jnp.dot(design, beta)

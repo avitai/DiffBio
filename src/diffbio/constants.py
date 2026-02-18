@@ -5,7 +5,7 @@ and utilities. Using these constants ensures consistency and makes maintenance
 easier.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 # =============================================================================
 # Neural Network Architecture Defaults
@@ -94,7 +94,7 @@ DEFAULT_NUM_CLASSES = 3
 """Default number of variant classes (REF, SNV, INDEL)."""
 
 
-class ClassifierType(str, Enum):
+class ClassifierType(StrEnum):
     """Classifier type for variant calling pipelines."""
 
     MLP = "mlp"

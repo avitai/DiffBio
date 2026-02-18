@@ -146,7 +146,7 @@ class SplicingPSI(TemperatureOperator):
         Returns:
             Variance estimates for each PSI value.
         """
-        total = inclusion + exclusion + 2 * jnp.abs(self.pseudocount.value)
+        total = inclusion + exclusion + 2 * jnp.abs(self.pseudocount[...])
 
         # Variance of beta distribution: psi * (1 - psi) / (n + 1)
         variance = (psi * (1 - psi)) / (total + 1)
@@ -187,7 +187,7 @@ class SplicingPSI(TemperatureOperator):
         exclusion = data["exclusion_counts"]
 
         # Get learnable parameters (ensure positive)
-        pseudocount = jnp.abs(self.pseudocount.value) + 1e-6
+        pseudocount = jnp.abs(self.pseudocount[...]) + 1e-6
         temperature = jnp.abs(self._temperature) + 1e-6
 
         # Compute PSI

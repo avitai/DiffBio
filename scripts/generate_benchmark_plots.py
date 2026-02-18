@@ -10,7 +10,6 @@ Usage:
     python scripts/generate_benchmark_plots.py
 """
 
-import json
 import sys
 from pathlib import Path
 
@@ -338,8 +337,8 @@ def generate_fingerprint_plots():
     x = np.arange(len(methods))
     width = 0.35
 
-    bars1 = ax.bar(x - width / 2, diffbio_speed, width, label="DiffBio", color="steelblue")
-    bars2 = ax.bar(x + width / 2, rdkit_speed, width, label="RDKit/DeepChem", color="darkorange")
+    ax.bar(x - width / 2, diffbio_speed, width, label="DiffBio", color="steelblue")
+    ax.bar(x + width / 2, rdkit_speed, width, label="RDKit/DeepChem", color="darkorange")
 
     ax.set_xlabel("Fingerprint Type")
     ax.set_ylabel("Molecules per Second")
@@ -385,7 +384,6 @@ def generate_singlecell_plots():
 
     # Generate synthetic data for visualization
     np.random.seed(42)
-    n_cells = 300
     n_batches = 3
 
     # Before correction: clear batch separation

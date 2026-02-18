@@ -113,11 +113,11 @@ class ChromatinStateAnnotator(TemperatureOperator):
 
     def _log_transition_matrix(self) -> jax.Array:
         """Get log transition probabilities (row-normalized)."""
-        return jax.nn.log_softmax(self.transition_logits.value, axis=-1)
+        return jax.nn.log_softmax(self.transition_logits[...], axis=-1)
 
     def _log_initial_distribution(self) -> jax.Array:
         """Get log initial state probabilities."""
-        return jax.nn.log_softmax(self.initial_logits.value)
+        return jax.nn.log_softmax(self.initial_logits[...])
 
     def _log_emission_probs(self, observations: jax.Array) -> jax.Array:
         """Compute log emission probabilities.
@@ -136,7 +136,7 @@ class ChromatinStateAnnotator(TemperatureOperator):
         # observations: (..., num_marks)
 
         # Compute P(mark=1 | state) using sigmoid
-        mark_probs = jax.nn.sigmoid(self.emission_logits.value)  # (num_states, num_marks)
+        mark_probs = jax.nn.sigmoid(self.emission_logits[...])  # (num_states, num_marks)
 
         # Normalize observations to [0, 1] range using sigmoid
         obs_probs = jax.nn.sigmoid(observations)  # (..., num_marks)

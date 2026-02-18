@@ -150,7 +150,7 @@ def featurize_dataset(
             result, _, _ = featurizer.apply(data, {}, None)
             features.append(result[output_key])
             labels.append(element.data["y"])
-        except Exception:
+        except (ValueError, KeyError):
             # Skip invalid SMILES
             continue
 
@@ -293,9 +293,7 @@ def train_and_evaluate(
             pred = m(x)
             if task_type == "classification":
                 pred = nnx.sigmoid(pred).squeeze()
-                return -jnp.mean(
-                    y * jnp.log(pred + 1e-7) + (1 - y) * jnp.log(1 - pred + 1e-7)
-                )
+                return -jnp.mean(y * jnp.log(pred + 1e-7) + (1 - y) * jnp.log(1 - pred + 1e-7))
             else:
                 return jnp.mean((pred - y) ** 2)
 
@@ -393,9 +391,7 @@ def run_benchmark(config: BenchmarkConfig) -> BenchmarkResult:
     if config.split == "scaffold":
         # Collect SMILES for scaffold splitting
         smiles_list = [
-            source[i].data["smiles"]
-            for i in range(len(source))
-            if source[i] is not None
+            source[i].data["smiles"] for i in range(len(source)) if source[i] is not None
         ]
         splitter_config = ScaffoldSplitterConfig(
             train_frac=0.8,
@@ -434,8 +430,7 @@ def run_benchmark(config: BenchmarkConfig) -> BenchmarkResult:
     # Train and evaluate
     print(f"Training ({config.n_epochs} epochs)...")
     metrics, train_time = train_and_evaluate(
-        X_train, y_train, X_valid, y_valid, X_test, y_test,
-        task_type, config
+        X_train, y_train, X_valid, y_valid, X_test, y_test, task_type, config
     )
     print(f"  Training time: {train_time:.2f}s")
 
@@ -530,18 +525,24 @@ def print_summary(results: list[BenchmarkResult]) -> None:
         for dataset in datasets:
             for split in ["random", "scaffold"]:
                 ecfp = next(
-                    (r for r in classification
-                     if r.config.dataset == dataset
-                     and r.config.featurizer == "ecfp"
-                     and r.config.split == split),
-                    None
+                    (
+                        r
+                        for r in classification
+                        if r.config.dataset == dataset
+                        and r.config.featurizer == "ecfp"
+                        and r.config.split == split
+                    ),
+                    None,
                 )
                 maccs = next(
-                    (r for r in classification
-                     if r.config.dataset == dataset
-                     and r.config.featurizer == "maccs"
-                     and r.config.split == split),
-                    None
+                    (
+                        r
+                        for r in classification
+                        if r.config.dataset == dataset
+                        and r.config.featurizer == "maccs"
+                        and r.config.split == split
+                    ),
+                    None,
                 )
                 ecfp_val = f"{ecfp.test_roc_auc:.4f}" if ecfp else "N/A"
                 maccs_val = f"{maccs.test_roc_auc:.4f}" if maccs else "N/A"
@@ -557,18 +558,24 @@ def print_summary(results: list[BenchmarkResult]) -> None:
         for dataset in datasets:
             for split in ["random", "scaffold"]:
                 ecfp = next(
-                    (r for r in regression
-                     if r.config.dataset == dataset
-                     and r.config.featurizer == "ecfp"
-                     and r.config.split == split),
-                    None
+                    (
+                        r
+                        for r in regression
+                        if r.config.dataset == dataset
+                        and r.config.featurizer == "ecfp"
+                        and r.config.split == split
+                    ),
+                    None,
                 )
                 maccs = next(
-                    (r for r in regression
-                     if r.config.dataset == dataset
-                     and r.config.featurizer == "maccs"
-                     and r.config.split == split),
-                    None
+                    (
+                        r
+                        for r in regression
+                        if r.config.dataset == dataset
+                        and r.config.featurizer == "maccs"
+                        and r.config.split == split
+                    ),
+                    None,
                 )
                 ecfp_val = f"{ecfp.test_rmse:.3f}/{ecfp.test_r2:.3f}" if ecfp else "N/A"
                 maccs_val = f"{maccs.test_rmse:.3f}/{maccs.test_r2:.3f}" if maccs else "N/A"
@@ -579,9 +586,7 @@ def print_summary(results: list[BenchmarkResult]) -> None:
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Run MolNet benchmarks using DiffBio operators"
-    )
+    parser = argparse.ArgumentParser(description="Run MolNet benchmarks using DiffBio operators")
     parser.add_argument(
         "--dataset",
         type=str,

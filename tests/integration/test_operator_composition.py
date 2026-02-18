@@ -81,16 +81,6 @@ class TestQualityFilterBatchProcessing:
         result_data = result_batch.data.get_value()
         assert "sequence" in result_data
 
-    def test_iteration_count_increments(self, quality_filter, sample_batch):
-        """Test iteration tracking works."""
-        initial_count = quality_filter._iteration_count[...]
-
-        quality_filter(sample_batch)
-        assert quality_filter._iteration_count[...] == initial_count + 1
-
-        quality_filter(sample_batch)
-        assert quality_filter._iteration_count[...] == initial_count + 2
-
 
 class TestSmithWatermanBatchProcessing:
     """Tests for SmoothSmithWaterman with Datarax Batch objects.

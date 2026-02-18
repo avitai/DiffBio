@@ -216,7 +216,7 @@ class TestMetagenomicBinnerDifferentiability:
 
         # Centroids should have gradients
         assert grads.centroids is not None
-        assert jnp.any(grads.centroids.value != 0), "Centroids should have gradients"
+        assert jnp.any(grads.centroids[...] != 0), "Centroids should have gradients"
 
 
 class TestMetagenomicBinnerJIT:

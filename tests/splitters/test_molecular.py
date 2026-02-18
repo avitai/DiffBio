@@ -57,8 +57,8 @@ def molecule_data_source(simple_molecules):
         pass
 
     class MockDataSource(DataSourceModule):
-        # Annotate _data with nnx.Data to allow storing JAX arrays
-        _data: nnx.Data[list]
+        # Annotate _data with nnx.data() to allow storing JAX arrays
+        _data: list = nnx.data()
 
         def __init__(self, config, data, *, rngs=None, name=None):
             super().__init__(config, rngs=rngs, name=name)
@@ -107,8 +107,8 @@ def drug_data_source(drug_like_molecules):
         pass
 
     class MockDataSource(DataSourceModule):
-        # Annotate _data with nnx.Data to allow storing JAX arrays
-        _data: nnx.Data[list]
+        # Annotate _data with nnx.data() to allow storing JAX arrays
+        _data: list = nnx.data()
 
         def __init__(self, config, data, *, rngs=None, name=None):
             super().__init__(config, rngs=rngs, name=name)
@@ -290,7 +290,7 @@ class TestScaffoldSplitter:
             pass
 
         class CustomSource(DataSourceModule):
-            _data: nnx.Data[list]
+            _data: list = nnx.data()
 
             def __init__(self, config, *, rngs=None, name=None):
                 super().__init__(config, rngs=rngs, name=name)
@@ -347,7 +347,7 @@ class TestScaffoldSplitterEdgeCases:
             pass
 
         class SingleScaffoldSource(DataSourceModule):
-            _data: nnx.Data[list]
+            _data: list = nnx.data()
 
             def __init__(self, config, *, rngs=None, name=None):
                 super().__init__(config, rngs=rngs, name=name)
@@ -404,7 +404,7 @@ class TestScaffoldSplitterEdgeCases:
             pass
 
         class MixedValiditySource(DataSourceModule):
-            _data: nnx.Data[list]
+            _data: list = nnx.data()
 
             def __init__(self, config, *, rngs=None, name=None):
                 super().__init__(config, rngs=rngs, name=name)
@@ -574,7 +574,7 @@ class TestTanimotoClusterSplitterEdgeCases:
             pass
 
         class MixedValiditySource(DataSourceModule):
-            _data: nnx.Data[list]
+            _data: list = nnx.data()
 
             def __init__(self, config, *, rngs=None, name=None):
                 super().__init__(config, rngs=rngs, name=name)

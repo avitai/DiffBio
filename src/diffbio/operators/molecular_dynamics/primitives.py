@@ -5,13 +5,13 @@ following the DRY principle by centralizing displacement, energy, and
 force function creation.
 """
 
-from enum import Enum
+from enum import StrEnum
 from typing import Callable
 
 from jax_md import energy, quantity, space
 
 
-class PotentialType(str, Enum):
+class PotentialType(StrEnum):
     """Enumeration of supported potential types."""
 
     LENNARD_JONES = "lennard_jones"

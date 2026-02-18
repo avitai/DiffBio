@@ -20,7 +20,7 @@ class MockSourceConfig(StructuralConfig):
 class MockSequenceSource(DataSourceModule):
     """Mock data source with DNA/protein sequences for testing."""
 
-    _data: nnx.Data[list]
+    _data: list = nnx.data()
 
     def __init__(self, sequences: list[str], *, rngs: nnx.Rngs | None = None):
         """Initialize with list of sequences."""
@@ -245,7 +245,7 @@ class TestSequenceIdentitySplitter:
 
         # Create source with custom key
         class CustomKeySource(DataSourceModule):
-            _data: nnx.Data[list]
+            _data: list = nnx.data()
 
             def __init__(self, sequences: list[str], *, rngs: nnx.Rngs | None = None):
                 super().__init__(config=MockSourceConfig(), rngs=rngs)

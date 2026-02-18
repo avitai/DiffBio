@@ -60,8 +60,8 @@ def mock_data_source(sample_elements):
         pass
 
     class MockDataSource(DataSourceModule):
-        # Annotate _data with nnx.Data to allow storing JAX arrays
-        _data: nnx.Data[list]
+        # Annotate _data with nnx.data() to allow storing JAX arrays
+        _data: list = nnx.data()
 
         def __init__(self, config, data, *, rngs=None, name=None):
             super().__init__(config, rngs=rngs, name=name)
@@ -104,8 +104,8 @@ def imbalanced_data_source(imbalanced_elements):
         pass
 
     class MockDataSource(DataSourceModule):
-        # Annotate _data with nnx.Data to allow storing JAX arrays
-        _data: nnx.Data[list]
+        # Annotate _data with nnx.data() to allow storing JAX arrays
+        _data: list = nnx.data()
 
         def __init__(self, config, data, *, rngs=None, name=None):
             super().__init__(config, rngs=rngs, name=name)

@@ -286,7 +286,7 @@ class DifferentiablePeakCaller(TemperatureOperator):
 
         # Apply soft threshold
         temperature = jnp.abs(self._temperature) + 1e-6
-        peak_probs = jax.nn.sigmoid((peak_scores - self.threshold.value) / temperature)
+        peak_probs = jax.nn.sigmoid((peak_scores - self.threshold[...]) / temperature)
 
         # Find soft summits (local maxima)
         summit_probs = self._soft_local_max(

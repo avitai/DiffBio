@@ -87,7 +87,7 @@ class BAMSource(DataSourceModule):
     """
 
     # Annotate data storage for Flax NNX
-    _reads: nnx.Data[list]
+    _reads: list = nnx.data()
 
     def __init__(
         self,

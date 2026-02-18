@@ -163,7 +163,7 @@ class MolNetSource(DataSourceModule):
     """
 
     # Annotate data storage for Flax NNX
-    _data: nnx.Data[list]
+    _data: list = nnx.data()
 
     def __init__(
         self,

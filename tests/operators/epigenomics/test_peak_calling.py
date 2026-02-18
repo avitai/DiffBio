@@ -289,7 +289,7 @@ class TestPeakCallerDifferentiability:
         # Threshold gradient should exist and be non-zero for non-trivial input
         assert hasattr(grads, "threshold")
         # The gradient magnitude should be meaningful
-        assert grads.threshold.value is not None
+        assert grads.threshold[...] is not None
 
     def test_gradient_wrt_temperature(self, config, rngs):
         """Test gradient with respect to temperature parameter."""
@@ -306,7 +306,7 @@ class TestPeakCallerDifferentiability:
         grads = nnx.grad(loss_fn)(peak_caller, coverage)
 
         assert hasattr(grads, "temperature")
-        assert grads.temperature.value is not None
+        assert grads.temperature[...] is not None
 
     def test_gradient_wrt_input(self, config, rngs):
         """Test gradient with respect to input coverage."""

@@ -239,7 +239,7 @@ def run_deepchem_fingerprints(
 ) -> tuple[np.ndarray, float]:
     """Compute fingerprints using DeepChem."""
     try:
-        from deepchem.feat import CircularFingerprint
+        from deepchem.feat import CircularFingerprint  # pyright: ignore[reportMissingImports]
     except ImportError as err:
         raise ImportError(
             "DeepChem not installed. Install with: uv pip install diffbio[benchmark]"

@@ -6,7 +6,7 @@ requires = ["hatchling>=1.18"]
 dev = ["nbqa>=1.9.1", "pytest-json-report>=1.5.0"]
 
 [project]
-authors = [{ name = "Mahdi Shafiei" }]
+authors = [{name = "Mahdi Shafiei"}]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
@@ -21,15 +21,15 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "License :: OSI Approved :: MIT License",
+  "License :: OSI Approved :: MIT License"
 ]
 dependencies = [
   # Core framework - Datarax
   "datarax @ git+https://github.com/avitai/datarax.git",
   # Artifex - Flax NNX neural network components (positional encoding, residual blocks, losses)
-  "artifex @ git+ssh://git@github.com/avitai/artifex.git",
+  "artifex @ git+https://github.com/avitai/artifex.git",
   # Opifex - Scientific machine learning (GradNorm, neural operators)
-  "opifex @ git+ssh://git@github.com/mahdi-shafiei/Opifex.git",
+  "opifex @ git+https://github.com/avitai/Opifex.git",
   # JAX ecosystem
   "beartype>=0.14.1",
   "chex>=0.1.7",
@@ -47,11 +47,11 @@ dependencies = [
   "pre-commit>=4.3.0",
   "ruff>=0.1.5",
   "jax-md>=0.2.27",
-  "rdkit>=2025.9.3",
+  "rdkit>=2025.9.3"
 ]
 description = "DiffBio: End-to-end differentiable bioinformatics pipelines built on Datarax"
 keywords = ["jax", "flax", "bioinformatics", "differentiable", "variant-calling", "alignment", "machine-learning"]
-license = { file = "LICENSE" }
+license = {file = "LICENSE"}
 name = "diffbio"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -76,7 +76,7 @@ dev = [
   "shellcheck-py>=0.10.0.1",
   "python-dotenv>=1",
   "ruff>=0.1.5",
-  "pytest-json-report>=1.5.0",
+  "pytest-json-report>=1.5.0"
 ]
 docs = [
   "griffe>=1.7.3",
@@ -85,7 +85,7 @@ docs = [
   "mkdocs-material>=9.6.7",
   "mkdocstrings>=0.28.3",
   "mkdocstrings-python>=1.1.2",
-  "pymdown-extensions>=10.14.3",
+  "pymdown-extensions>=10.14.3"
 ]
 genomics = ["pysam>=0.22.0", "pyfaidx>=0.8.0"]
 gpu = ["jax[cuda12]>=0.6.1", "jaxlib>=0.6.1"]
@@ -98,7 +98,7 @@ test = [
   "pytest-cov>=6.1.1",
   "pytest-env>=1.0.1",
   "pytest-timeout>=2.1",
-  "pytest-xdist>=3.6",
+  "pytest-xdist>=3.6"
 ]
 
 [project.urls]
@@ -128,7 +128,7 @@ exclude_lines = [
   "class .*\\bProtocol\\):",
   "@(abc\\.)?abstractmethod",
   "pass",
-  "raise ImportError",
+  "raise ImportError"
 ]
 fail_under = 30
 precision = 2
@@ -200,7 +200,7 @@ filterwarnings = [
   "ignore:'.type' is deprecated:DeprecationWarning",
   "ignore:unclosed <socket.socket.*:ResourceWarning",
   "ignore:unclosed event loop.*:ResourceWarning",
-  "ignore::ResourceWarning",
+  "ignore::ResourceWarning"
 ]
 log_cli = true
 log_cli_level = "INFO"
@@ -215,7 +215,7 @@ markers = [
   "benchmark: marks tests as performance benchmarks",
   "e2e: marks tests as end-to-end tests",
   "performance: marks tests as performance tests",
-  "network: marks tests that require network access (deselect with '-m \"not network\"')",
+  "network: marks tests that require network access (deselect with '-m \"not network\"')"
 ]
 minversion = "6.0"
 python_classes = "Test*"
@@ -261,7 +261,7 @@ ignore = [
   "E731",
   "E741",
   "F722",
-  "F821",   # Undefined names in jaxtyping dimension annotations
+  "F821", # Undefined names in jaxtyping dimension annotations
   "W391",
   "E203",
   "UP006",
@@ -269,7 +269,7 @@ ignore = [
   "UP015",
   "UP024",
   "UP035",
-  "RUF005",
+  "RUF005"
 ]
 select = ["E", "F", "UP"]
 

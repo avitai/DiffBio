@@ -149,7 +149,7 @@ repos:
     hooks:
       - id: check-file-length
         name: Check file length
-        entry: bash -c 'for f in "$@"; do lines=$(wc -l < "$f"); if [ "$lines" -gt 2000 ]; then echo "FAIL: $f has $lines lines (max 2000)"; exit 1; elif [ "$lines" -gt 1500 ]; then echo "WARN: $f has $lines lines (consider splitting)"; fi; done'
+        entry: "bash -c 'for f in \"$@\"; do lines=$(wc -l < \"$f\"); if [ \"$lines\" -gt 2000 ]; then echo \"FAIL: $f has $lines lines (max 2000)\"; exit 1; elif [ \"$lines\" -gt 1500 ]; then echo \"WARN: $f has $lines lines (consider splitting)\"; fi; done'"
         language: system
         types: [python]
         exclude: ^(memory-bank)/

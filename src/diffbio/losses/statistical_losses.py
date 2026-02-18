@@ -218,15 +218,15 @@ class HMMLikelihoodLoss(nnx.Module):
 
     def _get_log_initial(self) -> Float[Array, "n_states"]:
         """Get normalized log initial distribution."""
-        return jax.nn.log_softmax(self.log_initial.value)
+        return jax.nn.log_softmax(self.log_initial[...])
 
     def _get_log_transitions(self) -> Float[Array, "n_states n_states"]:
         """Get normalized log transition matrix."""
-        return jax.nn.log_softmax(self.log_transitions.value, axis=-1)
+        return jax.nn.log_softmax(self.log_transitions[...], axis=-1)
 
     def _get_log_emissions(self) -> Float[Array, "n_states n_emissions"]:
         """Get normalized log emission matrix."""
-        return jax.nn.log_softmax(self.log_emissions.value, axis=-1)
+        return jax.nn.log_softmax(self.log_emissions[...], axis=-1)
 
     def _forward_single(
         self,

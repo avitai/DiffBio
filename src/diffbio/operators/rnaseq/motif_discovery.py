@@ -107,7 +107,7 @@ class DifferentiableMotifDiscovery(TemperatureOperator):
             probabilities summing to 1 over the alphabet dimension.
         """
         temperature = jnp.abs(self._temperature) + 1e-6
-        return jax.nn.softmax(self.pwm_logits.value / temperature, axis=-1)
+        return jax.nn.softmax(self.pwm_logits[...] / temperature, axis=-1)
 
     def _scan_single_motif(self, sequence: jax.Array, pwm: jax.Array) -> jax.Array:
         """Scan a sequence with a single PWM using convolution.

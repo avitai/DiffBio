@@ -80,8 +80,8 @@ class FastaSource(DataSourceModule):
     """
 
     # Annotate data storage for Flax NNX
-    _sequence_names: nnx.Data[list]
-    _name_to_idx: nnx.Data[dict]
+    _sequence_names: list = nnx.data()
+    _name_to_idx: dict = nnx.data()
 
     def __init__(
         self,

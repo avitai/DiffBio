@@ -148,9 +148,9 @@ class KineticsEncoder(nnx.Module):
         Returns:
             Tuple of (alpha, beta, gamma) - all positive via softplus.
         """
-        alpha = jax.nn.softplus(self.log_alpha.value)
-        beta = jax.nn.softplus(self.log_beta.value)
-        gamma = jax.nn.softplus(self.log_gamma.value)
+        alpha = jax.nn.softplus(self.log_alpha[...])
+        beta = jax.nn.softplus(self.log_beta[...])
+        gamma = jax.nn.softplus(self.log_gamma[...])
 
         return alpha, beta, gamma
 

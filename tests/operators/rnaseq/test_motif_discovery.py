@@ -74,7 +74,7 @@ class TestDifferentiableMotifDiscovery:
         assert motif_op.config == config
         assert hasattr(motif_op, "pwm_logits")
         # PWM shape: (num_motifs, motif_width, alphabet_size)
-        assert motif_op.pwm_logits.value.shape == (
+        assert motif_op.pwm_logits[...].shape == (
             config.num_motifs,
             config.motif_width,
             config.alphabet_size,
@@ -208,8 +208,8 @@ class TestMotifDiscoveryDifferentiability:
         grads = nnx.grad(loss_fn)(motif_op, sequence)
 
         assert hasattr(grads, "pwm_logits")
-        assert grads.pwm_logits.value is not None
-        assert grads.pwm_logits.value.shape == motif_op.pwm_logits.value.shape
+        assert grads.pwm_logits[...] is not None
+        assert grads.pwm_logits[...].shape == motif_op.pwm_logits[...].shape
 
     def test_gradient_wrt_input(self, config, rngs):
         """Test gradient with respect to input sequence."""

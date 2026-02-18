@@ -254,7 +254,7 @@ class TestSplicingPSIDifferentiability:
         grads = nnx.grad(loss_fn)(psi_op, inclusion, exclusion)
 
         assert hasattr(grads, "pseudocount")
-        assert grads.pseudocount.value is not None
+        assert grads.pseudocount[...] is not None
 
     def test_gradient_wrt_input_counts(self, config, rngs):
         """Test gradient with respect to input counts."""

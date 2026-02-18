@@ -224,9 +224,7 @@ def test_harmony(data: dict) -> dict:
     variance_before = compute_batch_variance(
         data["embeddings"], data["batch_labels"], data["n_batches"]
     )
-    variance_after = compute_batch_variance(
-        corrected, data["batch_labels"], data["n_batches"]
-    )
+    variance_after = compute_batch_variance(corrected, data["batch_labels"], data["n_batches"])
     variance_reduction = (1 - variance_after / variance_before) * 100 if variance_before > 0 else 0
 
     # Test differentiability
@@ -285,9 +283,7 @@ def test_clustering(data: dict) -> dict:
     assignments = result["cluster_assignments"]
 
     # Compute clustering metrics
-    metrics = compute_clustering_metrics(
-        data["embeddings"], assignments, data["n_clusters"]
-    )
+    metrics = compute_clustering_metrics(data["embeddings"], assignments, data["n_clusters"])
 
     # Test differentiability
     def loss_fn(kmeans, input_data):

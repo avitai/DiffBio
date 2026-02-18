@@ -22,7 +22,6 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
-import jax
 import jax.numpy as jnp
 import numpy as np
 from flax import nnx
@@ -315,11 +314,11 @@ def run_benchmark() -> FingerprintBenchmarkResult:
     # Compute cross-correlations
     print("\n  Computing fingerprint correlations...")
     ecfp_maccs_corr = compute_correlation(
-        ecfp_metrics["fingerprints"][:len(maccs_metrics["fingerprints"])],
+        ecfp_metrics["fingerprints"][: len(maccs_metrics["fingerprints"])],
         maccs_metrics["fingerprints"],
     )
     ecfp_neural_corr = compute_correlation(
-        ecfp_metrics["fingerprints"][:len(neural_metrics["fingerprints"])],
+        ecfp_metrics["fingerprints"][: len(neural_metrics["fingerprints"])],
         neural_metrics["fingerprints"],
     )
 
@@ -357,7 +356,7 @@ def run_benchmark() -> FingerprintBenchmarkResult:
     print(f"  ECFP4: {ecfp_metrics['size']} bits, {ecfp_metrics['density']:.1%} density")
     print(f"  MACCS: {maccs_metrics['size']} keys, {maccs_metrics['density']:.1%} density")
     print(f"  Neural: {neural_metrics['size']} dims (normalized)")
-    print(f"\n  All fingerprints are differentiable!")
+    print("\n  All fingerprints are differentiable!")
     print("=" * 60)
 
     return result

@@ -197,11 +197,11 @@ class DifferentiableMetagenomicBinner(EncoderDecoderOperator):
         """
         # Compute squared distances to centroids
         z_expanded = z[:, None, :]  # (batch, 1, latent)
-        centroids_expanded = self.centroids.value[None, :, :]  # (1, n_clusters, latent)
+        centroids_expanded = self.centroids[...][None, :, :]  # (1, n_clusters, latent)
         sq_distances = jnp.sum((z_expanded - centroids_expanded) ** 2, axis=-1)
 
         # Soft assignment via softmax
-        temperature = jnp.maximum(self.temperature.value, 1e-6)
+        temperature = jnp.maximum(self.temperature[...], 1e-6)
         assignments = nnx.softmax(-sq_distances / temperature, axis=-1)
         return assignments
 
