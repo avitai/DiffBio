@@ -5,6 +5,7 @@ Implementation must pass these tests without modification.
 """
 
 import pytest
+from datarax.core.config import FrozenInstanceError
 
 
 # =============================================================================
@@ -54,7 +55,7 @@ class TestMolNetSourceConfig:
 
         config = MolNetSourceConfig(dataset_name="bbbp")
 
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             config.dataset_name = "tox21"
 
 
@@ -180,7 +181,7 @@ class TestMolNetSourceSplits:
         for split in ["train", "valid", "test"]:
             config = MolNetSourceConfig(
                 dataset_name="bbbp",
-                split=split,
+                split=split,  # pyright: ignore[reportArgumentType]
                 data_dir=tmp_path,
                 download=True,
             )
@@ -195,7 +196,7 @@ class TestMolNetSourceSplits:
         for split in ["train", "valid", "test"]:
             config = MolNetSourceConfig(
                 dataset_name="bbbp",
-                split=split,
+                split=split,  # pyright: ignore[reportArgumentType]
                 data_dir=tmp_path,
                 download=True,
             )

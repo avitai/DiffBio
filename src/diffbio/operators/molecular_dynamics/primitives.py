@@ -33,7 +33,7 @@ def create_displacement_fn(
             - shift_fn: applies displacement to a position respecting boundaries
     """
     if box_size is not None:
-        return space.periodic(box_size)
+        return space.periodic(box_size)  # pyright: ignore[reportArgumentType]
     else:
         return space.free()
 
@@ -77,21 +77,21 @@ def create_energy_fn(
         }
         if cutoff is not None:
             kwargs["r_cutoff"] = cutoff * sigma
-        return energy.lennard_jones_pair(**kwargs)
+        return energy.lennard_jones_pair(**kwargs)  # pyright: ignore[reportArgumentType]
 
     elif potential_type == PotentialType.SOFT_SPHERE:
         return energy.soft_sphere_pair(
-            displacement_fn,
-            sigma=sigma,
-            epsilon=epsilon,
+            displacement_fn,  # pyright: ignore[reportArgumentType]
+            sigma=sigma,  # pyright: ignore[reportArgumentType]
+            epsilon=epsilon,  # pyright: ignore[reportArgumentType]
         )
 
     elif potential_type == PotentialType.MORSE:
         return energy.morse_pair(
-            displacement_fn,
-            sigma=sigma,
-            epsilon=epsilon,
-            alpha=alpha,
+            displacement_fn,  # pyright: ignore[reportArgumentType]
+            sigma=sigma,  # pyright: ignore[reportArgumentType]
+            epsilon=epsilon,  # pyright: ignore[reportArgumentType]
+            alpha=alpha,  # pyright: ignore[reportArgumentType]
         )
 
     else:

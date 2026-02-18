@@ -51,9 +51,9 @@ Differentiable Smith-Waterman local alignment operator.
 
 ```python
 from diffbio.operators.alignment import (
-    DNA_SIMPLE,         # 4x4 DNA scoring matrix
-    RNA_SIMPLE,         # 4x4 RNA scoring matrix
-    BLOSUM62,           # 20x20 protein substitution matrix
+    get_dna_simple,     # 4x4 DNA scoring matrix
+    get_rna_simple,     # 4x4 RNA scoring matrix
+    get_blosum62,       # 20x20 protein substitution matrix
     PROTEIN_ALPHABET,   # "ARNDCQEGHILKMFPSTWYV"
 )
 ```

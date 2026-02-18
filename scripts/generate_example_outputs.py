@@ -15,11 +15,6 @@ Usage:
 """
 
 import argparse
-import sys
-from pathlib import Path
-
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import jax
 import jax.numpy as jnp
@@ -1468,6 +1463,7 @@ def generate_text_outputs():
 
 
 def main():
+    """Generate DiffBio documentation outputs."""
     parser = argparse.ArgumentParser(description="Generate DiffBio documentation outputs")
     parser.add_argument("--plots", action="store_true", help="Generate only plots")
     parser.add_argument("--text", action="store_true", help="Generate only text outputs")

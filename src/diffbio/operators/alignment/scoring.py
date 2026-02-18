@@ -4,6 +4,7 @@ This module provides pre-defined scoring matrices and utilities for
 creating custom scoring matrices for DNA, RNA, and protein alignment.
 """
 
+import functools
 from typing import NamedTuple
 
 import jax.numpy as jnp
@@ -61,11 +62,25 @@ def create_rna_scoring_matrix(
     return create_dna_scoring_matrix(match, mismatch)
 
 
-# Pre-defined DNA scoring matrix (simple match/mismatch)
-DNA_SIMPLE = create_dna_scoring_matrix(match=2.0, mismatch=-1.0)
+@functools.cache
+def get_dna_simple() -> Float[Array, "4 4"]:
+    """Get pre-defined DNA scoring matrix (simple match/mismatch).
 
-# Pre-defined RNA scoring matrix
-RNA_SIMPLE = create_rna_scoring_matrix(match=2.0, mismatch=-1.0)
+    Returns:
+        4x4 scoring matrix with match=2.0, mismatch=-1.0.
+    """
+    return create_dna_scoring_matrix(match=2.0, mismatch=-1.0)
+
+
+@functools.cache
+def get_rna_simple() -> Float[Array, "4 4"]:
+    """Get pre-defined RNA scoring matrix (simple match/mismatch).
+
+    Returns:
+        4x4 scoring matrix with match=2.0, mismatch=-1.0.
+    """
+    return create_rna_scoring_matrix(match=2.0, mismatch=-1.0)
+
 
 # BLOSUM62 scoring matrix for proteins (20 amino acids)
 # Standard BLOSUM62 matrix values
@@ -94,7 +109,16 @@ _BLOSUM62_VALUES = [
     [0, -3, -3, -3, -1, -2, -2, -3, -3, 3, 1, -2, 1, -1, -2, -2, 0, -3, -1, 4],  # V
 ]
 
-BLOSUM62 = jnp.array(_BLOSUM62_VALUES, dtype=jnp.float32)
+
+@functools.cache
+def get_blosum62() -> Float[Array, "20 20"]:
+    """Get BLOSUM62 scoring matrix for protein alignment.
+
+    Returns:
+        20x20 scoring matrix for 20 standard amino acids.
+    """
+    return jnp.array(_BLOSUM62_VALUES, dtype=jnp.float32)
+
 
 # Amino acid alphabet for BLOSUM62
 PROTEIN_ALPHABET = "ARNDCQEGHILKMFPSTWYV"

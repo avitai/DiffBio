@@ -14,9 +14,9 @@ from diffbio.operators.alignment import (
     SmithWatermanConfig,
 )
 from diffbio.operators.alignment.scoring import (
-    BLOSUM62,
-    DNA_SIMPLE,
     create_dna_scoring_matrix,
+    get_blosum62,
+    get_dna_simple,
 )
 from diffbio.sequences.dna import encode_dna_string
 
@@ -26,16 +26,16 @@ class TestScoringMatrix:
 
     def test_dna_simple_shape(self):
         """Test DNA simple scoring matrix has correct shape."""
-        assert DNA_SIMPLE.shape == (4, 4)
+        assert get_dna_simple().shape == (4, 4)
 
     def test_dna_simple_diagonal(self):
         """Test DNA simple scoring has positive diagonal (matches)."""
-        diagonal = jnp.diag(DNA_SIMPLE)
+        diagonal = jnp.diag(get_dna_simple())
         assert jnp.all(diagonal > 0)
 
     def test_dna_simple_symmetric(self):
         """Test DNA scoring matrix is symmetric."""
-        assert jnp.allclose(DNA_SIMPLE, DNA_SIMPLE.T)
+        assert jnp.allclose(get_dna_simple(), get_dna_simple().T)
 
     def test_create_dna_scoring_matrix(self):
         """Test creating custom DNA scoring matrix."""
@@ -51,12 +51,12 @@ class TestScoringMatrix:
         assert jnp.allclose(off_diag_values, expected)
 
     def test_blosum62_shape(self):
-        """Test BLOSUM62 has correct shape for proteins."""
-        assert BLOSUM62.shape == (20, 20)
+        """Test get_blosum62() has correct shape for proteins."""
+        assert get_blosum62().shape == (20, 20)
 
     def test_blosum62_symmetric(self):
-        """Test BLOSUM62 is symmetric."""
-        assert jnp.allclose(BLOSUM62, BLOSUM62.T)
+        """Test get_blosum62() is symmetric."""
+        assert jnp.allclose(get_blosum62(), get_blosum62().T)
 
 
 class TestSmithWatermanConfig:

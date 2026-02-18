@@ -6,7 +6,6 @@ Implementation must pass these tests without modification.
 
 import jax.numpy as jnp
 import pytest
-from flax import nnx
 
 
 # =============================================================================
@@ -20,7 +19,7 @@ def sample_elements():
     from datarax.typing import Element
 
     return [
-        Element(data={"value": jnp.array(i), "label": i % 3}, state={}, metadata={"idx": i})
+        Element(data={"value": jnp.array(i), "label": i % 3}, state={}, metadata={"idx": i})  # pyright: ignore[reportArgumentType]
         for i in range(100)
     ]
 
@@ -34,15 +33,15 @@ def imbalanced_elements():
     # 70 class 0, 20 class 1, 10 class 2
     for i in range(70):
         elements.append(
-            Element(data={"value": jnp.array(i), "y": 0}, state={}, metadata={"idx": i})
+            Element(data={"value": jnp.array(i), "y": 0}, state={}, metadata={"idx": i})  # pyright: ignore[reportArgumentType]
         )
     for i in range(20):
         elements.append(
-            Element(data={"value": jnp.array(70 + i), "y": 1}, state={}, metadata={"idx": 70 + i})
+            Element(data={"value": jnp.array(70 + i), "y": 1}, state={}, metadata={"idx": 70 + i})  # pyright: ignore[reportArgumentType]
         )
     for i in range(10):
         elements.append(
-            Element(data={"value": jnp.array(90 + i), "y": 2}, state={}, metadata={"idx": 90 + i})
+            Element(data={"value": jnp.array(90 + i), "y": 2}, state={}, metadata={"idx": 90 + i})  # pyright: ignore[reportArgumentType]
         )
     return elements
 
@@ -50,42 +49,7 @@ def imbalanced_elements():
 @pytest.fixture
 def mock_data_source(sample_elements):
     """Create a mock DataSourceModule for testing."""
-    from dataclasses import dataclass
-
-    from datarax.core.config import StructuralConfig
-    from datarax.core.data_source import DataSourceModule
-
-    @dataclass
-    class MockSourceConfig(StructuralConfig):
-        pass
-
-    class MockDataSource(DataSourceModule):
-        # Annotate _data with nnx.data() to allow storing JAX arrays
-        _data: list = nnx.data()
-
-        def __init__(self, config, data, *, rngs=None, name=None):
-            super().__init__(config, rngs=rngs, name=name)
-            self._data = data
-            self._current_idx = 0
-
-        def __len__(self):
-            return len(self._data)
-
-        def __getitem__(self, idx):
-            if 0 <= idx < len(self._data):
-                return self._data[idx]
-            return None
-
-        def __iter__(self):
-            self._current_idx = 0
-            return self
-
-        def __next__(self):
-            if self._current_idx >= len(self._data):
-                raise StopIteration
-            elem = self._data[self._current_idx]
-            self._current_idx += 1
-            return elem
+    from tests.mocks import MockDataSource, MockSourceConfig
 
     config = MockSourceConfig()
     return MockDataSource(config, sample_elements)
@@ -94,42 +58,7 @@ def mock_data_source(sample_elements):
 @pytest.fixture
 def imbalanced_data_source(imbalanced_elements):
     """Create a mock DataSourceModule with imbalanced classes."""
-    from dataclasses import dataclass
-
-    from datarax.core.config import StructuralConfig
-    from datarax.core.data_source import DataSourceModule
-
-    @dataclass
-    class MockSourceConfig(StructuralConfig):
-        pass
-
-    class MockDataSource(DataSourceModule):
-        # Annotate _data with nnx.data() to allow storing JAX arrays
-        _data: list = nnx.data()
-
-        def __init__(self, config, data, *, rngs=None, name=None):
-            super().__init__(config, rngs=rngs, name=name)
-            self._data = data
-            self._current_idx = 0
-
-        def __len__(self):
-            return len(self._data)
-
-        def __getitem__(self, idx):
-            if 0 <= idx < len(self._data):
-                return self._data[idx]
-            return None
-
-        def __iter__(self):
-            self._current_idx = 0
-            return self
-
-        def __next__(self):
-            if self._current_idx >= len(self._data):
-                raise StopIteration
-            elem = self._data[self._current_idx]
-            self._current_idx += 1
-            return elem
+    from tests.mocks import MockDataSource, MockSourceConfig
 
     config = MockSourceConfig()
     return MockDataSource(config, imbalanced_elements)

@@ -219,7 +219,7 @@ class BAMSource(DataSourceModule):
             "unmapped": read_info["is_unmapped"],
         }
 
-        return Element(data=data, state={}, metadata=metadata)
+        return Element(data=data, state={}, metadata=metadata)  # pyright: ignore[reportArgumentType]
 
     def __len__(self) -> int:
         """Return the number of reads in the source."""

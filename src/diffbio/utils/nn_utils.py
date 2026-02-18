@@ -273,7 +273,7 @@ def extract_windows_1d(
     )
 
     # Extract all windows using vmap
-    def extract_single_window(pos: int) -> Array:
+    def extract_single_window(pos: Array | int) -> Array:
         return jax.lax.dynamic_slice(
             padded_signal,
             (pos, 0),

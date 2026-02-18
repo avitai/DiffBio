@@ -148,20 +148,20 @@ class MDIntegratorOperator(OperatorModule):
         # Create appropriate state based on integrator type
         if config.integrator_type == "velocity_verlet":
             sim_state = simulate.NVEState(
-                position=positions,
-                momentum=momentum,
-                force=initial_force,
-                mass=mass,
+                position=positions,  # pyright: ignore[reportCallIssue]
+                momentum=momentum,  # pyright: ignore[reportCallIssue]
+                force=initial_force,  # pyright: ignore[reportCallIssue]
+                mass=mass,  # pyright: ignore[reportCallIssue]
             )
         elif config.integrator_type == "nvt_langevin":
             # Langevin dynamics requires rng for stochastic forces
             rng_key = jax.random.PRNGKey(42)  # Deterministic for reproducibility
             sim_state = simulate.NVTLangevinState(
-                position=positions,
-                momentum=momentum,
-                force=initial_force,
-                mass=mass,
-                rng=rng_key,
+                position=positions,  # pyright: ignore[reportCallIssue]
+                momentum=momentum,  # pyright: ignore[reportCallIssue]
+                force=initial_force,  # pyright: ignore[reportCallIssue]
+                mass=mass,  # pyright: ignore[reportCallIssue]
+                rng=rng_key,  # pyright: ignore[reportCallIssue]
             )
         else:
             raise ValueError(f"Unknown integrator type: {config.integrator_type}")

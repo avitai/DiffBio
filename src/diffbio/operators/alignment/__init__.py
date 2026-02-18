@@ -10,13 +10,13 @@ from diffbio.operators.alignment.profile_hmm import (
     ProfileHMMSearch,
 )
 from diffbio.operators.alignment.scoring import (
-    BLOSUM62,
-    DNA_SIMPLE,
     PROTEIN_ALPHABET,
-    RNA_SIMPLE,
     ScoringMatrix,
     create_dna_scoring_matrix,
     create_rna_scoring_matrix,
+    get_blosum62,
+    get_dna_simple,
+    get_rna_simple,
 )
 from diffbio.operators.alignment.smith_waterman import (
     AlignmentResult,
@@ -34,13 +34,13 @@ __all__ = [
     "ProfileHMMConfig",
     "ProfileHMMSearch",
     # Scoring
-    "BLOSUM62",
-    "DNA_SIMPLE",
     "PROTEIN_ALPHABET",
-    "RNA_SIMPLE",
     "ScoringMatrix",
     "create_dna_scoring_matrix",
     "create_rna_scoring_matrix",
+    "get_blosum62",
+    "get_dna_simple",
+    "get_rna_simple",
     # Smith-Waterman
     "AlignmentResult",
     "SmithWatermanConfig",

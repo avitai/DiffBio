@@ -374,7 +374,7 @@ class GNNAssemblyNavigator(GraphOperator):
         )
 
     @property
-    def _temperature(self) -> float:
+    def _temperature(self) -> Array | float:
         """Get current temperature value."""
         if self._temperature_param is not None:
             return jnp.abs(self._temperature_param[...]) + 1e-6

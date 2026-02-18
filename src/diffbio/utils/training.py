@@ -4,6 +4,7 @@ This module provides training loops and utilities for end-to-end gradient-based
 optimization of DiffBio pipelines using Flax NNX patterns.
 """
 
+import logging
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any, Callable
@@ -15,8 +16,10 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class TrainingConfig:
     """Configuration for training loop.
 
@@ -234,10 +237,11 @@ class Trainer:
 
             # Log progress
             if self.training_state.step % self.config.log_every == 0:
-                print(
-                    f"Step {self.training_state.step}: "
-                    f"loss={float(loss):.4f}, "
-                    f"grad_norm={float(metrics['grad_norm']):.4f}"
+                logger.info(
+                    "Step %d: loss=%.4f, grad_norm=%.4f",
+                    self.training_state.step,
+                    float(loss),
+                    float(metrics["grad_norm"]),
                 )
 
         # Update best loss
@@ -277,7 +281,12 @@ class Trainer:
 
             metrics = self.train_epoch(data_iterator, loss_fn)
 
-            print(f"Epoch {epoch + 1}/{self.config.num_epochs}: avg_loss={metrics['avg_loss']:.4f}")
+            logger.info(
+                "Epoch %d/%d: avg_loss=%.4f",
+                epoch + 1,
+                self.config.num_epochs,
+                metrics["avg_loss"],
+            )
 
         # Set back to eval mode
         if hasattr(self.pipeline, "set_training"):
@@ -568,7 +577,3 @@ def create_realistic_training_data(
         )
 
     return inputs, targets
-
-
-# Backwards compatibility alias
-create_optimizer = create_optax_optimizer

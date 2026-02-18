@@ -130,7 +130,7 @@ class SequenceEmbedding(OperatorModule):
         padded = jnp.pad(sequence, ((half_k, half_k), (0, 0)), mode="constant", constant_values=0.0)
 
         # Extract windows using vmap
-        def extract_window(center: int) -> Float[Array, "window_features"]:
+        def extract_window(center: Array | int) -> Float[Array, "window_features"]:
             window = jax.lax.dynamic_slice(padded, (center, 0), (kernel_size, num_features))
             return window.flatten()
 

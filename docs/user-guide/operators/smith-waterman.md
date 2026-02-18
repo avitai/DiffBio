@@ -159,9 +159,9 @@ class AlignmentResult(NamedTuple):
 
 ```python
 from diffbio.operators.alignment import (
-    DNA_SIMPLE,           # Simple DNA match/mismatch
-    RNA_SIMPLE,           # Simple RNA match/mismatch
-    BLOSUM62,             # Protein substitution matrix
+    get_dna_simple,       # Simple DNA match/mismatch
+    get_rna_simple,       # Simple RNA match/mismatch
+    get_blosum62,         # Protein substitution matrix
     PROTEIN_ALPHABET,     # "ARNDCQEGHILKMFPSTWYV"
 )
 ```

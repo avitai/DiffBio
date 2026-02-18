@@ -6,6 +6,7 @@ Implementation must pass these tests without modification.
 
 import jax.numpy as jnp
 import pytest
+from datarax.core.config import FrozenInstanceError
 from flax import nnx
 
 
@@ -20,7 +21,7 @@ def sample_elements():
     from datarax.typing import Element
 
     return [
-        Element(data={"value": jnp.array(i), "name": f"item_{i}"}, state={}, metadata={"idx": i})
+        Element(data={"value": jnp.array(i), "name": f"item_{i}"}, state={}, metadata={"idx": i})  # pyright: ignore[reportArgumentType]
         for i in range(10)
     ]
 
@@ -28,44 +29,7 @@ def sample_elements():
 @pytest.fixture
 def mock_data_source(sample_elements):
     """Create a mock DataSourceModule for testing."""
-    from dataclasses import dataclass
-
-    from datarax.core.config import StructuralConfig
-    from datarax.core.data_source import DataSourceModule
-
-    @dataclass
-    class MockSourceConfig(StructuralConfig):
-        pass
-
-    class MockDataSource(DataSourceModule):
-        """Simple mock data source for testing."""
-
-        # Annotate _data with nnx.data() to allow storing JAX arrays
-        _data: list = nnx.data()
-
-        def __init__(self, config, data, *, rngs=None, name=None):
-            super().__init__(config, rngs=rngs, name=name)
-            self._data = data
-            self._current_idx = 0
-
-        def __len__(self):
-            return len(self._data)
-
-        def __getitem__(self, idx):
-            if 0 <= idx < len(self._data):
-                return self._data[idx]
-            return None
-
-        def __iter__(self):
-            self._current_idx = 0
-            return self
-
-        def __next__(self):
-            if self._current_idx >= len(self._data):
-                raise StopIteration
-            elem = self._data[self._current_idx]
-            self._current_idx += 1
-            return elem
+    from tests.mocks import MockDataSource, MockSourceConfig
 
     config = MockSourceConfig()
     return MockDataSource(config, sample_elements)
@@ -321,5 +285,5 @@ class TestIndexedViewSourceConfig:
         config = IndexedViewSourceConfig(shuffle=True, seed=42)
 
         # Attempting to modify should raise
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             config.shuffle = False

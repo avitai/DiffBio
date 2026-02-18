@@ -23,7 +23,6 @@ plt.style.use("seaborn-v0_8-whitegrid")
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 ASSETS_DIR = PROJECT_ROOT / "docs" / "assets" / "images" / "examples"
-ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
 # Plot constants
@@ -48,6 +47,7 @@ def save_plot(filename: str, fig: plt.Figure | None = None, dpi: int = PLOT_DPI)
     """Save a plot to the assets directory."""
     if fig is None:
         fig = plt.gcf()
+    ASSETS_DIR.mkdir(parents=True, exist_ok=True)
     filepath = ASSETS_DIR / filename
     fig.savefig(filepath, dpi=dpi, bbox_inches="tight", facecolor="white")
     plt.close(fig)

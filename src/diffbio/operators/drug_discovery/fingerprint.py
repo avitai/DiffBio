@@ -417,7 +417,12 @@ class CircularFingerprintOperator(OperatorModule):
             edge_features = data.get("edge_features")
             node_mask = data.get("node_mask")
 
-            fp = self._compute_differentiable_fp(node_features, adjacency, edge_features, node_mask)
+            fp = self._compute_differentiable_fp(
+                node_features,
+                adjacency,
+                edge_features,  # pyright: ignore[reportArgumentType]
+                node_mask,  # pyright: ignore[reportArgumentType]
+            )
         else:
             smiles = data["smiles"]
             fp = self._compute_rdkit_fp(smiles)

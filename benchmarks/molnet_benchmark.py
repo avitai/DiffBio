@@ -112,7 +112,7 @@ def create_featurizer(featurizer_type: str, rngs: nnx.Rngs):
     if featurizer_type == "ecfp":
         config = CircularFingerprintConfig(
             radius=2,  # ECFP4
-            size=2048,
+            size=2048,  # pyright: ignore[reportCallIssue]
             use_features=True,
             use_chirality=False,
         )
@@ -175,6 +175,7 @@ class SimpleClassifier(nnx.Module):
         self.dropout = nnx.Dropout(rate=0.2, rngs=rngs)
 
     def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
+        """Forward pass through the classifier network."""
         x = nnx.relu(self.dense1(x))
         x = self.dropout(x)
         x = nnx.relu(self.dense2(x))
@@ -199,6 +200,7 @@ class SimpleRegressor(nnx.Module):
         self.dropout = nnx.Dropout(rate=0.2, rngs=rngs)
 
     def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
+        """Forward pass through the regressor network."""
         x = nnx.relu(self.dense1(x))
         x = self.dropout(x)
         x = nnx.relu(self.dense2(x))
@@ -284,7 +286,7 @@ def train_and_evaluate(
     else:
         model = SimpleRegressor(n_features, config.hidden_dim, rngs=rngs)
 
-    optimizer = nnx.Optimizer(model, optax.adam(config.learning_rate))
+    optimizer = nnx.Optimizer(model, optax.adam(config.learning_rate))  # pyright: ignore[reportCallIssue]
 
     # Training step
     @nnx.jit
@@ -411,7 +413,7 @@ def run_benchmark(config: BenchmarkConfig) -> BenchmarkResult:
             seed=config.seed,
         )
         splitter = RandomSplitter(splitter_config)
-        result = splitter.split(len(X))
+        result = splitter.split(len(X))  # pyright: ignore[reportArgumentType]
         train_idx = result.train_indices
         valid_idx = result.valid_indices
         test_idx = result.test_indices

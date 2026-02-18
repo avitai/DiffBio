@@ -1,16 +1,19 @@
 # conftest.py - Pytest configuration for DiffBio
 
+import logging
 import os
 import warnings
 from pathlib import Path
 
 import pytest
 
+logger = logging.getLogger(__name__)
+
 
 def setup_cuda_environment():
     """Set up CUDA environment variables for JAX."""
-    # Set CUDA library path
-    cuda_lib_path = "/usr/local/cuda/lib64"
+    cuda_home = os.environ.get("CUDA_HOME", "/usr/local/cuda")
+    cuda_lib_path = str(Path(cuda_home) / "lib64")
     current_ld_path = os.environ.get("LD_LIBRARY_PATH", "")
 
     if Path(cuda_lib_path).exists() and cuda_lib_path not in current_ld_path:
@@ -21,8 +24,8 @@ def setup_cuda_environment():
         os.environ["LD_LIBRARY_PATH"] = new_ld_path
 
     # Set additional CUDA environment variables
-    os.environ["CUDA_ROOT"] = "/usr/local/cuda"
-    os.environ["CUDA_HOME"] = "/usr/local/cuda"
+    os.environ["CUDA_ROOT"] = cuda_home
+    os.environ["CUDA_HOME"] = cuda_home
 
     # JAX CUDA configuration - respect existing JAX_PLATFORMS setting
     if "JAX_PLATFORMS" not in os.environ:
@@ -66,17 +69,17 @@ def pytest_configure(config):
             )
             config.addinivalue_line("markers", f"devices: Available devices: {devices}")
 
-            print(f"\nGPU available for testing: {len(gpu_devices) > 0}")
+            logger.info("GPU available for testing: %s", len(gpu_devices) > 0)
             if gpu_devices:
-                print(f"GPU devices: {gpu_devices}")
-            print(f"CPU devices: {cpu_devices}")
+                logger.info("GPU devices: %s", gpu_devices)
+            logger.info("CPU devices: %s", cpu_devices)
 
-        except Exception as e:
-            print(f"\nDevice detection failed: {e}")
+        except RuntimeError as e:
+            logger.warning("Device detection failed: %s", e)
             config.addinivalue_line("markers", "gpu_available: GPU devices available: False")
 
     except ImportError as e:
-        print(f"\nJAX import failed: {e}")
+        logger.warning("JAX import failed: %s", e)
 
 
 @pytest.fixture
@@ -92,7 +95,7 @@ def device():
             return gpu_devices[0]
         else:
             return jax.devices("cpu")[0]
-    except Exception:
+    except RuntimeError:
         return jax.devices("cpu")[0]
 
 
@@ -169,10 +172,10 @@ def pytest_runtest_setup(item):
                     gpu_devices = jax.devices("gpu")
                     if not gpu_devices:
                         pytest.skip("GPU test skipped: No GPU devices available")
-                except Exception:
+                except RuntimeError:
                     pytest.skip("GPU test skipped: GPU not accessible")
 
-    except Exception:
+    except ImportError:
         pass
 
 
@@ -203,8 +206,8 @@ def pytest_runtest_teardown(item, nextitem):  # noqa: ARG001
                     dummy = jnp.array([1.0])
                     dummy.block_until_ready()
                     del dummy
-                except Exception:
+                except RuntimeError:
                     pass
 
-    except Exception:
+    except ImportError:
         pass

@@ -257,7 +257,7 @@ def mccaskill_partition_function(
 def compute_base_pair_probabilities(
     energy_matrix: Float[Array, "length length"],
     min_hairpin: int = DEFAULT_MIN_HAIRPIN,
-    temperature: float = 1.0,
+    temperature: Array | float = 1.0,
 ) -> tuple[Float[Array, "length length"], Float[Array, ""]]:
     """Compute base pair probability matrix.
 

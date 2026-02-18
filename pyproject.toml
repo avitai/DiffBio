@@ -107,7 +107,7 @@ Documentation = "https://diffbio.readthedocs.io"
 Source = "https://github.com/mahdi-shafiei/DiffBio"
 
 [tool.bandit]
-exclude_dirs = ["tests", "scripts", "examples", "memory-bank"]
+exclude_dirs = ["tests", "scripts", "examples", "memory-bank", ".deprecated", ".venv"]
 skips = ["B101", "B110"]
 
 [tool.coverage.html]
@@ -130,7 +130,7 @@ exclude_lines = [
   "pass",
   "raise ImportError"
 ]
-fail_under = 30
+fail_under = 60
 precision = 2
 show_missing = true
 skip_covered = false
@@ -154,19 +154,20 @@ packages = ["src/diffbio"]
 allow-direct-references = true
 
 [tool.pydocstyle]
-add-ignore = ["D100", "D101", "D102", "D103", "D104", "D105", "D107", "D202", "D212", "D415"]
+add-ignore = ["D100", "D104", "D105", "D107", "D202", "D212", "D415"]
 convention = "google"
 match = ".*\\.py$"
 match-dir = "^(?!tests|examples).*"
 
 [tool.pyright]
 exclude = ["examples", "scripts", ".deprecated", "**/__pycache__", "**/.venv", "memory-bank"]
+extraPaths = ["."]
 include = ["src", "tests"]
 reportAbstractUsage = false
-reportArgumentType = false
+reportArgumentType = "warning"
 reportAssignmentType = false
 reportAttributeAccessIssue = false
-reportCallIssue = false
+reportCallIssue = "warning"
 reportFunctionMemberAccess = false
 reportGeneralTypeIssues = false
 reportIncompatibleMethodOverride = false
@@ -179,13 +180,13 @@ reportOptionalMemberAccess = false
 reportOptionalOperand = false
 reportOptionalSubscript = false
 reportPossiblyUnboundVariable = false
-reportReturnType = false
+reportReturnType = "warning"
 reportUnusedExpression = false
 venv = ".venv"
 venvPath = "."
 
 [tool.pytest.ini_options]
-addopts = "--strict-markers --strict-config --verbose --tb=short --color=yes --durations=10 --cov=src/ --cov-report=term-missing --cov-report=html --cov-fail-under=30 --timeout=300 --json-report --json-report-file=temp/test-results.json --json-report-indent=2"
+addopts = "--strict-markers --strict-config --verbose --tb=short --color=yes --durations=10 --cov=src/ --cov-report=term-missing --cov-report=html --cov-fail-under=60 --timeout=300 --json-report --json-report-file=temp/test-results.json --json-report-indent=2"
 cache_dir = ".pytest_cache"
 console_output_style = "progress"
 filterwarnings = [
@@ -242,9 +243,10 @@ XLA_PYTHON_CLIENT_MEM_FRACTION = "0.75"
 XLA_PYTHON_CLIENT_PREALLOCATE = "false"
 
 [tool.ruff]
+exclude = ["memory-bank", ".deprecated", "examples", ".venv"]
 extend-include = ["*.ipynb"]
 line-length = 100
-src = []
+src = ["src"]
 target-version = "py311"
 
 [tool.ruff.format]

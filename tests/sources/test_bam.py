@@ -9,6 +9,7 @@ from pathlib import Path
 
 import jax.numpy as jnp
 import pytest
+from datarax.core.config import FrozenInstanceError
 
 
 # =============================================================================
@@ -116,7 +117,7 @@ class TestBAMSourceConfig:
         from diffbio.sources import BAMSourceConfig
 
         config = BAMSourceConfig(file_path=Path("/tmp/test.bam"))
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             config.include_unmapped = True
 
 

@@ -1,8 +1,7 @@
 """Test configuration for DiffBio."""
 
+import logging
 import os
-import sys
-
 
 # Configure JAX before imports
 os.environ.setdefault("JAX_ENABLE_X64", "0")
@@ -13,9 +12,7 @@ import jax
 import pytest
 from flax import nnx
 
-
-# Add the src directory to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+logger = logging.getLogger(__name__)
 
 
 # Configure beartype for runtime type checking
@@ -25,8 +22,8 @@ try:
 
     try:
         beartype.beartype(conf=BeartypeConf(strategy=BeartypeStrategy.On))
-    except Exception as e:
-        print(f"Warning: Could not apply beartype configuration: {e}")
+    except (TypeError, AttributeError) as exc:
+        logger.warning("Could not apply beartype configuration: %s", exc)
 except ImportError:
     pass
 

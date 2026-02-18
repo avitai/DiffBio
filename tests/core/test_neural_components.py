@@ -174,7 +174,7 @@ class TestGraphMessagePassing:
                 node_features=node_feat_dim,
                 edge_features=edge_feat_dim,
                 hidden_dim=hidden_dim,
-                aggregation=agg,
+                aggregation=agg,  # pyright: ignore[reportArgumentType]
                 rngs=rngs,
             )
 

@@ -46,46 +46,11 @@ def drug_like_molecules():
 @pytest.fixture
 def molecule_data_source(simple_molecules):
     """Create a mock DataSourceModule with molecular data."""
-    from dataclasses import dataclass
-
-    from datarax.core.config import StructuralConfig
-    from datarax.core.data_source import DataSourceModule
+    from tests.mocks import MockDataSource, MockSourceConfig
     from datarax.typing import Element
 
-    @dataclass
-    class MockSourceConfig(StructuralConfig):
-        pass
-
-    class MockDataSource(DataSourceModule):
-        # Annotate _data with nnx.data() to allow storing JAX arrays
-        _data: list = nnx.data()
-
-        def __init__(self, config, data, *, rngs=None, name=None):
-            super().__init__(config, rngs=rngs, name=name)
-            self._data = data
-            self._current_idx = 0
-
-        def __len__(self):
-            return len(self._data)
-
-        def __getitem__(self, idx):
-            if 0 <= idx < len(self._data):
-                return self._data[idx]
-            return None
-
-        def __iter__(self):
-            self._current_idx = 0
-            return self
-
-        def __next__(self):
-            if self._current_idx >= len(self._data):
-                raise StopIteration
-            elem = self._data[self._current_idx]
-            self._current_idx += 1
-            return elem
-
     elements = [
-        Element(data={"smiles": smiles, "value": jnp.array(i)}, state={}, metadata={"idx": i})
+        Element(data={"smiles": smiles, "value": jnp.array(i)}, state={}, metadata={"idx": i})  # pyright: ignore[reportArgumentType]
         for i, smiles in enumerate(simple_molecules)
     ]
 
@@ -96,46 +61,11 @@ def molecule_data_source(simple_molecules):
 @pytest.fixture
 def drug_data_source(drug_like_molecules):
     """Create a mock DataSourceModule with drug-like molecules."""
-    from dataclasses import dataclass
-
-    from datarax.core.config import StructuralConfig
-    from datarax.core.data_source import DataSourceModule
+    from tests.mocks import MockDataSource, MockSourceConfig
     from datarax.typing import Element
 
-    @dataclass
-    class MockSourceConfig(StructuralConfig):
-        pass
-
-    class MockDataSource(DataSourceModule):
-        # Annotate _data with nnx.data() to allow storing JAX arrays
-        _data: list = nnx.data()
-
-        def __init__(self, config, data, *, rngs=None, name=None):
-            super().__init__(config, rngs=rngs, name=name)
-            self._data = data
-            self._current_idx = 0
-
-        def __len__(self):
-            return len(self._data)
-
-        def __getitem__(self, idx):
-            if 0 <= idx < len(self._data):
-                return self._data[idx]
-            return None
-
-        def __iter__(self):
-            self._current_idx = 0
-            return self
-
-        def __next__(self):
-            if self._current_idx >= len(self._data):
-                raise StopIteration
-            elem = self._data[self._current_idx]
-            self._current_idx += 1
-            return elem
-
     elements = [
-        Element(data={"smiles": smiles, "value": jnp.array(i)}, state={}, metadata={"idx": i})
+        Element(data={"smiles": smiles, "value": jnp.array(i)}, state={}, metadata={"idx": i})  # pyright: ignore[reportArgumentType]
         for i, smiles in enumerate(drug_like_molecules)
     ]
 
@@ -295,9 +225,9 @@ class TestScaffoldSplitter:
             def __init__(self, config, *, rngs=None, name=None):
                 super().__init__(config, rngs=rngs, name=name)
                 self._data = [
-                    Element(data={"mol": "c1ccccc1"}, state={}, metadata={}),
-                    Element(data={"mol": "C1CCCCC1"}, state={}, metadata={}),
-                    Element(data={"mol": "CC"}, state={}, metadata={}),
+                    Element(data={"mol": "c1ccccc1"}, state={}, metadata={}),  # pyright: ignore[reportArgumentType]
+                    Element(data={"mol": "C1CCCCC1"}, state={}, metadata={}),  # pyright: ignore[reportArgumentType]
+                    Element(data={"mol": "CC"}, state={}, metadata={}),  # pyright: ignore[reportArgumentType]
                 ]
                 self._idx = 0
 
@@ -353,10 +283,10 @@ class TestScaffoldSplitterEdgeCases:
                 super().__init__(config, rngs=rngs, name=name)
                 # All benzene derivatives
                 self._data = [
-                    Element(data={"smiles": "c1ccccc1"}, state={}, metadata={}),
-                    Element(data={"smiles": "c1ccc(O)cc1"}, state={}, metadata={}),
-                    Element(data={"smiles": "c1ccc(C)cc1"}, state={}, metadata={}),
-                    Element(data={"smiles": "c1ccc(N)cc1"}, state={}, metadata={}),
+                    Element(data={"smiles": "c1ccccc1"}, state={}, metadata={}),  # pyright: ignore[reportArgumentType]
+                    Element(data={"smiles": "c1ccc(O)cc1"}, state={}, metadata={}),  # pyright: ignore[reportArgumentType]
+                    Element(data={"smiles": "c1ccc(C)cc1"}, state={}, metadata={}),  # pyright: ignore[reportArgumentType]
+                    Element(data={"smiles": "c1ccc(N)cc1"}, state={}, metadata={}),  # pyright: ignore[reportArgumentType]
                 ]
                 self._idx = 0
 
@@ -409,9 +339,9 @@ class TestScaffoldSplitterEdgeCases:
             def __init__(self, config, *, rngs=None, name=None):
                 super().__init__(config, rngs=rngs, name=name)
                 self._data = [
-                    Element(data={"smiles": "c1ccccc1"}, state={}, metadata={}),  # Valid
-                    Element(data={"smiles": "invalid_smiles"}, state={}, metadata={}),  # Invalid
-                    Element(data={"smiles": "CC"}, state={}, metadata={}),  # Valid
+                    Element(data={"smiles": "c1ccccc1"}, state={}, metadata={}),  # pyright: ignore[reportArgumentType]  # Valid
+                    Element(data={"smiles": "invalid_smiles"}, state={}, metadata={}),  # pyright: ignore[reportArgumentType]  # Invalid
+                    Element(data={"smiles": "CC"}, state={}, metadata={}),  # pyright: ignore[reportArgumentType]  # Valid
                 ]
                 self._idx = 0
 
@@ -579,10 +509,10 @@ class TestTanimotoClusterSplitterEdgeCases:
             def __init__(self, config, *, rngs=None, name=None):
                 super().__init__(config, rngs=rngs, name=name)
                 self._data = [
-                    Element(data={"smiles": "c1ccccc1"}, state={}, metadata={}),
-                    Element(data={"smiles": "invalid_smiles"}, state={}, metadata={}),
-                    Element(data={"smiles": "CC"}, state={}, metadata={}),
-                    Element(data={"smiles": "CCC"}, state={}, metadata={}),
+                    Element(data={"smiles": "c1ccccc1"}, state={}, metadata={}),  # pyright: ignore[reportArgumentType]
+                    Element(data={"smiles": "invalid_smiles"}, state={}, metadata={}),  # pyright: ignore[reportArgumentType]
+                    Element(data={"smiles": "CC"}, state={}, metadata={}),  # pyright: ignore[reportArgumentType]
+                    Element(data={"smiles": "CCC"}, state={}, metadata={}),  # pyright: ignore[reportArgumentType]
                 ]
                 self._idx = 0
 

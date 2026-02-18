@@ -9,6 +9,7 @@ from pathlib import Path
 
 import jax.numpy as jnp
 import pytest
+from datarax.core.config import FrozenInstanceError
 
 
 # =============================================================================
@@ -102,7 +103,7 @@ class TestFastaSourceConfig:
         from diffbio.sources import FastaSourceConfig
 
         config = FastaSourceConfig(file_path=Path("/tmp/test.fasta"))
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             config.handle_n = "zero"
 
 

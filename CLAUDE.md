@@ -182,30 +182,111 @@ uv run mkdocs build
 ```
 src/diffbio/
 ├── __init__.py
-├── operators/              # Differentiable operators
-│   ├── __init__.py
-│   ├── quality_filter.py   # DifferentiableQualityFilter
-│   ├── alignment/          # Sequence alignment operators
-│   │   ├── __init__.py
-│   │   ├── smith_waterman.py  # SmoothSmithWaterman
-│   │   └── scoring.py      # Scoring matrices
-│   └── variant/            # Variant calling operators
-│       ├── __init__.py
-│       ├── pileup.py       # DifferentiablePileup
-│       └── classifier.py   # VariantClassifier
-├── pipelines/              # End-to-end pipelines
-│   ├── __init__.py
-│   └── variant_calling.py  # VariantCallingPipeline
-├── losses/                 # Loss functions
-│   ├── __init__.py
-│   ├── alignment_losses.py
-│   └── biological_regularization.py
-├── sequences/              # Sequence utilities
-│   ├── __init__.py
-│   └── dna.py
-└── utils/                  # Utilities
-    ├── __init__.py
-    └── training.py         # Training utilities
+├── configs.py                  # Shared operator configurations
+├── constants.py                # Global constants (alphabets, thresholds)
+├── core/                       # Core abstractions and shared components
+│   ├── base_operators.py       # Base operator classes
+│   ├── data_types.py           # Common data type definitions
+│   ├── differentiable_ops.py   # Reusable differentiable primitives
+│   └── neural_components.py    # Shared neural network building blocks
+├── operators/                  # Differentiable operators
+│   ├── quality_filter.py       # DifferentiableQualityFilter
+│   ├── alignment/              # Sequence alignment operators
+│   │   ├── smith_waterman.py   # SmoothSmithWaterman
+│   │   ├── scoring.py          # Scoring matrices
+│   │   ├── profile_hmm.py      # Profile HMM alignment
+│   │   └── soft_msa.py         # Soft multiple sequence alignment
+│   ├── variant/                # Variant calling operators
+│   │   ├── pileup.py           # DifferentiablePileup
+│   │   ├── classifier.py       # VariantClassifier
+│   │   ├── cnn_classifier.py   # CNN-based variant classifier
+│   │   ├── cnv_segmentation.py # Copy number variation segmentation
+│   │   ├── deepvariant_pileup.py # DeepVariant-style multi-channel pileup
+│   │   └── quality_recalibration.py # Base quality recalibration
+│   ├── drug_discovery/         # Molecular property prediction
+│   │   ├── primitives.py       # Graph/molecular primitives
+│   │   ├── message_passing.py  # GNN message passing layers
+│   │   ├── fingerprint.py      # Molecular fingerprints
+│   │   ├── maccs_keys.py       # MACCS structural keys
+│   │   ├── attentive_fp.py     # Attentive fingerprint model
+│   │   ├── admet_predictor.py  # ADMET property prediction
+│   │   ├── property_predictor.py # General property prediction
+│   │   └── similarity.py       # Molecular similarity operators
+│   ├── singlecell/             # Single-cell analysis operators
+│   │   ├── soft_clustering.py  # Differentiable clustering
+│   │   ├── batch_correction.py # Batch effect correction
+│   │   ├── ambient_removal.py  # Ambient RNA removal
+│   │   └── velocity.py         # RNA velocity estimation
+│   ├── epigenomics/            # Epigenomic analysis operators
+│   │   ├── peak_calling.py     # Differentiable peak calling
+│   │   └── chromatin_state.py  # Chromatin state annotation
+│   ├── rnaseq/                 # RNA-seq operators
+│   │   ├── splicing_psi.py     # Splicing PSI estimation
+│   │   └── motif_discovery.py  # Sequence motif discovery
+│   ├── normalization/          # Normalization and embedding operators
+│   │   ├── vae_normalizer.py   # VAE-based normalization
+│   │   ├── embedding.py        # Embedding operators
+│   │   └── umap.py             # Differentiable UMAP
+│   ├── statistical/            # Statistical model operators
+│   │   ├── hmm.py              # Hidden Markov model
+│   │   ├── em_quantification.py # EM-based quantification
+│   │   └── nb_glm.py           # Negative binomial GLM
+│   ├── language_models/        # Biological language models
+│   │   └── transformer_encoder.py # Transformer encoder for sequences
+│   ├── population/             # Population genetics operators
+│   │   └── ancestry_estimation.py # Ancestry estimation
+│   ├── assembly/               # Genome assembly operators
+│   │   ├── gnn_assembly.py     # GNN-based assembly
+│   │   └── metagenomic_binning.py # Metagenomic binning
+│   ├── molecular_dynamics/     # Molecular dynamics operators
+│   │   ├── primitives.py       # MD primitives
+│   │   ├── force_field.py      # Differentiable force fields
+│   │   └── integrator.py       # MD integrators
+│   ├── mapping/                # Read mapping operators
+│   │   └── neural_mapper.py    # Neural read mapper
+│   ├── preprocessing/          # Read preprocessing operators
+│   │   ├── adapter_removal.py  # Adapter trimming
+│   │   ├── duplicate_filter.py # Duplicate filtering
+│   │   └── error_correction.py # Sequencing error correction
+│   ├── protein/                # Protein analysis operators
+│   │   └── secondary_structure.py # Secondary structure prediction
+│   ├── rna_structure/          # RNA structure operators
+│   │   └── rna_folding.py      # RNA folding prediction
+│   ├── multiomics/             # Multi-omics integration operators
+│   │   ├── hic_contact.py      # Hi-C contact map analysis
+│   │   ├── spatial_deconvolution.py # Spatial deconvolution
+│   │   └── spatial_gene_detection.py # Spatial gene detection
+│   ├── metabolomics/           # Metabolomics operators
+│   │   └── spectral_similarity.py # Spectral similarity
+│   └── crispr/                 # CRISPR analysis operators
+│       └── guide_scoring.py    # Guide RNA scoring
+├── pipelines/                  # End-to-end pipelines
+│   ├── variant_calling.py      # VariantCallingPipeline
+│   ├── enhanced_variant_calling.py # Enhanced variant calling
+│   ├── differential_expression.py # Differential expression pipeline
+│   ├── single_cell.py          # Single-cell analysis pipeline
+│   └── preprocessing.py        # Read preprocessing pipeline
+├── sources/                    # Data source loaders
+│   ├── fasta.py                # FASTA file reader
+│   ├── bam.py                  # BAM file reader
+│   ├── molnet.py               # MoleculeNet dataset loader
+│   └── indexed_view.py         # Indexed data view abstraction
+├── splitters/                  # Dataset splitting strategies
+│   ├── base.py                 # Base splitter interface
+│   ├── random.py               # Random splitting
+│   ├── molecular.py            # Scaffold-based molecular splitting
+│   └── sequence.py             # Sequence-aware splitting
+├── losses/                     # Loss functions
+│   ├── alignment_losses.py     # Alignment-specific losses
+│   ├── biological_regularization.py # Biological constraint losses
+│   ├── singlecell_losses.py    # Single-cell analysis losses
+│   └── statistical_losses.py   # Statistical model losses
+├── sequences/                  # Sequence utilities
+│   └── dna.py                  # DNA encoding and manipulation
+└── utils/                      # Utilities
+    ├── training.py             # Training utilities (Trainer, TrainingConfig)
+    ├── nn_utils.py             # Neural network helper functions
+    └── quality.py              # Quality score utilities
 ```
 
 ### Key Design Principles

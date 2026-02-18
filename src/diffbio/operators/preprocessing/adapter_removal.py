@@ -131,7 +131,7 @@ class SoftAdapterRemoval(TemperatureOperator):
         scoring = self.scoring_matrix[...]
 
         # For each starting position, compute match score with adapter
-        def score_at_position(start_pos: int) -> Float[Array, ""]:
+        def score_at_position(start_pos: Array | int) -> Float[Array, ""]:
             """Compute alignment score for suffix starting at start_pos."""
             # Length of overlap
             overlap_len = jnp.minimum(seq_len - start_pos, adapter_len)
@@ -142,7 +142,7 @@ class SoftAdapterRemoval(TemperatureOperator):
             mask = positions < overlap_len
 
             # Compute scores for each position in the overlap
-            def score_position(pos: int) -> Float[Array, ""]:
+            def score_position(pos: Array | int) -> Float[Array, ""]:
                 seq_pos = start_pos + pos
                 # Handle out-of-bounds with zeros
                 valid = (seq_pos < seq_len) & (pos < adapter_len)

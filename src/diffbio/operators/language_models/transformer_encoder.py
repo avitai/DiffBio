@@ -326,6 +326,54 @@ class TransformerSequenceEncoder(SequenceOperator):
         return transformed_data, state, metadata
 
 
+def _create_sequence_encoder(
+    alphabet_size: int,
+    hidden_dim: int = 256,
+    num_layers: int = 4,
+    num_heads: int = 4,
+    intermediate_dim: int | None = None,
+    max_length: int = 512,
+    dropout_rate: float = 0.1,
+    pooling: Literal["mean", "cls"] = "mean",
+    *,
+    rngs: nnx.Rngs | None = None,
+) -> TransformerSequenceEncoder:
+    """Create a transformer sequence encoder with given alphabet size.
+
+    Args:
+        alphabet_size: Size of input alphabet (e.g., 4 for DNA/RNA).
+        hidden_dim: Dimension of hidden states.
+        num_layers: Number of transformer layers.
+        num_heads: Number of attention heads.
+        intermediate_dim: FFN intermediate dimension (default: 4 * hidden_dim).
+        max_length: Maximum sequence length.
+        dropout_rate: Dropout rate.
+        pooling: Pooling strategy.
+        rngs: Random number generators.
+
+    Returns:
+        Configured TransformerSequenceEncoder.
+    """
+    if intermediate_dim is None:
+        intermediate_dim = 4 * hidden_dim
+
+    if rngs is None:
+        rngs = nnx.Rngs(0)
+
+    config = TransformerSequenceEncoderConfig(
+        hidden_dim=hidden_dim,
+        num_layers=num_layers,
+        num_heads=num_heads,
+        intermediate_dim=intermediate_dim,
+        max_length=max_length,
+        alphabet_size=alphabet_size,
+        dropout_rate=dropout_rate,
+        pooling=pooling,
+    )
+
+    return TransformerSequenceEncoder(config, rngs=rngs)
+
+
 def create_dna_encoder(
     hidden_dim: int = 256,
     num_layers: int = 4,
@@ -362,24 +410,17 @@ def create_dna_encoder(
         result, _, _ = encoder.apply(data, {}, None)
         ```
     """
-    if intermediate_dim is None:
-        intermediate_dim = 4 * hidden_dim
-
-    if rngs is None:
-        rngs = nnx.Rngs(0)
-
-    config = TransformerSequenceEncoderConfig(
+    return _create_sequence_encoder(
+        alphabet_size=4,  # A, C, G, T
         hidden_dim=hidden_dim,
         num_layers=num_layers,
         num_heads=num_heads,
         intermediate_dim=intermediate_dim,
         max_length=max_length,
-        alphabet_size=4,  # A, C, G, T
         dropout_rate=dropout_rate,
         pooling=pooling,
+        rngs=rngs,
     )
-
-    return TransformerSequenceEncoder(config, rngs=rngs)
 
 
 def create_rna_encoder(
@@ -418,21 +459,14 @@ def create_rna_encoder(
         result, _, _ = encoder.apply(data, {}, None)
         ```
     """
-    if intermediate_dim is None:
-        intermediate_dim = 4 * hidden_dim
-
-    if rngs is None:
-        rngs = nnx.Rngs(0)
-
-    config = TransformerSequenceEncoderConfig(
+    return _create_sequence_encoder(
+        alphabet_size=4,  # A, C, G, U
         hidden_dim=hidden_dim,
         num_layers=num_layers,
         num_heads=num_heads,
         intermediate_dim=intermediate_dim,
         max_length=max_length,
-        alphabet_size=4,  # A, C, G, U
         dropout_rate=dropout_rate,
         pooling=pooling,
+        rngs=rngs,
     )
-
-    return TransformerSequenceEncoder(config, rngs=rngs)

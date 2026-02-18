@@ -160,7 +160,7 @@ class FastaSource(DataSourceModule):
             "file_path": str(self.config.file_path),
         }
 
-        return Element(data=data, state={}, metadata=metadata)
+        return Element(data=data, state={}, metadata=metadata)  # pyright: ignore[reportArgumentType]
 
     def __len__(self) -> int:
         """Return the number of sequences in the source."""

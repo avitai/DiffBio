@@ -435,6 +435,7 @@ class TestTrainerIntegration:
 
         assert "avg_loss" in metrics
         assert trainer.training_state.step == 1
+        assert trainer.training_state.loss_history is not None
         assert len(trainer.training_state.loss_history) == 1
 
     def test_loss_decreases_over_training(self, small_pipeline):
@@ -468,4 +469,5 @@ class TestTrainerIntegration:
 
         # Training should have run
         assert trainer.training_state.step > 0
+        assert trainer.training_state.loss_history is not None
         assert len(trainer.training_state.loss_history) > 0

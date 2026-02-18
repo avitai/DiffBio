@@ -99,7 +99,7 @@ class ScaffoldSplitter(SplitterModule):
             else:
                 try:
                     scaffold = self._MurckoScaffold.MurckoScaffoldSmiles(mol=mol)
-                except Exception:
+                except (ValueError, RuntimeError):
                     # Some molecules may not have a valid scaffold
                     scaffold = ""
 
@@ -254,7 +254,7 @@ class TanimotoClusterSplitter(SplitterModule):
                 return self._MACCSkeys.GenMACCSKeys(mol)
             else:
                 raise ValueError(f"Unknown fingerprint type: {self.config.fingerprint_type}")
-        except Exception:
+        except (ValueError, RuntimeError):
             return None
 
     def _compute_fingerprints(self, smiles_list: Sequence[str]) -> list[tuple[int, Any]]:

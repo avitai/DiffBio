@@ -11,6 +11,7 @@ Inherits from TemperatureOperator to get:
 """
 
 from dataclasses import dataclass
+from typing import Any
 
 import flax.nnx as nnx
 import jax
@@ -184,7 +185,9 @@ class DifferentiablePeakCaller(TemperatureOperator):
         # Local maximum detection kernel (for summit finding)
         self.summit_kernel_size = config.min_peak_width
 
-    def _soft_local_max(self, scores: jax.Array, window_size: int, temperature: float) -> jax.Array:
+    def _soft_local_max(
+        self, scores: jax.Array, window_size: int, temperature: jax.Array | float
+    ) -> jax.Array:
         """Compute soft local maximum indicator.
 
         Args:
@@ -246,8 +249,8 @@ class DifferentiablePeakCaller(TemperatureOperator):
 
     def apply(
         self,
-        data: dict,
-        state: dict,
+        data: dict[str, Any],
+        state: dict[str, Any],
         metadata: dict | None,
         random_params: dict | None = None,
         stats: dict | None = None,

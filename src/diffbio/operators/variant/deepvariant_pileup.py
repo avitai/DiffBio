@@ -135,6 +135,75 @@ class DeepVariantStylePileup(TemperatureOperator):
         """Return the number of output channels."""
         return self._num_channels
 
+    def _scatter_reads_to_image(
+        self,
+        values: Float[Array, "num_reads read_length ..."],
+        positions: Int[Array, "num_reads"],
+        read_length: int,
+    ) -> Float[Array, "max_reads window_size ..."]:
+        """Scatter per-read, per-position values into a 2D (or 3D) pileup image.
+
+        This is the generic helper that handles the common scan+fori_loop pattern
+        used by all channel computation methods. It processes reads one at a time
+        via lax.scan, and for each read scatters its values into the correct
+        window positions via lax.fori_loop.
+
+        Supports both scalar per-position values (image shape: max_reads x window_size)
+        and vector per-position values (image shape: max_reads x window_size x D).
+
+        Args:
+            values: Pre-computed values to scatter. Shape is either
+                (num_reads, read_length) for scalar channels or
+                (num_reads, read_length, D) for vector channels (e.g., one-hot bases).
+            positions: Starting position of each read in the window (num_reads,).
+            read_length: Length of each read.
+
+        Returns:
+            Image with scattered values. Shape is (max_reads, window_size) for
+            scalar values or (max_reads, window_size, D) for vector values.
+        """
+        config = self.config
+        is_vector = values.ndim == 3
+        if is_vector:
+            value_dim = values.shape[2]
+            image = jnp.zeros((config.max_reads, config.window_size, value_dim), dtype=jnp.float32)
+        else:
+            image = jnp.zeros((config.max_reads, config.window_size), dtype=jnp.float32)
+
+        def scatter_read(carry, read_data):
+            img, read_idx = carry
+            read_vals, pos = read_data
+
+            valid = read_idx < config.max_reads
+            read_positions = pos + jnp.arange(read_length)
+            in_bounds = (read_positions >= 0) & (read_positions < config.window_size)
+
+            def update_position(i, current_img):
+                pos_idx = jnp.clip(read_positions[i], 0, config.window_size - 1)
+                is_valid = valid & in_bounds[i]
+                if is_vector:
+                    return jnp.where(
+                        is_valid,
+                        current_img.at[read_idx, pos_idx, :].set(read_vals[i]),
+                        current_img,
+                    )
+                return jnp.where(
+                    is_valid,
+                    current_img.at[read_idx, pos_idx].set(read_vals[i]),
+                    current_img,
+                )
+
+            new_img = jax.lax.fori_loop(0, read_length, update_position, img)
+            return (new_img, read_idx + 1), None
+
+        (image, _), _ = jax.lax.scan(
+            scatter_read,
+            (image, 0),
+            (values, positions),
+        )
+
+        return image
+
     def compute_pileup_image(
         self,
         reads: Float[Array, "num_reads read_length 4"],
@@ -158,7 +227,6 @@ class DeepVariantStylePileup(TemperatureOperator):
             Pileup image of shape (max_reads, window_size, num_channels)
         """
         config = self.config
-        num_reads = reads.shape[0]
         read_length = reads.shape[1]
 
         # Initialize output image with zeros
@@ -172,36 +240,32 @@ class DeepVariantStylePileup(TemperatureOperator):
 
         # Base channels (4 channels for A, C, G, T)
         if config.include_base_channels:
-            base_image = self._compute_base_channels(reads, positions, num_reads, read_length)
+            base_image = self._compute_base_channels(reads, positions, read_length)
             pileup_image = pileup_image.at[:, :, channel_idx : channel_idx + 4].set(base_image)
             channel_idx += 4
 
         # Base quality channel
         if config.include_base_quality:
-            quality_image = self._compute_quality_channel(
-                base_qualities, positions, num_reads, read_length
-            )
+            quality_image = self._compute_quality_channel(base_qualities, positions, read_length)
             pileup_image = pileup_image.at[:, :, channel_idx].set(quality_image)
             channel_idx += 1
 
         # Mapping quality channel
         if config.include_mapping_quality:
-            mapq_image = self._compute_mapq_channel(
-                mapping_qualities, positions, num_reads, read_length
-            )
+            mapq_image = self._compute_mapq_channel(mapping_qualities, positions, read_length)
             pileup_image = pileup_image.at[:, :, channel_idx].set(mapq_image)
             channel_idx += 1
 
         # Strand channel
         if config.include_strand:
-            strand_image = self._compute_strand_channel(strands, positions, num_reads, read_length)
+            strand_image = self._compute_strand_channel(strands, positions, read_length)
             pileup_image = pileup_image.at[:, :, channel_idx].set(strand_image)
             channel_idx += 1
 
         # Supports variant channel
         if config.include_supports_variant:
             variant_image = self._compute_variant_support_channel(
-                reads, reference, positions, num_reads, read_length
+                reads, reference, positions, read_length
             )
             pileup_image = pileup_image.at[:, :, channel_idx].set(variant_image)
             channel_idx += 1
@@ -209,7 +273,7 @@ class DeepVariantStylePileup(TemperatureOperator):
         # Differs from reference channel
         if config.include_differs_from_ref:
             diff_image = self._compute_diff_from_ref_channel(
-                reads, reference, positions, num_reads, read_length
+                reads, reference, positions, read_length
             )
             pileup_image = pileup_image.at[:, :, channel_idx].set(diff_image)
             channel_idx += 1
@@ -220,189 +284,61 @@ class DeepVariantStylePileup(TemperatureOperator):
         self,
         reads: Float[Array, "num_reads read_length 4"],
         positions: Int[Array, "num_reads"],
-        num_reads: int,  # noqa: ARG002
         read_length: int,
     ) -> Float[Array, "max_reads window_size 4"]:
         """Compute base identity channels (one-hot A/C/G/T).
 
         Places each read's bases at the correct position in the image.
+        Values are the one-hot base vectors from the reads directly.
         """
-        config = self.config
-        base_image = jnp.zeros((config.max_reads, config.window_size, 4), dtype=jnp.float32)
-
-        # For each read, scatter its bases to the correct positions
-        def scatter_read(carry, read_data):
-            image, read_idx = carry
-            read_bases, pos = read_data
-
-            # Only process if within max_reads
-            valid = read_idx < config.max_reads
-
-            # Create position indices for this read
-            read_positions = pos + jnp.arange(read_length)
-
-            # Mask positions outside window
-            in_bounds = (read_positions >= 0) & (read_positions < config.window_size)
-
-            # Use lax.fori_loop for efficiency
-            def update_image(i, img):
-                pos_idx = jnp.clip(read_positions[i], 0, config.window_size - 1)
-                base_vec = read_bases[i]
-                is_valid = valid & in_bounds[i]
-                return jnp.where(
-                    is_valid,
-                    img.at[read_idx, pos_idx, :].set(base_vec),
-                    img,
-                )
-
-            new_image = jax.lax.fori_loop(0, read_length, update_image, image)
-            return (new_image, read_idx + 1), None
-
-        # Process all reads
-        (base_image, _), _ = jax.lax.scan(
-            scatter_read,
-            (base_image, 0),
-            (reads, positions),
-        )
-
-        return base_image
+        return self._scatter_reads_to_image(reads, positions, read_length)
 
     def _compute_quality_channel(
         self,
         base_qualities: Float[Array, "num_reads read_length"],
         positions: Int[Array, "num_reads"],
-        num_reads: int,  # noqa: ARG002
         read_length: int,
     ) -> Float[Array, "max_reads window_size"]:
         """Compute base quality channel normalized to [0, 1]."""
-        config = self.config
-        quality_image = jnp.zeros((config.max_reads, config.window_size), dtype=jnp.float32)
-
-        # Normalize quality scores
-        normalized_qual = jnp.clip(base_qualities / config.quality_max, 0.0, 1.0)
-
-        def scatter_quality(carry, read_data):
-            image, read_idx = carry
-            qual, pos = read_data
-
-            valid = read_idx < config.max_reads
-            read_positions = pos + jnp.arange(read_length)
-            in_bounds = (read_positions >= 0) & (read_positions < config.window_size)
-
-            def update_image(i, img):
-                pos_idx = jnp.clip(read_positions[i], 0, config.window_size - 1)
-                qual_val = qual[i]
-                is_valid = valid & in_bounds[i]
-                return jnp.where(
-                    is_valid,
-                    img.at[read_idx, pos_idx].set(qual_val),
-                    img,
-                )
-
-            new_image = jax.lax.fori_loop(0, read_length, update_image, image)
-            return (new_image, read_idx + 1), None
-
-        (quality_image, _), _ = jax.lax.scan(
-            scatter_quality,
-            (quality_image, 0),
-            (normalized_qual, positions),
-        )
-
-        return quality_image
+        normalized_qual = jnp.clip(base_qualities / self.config.quality_max, 0.0, 1.0)
+        return self._scatter_reads_to_image(normalized_qual, positions, read_length)
 
     def _compute_mapq_channel(
         self,
         mapping_qualities: Float[Array, "num_reads"],
         positions: Int[Array, "num_reads"],
-        num_reads: int,  # noqa: ARG002
         read_length: int,
     ) -> Float[Array, "max_reads window_size"]:
         """Compute mapping quality channel normalized to [0, 1].
 
-        MAPQ is constant across a read, so we fill the entire read span.
+        MAPQ is constant across a read, so we broadcast to all positions.
         """
-        config = self.config
-        mapq_image = jnp.zeros((config.max_reads, config.window_size), dtype=jnp.float32)
-
-        # Normalize mapping quality
-        normalized_mapq = jnp.clip(mapping_qualities / config.mapq_max, 0.0, 1.0)
-
-        def scatter_mapq(carry, read_data):
-            image, read_idx = carry
-            mapq, pos = read_data
-
-            valid = read_idx < config.max_reads
-            read_positions = pos + jnp.arange(read_length)
-            in_bounds = (read_positions >= 0) & (read_positions < config.window_size)
-
-            def update_image(i, img):
-                pos_idx = jnp.clip(read_positions[i], 0, config.window_size - 1)
-                is_valid = valid & in_bounds[i]
-                return jnp.where(
-                    is_valid,
-                    img.at[read_idx, pos_idx].set(mapq),
-                    img,
-                )
-
-            new_image = jax.lax.fori_loop(0, read_length, update_image, image)
-            return (new_image, read_idx + 1), None
-
-        (mapq_image, _), _ = jax.lax.scan(
-            scatter_mapq,
-            (mapq_image, 0),
-            (normalized_mapq, positions),
+        normalized_mapq = jnp.clip(mapping_qualities / self.config.mapq_max, 0.0, 1.0)
+        # Broadcast constant MAPQ to all positions: (num_reads,) -> (num_reads, read_length)
+        mapq_per_position = jnp.broadcast_to(
+            normalized_mapq[:, None], (normalized_mapq.shape[0], read_length)
         )
-
-        return mapq_image
+        return self._scatter_reads_to_image(mapq_per_position, positions, read_length)
 
     def _compute_strand_channel(
         self,
         strands: Float[Array, "num_reads"],
         positions: Int[Array, "num_reads"],
-        num_reads: int,  # noqa: ARG002
         read_length: int,
     ) -> Float[Array, "max_reads window_size"]:
         """Compute strand channel (0=forward, 1=reverse).
 
-        Strand is constant across a read.
+        Strand is constant across a read, so we broadcast to all positions.
         """
-        config = self.config
-        strand_image = jnp.zeros((config.max_reads, config.window_size), dtype=jnp.float32)
-
-        def scatter_strand(carry, read_data):
-            image, read_idx = carry
-            strand, pos = read_data
-
-            valid = read_idx < config.max_reads
-            read_positions = pos + jnp.arange(read_length)
-            in_bounds = (read_positions >= 0) & (read_positions < config.window_size)
-
-            def update_image(i, img):
-                pos_idx = jnp.clip(read_positions[i], 0, config.window_size - 1)
-                is_valid = valid & in_bounds[i]
-                return jnp.where(
-                    is_valid,
-                    img.at[read_idx, pos_idx].set(strand),
-                    img,
-                )
-
-            new_image = jax.lax.fori_loop(0, read_length, update_image, image)
-            return (new_image, read_idx + 1), None
-
-        (strand_image, _), _ = jax.lax.scan(
-            scatter_strand,
-            (strand_image, 0),
-            (strands, positions),
-        )
-
-        return strand_image
+        # Broadcast constant strand to all positions: (num_reads,) -> (num_reads, read_length)
+        strand_per_position = jnp.broadcast_to(strands[:, None], (strands.shape[0], read_length))
+        return self._scatter_reads_to_image(strand_per_position, positions, read_length)
 
     def _compute_variant_support_channel(
         self,
         reads: Float[Array, "num_reads read_length 4"],
         reference: Float[Array, "window_size 4"],
         positions: Int[Array, "num_reads"],
-        num_reads: int,  # noqa: ARG002
         read_length: int,
     ) -> Float[Array, "max_reads window_size"]:
         """Compute variant support channel.
@@ -410,54 +346,27 @@ class DeepVariantStylePileup(TemperatureOperator):
         This is a soft indicator of whether a read base differs from reference,
         which can indicate support for a variant allele.
 
-        Uses soft comparison for differentiability.
+        Uses soft comparison for differentiability: mismatch = 1 - dot(read, ref).
         """
-        config = self.config
-        variant_image = jnp.zeros((config.max_reads, config.window_size), dtype=jnp.float32)
+        # Pre-compute mismatch values for all reads and positions
+        # ref_positions[r, i] = positions[r] + i
+        ref_positions = positions[:, None] + jnp.arange(read_length)[None, :]
+        clipped_ref_positions = jnp.clip(ref_positions, 0, self.config.window_size - 1)
 
-        def scatter_variant(carry, read_data):
-            image, read_idx = carry
-            read_bases, pos = read_data
+        # Look up reference bases at each position: (num_reads, read_length, 4)
+        ref_bases = reference[clipped_ref_positions]
 
-            valid = read_idx < config.max_reads
-            read_positions = pos + jnp.arange(read_length)
-            in_bounds = (read_positions >= 0) & (read_positions < config.window_size)
+        # Soft mismatch: 1 - dot product of one-hot vectors
+        match_scores = jnp.sum(reads * ref_bases, axis=-1)  # (num_reads, read_length)
+        mismatch_values = 1.0 - match_scores
 
-            def update_image(i, img):
-                pos_idx = jnp.clip(read_positions[i], 0, config.window_size - 1)
-                read_base = read_bases[i]  # One-hot (4,)
-                ref_base = reference[pos_idx]  # One-hot (4,)
-
-                # Soft mismatch: 1 - dot product of one-hot vectors
-                # If bases match, dot product = 1, mismatch = 0
-                # If bases differ, dot product = 0, mismatch = 1
-                match_score = jnp.sum(read_base * ref_base)
-                mismatch = 1.0 - match_score
-
-                is_valid = valid & in_bounds[i]
-                return jnp.where(
-                    is_valid,
-                    img.at[read_idx, pos_idx].set(mismatch),
-                    img,
-                )
-
-            new_image = jax.lax.fori_loop(0, read_length, update_image, image)
-            return (new_image, read_idx + 1), None
-
-        (variant_image, _), _ = jax.lax.scan(
-            scatter_variant,
-            (variant_image, 0),
-            (reads, positions),
-        )
-
-        return variant_image
+        return self._scatter_reads_to_image(mismatch_values, positions, read_length)
 
     def _compute_diff_from_ref_channel(
         self,
         reads: Float[Array, "num_reads read_length 4"],
         reference: Float[Array, "window_size 4"],
         positions: Int[Array, "num_reads"],
-        num_reads: int,
         read_length: int,
     ) -> Float[Array, "max_reads window_size"]:
         """Compute 'differs from reference' channel.
@@ -467,9 +376,7 @@ class DeepVariantStylePileup(TemperatureOperator):
         """
         # For standard pileups, this is the same as variant support
         # DeepVariant distinguishes them for multi-allelic calling
-        return self._compute_variant_support_channel(
-            reads, reference, positions, num_reads, read_length
-        )
+        return self._compute_variant_support_channel(reads, reference, positions, read_length)
 
     def apply(
         self,

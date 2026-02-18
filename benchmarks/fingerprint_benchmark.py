@@ -160,7 +160,7 @@ def test_ecfp_fingerprints(molecules: list[tuple[str, str]]) -> dict:
     metrics["time_ms"] = elapsed_ms
     metrics["mols_per_sec"] = len(fingerprints) / (elapsed_ms / 1000)
     metrics["gradient_norm"] = gradient_norm
-    metrics["fingerprints"] = fingerprints
+    metrics["fingerprints"] = fingerprints  # pyright: ignore[reportArgumentType]
 
     print(f"    Size: {metrics['size']}, Density: {metrics['density']:.3f}")
     print(f"    Time: {elapsed_ms:.2f}ms ({metrics['mols_per_sec']:.1f} mol/s)")
@@ -214,7 +214,7 @@ def test_maccs_fingerprints(molecules: list[tuple[str, str]]) -> dict:
     metrics["time_ms"] = elapsed_ms
     metrics["mols_per_sec"] = len(fingerprints) / (elapsed_ms / 1000)
     metrics["gradient_norm"] = gradient_norm
-    metrics["fingerprints"] = fingerprints
+    metrics["fingerprints"] = fingerprints  # pyright: ignore[reportArgumentType]
 
     print(f"    Size: {metrics['size']}, Density: {metrics['density']:.3f}")
     print(f"    Time: {elapsed_ms:.2f}ms ({metrics['mols_per_sec']:.1f} mol/s)")
@@ -274,7 +274,7 @@ def test_neural_fingerprints(molecules: list[tuple[str, str]]) -> dict:
     metrics["time_ms"] = elapsed_ms
     metrics["mols_per_sec"] = len(fingerprints) / (elapsed_ms / 1000)
     metrics["gradient_norm"] = gradient_norm
-    metrics["fingerprints"] = fingerprints
+    metrics["fingerprints"] = fingerprints  # pyright: ignore[reportArgumentType]
 
     print(f"    Size: {metrics['size']}, L2 norm: ~1.0 (normalized)")
     print(f"    Time: {elapsed_ms:.2f}ms ({metrics['mols_per_sec']:.1f} mol/s)")

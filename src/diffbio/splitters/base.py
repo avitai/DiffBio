@@ -201,7 +201,10 @@ class SplitterModule(StructuralModule):
             valid_elements = [data_source[int(i)] for i in split_result.valid_indices]
             test_elements = [data_source[int(i)] for i in split_result.test_indices]
 
-            train_config = MemorySourceConfig(shuffle=True, seed=self.config.seed)
+            train_config = MemorySourceConfig(
+                shuffle=True,
+                seed=self.config.seed,  # pyright: ignore[reportCallIssue]
+            )
             valid_config = MemorySourceConfig(shuffle=False)
             test_config = MemorySourceConfig(shuffle=False)
 

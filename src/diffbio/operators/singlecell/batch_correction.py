@@ -196,11 +196,6 @@ class DifferentiableHarmony(TemperatureOperator):
         batch_onehot = jax.nn.one_hot(batch_labels, self.n_batches)
         global_batch_props = jnp.mean(batch_onehot, axis=0)  # (n_batches,)
 
-        # Compute diversity correction factor
-        # Higher diversity penalty for clusters with skewed batch composition
-        # Note: diversity_penalty could be used for additional regularization
-        _diversity = 1.0 - jnp.sum(batch_props**2, axis=-1)  # (n_clusters,)
-
         # Compute correction direction for each cell
         # Move cells toward cluster centroids weighted by assignment and batch correction
         weighted_centroids = jnp.einsum(

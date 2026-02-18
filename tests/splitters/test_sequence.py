@@ -29,7 +29,7 @@ class MockSequenceSource(DataSourceModule):
             Element(
                 data={"sequence": seq, "label": i % 2},
                 state={},
-                metadata={"idx": i},
+                metadata={"idx": i},  # pyright: ignore[reportArgumentType]
             )
             for i, seq in enumerate(sequences)
         ]
@@ -253,7 +253,7 @@ class TestSequenceIdentitySplitter:
                     Element(
                         data={"protein_seq": seq},
                         state={},
-                        metadata={},
+                        metadata={},  # pyright: ignore[reportArgumentType]
                     )
                     for seq in sequences
                 ]

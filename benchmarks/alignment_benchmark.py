@@ -257,7 +257,7 @@ def run_benchmark() -> AlignmentBenchmarkResult:
     # Compile results
     result = AlignmentBenchmarkResult(
         timestamp=datetime.now().isoformat(),
-        **accuracy_results,
+        **accuracy_results,  # pyright: ignore[reportArgumentType]
         **diff_results,
         temperature_scores=temp_results,
         **perf_results,

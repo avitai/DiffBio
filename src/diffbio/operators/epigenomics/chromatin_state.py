@@ -15,6 +15,7 @@ categorical emissions.
 """
 
 from dataclasses import dataclass
+from typing import Any
 
 import flax.nnx as nnx
 import jax
@@ -312,8 +313,8 @@ class ChromatinStateAnnotator(TemperatureOperator):
 
     def apply(
         self,
-        data: dict,
-        state: dict,
+        data: dict[str, Any],
+        state: dict[str, Any],
         metadata: dict | None,
         random_params: dict | None = None,
         stats: dict | None = None,

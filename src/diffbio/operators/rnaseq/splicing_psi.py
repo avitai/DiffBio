@@ -11,6 +11,7 @@ Inherits from TemperatureOperator to get:
 """
 
 from dataclasses import dataclass
+from typing import Any
 
 import flax.nnx as nnx
 import jax
@@ -85,7 +86,7 @@ class SplicingPSI(TemperatureOperator):
         # Temperature is managed by TemperatureOperator via self._temperature
 
     def _compute_psi(
-        self, inclusion: jax.Array, exclusion: jax.Array, pseudocount: float
+        self, inclusion: jax.Array, exclusion: jax.Array, pseudocount: jax.Array | float
     ) -> jax.Array:
         """Compute PSI with pseudocount for numerical stability.
 
@@ -107,7 +108,7 @@ class SplicingPSI(TemperatureOperator):
         return psi
 
     def _compute_confidence(
-        self, inclusion: jax.Array, exclusion: jax.Array, temperature: float
+        self, inclusion: jax.Array, exclusion: jax.Array, temperature: jax.Array | float
     ) -> jax.Array:
         """Compute confidence in PSI estimate based on read coverage.
 
@@ -155,8 +156,8 @@ class SplicingPSI(TemperatureOperator):
 
     def apply(
         self,
-        data: dict,
-        state: dict,
+        data: dict[str, Any],
+        state: dict[str, Any],
         metadata: dict | None,
         random_params: dict | None = None,
         stats: dict | None = None,

@@ -22,6 +22,7 @@ from jaxtyping import Array, Float
 
 from diffbio.constants import ClassifierType
 from diffbio.utils.nn_utils import extract_windows_1d
+from diffbio.utils.quality import apply_quality_filter
 from diffbio.operators.quality_filter import (
     DifferentiableQualityFilter,
     QualityFilterConfig,
@@ -212,7 +213,7 @@ class VariantCallingPipeline(OperatorModule):
 
         # Step 1: Quality-weighted filtering
         # Apply quality filter to each read position
-        filtered_reads, filtered_quality = self._apply_quality_filter(reads, quality)
+        filtered_reads, filtered_quality = apply_quality_filter(self.quality_filter, reads, quality)
 
         # Step 2: Generate pileup
         pileup_data = {
@@ -247,31 +248,6 @@ class VariantCallingPipeline(OperatorModule):
             output_data["mean_quality"] = mean_quality
 
         return output_data, state, metadata
-
-    def _apply_quality_filter(
-        self,
-        reads: Float[Array, "num_reads read_length 4"],
-        quality: Float[Array, "num_reads read_length"],
-    ) -> tuple[Float[Array, "num_reads read_length 4"], Float[Array, "num_reads read_length"]]:
-        """Apply quality filtering to reads.
-
-        Uses the differentiable quality filter to soft-mask low-quality bases.
-        """
-        num_reads, read_length, _ = reads.shape
-
-        # Flatten for quality filter (treats each base independently)
-        reads_flat = reads.reshape(-1, 4)
-        quality_flat = quality.reshape(-1)
-
-        # Apply filter
-        filter_data = {"sequence": reads_flat, "quality_scores": quality_flat}
-        filtered_result, _, _ = self.quality_filter.apply(filter_data, {}, None)
-
-        # Reshape back
-        filtered_reads = filtered_result["sequence"].reshape(num_reads, read_length, 4)
-        filtered_quality = filtered_result["quality_scores"].reshape(num_reads, read_length)
-
-        return filtered_reads, filtered_quality
 
     def _classify_positions(
         self,

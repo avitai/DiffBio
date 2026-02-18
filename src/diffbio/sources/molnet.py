@@ -260,6 +260,7 @@ class MolNetSource(DataSourceModule):
         Returns:
             List of Element objects
         """
+        import contextlib
         import gzip
 
         smiles_col = dataset_info["smiles_col"]
@@ -267,13 +268,17 @@ class MolNetSource(DataSourceModule):
 
         elements: list[Element] = []
 
-        # Handle gzipped files
-        if str(data_path).endswith(".gz"):
-            file_handle = gzip.open(data_path, "rt", newline="", encoding="utf-8")
-        else:
-            file_handle = open(data_path, newline="", encoding="utf-8")
+        # Handle gzipped files using context manager via ExitStack
+        with contextlib.ExitStack() as stack:
+            if str(data_path).endswith(".gz"):
+                file_handle = stack.enter_context(
+                    gzip.open(data_path, "rt", newline="", encoding="utf-8")
+                )
+            else:
+                file_handle = stack.enter_context(
+                    open(data_path, newline="", encoding="utf-8")  # noqa: SIM115
+                )
 
-        try:
             reader = csv.DictReader(file_handle)
 
             # If label_cols is None, use all columns except smiles
@@ -285,8 +290,6 @@ class MolNetSource(DataSourceModule):
                 reader = csv.DictReader(file_handle)
 
             all_rows = list(reader)
-        finally:
-            file_handle.close()
 
         # Apply random split (80/10/10)
         n_total = len(all_rows)
@@ -325,7 +328,10 @@ class MolNetSource(DataSourceModule):
             element = Element(
                 data={"smiles": smiles, "y": y},
                 state={},
-                metadata={"idx": idx, "dataset": self.config.dataset_name},
+                metadata={  # pyright: ignore[reportArgumentType]
+                    "idx": idx,
+                    "dataset": self.config.dataset_name,
+                },
             )
             elements.append(element)
 
