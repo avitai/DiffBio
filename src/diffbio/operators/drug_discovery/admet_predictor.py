@@ -20,7 +20,10 @@ from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 
-from diffbio.operators.drug_discovery.message_passing import StackedMessagePassing
+from diffbio.operators.drug_discovery._graph_utils import (
+    graph_sum_readout,
+    initialize_graph_encoder,
+)
 
 # Standard TDC ADMET benchmark task names (22 tasks)
 ADMET_TASK_NAMES: list[str] = [
@@ -87,6 +90,7 @@ ADMET_TASK_TYPES: dict[str, str] = {
 
 @dataclass
 class ADMETConfig(OperatorConfig):
+    # pylint: disable=too-many-instance-attributes
     """Configuration for ADMET property predictor.
 
     Attributes:
@@ -163,21 +167,14 @@ class ADMETPredictor(OperatorModule):
             rngs: Flax NNX random number generators.
         """
         super().__init__(config, rngs=rngs)
-        self.config: ADMETConfig = config
 
-        # Fix: wrap _unique_id as static for jax.grad compatibility
-        self._unique_id = nnx.static(self._unique_id)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
-
-        # Message passing encoder
-        self.encoder = StackedMessagePassing(
+        rngs = initialize_graph_encoder(
+            self,
+            rngs=rngs,
             hidden_dim=config.hidden_dim,
             num_layers=config.num_message_passing_steps,
             in_features=config.in_features,
             num_edge_features=config.num_edge_features,
-            rngs=rngs,
         )
 
         # FFN hidden dim defaults to hidden_dim
@@ -229,24 +226,7 @@ class ADMETPredictor(OperatorModule):
         """
         del random_params, stats  # Unused
 
-        node_features = data["node_features"]
-        adjacency = data["adjacency"]
-        edge_features = data.get("edge_features")
-        node_mask = data.get("node_mask")
-
-        # Message passing to get node representations
-        node_hidden = self.encoder(node_features, adjacency, edge_features)
-
-        # Apply node mask if provided
-        if node_mask is not None:
-            node_hidden = node_hidden * node_mask[:, None]
-
-        # Graph-level readout: sum pooling
-        graph_repr = jnp.sum(node_hidden, axis=0)
-
-        # Apply dropout
-        if self.dropout is not None:
-            graph_repr = self.dropout(graph_repr)
+        graph_repr = graph_sum_readout(data, self.encoder, dropout=self.dropout)
 
         # Shared FFN layers
         h = graph_repr

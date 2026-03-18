@@ -92,16 +92,14 @@ class SoftKMeansClustering(TemperatureOperator):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        if rngs is None:
-            rngs = nnx.Rngs(0)
-
-        self.n_clusters = config.n_clusters
-        self.n_features = config.n_features
+        rngs = rngs or nnx.Rngs(0)
+        self.cluster_shape = nnx.static((config.n_clusters, config.n_features))
+        self.n_clusters, self.n_features = self.cluster_shape
         # Temperature is now managed by TemperatureOperator via self._temperature
 
         # Initialize cluster centroids
         key = rngs.params()
-        init_centroids = jax.random.normal(key, (config.n_clusters, config.n_features)) * 0.1
+        init_centroids = jax.random.normal(key, self.cluster_shape) * 0.1
         self.centroids = nnx.Param(init_centroids)
 
     def compute_distances(

@@ -115,11 +115,9 @@ class GraphAttentionLayer(nnx.Module):
             rngs=rngs,
         )
 
-        # Dropout
-        if dropout_rate > 0:
-            self.dropout = nnx.Dropout(rate=dropout_rate, rngs=rngs)
-        else:
-            self.dropout = None
+        self.dropout = (
+            nnx.Dropout(rate=dropout_rate, rngs=rngs) if dropout_rate > 0 else None
+        )
 
     def __call__(
         self,
@@ -129,13 +127,13 @@ class GraphAttentionLayer(nnx.Module):
         *,
         deterministic: bool = True,
     ) -> Float[Array, "n_nodes out_features"]:
-        """Apply graph attention.
+        """Run one graph-attention update step.
 
         Args:
             node_features: Node feature matrix.
             edge_index: Edge indices (source, target).
             edge_features: Edge feature matrix.
-            deterministic: If True, disable dropout.
+            deterministic: Whether to disable stochastic dropout.
 
         Returns:
             Updated node features.

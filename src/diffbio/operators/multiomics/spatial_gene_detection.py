@@ -26,6 +26,7 @@ from diffbio.core.base_operators import TemperatureOperator
 
 @dataclass
 class SpatialGeneDetectorConfig(OperatorConfig):
+    # pylint: disable=too-many-instance-attributes
     """Configuration for spatial gene detection.
 
     Attributes:

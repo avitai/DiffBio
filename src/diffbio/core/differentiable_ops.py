@@ -63,7 +63,7 @@ def logsumexp_smooth_max(
 
 def soft_argmax(
     logits: Float[Array, "..."],
-    temperature: float = DEFAULT_TEMPERATURE,
+    temperature: float | Float[Array, ""] = DEFAULT_TEMPERATURE,
     axis: int = -1,
 ) -> Float[Array, "..."]:
     """Compute soft argmax using weighted position sum.

@@ -4,6 +4,8 @@ Test-driven development: These tests define the expected behavior.
 Implementation must pass these tests without modification.
 """
 
+import urllib.error
+
 import pytest
 from datarax.core.config import FrozenInstanceError
 
@@ -336,3 +338,72 @@ class TestMolNetSourceCaching:
 
         with pytest.raises((FileNotFoundError, ValueError)):
             MolNetSource(config)
+
+
+class TestMolNetSourceOfflineBehavior:
+    """Tests for deterministic offline behavior."""
+
+    def test_falls_back_to_builtin_data_when_download_fails(self, tmp_path, monkeypatch):
+        """Test fallback dataset is used when network download fails."""
+        from diffbio.sources import MolNetSource, MolNetSourceConfig
+        from diffbio.sources import molnet as molnet_module
+
+        def _raise_url_error(*_args, **_kwargs):
+            raise urllib.error.URLError("offline")
+
+        monkeypatch.setattr(molnet_module.MolNetSource, "_download_dataset", _raise_url_error)
+
+        config = MolNetSourceConfig(
+            dataset_name="freesolv",
+            split="train",
+            data_dir=tmp_path,
+            download=True,
+        )
+        with pytest.warns(RuntimeWarning, match="built-in fallback sample"):
+            source = MolNetSource(config)
+
+        fallback_path = tmp_path / "freesolv" / "SAMPL.csv"
+        assert fallback_path.exists()
+        assert len(source) == 16  # 80% of the 20-row fallback dataset
+        first = source[0]
+        assert first is not None
+        assert "smiles" in first.data
+        assert "y" in first.data
+
+    def test_prefers_default_cache_before_network(self, tmp_path, monkeypatch):
+        """Test source copies cached dataset from ~/.diffbio before downloading."""
+        from diffbio.sources import MolNetSource, MolNetSourceConfig
+        from diffbio.sources import molnet as molnet_module
+
+        fake_home = tmp_path / "fake_home"
+        cached_path = fake_home / ".diffbio" / "molnet" / "esol" / "delaney-processed.csv"
+        cached_path.parent.mkdir(parents=True, exist_ok=True)
+        cached_path.write_text(
+            "smiles,measured log solubility in mols per litre\nCCO,-0.50\nCCN,-0.20\n",
+            encoding="utf-8",
+        )
+
+        monkeypatch.setattr(
+            molnet_module.Path,
+            "home",
+            classmethod(lambda _cls: fake_home),
+        )
+
+        def _fail_download(*_args, **_kwargs):
+            raise AssertionError("Download should not be called when default cache exists.")
+
+        monkeypatch.setattr(molnet_module.MolNetSource, "_download_dataset", _fail_download)
+
+        local_data_dir = tmp_path / "local_molnet"
+        config = MolNetSourceConfig(
+            dataset_name="esol",
+            split="train",
+            data_dir=local_data_dir,
+            download=True,
+        )
+        source = MolNetSource(config)
+
+        copied_path = local_data_dir / "esol" / "delaney-processed.csv"
+        assert copied_path.exists()
+        assert copied_path.read_text(encoding="utf-8") == cached_path.read_text(encoding="utf-8")
+        assert len(source) == 1

@@ -97,8 +97,6 @@ class DifferentiableMetagenomicBinner(EncoderDecoderOperator):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        self.config: MetagenomicBinnerConfig = config
-
         input_dim = config.n_tnf_features + config.n_abundance_features
 
         # Build encoder (using nnx.List for proper pytree handling)
@@ -112,8 +110,12 @@ class DifferentiableMetagenomicBinner(EncoderDecoderOperator):
         self.encoder_linear = nnx.List(encoder_linear)
         self.encoder_bn = nnx.List(encoder_bn)
         self.encoder_dropout = nnx.Dropout(rate=config.dropout_rate, rngs=rngs)
-        self.fc_mu = nnx.Linear(config.hidden_dims[-1], config.latent_dim, rngs=rngs)
-        self.fc_logvar = nnx.Linear(config.hidden_dims[-1], config.latent_dim, rngs=rngs)
+        self.fc_latent = nnx.List(
+            [
+                nnx.Linear(config.hidden_dims[-1], config.latent_dim, rngs=rngs),
+                nnx.Linear(config.hidden_dims[-1], config.latent_dim, rngs=rngs),
+            ]
+        )
 
         # Build decoder (using nnx.List for proper pytree handling)
         decoder_linear = []
@@ -126,9 +128,11 @@ class DifferentiableMetagenomicBinner(EncoderDecoderOperator):
         self.decoder_linear = nnx.List(decoder_linear)
         self.decoder_bn = nnx.List(decoder_bn)
         self.decoder_dropout = nnx.Dropout(rate=config.dropout_rate, rngs=rngs)
-        self.fc_tnf = nnx.Linear(config.hidden_dims[0], config.n_tnf_features, rngs=rngs)
-        self.fc_abundance = nnx.Linear(
-            config.hidden_dims[0], config.n_abundance_features, rngs=rngs
+        self.decoder_heads = nnx.List(
+            [
+                nnx.Linear(config.hidden_dims[0], config.n_tnf_features, rngs=rngs),
+                nnx.Linear(config.hidden_dims[0], config.n_abundance_features, rngs=rngs),
+            ]
         )
 
         # Learnable cluster centroids
@@ -157,8 +161,9 @@ class DifferentiableMetagenomicBinner(EncoderDecoderOperator):
             h = nnx.relu(h)
             h = self.encoder_dropout(h)
 
-        mu = self.fc_mu(h)
-        logvar = self.fc_logvar(h)
+        fc_mu, fc_logvar = self.fc_latent
+        mu = fc_mu(h)
+        logvar = fc_logvar(h)
         return mu, logvar
 
     def decode(
@@ -179,10 +184,11 @@ class DifferentiableMetagenomicBinner(EncoderDecoderOperator):
             h = nnx.relu(h)
             h = self.decoder_dropout(h)
 
+        fc_tnf, fc_abundance = self.decoder_heads
         # TNF uses softmax (frequencies sum to 1)
-        tnf_recon = nnx.softmax(self.fc_tnf(h), axis=-1)
+        tnf_recon = nnx.softmax(fc_tnf(h), axis=-1)
         # Abundance uses softplus (positive values)
-        abundance_recon = nnx.softplus(self.fc_abundance(h))
+        abundance_recon = nnx.softplus(fc_abundance(h))
 
         return tnf_recon, abundance_recon
 

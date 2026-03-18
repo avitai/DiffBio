@@ -39,6 +39,7 @@ from diffbio.operators.variant import (
 
 @dataclass
 class VariantCallingPipelineConfig(OperatorConfig):
+    # pylint: disable=too-many-instance-attributes
     """Configuration for the variant calling pipeline.
 
     Attributes:
@@ -112,9 +113,6 @@ class VariantCallingPipeline(OperatorModule):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        # Store typed config for attribute access
-        self.pipeline_config: VariantCallingPipelineConfig = config
-
         # Initialize sub-operators
         # 1. Quality filter for preprocessing reads
         self.quality_filter = DifferentiableQualityFilter(
@@ -151,7 +149,6 @@ class VariantCallingPipeline(OperatorModule):
                 ),
                 rngs=rngs,
             )
-            self._use_cnn = True
         else:
             # MLP classifier
             self.classifier = VariantClassifier(
@@ -162,7 +159,6 @@ class VariantCallingPipeline(OperatorModule):
                 ),
                 rngs=rngs,
             )
-            self._use_cnn = False
 
     def set_training(self, training: bool = True) -> None:
         """Set pipeline training mode.
@@ -266,10 +262,10 @@ class VariantCallingPipeline(OperatorModule):
         For CNN: Constructs 6-channel pileup images and uses CNN classifier.
         """
         reference_length = pileup.shape[0]
-        window_size = self.pipeline_config.pileup_window_size
+        window_size = self.config.pileup_window_size
         half_window = window_size // 2
 
-        if self._use_cnn:
+        if self.config.classifier_type == ClassifierType.CNN:
             return self._classify_positions_cnn(
                 pileup, coverage, mean_quality, reference_length, window_size, half_window
             )

@@ -5,6 +5,7 @@ import jax.numpy as jnp
 import pytest
 from datarax.core.element_batch import Batch, Element
 
+from diffbio.constants import ClassifierType
 from diffbio.pipelines import (
     VariantCallingPipeline,
     VariantCallingPipelineConfig,
@@ -104,8 +105,8 @@ class TestVariantCallingPipeline:
         assert hasattr(pipeline, "quality_filter")
         assert hasattr(pipeline, "pileup")
         assert hasattr(pipeline, "classifier")
-        assert pipeline.pipeline_config.reference_length == 30
-        assert pipeline.pipeline_config.num_classes == 3
+        assert pipeline.config.reference_length == 30
+        assert pipeline.config.num_classes == 3
 
     def test_apply_single_element(self, pipeline, sample_data):
         """Test apply() processes a single element correctly."""
@@ -275,7 +276,7 @@ class TestFactoryFunction:
         )
 
         assert isinstance(pipeline, VariantCallingPipeline)
-        assert pipeline.pipeline_config.reference_length == 50
+        assert pipeline.config.reference_length == 50
 
     def test_factory_with_custom_params(self):
         """Test factory with custom parameters."""
@@ -287,10 +288,10 @@ class TestFactoryFunction:
             seed=123,
         )
 
-        assert pipeline.pipeline_config.reference_length == 100
-        assert pipeline.pipeline_config.num_classes == 4
-        assert pipeline.pipeline_config.quality_threshold == 25.0
-        assert pipeline.pipeline_config.classifier_hidden_dim == 128
+        assert pipeline.config.reference_length == 100
+        assert pipeline.config.num_classes == 4
+        assert pipeline.config.quality_threshold == 25.0
+        assert pipeline.config.classifier_hidden_dim == 128
 
 
 class TestCNNVariantPipeline:
@@ -337,8 +338,7 @@ class TestCNNVariantPipeline:
         assert hasattr(cnn_pipeline, "quality_filter")
         assert hasattr(cnn_pipeline, "pileup")
         assert hasattr(cnn_pipeline, "classifier")
-        assert cnn_pipeline._use_cnn is True
-        assert cnn_pipeline.pipeline_config.classifier_type == "cnn"
+        assert cnn_pipeline.config.classifier_type == ClassifierType.CNN
 
     def test_cnn_pipeline_apply(self, cnn_pipeline, sample_data):
         """Test CNN pipeline processes data correctly."""
@@ -401,9 +401,8 @@ class TestCNNFactoryFunction:
         )
 
         assert isinstance(pipeline, VariantCallingPipeline)
-        assert pipeline.pipeline_config.reference_length == 50
-        assert pipeline.pipeline_config.classifier_type == "cnn"
-        assert pipeline._use_cnn is True
+        assert pipeline.config.reference_length == 50
+        assert pipeline.config.classifier_type == ClassifierType.CNN
 
     def test_factory_with_custom_params(self):
         """Test CNN factory with custom parameters."""
@@ -416,12 +415,12 @@ class TestCNNFactoryFunction:
             seed=123,
         )
 
-        assert pipeline.pipeline_config.reference_length == 100
-        assert pipeline.pipeline_config.num_classes == 4
-        assert pipeline.pipeline_config.pileup_window_size == 31
-        assert pipeline.pipeline_config.classifier_type == "cnn"
+        assert pipeline.config.reference_length == 100
+        assert pipeline.config.num_classes == 4
+        assert pipeline.config.pileup_window_size == 31
+        assert pipeline.config.classifier_type == ClassifierType.CNN
         # Softmax should be disabled for CNN (better for variant detection)
-        assert pipeline.pipeline_config.apply_pileup_softmax is False
+        assert pipeline.config.apply_pileup_softmax is False
 
     def test_mlp_vs_cnn_factory_difference(self):
         """Test that MLP and CNN factories create different pipelines."""
@@ -435,10 +434,8 @@ class TestCNNFactoryFunction:
             seed=42,
         )
 
-        assert mlp_pipeline._use_cnn is False
-        assert cnn_pipeline._use_cnn is True
-        assert mlp_pipeline.pipeline_config.classifier_type == "mlp"
-        assert cnn_pipeline.pipeline_config.classifier_type == "cnn"
+        assert mlp_pipeline.config.classifier_type == ClassifierType.MLP
+        assert cnn_pipeline.config.classifier_type == ClassifierType.CNN
 
 
 class TestEdgeCases:

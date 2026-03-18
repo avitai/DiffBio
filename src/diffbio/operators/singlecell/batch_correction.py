@@ -100,20 +100,13 @@ class DifferentiableHarmony(TemperatureOperator):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        if rngs is None:
-            rngs = nnx.Rngs(0)
-
-        self.n_clusters = config.n_clusters
-        self.n_features = config.n_features
-        self.n_batches = config.n_batches
-        self.n_iterations = config.n_iterations
-        self.theta = config.theta
-        self.sigma = config.sigma
+        rngs = rngs or nnx.Rngs(0)
         # Temperature is now managed by TemperatureOperator via self._temperature
 
         # Initialize cluster centroids
         key = rngs.params()
-        init_centroids = jax.random.normal(key, (config.n_clusters, config.n_features)) * 0.1
+        centroid_shape = (config.n_clusters, config.n_features)
+        init_centroids = jax.random.normal(key, centroid_shape) * 0.1
         self.cluster_centroids = nnx.Param(init_centroids)
 
     def compute_soft_assignments(
@@ -139,7 +132,10 @@ class DifferentiableHarmony(TemperatureOperator):
 
         # Soft assignments
         # Use inherited _temperature property from TemperatureOperator
-        assignments = jax.nn.softmax(-distances_sq / (self.sigma * self._temperature), axis=-1)
+        assignments = jax.nn.softmax(
+            -distances_sq / (self.config.sigma * self._temperature),
+            axis=-1,
+        )
 
         return assignments
 
@@ -158,7 +154,7 @@ class DifferentiableHarmony(TemperatureOperator):
             Proportion of each batch in each cluster.
         """
         # Create one-hot batch encoding
-        batch_onehot = jax.nn.one_hot(batch_labels, self.n_batches)  # (n_cells, n_batches)
+        batch_onehot = jax.nn.one_hot(batch_labels, self.config.n_batches)  # (n_cells, n_batches)
 
         # Weighted count of each batch in each cluster
         # (n_cells, n_clusters).T @ (n_cells, n_batches) -> (n_clusters, n_batches)
@@ -193,7 +189,7 @@ class DifferentiableHarmony(TemperatureOperator):
         batch_props = self.compute_batch_proportions(batch_labels, assignments)
 
         # Global batch proportions (target)
-        batch_onehot = jax.nn.one_hot(batch_labels, self.n_batches)
+        batch_onehot = jax.nn.one_hot(batch_labels, self.config.n_batches)
         global_batch_props = jnp.mean(batch_onehot, axis=0)  # (n_batches,)
 
         # Compute correction direction for each cell
@@ -268,7 +264,10 @@ class DifferentiableHarmony(TemperatureOperator):
             return (new_corrected, centroids), new_assignments
 
         (corrected, _), assignments = jax.lax.scan(
-            iteration_step, (corrected, centroids), None, length=self.n_iterations
+            iteration_step,
+            (corrected, centroids),
+            None,
+            length=self.config.n_iterations,
         )
 
         # Get final assignments

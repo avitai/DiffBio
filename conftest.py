@@ -10,8 +10,8 @@ import pytest
 logger = logging.getLogger(__name__)
 
 
-def setup_cuda_environment():
-    """Set up CUDA environment variables for JAX."""
+def setup_jax_environment():
+    """Set up JAX environment variables with safe CPU fallback."""
     cuda_home = os.environ.get("CUDA_HOME", "/usr/local/cuda")
     cuda_lib_path = str(Path(cuda_home) / "lib64")
     current_ld_path = os.environ.get("LD_LIBRARY_PATH", "")
@@ -27,9 +27,10 @@ def setup_cuda_environment():
     os.environ["CUDA_ROOT"] = cuda_home
     os.environ["CUDA_HOME"] = cuda_home
 
-    # JAX CUDA configuration - respect existing JAX_PLATFORMS setting
+    # Respect explicit platform settings (e.g., from activate.sh/.env).
+    # Default to CPU-only so tests can run on machines without CUDA setup.
     if "JAX_PLATFORMS" not in os.environ:
-        os.environ["JAX_PLATFORMS"] = "cuda,cpu"
+        os.environ["JAX_PLATFORMS"] = "cpu"
 
     os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
     os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.8"
@@ -41,8 +42,8 @@ def setup_cuda_environment():
 
 def pytest_configure(config):
     """Configure pytest environment with proper JAX/CUDA handling."""
-    # Setup CUDA environment first, before any JAX imports
-    setup_cuda_environment()
+    # Configure environment before any JAX imports
+    setup_jax_environment()
 
     # Suppress CUDA warnings and errors in test output
     warnings.filterwarnings("ignore", category=UserWarning, module="jax._src.xla_bridge")
@@ -55,7 +56,7 @@ def pytest_configure(config):
 
         # Force JAX to initialize with current environment
         # Respect the JAX_PLATFORMS environment variable
-        current_platforms = os.environ.get("JAX_PLATFORMS", "cuda,cpu")
+        current_platforms = os.environ.get("JAX_PLATFORMS", "cpu")
         jax.config.update("jax_platforms", current_platforms)
 
         # Check if CUDA is available
@@ -80,31 +81,6 @@ def pytest_configure(config):
 
     except ImportError as e:
         logger.warning("JAX import failed: %s", e)
-
-
-@pytest.fixture
-def device():
-    """Provide a device fixture that works with both CPU and GPU."""
-    import jax
-
-    # Try to get GPU device first, fall back to CPU
-    try:
-        devices = jax.devices()
-        gpu_devices = [d for d in devices if d.platform == "gpu"]
-        if gpu_devices:
-            return gpu_devices[0]
-        else:
-            return jax.devices("cpu")[0]
-    except RuntimeError:
-        return jax.devices("cpu")[0]
-
-
-@pytest.fixture
-def rngs():
-    """Provide RNG fixture for tests."""
-    import flax.nnx as nnx
-
-    return nnx.Rngs(0)
 
 
 @pytest.fixture

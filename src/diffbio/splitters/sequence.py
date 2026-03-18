@@ -10,7 +10,6 @@ should not appear in both train and test sets.
 from dataclasses import dataclass
 from typing import Sequence
 
-import jax.numpy as jnp
 from flax import nnx
 
 from datarax.core.data_source import DataSourceModule
@@ -196,29 +195,4 @@ class SequenceIdentitySplitter(SplitterModule):
 
         # Sort clusters by size (largest first)
         sorted_clusters = sorted(clusters, key=len, reverse=True)
-
-        # Calculate split cutoffs
-        n = len(data_source)
-        train_cutoff = self.config.train_frac * n
-        valid_cutoff = (self.config.train_frac + self.config.valid_frac) * n
-
-        train_inds: list[int] = []
-        valid_inds: list[int] = []
-        test_inds: list[int] = []
-
-        for cluster in sorted_clusters:
-            # Fill train first until we've exceeded the cutoff
-            if len(train_inds) < train_cutoff:
-                train_inds.extend(cluster)
-            # Then fill valid until we've exceeded its cutoff
-            elif len(train_inds) + len(valid_inds) < valid_cutoff:
-                valid_inds.extend(cluster)
-            # Everything else goes to test
-            else:
-                test_inds.extend(cluster)
-
-        return SplitResult(
-            train_indices=jnp.array(train_inds, dtype=jnp.int32),
-            valid_indices=jnp.array(valid_inds, dtype=jnp.int32),
-            test_indices=jnp.array(test_inds, dtype=jnp.int32),
-        )
+        return self.assign_groups_to_splits(sorted_clusters, len(data_source))

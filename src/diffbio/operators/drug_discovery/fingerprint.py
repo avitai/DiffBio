@@ -18,7 +18,15 @@ from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 
-from diffbio.operators.drug_discovery.message_passing import StackedMessagePassing
+from diffbio.operators.drug_discovery._graph_utils import (
+    attach_fingerprint,
+    build_encoder,
+    ensure_rngs,
+    graph_sum_readout,
+    initialize_graph_encoder,
+    stabilize_operator_id,
+    unpack_graph_inputs,
+)
 
 
 @dataclass
@@ -75,21 +83,13 @@ class DifferentiableMolecularFingerprint(OperatorModule):
             rngs: Flax NNX random number generators.
         """
         super().__init__(config, rngs=rngs)
-        self.config: MolecularFingerprintConfig = config
 
-        # Fix: wrap _unique_id as static for jax.grad compatibility
-        # (datarax stores it as plain int which causes gradient errors)
-        self._unique_id = nnx.static(self._unique_id)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
-
-        # Graph encoder
-        self.encoder = StackedMessagePassing(
-            hidden_dim=config.hidden_dim,
-            num_layers=config.num_layers,
-            in_features=config.in_features,
+        rngs = initialize_graph_encoder(
+            self,
             rngs=rngs,
+            in_features=config.in_features,
+            num_layers=config.num_layers,
+            hidden_dim=config.hidden_dim,
         )
 
         # Projection to fingerprint dimension
@@ -125,20 +125,7 @@ class DifferentiableMolecularFingerprint(OperatorModule):
                 - unchanged state
                 - unchanged metadata
         """
-        node_features = data["node_features"]
-        adjacency = data["adjacency"]
-        edge_features = data.get("edge_features")
-        node_mask = data.get("node_mask")
-
-        # Message passing
-        node_hidden = self.encoder(node_features, adjacency, edge_features)
-
-        # Apply mask
-        if node_mask is not None:
-            node_hidden = node_hidden * node_mask[:, None]
-
-        # Sum pooling
-        graph_repr = jnp.sum(node_hidden, axis=0)
+        graph_repr = graph_sum_readout(data, self.encoder)
 
         # Project to fingerprint dimension
         fingerprint = self.projection(graph_repr)
@@ -147,12 +134,7 @@ class DifferentiableMolecularFingerprint(OperatorModule):
         if self.config.normalize:
             fingerprint = fingerprint / (jnp.linalg.norm(fingerprint) + 1e-8)
 
-        result = {
-            **data,
-            "fingerprint": fingerprint,
-        }
-
-        return result, state, metadata
+        return attach_fingerprint(data, fingerprint), state, metadata
 
 
 def create_fingerprint_operator(
@@ -187,6 +169,7 @@ def create_fingerprint_operator(
 
 @dataclass
 class CircularFingerprintConfig(OperatorConfig):
+    # pylint: disable=too-many-instance-attributes
     """Configuration for circular fingerprint operator (ECFP/Morgan).
 
     Attributes:
@@ -258,18 +241,14 @@ class CircularFingerprintOperator(OperatorModule):
             rngs: Flax NNX random number generators.
         """
         super().__init__(config, rngs=rngs)
-        self.config: CircularFingerprintConfig = config
 
-        # Fix: wrap _unique_id as static for jax.grad compatibility
-        self._unique_id = nnx.static(self._unique_id)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
+        stabilize_operator_id(self)
+        rngs = ensure_rngs(rngs)
 
         if config.differentiable:
             # Message passing layers for substructure aggregation
             # Each layer corresponds to one radius step
-            self.message_passing = StackedMessagePassing(
+            self.message_passing = build_encoder(
                 hidden_dim=config.hash_hidden_dim,
                 num_layers=config.radius,
                 in_features=config.in_features,
@@ -412,10 +391,7 @@ class CircularFingerprintOperator(OperatorModule):
                 - unchanged metadata
         """
         if self.config.differentiable:
-            node_features = data["node_features"]
-            adjacency = data["adjacency"]
-            edge_features = data.get("edge_features")
-            node_mask = data.get("node_mask")
+            node_features, adjacency, edge_features, node_mask = unpack_graph_inputs(data)
 
             fp = self._compute_differentiable_fp(
                 node_features,
@@ -427,8 +403,7 @@ class CircularFingerprintOperator(OperatorModule):
             smiles = data["smiles"]
             fp = self._compute_rdkit_fp(smiles)
 
-        result = {**data, "fingerprint": fp}
-        return result, state, metadata
+        return attach_fingerprint(data, fp), state, metadata
 
 
 # =============================================================================

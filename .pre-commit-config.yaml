@@ -123,6 +123,28 @@ repos:
         additional_dependencies: ["pydocstyle[toml]"]
         args: ["--config=pyproject.toml"]
 
+  # Architecture and code quality gates from SWE standards
+  - repo: local
+    hooks:
+      - id: lint-imports
+        name: lint-imports (architecture contracts)
+        entry: uv run lint-imports
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: radon-complexity
+        name: radon-complexity (cyclomatic complexity)
+        entry: uv run radon cc src -a -nc
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: interrogate
+        name: interrogate (docstring coverage)
+        entry: uv run interrogate src -v
+        language: system
+        pass_filenames: false
+        always_run: true
+
   # Notebook quality
   - repo: https://github.com/nbQA-dev/nbQA
     rev: 1.9.1

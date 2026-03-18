@@ -37,6 +37,7 @@ from diffbio.utils.quality import apply_quality_filter
 
 @dataclass
 class PreprocessingPipelineConfig(OperatorConfig):
+    # pylint: disable=too-many-instance-attributes
     """Configuration for the preprocessing pipeline.
 
     Attributes:
@@ -112,9 +113,6 @@ class PreprocessingPipeline(OperatorModule):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        # Store typed config for attribute access
-        self.pipeline_config: PreprocessingPipelineConfig = config
-
         # 1. Quality filter (always enabled)
         self.quality_filter = DifferentiableQualityFilter(
             QualityFilterConfig(initial_threshold=config.quality_threshold),
@@ -122,9 +120,8 @@ class PreprocessingPipeline(OperatorModule):
         )
 
         # 2. Adapter removal (optional)
-        self._enable_adapter_removal = config.enable_adapter_removal
-        if config.enable_adapter_removal:
-            self.adapter_removal = SoftAdapterRemoval(
+        self.adapter_removal = (
+            SoftAdapterRemoval(
                 AdapterRemovalConfig(
                     adapter_sequence=config.adapter_sequence,
                     match_threshold=config.adapter_match_threshold,
@@ -132,33 +129,34 @@ class PreprocessingPipeline(OperatorModule):
                 ),
                 rngs=rngs,
             )
-        else:
-            self.adapter_removal = None
+            if config.enable_adapter_removal
+            else None
+        )
 
         # 3. Duplicate weighting (optional)
-        self._enable_duplicate_weighting = config.enable_duplicate_weighting
-        if config.enable_duplicate_weighting:
-            self.duplicate_weighting = DifferentiableDuplicateWeighting(
+        self.duplicate_weighting = (
+            DifferentiableDuplicateWeighting(
                 DuplicateWeightingConfig(
                     similarity_threshold=config.duplicate_similarity_threshold,
                 ),
                 rngs=rngs,
             )
-        else:
-            self.duplicate_weighting = None
+            if config.enable_duplicate_weighting
+            else None
+        )
 
         # 4. Error correction (optional)
-        self._enable_error_correction = config.enable_error_correction
-        if config.enable_error_correction:
-            self.error_correction = SoftErrorCorrection(
+        self.error_correction = (
+            SoftErrorCorrection(
                 ErrorCorrectionConfig(
                     window_size=config.error_correction_window,
                     hidden_dim=config.error_correction_hidden_dim,
                 ),
                 rngs=rngs,
             )
-        else:
-            self.error_correction = None
+            if config.enable_error_correction
+            else None
+        )
 
     def apply(
         self,
@@ -194,7 +192,7 @@ class PreprocessingPipeline(OperatorModule):
         filtered_reads, filtered_quality = apply_quality_filter(self.quality_filter, reads, quality)
 
         # Step 2: Adapter removal (optional) - apply per-read using vmap
-        if self._enable_adapter_removal and self.adapter_removal is not None:
+        if self.adapter_removal is not None:
 
             def apply_adapter_removal(read, quality):
                 adapter_data = {"sequence": read, "quality_scores": quality}
@@ -207,13 +205,13 @@ class PreprocessingPipeline(OperatorModule):
 
         # Step 3: Duplicate weighting (optional) - operates on full batch for cross-read comparison
         # Use apply_batch which returns weights for all reads (not just first)
-        if self._enable_duplicate_weighting and self.duplicate_weighting is not None:
+        if self.duplicate_weighting is not None:
             raw_weights, _ = self.duplicate_weighting.apply_batch(filtered_reads, filtered_quality)
             # Normalize weights to [0, 1] range for use as probabilities
             read_weights = raw_weights / jnp.max(raw_weights)
 
         # Step 4: Error correction (optional) - apply per-read using vmap
-        if self._enable_error_correction and self.error_correction is not None:
+        if self.error_correction is not None:
 
             def apply_error_correction(read, quality):
                 ec_data = {"sequence": read, "quality_scores": quality}

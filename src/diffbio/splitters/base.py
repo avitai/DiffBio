@@ -6,6 +6,7 @@ This module provides the base classes for dataset splitting:
 - SplitterModule: Base class for all splitters
 """
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import NamedTuple
 
@@ -147,6 +148,38 @@ class SplitterModule(StructuralModule):
             List of (train_indices, val_indices) tuples for each fold
         """
         raise NotImplementedError("Subclasses may implement k_fold_split()")
+
+    def assign_groups_to_splits(
+        self,
+        groups: Iterable[Iterable[int]],
+        total_size: int,
+    ) -> SplitResult:
+        """Assign grouped indices to train/valid/test by configured fractions.
+
+        Each input group is placed wholly into one split, preserving group boundaries
+        (for example scaffold clusters or sequence-identity clusters).
+        """
+        train_cutoff = self.config.train_frac * total_size
+        valid_cutoff = (self.config.train_frac + self.config.valid_frac) * total_size
+
+        train_inds: list[int] = []
+        valid_inds: list[int] = []
+        test_inds: list[int] = []
+
+        for group in groups:
+            group_indices = list(group)
+            if len(train_inds) < train_cutoff:
+                train_inds.extend(group_indices)
+            elif len(train_inds) + len(valid_inds) < valid_cutoff:
+                valid_inds.extend(group_indices)
+            else:
+                test_inds.extend(group_indices)
+
+        return SplitResult(
+            train_indices=jnp.array(train_inds, dtype=jnp.int32),
+            valid_indices=jnp.array(valid_inds, dtype=jnp.int32),
+            test_indices=jnp.array(test_inds, dtype=jnp.int32),
+        )
 
     def create_split_sources(
         self,

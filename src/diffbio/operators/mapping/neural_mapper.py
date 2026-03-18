@@ -151,11 +151,9 @@ class CrossAttentionLayer(nnx.Module):
             rngs=rngs,
         )
 
-        # Dropout
-        if dropout_rate > 0:
-            self.dropout = nnx.Dropout(rate=dropout_rate, rngs=rngs)
-        else:
-            self.dropout = None
+        self.dropout = (
+            nnx.Dropout(rate=dropout_rate, rngs=rngs) if dropout_rate > 0 else None
+        )
 
     def __call__(
         self,
@@ -164,12 +162,12 @@ class CrossAttentionLayer(nnx.Module):
         *,
         deterministic: bool = True,
     ) -> Float[Array, "batch query_len dim"]:
-        """Apply cross-attention.
+        """Apply cross-attention from read tokens to reference tokens.
 
         Args:
             query: Query embeddings (read).
             key_value: Key/Value embeddings (reference).
-            deterministic: If True, disable dropout.
+            deterministic: Whether to disable stochastic dropout.
 
         Returns:
             Attended embeddings.

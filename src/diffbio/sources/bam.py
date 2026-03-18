@@ -17,7 +17,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-import jax
 import jax.numpy as jnp
 from flax import nnx
 
@@ -26,6 +25,7 @@ from datarax.core.data_source import DataSourceModule
 from datarax.typing import Element
 
 from diffbio.sequences.dna import encode_dna_string
+from diffbio.sources._indexed_batch_source import IndexedBatchSourceMixin
 
 
 @dataclass
@@ -55,7 +55,7 @@ class BAMSourceConfig(StructuralConfig):
             raise ValueError("file_path is required")
 
 
-class BAMSource(DataSourceModule):
+class BAMSource(IndexedBatchSourceMixin, DataSourceModule):
     """BAM/CRAM file data source extending Datarax DataSourceModule.
 
     Provides efficient access to aligned sequencing reads with:
@@ -137,7 +137,7 @@ class BAMSource(DataSourceModule):
             List of read metadata dictionaries
         """
         config = self.config
-        reads = []
+        reads: list[dict] = []
 
         # Open BAM file
         mode = "rb" if str(config.file_path).endswith(".bam") else "rc"
@@ -146,40 +146,41 @@ class BAMSource(DataSourceModule):
         with self._pysam.AlignmentFile(
             str(config.file_path), mode, reference_filename=reference
         ) as bam:
-            # Use region query if specified, otherwise iterate all
-            if config.region:
-                iterator = bam.fetch(region=config.region)
-            else:
-                iterator = bam.fetch(until_eof=True)
-
-            for read in iterator:
-                # Skip unmapped if configured
-                if read.is_unmapped and not config.include_unmapped:
+            for read in self._iter_reads(bam):
+                if self._should_skip_read(read):
                     continue
-
-                # Skip low quality reads
-                if (
-                    config.min_mapping_quality is not None
-                    and read.mapping_quality < config.min_mapping_quality
-                ):
-                    continue
-
-                # Store minimal info for indexing
-                read_info = {
-                    "query_name": read.query_name,
-                    "reference_id": read.reference_id,
-                    "reference_start": read.reference_start,
-                    "is_unmapped": read.is_unmapped,
-                    "query_sequence": read.query_sequence,
-                    "query_qualities": (
-                        list(read.query_qualities) if read.query_qualities is not None else None
-                    ),
-                    "mapping_quality": read.mapping_quality,
-                    "reference_name": (read.reference_name if not read.is_unmapped else None),
-                }
-                reads.append(read_info)
+                reads.append(self._read_info(read))
 
         return reads
+
+    def _iter_reads(self, bam) -> object:
+        """Return the configured BAM iterator."""
+        if self.config.region:
+            return bam.fetch(region=self.config.region)
+        return bam.fetch(until_eof=True)
+
+    def _should_skip_read(self, read) -> bool:
+        """Check whether a read should be excluded by source filters."""
+        if read.is_unmapped and not self.config.include_unmapped:
+            return True
+        min_mapq = self.config.min_mapping_quality
+        return min_mapq is not None and read.mapping_quality < min_mapq
+
+    @staticmethod
+    def _read_info(read) -> dict[str, object]:
+        """Extract index metadata from a pysam read."""
+        return {
+            "query_name": read.query_name,
+            "reference_id": read.reference_id,
+            "reference_start": read.reference_start,
+            "is_unmapped": read.is_unmapped,
+            "query_sequence": read.query_sequence,
+            "query_qualities": list(read.query_qualities)
+            if read.query_qualities is not None
+            else None,
+            "mapping_quality": read.mapping_quality,
+            "reference_name": read.reference_name if not read.is_unmapped else None,
+        }
 
     def _read_to_element(self, idx: int, read_info: dict) -> Element:
         """Convert read info to Element with one-hot encoded sequence.
@@ -251,31 +252,10 @@ class BAMSource(DataSourceModule):
         self._current_idx += 1
         return elem
 
-    def reset(self, seed: int | None = None) -> None:  # noqa: ARG002
-        """Reset iteration state.
+    def _batch_total_size(self) -> int:
+        """Return number of indexed reads for mixin batch iteration."""
+        return len(self._reads)
 
-        Args:
-            seed: Optional seed (unused, for API compatibility)
-        """
-        del seed  # Unused, for API compatibility
-        self._current_idx = 0
-
-    def get_batch(self, batch_size: int, key: jax.Array | None = None) -> list[Element]:  # noqa: ARG002
-        """Get a batch of reads.
-
-        Args:
-            batch_size: Number of reads to retrieve
-            key: Optional JAX random key (unused)
-
-        Returns:
-            List of Elements
-        """
-        del key  # Unused, for API compatibility
-        batch = []
-        for _ in range(batch_size):
-            if self._current_idx >= len(self._reads):
-                break
-            elem = self._read_to_element(self._current_idx, self._reads[self._current_idx])
-            batch.append(elem)
-            self._current_idx += 1
-        return batch
+    def _batch_element(self, idx: int) -> Element:
+        """Build the indexed read element for mixin batch iteration."""
+        return self._read_to_element(idx, self._reads[idx])

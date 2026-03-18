@@ -105,14 +105,9 @@ class DifferentiableCRISPRScorer(OperatorModule):
         """
         super().__init__(config, rngs=rngs)
 
-        self.config = config
-
-        # Build 1D convolutional layers
-        conv_layers = []
-        conv_bn = []
-        in_channels = config.alphabet_size
-        for out_channels in config.hidden_channels:
-            conv_layers.append(
+        channel_pairs = zip((config.alphabet_size, *config.hidden_channels), config.hidden_channels)
+        self.conv_layers = nnx.List(
+            [
                 nnx.Conv(
                     in_features=in_channels,
                     out_features=out_channels,
@@ -120,11 +115,12 @@ class DifferentiableCRISPRScorer(OperatorModule):
                     padding="SAME",
                     rngs=rngs,
                 )
-            )
-            conv_bn.append(nnx.BatchNorm(out_channels, rngs=rngs))
-            in_channels = out_channels
-        self.conv_layers = nnx.List(conv_layers)
-        self.conv_bn = nnx.List(conv_bn)
+                for in_channels, out_channels in channel_pairs
+            ]
+        )
+        self.conv_bn = nnx.List(
+            [nnx.BatchNorm(out_channels, rngs=rngs) for out_channels in config.hidden_channels]
+        )
 
         # Calculate flattened size after convolutions
         # With SAME padding, spatial size is preserved

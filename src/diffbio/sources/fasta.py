@@ -17,7 +17,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-import jax
 from flax import nnx
 
 from datarax.core.config import StructuralConfig
@@ -25,6 +24,7 @@ from datarax.core.data_source import DataSourceModule
 from datarax.typing import Element
 
 from diffbio.sequences.dna import encode_dna_string
+from diffbio.sources._indexed_batch_source import IndexedBatchSourceMixin
 
 
 @dataclass
@@ -48,7 +48,7 @@ class FastaSourceConfig(StructuralConfig):
             raise ValueError("file_path is required")
 
 
-class FastaSource(DataSourceModule):
+class FastaSource(IndexedBatchSourceMixin, DataSourceModule):
     """FASTA file data source extending Datarax DataSourceModule.
 
     Provides efficient access to DNA/RNA sequences with:
@@ -194,35 +194,13 @@ class FastaSource(DataSourceModule):
         self._current_idx += 1
         return elem
 
-    def reset(self, seed: int | None = None) -> None:  # noqa: ARG002
-        """Reset iteration state.
+    def _batch_total_size(self) -> int:
+        """Return number of indexed sequences for mixin batch iteration."""
+        return len(self._sequence_names)
 
-        Args:
-            seed: Optional seed (unused, for API compatibility)
-        """
-        del seed  # Unused, for API compatibility
-        self._current_idx = 0
-
-    def get_batch(self, batch_size: int, key: jax.Array | None = None) -> list[Element]:  # noqa: ARG002
-        """Get a batch of sequences.
-
-        Args:
-            batch_size: Number of sequences to retrieve
-            key: Optional JAX random key (unused)
-
-        Returns:
-            List of Elements
-        """
-        del key  # Unused, for API compatibility
-        batch = []
-        for _ in range(batch_size):
-            if self._current_idx >= len(self._sequence_names):
-                break
-            seq_name = self._sequence_names[self._current_idx]
-            elem = self._sequence_to_element(self._current_idx, seq_name)
-            batch.append(elem)
-            self._current_idx += 1
-        return batch
+    def _batch_element(self, idx: int) -> Element:
+        """Build the indexed sequence element for mixin batch iteration."""
+        return self._sequence_to_element(idx, self._sequence_names[idx])
 
     def get_by_name(self, name: str) -> Element | None:
         """Get sequence by name/ID.

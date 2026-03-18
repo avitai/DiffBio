@@ -36,6 +36,7 @@ from diffbio.utils.nn_utils import extract_windows_1d
 
 @dataclass
 class EnhancedVariantCallingPipelineConfig(OperatorConfig):
+    # pylint: disable=too-many-instance-attributes
     """Configuration for the enhanced variant calling pipeline.
 
     Attributes:
@@ -120,18 +121,15 @@ class EnhancedVariantCallingPipeline(OperatorModule):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        # Store config for typed access
-        self.config: EnhancedVariantCallingPipelineConfig = config
-
         # 1. Quality filter for preprocessing (optional)
-        self._enable_preprocessing = config.enable_preprocessing
-        if config.enable_preprocessing:
-            self.quality_filter = DifferentiableQualityFilter(
+        self.quality_filter = (
+            DifferentiableQualityFilter(
                 QualityFilterConfig(initial_threshold=config.quality_threshold),
                 rngs=rngs,
             )
-        else:
-            self.quality_filter = None
+            if config.enable_preprocessing
+            else None
+        )
 
         # 2. Pileup generation
         self.pileup = DifferentiablePileup(
@@ -159,9 +157,8 @@ class EnhancedVariantCallingPipeline(OperatorModule):
         )
 
         # 4. Quality recalibration (optional)
-        self._enable_quality_recalibration = config.enable_quality_recalibration
-        if config.enable_quality_recalibration:
-            self.quality_recalibration = SoftVariantQualityFilter(
+        self.quality_recalibration = (
+            SoftVariantQualityFilter(
                 VariantQualityFilterConfig(
                     n_components=config.quality_recal_n_components,
                     n_features=config.quality_recal_n_features,
@@ -169,8 +166,9 @@ class EnhancedVariantCallingPipeline(OperatorModule):
                 ),
                 rngs=rngs,
             )
-        else:
-            self.quality_recalibration = None
+            if config.enable_quality_recalibration
+            else None
+        )
 
     def apply(
         self,
@@ -201,7 +199,7 @@ class EnhancedVariantCallingPipeline(OperatorModule):
         quality = data["quality"]
 
         # Step 1: Quality filtering (optional)
-        if self._enable_preprocessing and self.quality_filter is not None:
+        if self.quality_filter is not None:
             # Apply quality filter per-base
             num_reads, read_length, _ = reads.shape
             reads_flat = reads.reshape(-1, 4)
@@ -256,7 +254,7 @@ class EnhancedVariantCallingPipeline(OperatorModule):
         }
 
         # Step 4: Quality recalibration (optional)
-        if self._enable_quality_recalibration and self.quality_recalibration is not None:
+        if self.quality_recalibration is not None:
             # Compute variant features for quality recalibration
             # Features: depth, max_prob, entropy, strand_balance
             depth = pileup.sum(axis=-1)  # Total coverage at each position

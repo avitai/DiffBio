@@ -125,31 +125,7 @@ class ScaffoldSplitter(SplitterModule):
 
         # Sort scaffold groups by size (largest first)
         scaffold_sets = sorted(scaffolds.values(), key=len, reverse=True)
-
-        n = len(data_source)
-        train_cutoff = self.config.train_frac * n
-        valid_cutoff = (self.config.train_frac + self.config.valid_frac) * n
-
-        train_inds: list[int] = []
-        valid_inds: list[int] = []
-        test_inds: list[int] = []
-
-        for scaffold_set in scaffold_sets:
-            # Fill train first until we've exceeded the cutoff
-            if len(train_inds) < train_cutoff:
-                train_inds.extend(scaffold_set)
-            # Then fill valid until we've exceeded its cutoff
-            elif len(train_inds) + len(valid_inds) < valid_cutoff:
-                valid_inds.extend(scaffold_set)
-            # Everything else goes to test
-            else:
-                test_inds.extend(scaffold_set)
-
-        return SplitResult(
-            train_indices=jnp.array(train_inds, dtype=jnp.int32),
-            valid_indices=jnp.array(valid_inds, dtype=jnp.int32),
-            test_indices=jnp.array(test_inds, dtype=jnp.int32),
-        )
+        return self.assign_groups_to_splits(scaffold_sets, len(data_source))
 
 
 @dataclass
@@ -274,6 +250,42 @@ class TanimotoClusterSplitter(SplitterModule):
                 valid_fps.append((idx, fp))
         return valid_fps
 
+    @staticmethod
+    def _all_train_result(size: int) -> SplitResult:
+        """Create a split result with all items assigned to train."""
+        return SplitResult(
+            train_indices=jnp.array(list(range(size)), dtype=jnp.int32),
+            valid_indices=jnp.array([], dtype=jnp.int32),
+            test_indices=jnp.array([], dtype=jnp.int32),
+        )
+
+    def _cluster_fingerprints(self, fp_list: list[Any]) -> list[tuple[int, ...]]:
+        """Cluster fingerprints using Butina on condensed Tanimoto distances."""
+        n_valid = len(fp_list)
+        dists = []
+        for i in range(1, n_valid):
+            sims = self._DataStructs.BulkTanimotoSimilarity(fp_list[i], fp_list[:i])
+            dists.extend([1 - s for s in sims])
+
+        dist_threshold = 1 - self.config.similarity_cutoff
+        clusters = self._Butina.ClusterData(dists, n_valid, dist_threshold, isDistData=True)
+        return sorted(clusters, key=len, reverse=True)
+
+    def _assign_clusters_to_splits(
+        self,
+        sorted_clusters: list[tuple[int, ...]],
+        indices: list[int],
+        total_size: int,
+    ) -> tuple[list[int], list[int], list[int]]:
+        """Assign clusters to train/valid/test while preserving cluster membership."""
+        remapped_clusters = ([indices[i] for i in cluster] for cluster in sorted_clusters)
+        split_result = self.assign_groups_to_splits(remapped_clusters, total_size)
+        return (
+            split_result.train_indices.tolist(),
+            split_result.valid_indices.tolist(),
+            split_result.test_indices.tolist(),
+        )
+
     def split(self, data_source: DataSourceModule) -> SplitResult:
         """Cluster by Tanimoto similarity and split.
 
@@ -283,64 +295,27 @@ class TanimotoClusterSplitter(SplitterModule):
         Returns:
             SplitResult with cluster-based train/valid/test indices
         """
-        # Extract SMILES from data source
-        smiles_list = [data_source[i].data[self.config.smiles_key] for i in range(len(data_source))]
+        total_size = len(data_source)
+        smiles_list = [data_source[i].data[self.config.smiles_key] for i in range(total_size)]
 
         # Compute fingerprints
         valid_fps = self._compute_fingerprints(smiles_list)
 
         # Track invalid molecules (those without valid fingerprints)
         valid_indices = {idx for idx, _ in valid_fps}
-        invalid_indices = [i for i in range(len(data_source)) if i not in valid_indices]
+        invalid_indices = [i for i in range(total_size) if i not in valid_indices]
 
         if len(valid_fps) == 0:
-            # No valid fingerprints - return all as train
-            return SplitResult(
-                train_indices=jnp.array(list(range(len(data_source))), dtype=jnp.int32),
-                valid_indices=jnp.array([], dtype=jnp.int32),
-                test_indices=jnp.array([], dtype=jnp.int32),
-            )
+            return self._all_train_result(total_size)
 
         # Unpack indices and fingerprints
         indices, fp_list = zip(*valid_fps)
         indices = list(indices)
         fp_list = list(fp_list)
-        n_valid = len(fp_list)
-
-        # Compute distance matrix (1 - Tanimoto similarity)
-        # Butina expects condensed distance matrix
-        dists = []
-        for i in range(1, n_valid):
-            sims = self._DataStructs.BulkTanimotoSimilarity(fp_list[i], fp_list[:i])
-            dists.extend([1 - s for s in sims])
-
-        # Cluster using Butina algorithm
-        # similarity_cutoff is converted to distance threshold
-        dist_threshold = 1 - self.config.similarity_cutoff
-        clusters = self._Butina.ClusterData(dists, n_valid, dist_threshold, isDistData=True)
-
-        # Sort clusters by size (largest first)
-        sorted_clusters = sorted(clusters, key=len, reverse=True)
-
-        # Assign clusters to splits
-        n = len(data_source)
-        train_cutoff = self.config.train_frac * n
-        valid_cutoff = (self.config.train_frac + self.config.valid_frac) * n
-
-        train_inds: list[int] = []
-        valid_inds: list[int] = []
-        test_inds: list[int] = []
-
-        for cluster in sorted_clusters:
-            # Map cluster indices back to original data indices
-            cluster_indices = [indices[i] for i in cluster]
-
-            if len(train_inds) < train_cutoff:
-                train_inds.extend(cluster_indices)
-            elif len(train_inds) + len(valid_inds) < valid_cutoff:
-                valid_inds.extend(cluster_indices)
-            else:
-                test_inds.extend(cluster_indices)
+        sorted_clusters = self._cluster_fingerprints(fp_list)
+        train_inds, valid_inds, test_inds = self._assign_clusters_to_splits(
+            sorted_clusters, indices, total_size
+        )
 
         # Add invalid molecules to train (they couldn't be clustered)
         train_inds.extend(invalid_indices)

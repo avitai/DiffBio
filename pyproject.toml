@@ -3,7 +3,14 @@ build-backend = "hatchling.build"
 requires = ["hatchling>=1.18"]
 
 [dependency-groups]
-dev = ["nbqa>=1.9.1", "pytest-json-report>=1.5.0"]
+dev = [
+  "import-linter>=2.5",
+  "interrogate>=1.7.0",
+  "nbqa>=1.9.1",
+  "pytest-json-report>=1.5.0",
+  "pytest-randomly>=3.16.0",
+  "radon>=6.0.1"
+]
 
 [project]
 authors = [{name = "Mahdi Shafiei"}]
@@ -64,15 +71,19 @@ cuda-dev = ["diffbio[dev,gpu]"]
 dev = [
   "build>=1.0.3",
   "coverage>=7",
+  "import-linter>=2.5",
   "ipykernel>=6.29.5",
+  "interrogate>=1.7.0",
   "pyright>=1.1.336",
   "pytest>=8.3.5",
   "pytest-asyncio>=0.23",
   "pytest-benchmark>=4",
   "pytest-cov>=6.1.1",
   "pytest-env>=1.0.1",
+  "pytest-randomly>=3.16.0",
   "pytest-timeout>=2.1",
   "pytest-xdist>=3.6",
+  "radon>=6.0.1",
   "shellcheck-py>=0.10.0.1",
   "python-dotenv>=1",
   "ruff>=0.1.5",
@@ -97,6 +108,7 @@ test = [
   "pytest-benchmark>=4",
   "pytest-cov>=6.1.1",
   "pytest-env>=1.0.1",
+  "pytest-randomly>=3.16.0",
   "pytest-timeout>=2.1",
   "pytest-xdist>=3.6"
 ]
@@ -130,7 +142,7 @@ exclude_lines = [
   "pass",
   "raise ImportError"
 ]
-fail_under = 60
+fail_under = 80
 precision = 2
 show_missing = true
 skip_covered = false
@@ -152,6 +164,56 @@ packages = ["src/diffbio"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.importlinter]
+root_package = "diffbio"
+
+[[tool.importlinter.contracts]]
+forbidden_modules = ["diffbio.operators", "diffbio.pipelines", "diffbio.sources", "diffbio.splitters"]
+name = "Core must not import high-level modules"
+source_modules = ["diffbio.core"]
+type = "forbidden"
+
+[[tool.importlinter.contracts]]
+forbidden_modules = ["diffbio.pipelines"]
+name = "Operators must not import pipelines"
+source_modules = ["diffbio.operators"]
+type = "forbidden"
+
+[[tool.importlinter.contracts]]
+forbidden_modules = ["diffbio.operators", "diffbio.pipelines"]
+name = "Sources must not import operators or pipelines"
+source_modules = ["diffbio.sources"]
+type = "forbidden"
+
+[[tool.importlinter.contracts]]
+forbidden_modules = ["diffbio.operators", "diffbio.pipelines"]
+name = "Splitters must not import operators or pipelines"
+source_modules = ["diffbio.splitters"]
+type = "forbidden"
+
+[[tool.importlinter.contracts]]
+forbidden_modules = ["diffbio.pipelines"]
+name = "Lower layers must not import pipelines"
+source_modules = [
+  "diffbio.core",
+  "diffbio.losses",
+  "diffbio.operators",
+  "diffbio.sequences",
+  "diffbio.sources",
+  "diffbio.splitters",
+  "diffbio.utils"
+]
+type = "forbidden"
+
+[tool.interrogate]
+exclude = ["tests", "examples", "memory-bank", "scripts", ".deprecated"]
+fail-under = 80
+ignore-init-method = true
+ignore-init-module = true
+ignore-magic = true
+ignore-module = true
+quiet = false
 
 [tool.pydocstyle]
 add-ignore = ["D100", "D104", "D105", "D107", "D202", "D212", "D415"]
@@ -186,7 +248,7 @@ venv = ".venv"
 venvPath = "."
 
 [tool.pytest.ini_options]
-addopts = "--strict-markers --strict-config --verbose --tb=short --color=yes --durations=10 --cov=src/ --cov-report=term-missing --cov-report=html --cov-fail-under=60 --timeout=300 --json-report --json-report-file=temp/test-results.json --json-report-indent=2"
+addopts = "--strict-markers --strict-config --verbose --tb=short --color=yes --durations=10 --cov=src/ --cov-report=term-missing --cov-report=html --cov-fail-under=80 --timeout=300 --json-report --json-report-file=temp/test-results.json --json-report-indent=2"
 cache_dir = ".pytest_cache"
 console_output_style = "progress"
 filterwarnings = [

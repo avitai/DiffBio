@@ -27,6 +27,7 @@ from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
 from diffbio.constants import DEFAULT_TEMPERATURE, EPSILON
+from diffbio.core.differentiable_ops import soft_argmax as differentiable_soft_argmax
 from diffbio.utils.nn_utils import ensure_rngs, get_rng_key, init_learnable_param
 
 __all__ = [
@@ -118,17 +119,7 @@ class TemperatureOperator(OperatorModule):
         Returns:
             Soft argmax positions.
         """
-        temp = self._temperature
-        weights = jax.nn.softmax(logits / temp, axis=axis)
-
-        n = logits.shape[axis]
-        positions = jnp.arange(n, dtype=logits.dtype)
-
-        shape = [1] * logits.ndim
-        shape[axis] = n
-        positions = positions.reshape(shape)
-
-        return jnp.sum(weights * positions, axis=axis)
+        return differentiable_soft_argmax(logits, temperature=self._temperature, axis=axis)
 
     def apply(
         self,

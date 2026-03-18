@@ -39,6 +39,7 @@ from diffbio.operators.singlecell import (
 
 @dataclass
 class SingleCellPipelineConfig(OperatorConfig):
+    # pylint: disable=too-many-instance-attributes
     """Configuration for the single-cell analysis pipeline.
 
     Attributes:
@@ -123,13 +124,9 @@ class SingleCellPipeline(OperatorModule):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        # Store config for typed access
-        self.config: SingleCellPipelineConfig = config
-
         # 1. Ambient RNA removal (optional)
-        self._enable_ambient_removal = config.enable_ambient_removal
-        if config.enable_ambient_removal:
-            self.ambient_removal = DifferentiableAmbientRemoval(
+        self.ambient_removal = (
+            DifferentiableAmbientRemoval(
                 AmbientRemovalConfig(
                     n_genes=config.n_genes,
                     latent_dim=config.latent_dim,
@@ -137,8 +134,9 @@ class SingleCellPipeline(OperatorModule):
                 ),
                 rngs=rngs,
             )
-        else:
-            self.ambient_removal = None
+            if config.enable_ambient_removal
+            else None
+        )
 
         # 2. VAE normalization (always enabled - core component)
         self.vae_normalizer = VAENormalizer(
@@ -151,9 +149,8 @@ class SingleCellPipeline(OperatorModule):
         )
 
         # 3. Batch correction (optional)
-        self._enable_batch_correction = config.enable_batch_correction
-        if config.enable_batch_correction:
-            self.batch_correction = DifferentiableHarmony(
+        self.batch_correction = (
+            DifferentiableHarmony(
                 BatchCorrectionConfig(
                     n_clusters=config.batch_correction_clusters,
                     n_features=config.latent_dim,  # Must match latent dimension
@@ -161,26 +158,26 @@ class SingleCellPipeline(OperatorModule):
                 ),
                 rngs=rngs,
             )
-        else:
-            self.batch_correction = None
+            if config.enable_batch_correction
+            else None
+        )
 
         # 4. Dimensionality reduction (optional)
-        self._enable_dim_reduction = config.enable_dim_reduction
-        if config.enable_dim_reduction:
-            self.dim_reduction = DifferentiableUMAP(
+        self.dim_reduction = (
+            DifferentiableUMAP(
                 UMAPConfig(
                     input_features=config.latent_dim,
                     n_components=config.umap_n_components,
                 ),
                 rngs=rngs,
             )
-        else:
-            self.dim_reduction = None
+            if config.enable_dim_reduction
+            else None
+        )
 
         # 5. Clustering (optional but typically used)
-        self._enable_clustering = config.enable_clustering
-        if config.enable_clustering:
-            self.clustering = SoftKMeansClustering(
+        self.clustering = (
+            SoftKMeansClustering(
                 SoftClusteringConfig(
                     n_clusters=config.n_clusters,
                     n_features=config.latent_dim,
@@ -188,8 +185,9 @@ class SingleCellPipeline(OperatorModule):
                 ),
                 rngs=rngs,
             )
-        else:
-            self.clustering = None
+            if config.enable_clustering
+            else None
+        )
 
     def apply(
         self,
@@ -219,7 +217,7 @@ class SingleCellPipeline(OperatorModule):
         n_cells = counts.shape[0]
 
         # Step 1: Ambient RNA removal (optional)
-        if self._enable_ambient_removal and self.ambient_removal is not None:
+        if self.ambient_removal is not None:
             ambient_data = {
                 "counts": counts,
                 "ambient_profile": data["ambient_profile"],
@@ -246,7 +244,7 @@ class SingleCellPipeline(OperatorModule):
         latent = normalized_results["latent_z"]  # VAENormalizer outputs latent_z
 
         # Step 3: Batch correction (optional)
-        if self._enable_batch_correction and self.batch_correction is not None:
+        if self.batch_correction is not None:
             batch_data = {
                 "embeddings": latent,
                 "batch_labels": data["batch_labels"],
@@ -257,7 +255,7 @@ class SingleCellPipeline(OperatorModule):
             corrected_embeddings = latent
 
         # Step 4: Dimensionality reduction (optional)
-        if self._enable_dim_reduction and self.dim_reduction is not None:
+        if self.dim_reduction is not None:
             umap_data = {"features": corrected_embeddings}
             umap_result, _, _ = self.dim_reduction.apply(umap_data, {}, None)
             embeddings_2d = umap_result["embedding"]  # UMAP outputs singular "embedding"
@@ -266,7 +264,7 @@ class SingleCellPipeline(OperatorModule):
             embeddings_2d = corrected_embeddings[:, : self.config.umap_n_components]
 
         # Step 5: Clustering (optional)
-        if self._enable_clustering and self.clustering is not None:
+        if self.clustering is not None:
             cluster_data = {"embeddings": corrected_embeddings}
             cluster_result, _, _ = self.clustering.apply(cluster_data, {}, None)
             cluster_assignments = cluster_result["cluster_assignments"]
@@ -286,7 +284,7 @@ class SingleCellPipeline(OperatorModule):
         }
 
         # Add optional outputs
-        if self._enable_ambient_removal:
+        if self.ambient_removal is not None:
             output_data["decontaminated_counts"] = decontaminated
 
         return output_data, state, metadata

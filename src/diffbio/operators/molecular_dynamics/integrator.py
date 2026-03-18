@@ -23,6 +23,7 @@ from diffbio.operators.molecular_dynamics.primitives import (
 
 @dataclass
 class MDIntegratorConfig(OperatorConfig):
+    # pylint: disable=too-many-instance-attributes
     """Configuration for MD integrator operator.
 
     Attributes:
@@ -54,6 +55,17 @@ class MDIntegratorConfig(OperatorConfig):
     stream_name: str | None = None
 
 
+@dataclass(frozen=True)
+class _MDRuntime:
+    """Precomputed JAX-MD runtime callables."""
+
+    displacement_fn: Any
+    shift_fn: Any
+    energy_fn: Any
+    force_fn: Any
+    step_fn: Any
+
+
 class MDIntegratorOperator(OperatorModule):
     """Differentiable MD integrator operator using JAX-MD.
 
@@ -83,31 +95,39 @@ class MDIntegratorOperator(OperatorModule):
             rngs: Flax NNX random number generators.
         """
         super().__init__(config, rngs=rngs)
-        self.config: MDIntegratorConfig = config
-
         # Pre-create displacement, energy, and force functions (efficiency: only created once)
-        self._displacement_fn, self._shift_fn = create_displacement_fn(config.box_size)
-        self._energy_fn = create_energy_fn(
-            self._displacement_fn,
+        displacement_fn, shift_fn = create_displacement_fn(config.box_size)
+        energy_fn = create_energy_fn(
+            displacement_fn,
             potential_type=config.potential_type,
             sigma=config.sigma,
             epsilon=config.epsilon,
         )
-        self._force_fn = quantity.force(self._energy_fn)
+        force_fn = quantity.force(energy_fn)
 
         # Pre-create step function based on integrator type
         if config.integrator_type == "velocity_verlet":
-            _, self._step_fn = simulate.nve(self._energy_fn, self._shift_fn, dt=config.dt)
+            _, step_fn = simulate.nve(energy_fn, shift_fn, dt=config.dt)
         elif config.integrator_type == "nvt_langevin":
-            _, self._step_fn = simulate.nvt_langevin(
-                self._energy_fn,
-                self._shift_fn,
+            _, step_fn = simulate.nvt_langevin(
+                energy_fn,
+                shift_fn,
                 dt=config.dt,
                 kT=config.kT,
                 gamma=config.gamma,
             )
         else:
             raise ValueError(f"Unknown integrator type: {config.integrator_type}")
+
+        self._runtime = nnx.static(
+            _MDRuntime(
+                displacement_fn=displacement_fn,
+                shift_fn=shift_fn,
+                energy_fn=energy_fn,
+                force_fn=force_fn,
+                step_fn=step_fn,
+            )
+        )
 
     def apply(
         self,
@@ -137,11 +157,12 @@ class MDIntegratorOperator(OperatorModule):
         positions = data["positions"]
         velocities = data["velocities"]
         config = self.config
+        runtime = self._runtime
 
         # Use pre-created functions from __init__
         # Initialize state with user-provided velocities
         # JAX-MD uses momentum = mass * velocity internally
-        initial_force = self._force_fn(positions)
+        initial_force = runtime.force_fn(positions)
         mass = config.mass  # JAX-MD works with scalar mass
         momentum = velocities * mass
 
@@ -167,7 +188,7 @@ class MDIntegratorOperator(OperatorModule):
             raise ValueError(f"Unknown integrator type: {config.integrator_type}")
 
         # Run simulation using scan for efficiency
-        step_fn = self._step_fn  # Capture for use in nested function
+        step_fn = runtime.step_fn  # Capture for use in nested function
 
         def scan_step(carry, _):
             sim_state = carry

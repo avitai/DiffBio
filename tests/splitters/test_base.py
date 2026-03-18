@@ -180,6 +180,34 @@ class TestSplitterModuleBase:
 
         assert jnp.array_equal(result_split.train_indices, result_process.train_indices)
 
+    def test_assign_groups_to_splits_preserves_group_boundaries(self):
+        """Grouped indices should remain intact when assigned to splits."""
+        from diffbio.splitters import SplitResult, SplitterConfig, SplitterModule
+
+        class ConcreteSplitter(SplitterModule):
+            def split(self, data_source):
+                return SplitResult(
+                    train_indices=jnp.array([], dtype=jnp.int32),
+                    valid_indices=jnp.array([], dtype=jnp.int32),
+                    test_indices=jnp.array([], dtype=jnp.int32),
+                )
+
+        splitter = ConcreteSplitter(SplitterConfig(train_frac=0.5, valid_frac=0.25, test_frac=0.25))
+
+        groups = [[0, 1], [2, 3], [4], [5]]
+        result = splitter.assign_groups_to_splits(groups, total_size=6)
+
+        assert result.train_indices.tolist() == [0, 1, 2, 3]
+        assert result.valid_indices.tolist() == [4]
+        assert result.test_indices.tolist() == [5]
+
+        assigned = (
+            result.train_indices.tolist()
+            + result.valid_indices.tolist()
+            + result.test_indices.tolist()
+        )
+        assert sorted(assigned) == [0, 1, 2, 3, 4, 5]
+
 
 class TestSplitterCreateSplitSources:
     """Tests for create_split_sources method."""

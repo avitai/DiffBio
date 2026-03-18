@@ -16,45 +16,34 @@ Usage:
     from diffbio.core.data_types import SequenceData
 """
 
-# Base operators
-from diffbio.core.base_operators import (
-    EncoderDecoderOperator,
-    GraphOperator,
-    HMMOperator,
-    SequenceOperator,
-    TemperatureOperator,
-)
+import diffbio.core.base_operators as _base_operators
+import diffbio.core.differentiable_ops as _differentiable_ops
+import diffbio.core.neural_components as _neural_components
 
-# Differentiable operations
-from diffbio.core.differentiable_ops import (
-    differentiable_scan,
-    differentiable_topk,
-    gumbel_softmax,
-    logsumexp_smooth_max,
-    segment_softmax,
-    soft_argmax,
-    soft_attention_weights,
-    soft_one_hot,
-    soft_sort,
-    soft_threshold,
-)
+TemperatureOperator = _base_operators.TemperatureOperator
+SequenceOperator = _base_operators.SequenceOperator
+EncoderDecoderOperator = _base_operators.EncoderDecoderOperator
+GraphOperator = _base_operators.GraphOperator
+HMMOperator = _base_operators.HMMOperator
 
-# Neural components (DiffBio-specific)
-from diffbio.core.neural_components import (
-    GraphMessagePassing,
-    GumbelSoftmaxModule,
-)
+soft_argmax = _differentiable_ops.soft_argmax
+soft_sort = _differentiable_ops.soft_sort
+soft_threshold = _differentiable_ops.soft_threshold
+logsumexp_smooth_max = _differentiable_ops.logsumexp_smooth_max
+segment_softmax = _differentiable_ops.segment_softmax
+gumbel_softmax = _differentiable_ops.gumbel_softmax
+differentiable_scan = _differentiable_ops.differentiable_scan
+soft_one_hot = _differentiable_ops.soft_one_hot
+soft_attention_weights = _differentiable_ops.soft_attention_weights
+differentiable_topk = _differentiable_ops.differentiable_topk
 
-# Re-export from artifex (required dependency)
-from artifex.generative_models.core.layers.positional import (
-    PositionalEncoding,
-    RotaryPositionalEncoding as RoPE,
-    SinusoidalPositionalEncoding,
-)
-from artifex.generative_models.core.layers.residual import (
-    Conv1DResidualBlock as ResidualBlock1D,
-    Conv2DResidualBlock as ResidualBlock2D,
-)
+GumbelSoftmaxModule = _neural_components.GumbelSoftmaxModule
+GraphMessagePassing = _neural_components.GraphMessagePassing
+PositionalEncoding = _neural_components.PositionalEncoding
+SinusoidalPositionalEncoding = _neural_components.SinusoidalPositionalEncoding
+RoPE = _neural_components.RoPE
+ResidualBlock1D = _neural_components.ResidualBlock1D
+ResidualBlock2D = _neural_components.ResidualBlock2D
 
 # Data types
 from diffbio.core.data_types import (
@@ -79,33 +68,13 @@ from diffbio.core.data_types import (
     VariantData,
 )
 
-__all__ = [
-    # Base operators
-    "TemperatureOperator",
-    "SequenceOperator",
-    "EncoderDecoderOperator",
-    "GraphOperator",
-    "HMMOperator",
-    # Differentiable ops
-    "soft_argmax",
-    "soft_sort",
-    "soft_threshold",
-    "logsumexp_smooth_max",
-    "segment_softmax",
-    "gumbel_softmax",
-    "differentiable_scan",
+__all__ = [  # pyright: ignore[reportUnsupportedDunderAll]
+    *_base_operators.__all__,
+    *_differentiable_ops.__all__,
+    *_neural_components.__all__,
     "soft_one_hot",
     "soft_attention_weights",
     "differentiable_topk",
-    # Neural components (DiffBio-specific)
-    "GumbelSoftmaxModule",
-    "GraphMessagePassing",
-    # Re-exported from artifex
-    "PositionalEncoding",
-    "SinusoidalPositionalEncoding",
-    "RoPE",
-    "ResidualBlock1D",
-    "ResidualBlock2D",
     # Data types
     "SequenceData",
     "AlignmentResultData",

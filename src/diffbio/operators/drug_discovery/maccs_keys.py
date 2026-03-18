@@ -22,7 +22,13 @@ from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 
-from diffbio.operators.drug_discovery.message_passing import StackedMessagePassing
+from diffbio.operators.drug_discovery._graph_utils import (
+    attach_fingerprint,
+    ensure_rngs,
+    initialize_graph_encoder,
+    stabilize_operator_id,
+    unpack_graph_inputs,
+)
 
 
 @dataclass
@@ -98,21 +104,18 @@ class MACCSKeysOperator(OperatorModule):
             rngs: Flax NNX random number generators.
         """
         super().__init__(config, rngs=rngs)
-        self.config: MACCSKeysConfig = config
 
-        # Fix: wrap _unique_id as static for jax.grad compatibility
-        self._unique_id = nnx.static(self._unique_id)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
+        rngs = ensure_rngs(rngs)
 
         if config.differentiable:
             # Message passing for local structure aggregation
-            self.encoder = StackedMessagePassing(
+            rngs = initialize_graph_encoder(
+                self,
+                rngs=rngs,
                 hidden_dim=config.hidden_dim,
                 num_layers=config.num_layers,
                 in_features=config.in_features,
-                rngs=rngs,
+                attr="encoder",
             )
 
             # Pattern detectors: one network per MACCS key
@@ -124,6 +127,7 @@ class MACCSKeysOperator(OperatorModule):
             )
         else:
             # RDKit mode
+            stabilize_operator_id(self)
             try:
                 from rdkit import Chem
                 from rdkit.Chem import MACCSkeys as RDKitMACCS
@@ -208,18 +212,13 @@ class MACCSKeysOperator(OperatorModule):
         del random_params, stats  # Unused
 
         if self.config.differentiable:
-            node_features = data["node_features"]
-            adjacency = data["adjacency"]
-            edge_features = data.get("edge_features")
-            node_mask = data.get("node_mask")
-
+            node_features, adjacency, edge_features, node_mask = unpack_graph_inputs(data)
             fp = self._compute_differentiable_fp(node_features, adjacency, edge_features, node_mask)
         else:
             smiles = data["smiles"]
             fp = self._compute_rdkit_fp(smiles)
 
-        result = {**data, "fingerprint": fp}
-        return result, state, metadata
+        return attach_fingerprint(data, fp), state, metadata
 
     def _compute_rdkit_fp(self, smiles: str) -> jnp.ndarray:
         """Compute exact MACCS keys using RDKit.
