@@ -4,14 +4,19 @@ This module provides a variational autoencoder for normalizing gene
 expression count data, inspired by scVI (Lopez et al., 2018).
 
 Key technique: Learn a latent representation of cell state while
-modeling count data with a negative binomial likelihood.
+modeling count data with a configurable likelihood (Poisson or ZINB).
+
+The ZINB (Zero-Inflated Negative Binomial) likelihood is particularly
+suited for single-cell RNA-seq data which exhibits both overdispersion
+and excess zeros (dropout events).
 """
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 import jax
 import jax.numpy as jnp
+from artifex.generative_models.core.losses.divergence import gaussian_kl_divergence
 from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
@@ -28,6 +33,9 @@ class VAENormalizerConfig(OperatorConfig):
         hidden_dims: Hidden layer dimensions for encoder/decoder.
         n_genes: Number of genes (input/output dimension).
         use_batch_correction: Whether to include batch effects.
+        likelihood: Likelihood model for reconstruction loss.
+            'poisson' for standard Poisson NLL, 'zinb' for
+            Zero-Inflated Negative Binomial.
         stochastic: Whether the operator uses randomness (True for VAE).
         stream_name: RNG stream name for sampling.
     """
@@ -36,6 +44,7 @@ class VAENormalizerConfig(OperatorConfig):
     hidden_dims: list[int] = field(default_factory=lambda: [128, 64])
     n_genes: int = 2000
     use_batch_correction: bool = False
+    likelihood: Literal["poisson", "zinb"] = "poisson"
     stochastic: bool = True
     stream_name: str = "sample"
 
@@ -50,7 +59,12 @@ class VAENormalizer(EncoderDecoderOperator):
     The model:
     - Encoder: counts -> latent (mean, logvar)
     - Reparameterization: z = mean + exp(0.5 * logvar) * epsilon
-    - Decoder: z -> gene expression rates
+    - Decoder: z -> gene expression rates (and optionally dispersion/dropout)
+
+    Supports two likelihood models:
+    - Poisson: Simple count model (default)
+    - ZINB: Zero-Inflated Negative Binomial for overdispersed data
+      with excess zeros, as used in scVI
 
     Inherits from EncoderDecoderOperator to get:
 
@@ -78,7 +92,7 @@ class VAENormalizer(EncoderDecoderOperator):
         *,
         rngs: nnx.Rngs | None = None,
         name: str | None = None,
-    ):
+    ) -> None:
         """Initialize the VAE normalizer.
 
         Args:
@@ -112,18 +126,29 @@ class VAENormalizer(EncoderDecoderOperator):
 
         # Build decoder layers
         decoder_layers: list[nnx.Linear] = []
-        prev_dim = config.latent_dim
+        decoder_prev_dim = config.latent_dim
 
         for hidden_dim in reversed(config.hidden_dims):
             decoder_layers.append(
-                nnx.Linear(in_features=prev_dim, out_features=hidden_dim, rngs=rngs)
+                nnx.Linear(in_features=decoder_prev_dim, out_features=hidden_dim, rngs=rngs)
             )
-            prev_dim = hidden_dim
+            decoder_prev_dim = hidden_dim
 
         self.decoder_layers = nnx.List(decoder_layers)
 
         # Output layer (log rates)
-        self.fc_output = nnx.Linear(in_features=prev_dim, out_features=config.n_genes, rngs=rngs)
+        self.fc_output = nnx.Linear(
+            in_features=decoder_prev_dim, out_features=config.n_genes, rngs=rngs
+        )
+
+        # ZINB-specific decoder heads
+        if config.likelihood == "zinb":
+            self.fc_log_theta = nnx.Linear(
+                in_features=decoder_prev_dim, out_features=config.n_genes, rngs=rngs
+            )
+            self.fc_pi_logit = nnx.Linear(
+                in_features=decoder_prev_dim, out_features=config.n_genes, rngs=rngs
+            )
 
     def encode(
         self,
@@ -160,15 +185,18 @@ class VAENormalizer(EncoderDecoderOperator):
         self,
         z: Float[Array, "latent_dim"],
         library_size: Float[Array, ""],
-    ) -> Float[Array, "n_genes"]:
-        """Decode latent representation to gene expression rates.
+    ) -> dict[str, jax.Array]:
+        """Decode latent representation to gene expression parameters.
 
         Args:
             z: Latent representation.
             library_size: Total counts (library size) for normalization.
 
         Returns:
-            Log rates for each gene.
+            Dictionary with keys:
+                - 'log_rate': Log rates for each gene (always present).
+                - 'log_theta': Log dispersion parameter (ZINB only).
+                - 'pi_logit': Dropout logit for zero inflation (ZINB only).
         """
         x = z
 
@@ -180,33 +208,111 @@ class VAENormalizer(EncoderDecoderOperator):
         # Output layer (log rates, normalized by library size)
         log_rate = self.fc_output(x)
 
+        result: dict[str, jax.Array] = {}
+
+        # ZINB heads are computed before adding library size
+        if self.config.likelihood == "zinb":
+            result["log_theta"] = self.fc_log_theta(x)
+            result["pi_logit"] = self.fc_pi_logit(x)
+
         # Add library size effect (log scale)
         log_rate = log_rate + jnp.log(library_size + 1e-8)
+        result["log_rate"] = log_rate
 
-        return log_rate
+        return result
 
-    def reconstruction_loss(
+    def _poisson_nll(
         self,
         counts: Float[Array, "n_genes"],
         log_rate: Float[Array, "n_genes"],
     ) -> Float[Array, ""]:
-        """Compute Poisson reconstruction loss.
-
-        Uses Poisson likelihood for simplicity. Can be extended to
-        negative binomial for overdispersion.
+        """Compute Poisson negative log-likelihood.
 
         Args:
             counts: Original counts.
             log_rate: Log rates from decoder.
 
         Returns:
-            Negative log-likelihood.
+            Negative log-likelihood (scalar).
         """
-        # Poisson NLL: -log P(counts | rate) = rate - counts * log(rate)
-        # Simplified: sum(exp(log_rate) - counts * log_rate)
         rate = jnp.exp(log_rate)
-        nll = jnp.sum(rate - counts * log_rate)
-        return nll
+        return jnp.sum(rate - counts * log_rate)
+
+    def _zinb_nll(
+        self,
+        counts: Float[Array, "n_genes"],
+        log_rate: Float[Array, "n_genes"],
+        log_theta: Float[Array, "n_genes"],
+        pi_logit: Float[Array, "n_genes"],
+    ) -> Float[Array, ""]:
+        """Compute Zero-Inflated Negative Binomial negative log-likelihood.
+
+        ZINB: P(x) = pi * delta_0(x) + (1 - pi) * NB(x; mu, theta)
+        where pi = sigmoid(pi_logit), mu = exp(log_rate),
+        theta = exp(log_theta).
+
+        Args:
+            counts: Original counts.
+            log_rate: Log mean parameter from decoder.
+            log_theta: Log dispersion parameter.
+            pi_logit: Logit of zero-inflation probability.
+
+        Returns:
+            Negative log-likelihood (scalar).
+        """
+        mu = jnp.exp(log_rate)
+        theta = jnp.exp(jnp.clip(log_theta, -10.0, 10.0))
+        pi = jax.nn.sigmoid(pi_logit)
+
+        # NB log-probability per gene:
+        # log NB(x; mu, theta) = lgamma(x+theta) - lgamma(theta) - lgamma(x+1)
+        #                        + theta*log(theta/(theta+mu))
+        #                        + x*log(mu/(theta+mu))
+        nb_log_prob = (
+            jax.scipy.special.gammaln(counts + theta)
+            - jax.scipy.special.gammaln(theta)
+            - jax.scipy.special.gammaln(counts + 1.0)
+            + theta * jnp.log(theta / (theta + mu) + 1e-8)
+            + counts * jnp.log(mu / (theta + mu) + 1e-8)
+        )
+
+        # Zero-inflation via logsumexp for numerical stability
+        is_zero = (counts < 1e-6).astype(jnp.float32)
+
+        log_one_minus_pi = jnp.log1p(-pi + 1e-8)
+
+        # For x=0: log(pi + (1-pi)*NB(0))  via logsumexp
+        case_zero = jnp.logaddexp(jnp.log(pi + 1e-8), log_one_minus_pi + nb_log_prob)
+        # For x>0: log((1-pi)*NB(x)) = log(1-pi) + log_nb
+        case_nonzero = log_one_minus_pi + nb_log_prob
+
+        log_prob = is_zero * case_zero + (1.0 - is_zero) * case_nonzero
+        return -jnp.sum(log_prob)
+
+    def reconstruction_loss(
+        self,
+        counts: Float[Array, "n_genes"],
+        decode_output: dict[str, jax.Array],
+    ) -> Float[Array, ""]:
+        """Compute reconstruction loss based on configured likelihood.
+
+        Args:
+            counts: Original counts.
+            decode_output: Dictionary from decode() containing 'log_rate'
+                and optionally 'log_theta', 'pi_logit' for ZINB.
+
+        Returns:
+            Negative log-likelihood (scalar).
+        """
+        log_rate = decode_output["log_rate"]
+        if self.config.likelihood == "zinb":
+            return self._zinb_nll(
+                counts,
+                log_rate,
+                decode_output["log_theta"],
+                decode_output["pi_logit"],
+            )
+        return self._poisson_nll(counts, log_rate)
 
     # kl_divergence() is inherited from EncoderDecoderOperator
 
@@ -217,7 +323,7 @@ class VAENormalizer(EncoderDecoderOperator):
     ) -> Float[Array, ""]:
         """Compute negative ELBO loss.
 
-        Uses inherited reparameterize() and elbo_loss() from EncoderDecoderOperator.
+        Uses gaussian_kl_divergence from artifex for the KL term.
 
         Args:
             counts: Gene expression counts.
@@ -232,12 +338,16 @@ class VAENormalizer(EncoderDecoderOperator):
         # Sample latent using inherited reparameterize (uses self.rngs)
         z = self.reparameterize(mean, logvar)
 
-        # Decode
-        log_rate = self.decode(z, library_size)
+        # Decode (returns dict)
+        decode_output = self.decode(z, library_size)
 
-        # Compute losses using inherited elbo_loss
-        recon_loss = self.reconstruction_loss(counts, log_rate)
-        return self.elbo_loss(recon_loss, mean, logvar)
+        # Reconstruction loss
+        recon_loss = self.reconstruction_loss(counts, decode_output)
+
+        # KL divergence via artifex (handles unbatched 1-D inputs with sum)
+        kl = gaussian_kl_divergence(mean, logvar, reduction="sum")
+
+        return recon_loss + kl
 
     def apply(
         self,
@@ -284,8 +394,9 @@ class VAENormalizer(EncoderDecoderOperator):
         # (uses self.rngs from EncoderDecoderOperator)
         z = self.reparameterize(mean, logvar)
 
-        # Decode to gene expression rates
-        log_rate = self.decode(z, library_size)
+        # Decode to gene expression rates (returns dict)
+        decode_output = self.decode(z, library_size)
+        log_rate = decode_output["log_rate"]
 
         # Compute normalized expression (rate normalized by library size)
         # This is the "denoised" expression
