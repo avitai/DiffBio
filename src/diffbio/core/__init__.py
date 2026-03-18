@@ -9,17 +9,24 @@ bioinformatics operators:
   (soft_argmax, soft_sort, gumbel_softmax, etc.)
 - **neural_components**: DiffBio-specific neural network modules
   (GumbelSoftmaxModule, GraphMessagePassing)
+- **gnn_components**: Graph attention modules
+  (GraphAttentionLayer, GraphAttentionBlock, GATv2Layer, GATv2Block)
+- **optimal_transport**: Optimal transport solvers (SinkhornLayer)
 - **data_types**: Type aliases and protocols for type safety
 
 Usage:
     from diffbio.core import TemperatureOperator, logsumexp_smooth_max
+    from diffbio.core import GraphAttentionLayer, GATv2Layer
+    from diffbio.core import SinkhornLayer
     from diffbio.core.data_types import SequenceData
 """
 
 import diffbio.core.base_operators as _base_operators
 import diffbio.core.differentiable_ops as _differentiable_ops
+import diffbio.core.gnn_components as _gnn_components
 import diffbio.core.graph_utils as _graph_utils
 import diffbio.core.neural_components as _neural_components
+import diffbio.core.optimal_transport as _optimal_transport
 
 TemperatureOperator = _base_operators.TemperatureOperator
 SequenceOperator = _base_operators.SequenceOperator
@@ -45,6 +52,13 @@ SinusoidalPositionalEncoding = _neural_components.SinusoidalPositionalEncoding
 RoPE = _neural_components.RoPE
 ResidualBlock1D = _neural_components.ResidualBlock1D
 ResidualBlock2D = _neural_components.ResidualBlock2D
+
+GraphAttentionLayer = _gnn_components.GraphAttentionLayer
+GraphAttentionBlock = _gnn_components.GraphAttentionBlock
+GATv2Layer = _gnn_components.GATv2Layer
+GATv2Block = _gnn_components.GATv2Block
+
+SinkhornLayer = _optimal_transport.SinkhornLayer
 
 compute_pairwise_distances = _graph_utils.compute_pairwise_distances
 compute_knn_graph = _graph_utils.compute_knn_graph
@@ -77,8 +91,10 @@ from diffbio.core.data_types import (
 __all__ = [  # pyright: ignore[reportUnsupportedDunderAll]
     *_base_operators.__all__,
     *_differentiable_ops.__all__,
+    *_gnn_components.__all__,
     *_graph_utils.__all__,
     *_neural_components.__all__,
+    *_optimal_transport.__all__,
     "soft_one_hot",
     "soft_attention_weights",
     "differentiable_topk",
