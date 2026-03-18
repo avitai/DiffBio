@@ -11,7 +11,7 @@ Sources:
     FastaSource: FASTA file reading for DNA/RNA sequences
 """
 
-from diffbio.sources.anndata_source import AnnDataSource
+from diffbio.sources.anndata_source import AnnDataSource, AnnDataSourceConfig
 from diffbio.sources.bam import BAMSource, BAMSourceConfig
 from diffbio.sources.fasta import FastaSource, FastaSourceConfig
 from diffbio.sources.indexed_view import IndexedViewSource, IndexedViewSourceConfig
@@ -19,6 +19,7 @@ from diffbio.sources.molnet import MolNetSource, MolNetSourceConfig
 
 __all__ = [
     "AnnDataSource",
+    "AnnDataSourceConfig",
     "BAMSource",
     "BAMSourceConfig",
     "FastaSource",
