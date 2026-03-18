@@ -37,6 +37,8 @@ dependencies = [
   "artifex @ git+https://github.com/avitai/artifex.git",
   # Opifex - Scientific machine learning (GradNorm, neural operators)
   "opifex @ git+https://github.com/avitai/Opifex.git",
+  # Calibrax - Benchmarking metrics (clustering, distribution, contrastive)
+  "calibrax @ git+https://github.com/avitai/calibrax.git",
   # JAX ecosystem
   "beartype>=0.14.1",
   "chex>=0.1.7",
