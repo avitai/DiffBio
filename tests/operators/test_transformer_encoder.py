@@ -459,3 +459,155 @@ class TestEdgeCases:
         assert jnp.allclose(result["sequence"], sequence)
         # Other keys should be preserved
         assert result["other_key"] == "preserved"
+
+
+class TestTokenEmbeddingMode:
+    """Tests for token embedding input mode."""
+
+    def test_token_embedding_config(self) -> None:
+        """Test config accepts new input_embedding_type and vocab_size fields."""
+        config = TransformerSequenceEncoderConfig(
+            input_embedding_type="token_embedding",
+            vocab_size=64,
+        )
+        assert config.input_embedding_type == "token_embedding"
+        assert config.vocab_size == 64
+
+        # Default should be linear with no vocab_size
+        default_config = TransformerSequenceEncoderConfig()
+        assert default_config.input_embedding_type == "linear"
+        assert default_config.vocab_size is None
+
+    def test_token_embedding_requires_vocab_size(self) -> None:
+        """Test ValueError when token_embedding is selected without vocab_size."""
+        config = TransformerSequenceEncoderConfig(
+            input_embedding_type="token_embedding",
+            vocab_size=None,
+            hidden_dim=32,
+            num_layers=1,
+            num_heads=2,
+            dropout_rate=0.0,
+        )
+        with pytest.raises(ValueError, match="vocab_size"):
+            TransformerSequenceEncoder(config, rngs=nnx.Rngs(42))
+
+    def test_token_embedding_forward(self) -> None:
+        """Test integer input produces correct shape output in token mode."""
+        config = TransformerSequenceEncoderConfig(
+            input_embedding_type="token_embedding",
+            vocab_size=64,
+            hidden_dim=32,
+            num_layers=1,
+            num_heads=2,
+            dropout_rate=0.0,
+        )
+        encoder = TransformerSequenceEncoder(config, rngs=nnx.Rngs(42))
+
+        seq_len = 20
+        token_ids = jax.random.randint(jax.random.PRNGKey(0), (seq_len,), 0, 64)
+        data = {"sequence": token_ids}
+        result, _, _ = encoder.apply(data, {}, None)
+
+        assert result["embedding"].shape == (32,)
+        assert result["position_embeddings"].shape == (seq_len, 32)
+
+    def test_token_embedding_batch(self) -> None:
+        """Test batched integer input works in token mode."""
+        config = TransformerSequenceEncoderConfig(
+            input_embedding_type="token_embedding",
+            vocab_size=64,
+            hidden_dim=32,
+            num_layers=1,
+            num_heads=2,
+            dropout_rate=0.0,
+        )
+        encoder = TransformerSequenceEncoder(config, rngs=nnx.Rngs(42))
+
+        batch_size = 3
+        seq_len = 15
+        token_ids = jax.random.randint(jax.random.PRNGKey(0), (batch_size, seq_len), 0, 64)
+        data = {"sequence": token_ids}
+        result, _, _ = encoder.apply(data, {}, None)
+
+        assert result["embedding"].shape == (batch_size, 32)
+        assert result["position_embeddings"].shape == (batch_size, seq_len, 32)
+
+    def test_token_embedding_gradient_flow(self) -> None:
+        """Test gradients flow through token embedding mode."""
+        config = TransformerSequenceEncoderConfig(
+            input_embedding_type="token_embedding",
+            vocab_size=64,
+            hidden_dim=32,
+            num_layers=1,
+            num_heads=2,
+            dropout_rate=0.0,
+        )
+        encoder = TransformerSequenceEncoder(config, rngs=nnx.Rngs(42))
+
+        seq_len = 10
+        token_ids = jax.random.randint(jax.random.PRNGKey(0), (seq_len,), 0, 64)
+
+        def loss_fn(enc: TransformerSequenceEncoder) -> jax.Array:
+            data = {"sequence": token_ids}
+            result, _, _ = enc.apply(data, {}, None)
+            return result["embedding"].sum()
+
+        _, grads = nnx.value_and_grad(loss_fn)(encoder)
+        assert grads is not None
+
+    def test_token_embedding_jit(self) -> None:
+        """Test token embedding mode is JIT compatible."""
+        config = TransformerSequenceEncoderConfig(
+            input_embedding_type="token_embedding",
+            vocab_size=64,
+            hidden_dim=32,
+            num_layers=1,
+            num_heads=2,
+            dropout_rate=0.0,
+        )
+        encoder = TransformerSequenceEncoder(config, rngs=nnx.Rngs(42))
+
+        seq_len = 12
+        token_ids = jax.random.randint(jax.random.PRNGKey(0), (seq_len,), 0, 64)
+
+        @jax.jit
+        def encode(tokens: jax.Array) -> jax.Array:
+            data = {"sequence": tokens}
+            result, _, _ = encoder.apply(data, {}, None)
+            return result["embedding"]
+
+        embedding = encode(token_ids)
+        assert embedding.shape == (32,)
+
+        # Second call should produce identical result (deterministic)
+        embedding2 = encode(token_ids)
+        assert jnp.allclose(embedding, embedding2)
+
+    def test_linear_mode_unchanged(self) -> None:
+        """Test that default linear mode behavior is identical to before."""
+        config = TransformerSequenceEncoderConfig(
+            hidden_dim=32,
+            num_layers=1,
+            num_heads=2,
+            dropout_rate=0.0,
+        )
+        encoder = TransformerSequenceEncoder(config, rngs=nnx.Rngs(42))
+
+        # Verify config defaults
+        assert config.input_embedding_type == "linear"
+        assert config.vocab_size is None
+
+        # Verify input_projection is nnx.Linear (not nnx.Embed)
+        assert isinstance(encoder.input_projection, nnx.Linear)
+
+        # Verify forward pass with one-hot input works as before
+        seq_len = 20
+        sequence = jax.nn.one_hot(
+            jax.random.randint(jax.random.PRNGKey(0), (seq_len,), 0, 4),
+            num_classes=4,
+        )
+        data = {"sequence": sequence}
+        result, _, _ = encoder.apply(data, {}, None)
+
+        assert result["embedding"].shape == (32,)
+        assert result["position_embeddings"].shape == (seq_len, 32)

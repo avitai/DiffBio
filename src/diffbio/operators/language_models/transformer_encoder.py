@@ -44,6 +44,11 @@ class TransformerSequenceEncoderConfig(OperatorConfig):
         alphabet_size: Size of nucleotide alphabet (4 for DNA/RNA).
         dropout_rate: Dropout rate for regularization.
         pooling: Pooling strategy for sequence embedding ("mean" or "cls").
+        input_embedding_type: Type of input embedding. "linear" projects
+            one-hot encoded input via nnx.Linear. "token_embedding" uses
+            nnx.Embed for integer token ID input.
+        vocab_size: Vocabulary size for token embedding mode. Required
+            when input_embedding_type is "token_embedding", ignored for "linear".
     """
 
     hidden_dim: int = 256
@@ -54,19 +59,29 @@ class TransformerSequenceEncoderConfig(OperatorConfig):
     alphabet_size: int = 4
     dropout_rate: float = 0.1
     pooling: Literal["mean", "cls"] = "mean"
+    input_embedding_type: Literal["linear", "token_embedding"] = "linear"
+    vocab_size: int | None = None
 
 
 class TransformerSequenceEncoder(SequenceOperator):
     """Transformer-based encoder for DNA/RNA sequences.
 
     This operator implements a BERT-style transformer encoder that
-    converts one-hot encoded nucleotide sequences into dense embeddings.
-    The architecture follows DNABERT and RNA-FM patterns.
+    converts nucleotide sequences into dense embeddings. The architecture
+    follows DNABERT and RNA-FM patterns.
 
     Uses artifex's TransformerEncoder for the core transformer layers,
     following the DRY principle.
 
+    Supports two input embedding modes:
+
+    - "linear" (default): Projects one-hot encoded input (seq_len, alphabet_size)
+      via nnx.Linear. This is the standard mode for continuous one-hot input.
+    - "token_embedding": Embeds integer token IDs (seq_len,) via nnx.Embed.
+      Useful for gene-token foundation models and tokenized input.
+
     The encoder produces:
+
     - Global sequence embedding via mean pooling or CLS token
     - Per-position embeddings for fine-grained analysis
 
@@ -108,12 +123,23 @@ class TransformerSequenceEncoder(SequenceOperator):
         if config.dropout_rate > 0 and "dropout" not in rngs:
             rngs = nnx.Rngs(params=rngs.params(), dropout=jax.random.key(1))
 
-        # Input projection: alphabet_size -> hidden_dim
-        self.input_projection = nnx.Linear(
-            config.alphabet_size,
-            config.hidden_dim,
-            rngs=rngs,
-        )
+        # Input projection: alphabet_size -> hidden_dim (or token embedding)
+        if config.input_embedding_type == "token_embedding":
+            if config.vocab_size is None:
+                raise ValueError(
+                    "vocab_size must be specified when input_embedding_type is 'token_embedding'"
+                )
+            self.input_projection = nnx.Embed(
+                num_embeddings=config.vocab_size,
+                features=config.hidden_dim,
+                rngs=rngs,
+            )
+        else:
+            self.input_projection = nnx.Linear(
+                config.alphabet_size,
+                config.hidden_dim,
+                rngs=rngs,
+            )
 
         # CLS token embedding (learnable)
         self.cls_token = nnx.Param(jax.random.normal(rngs.params(), (config.hidden_dim,)) * 0.02)
@@ -161,13 +187,15 @@ class TransformerSequenceEncoder(SequenceOperator):
 
     def _encode_single(
         self,
-        sequence: Float[Array, "seq_len alphabet_size"],
+        sequence: Array,
         mask: Float[Array, "seq_len"] | None = None,
     ) -> tuple[Float[Array, "hidden_dim"], Float[Array, "seq_len hidden_dim"]]:
         """Encode a single sequence.
 
         Args:
-            sequence: One-hot encoded sequence.
+            sequence: Input sequence. One-hot encoded (seq_len, alphabet_size)
+                for linear mode, or integer token IDs (seq_len,) for token
+                embedding mode.
             mask: Optional attention mask.
 
         Returns:
@@ -219,7 +247,7 @@ class TransformerSequenceEncoder(SequenceOperator):
 
     def _encode_batch(
         self,
-        sequences: Float[Array, "batch seq_len alphabet_size"],
+        sequences: Array,
         masks: Float[Array, "batch seq_len"] | None = None,
     ) -> tuple[
         Float[Array, "batch hidden_dim"],
@@ -228,7 +256,9 @@ class TransformerSequenceEncoder(SequenceOperator):
         """Encode a batch of sequences.
 
         Args:
-            sequences: Batch of one-hot encoded sequences.
+            sequences: Batch of input sequences. One-hot encoded
+                (batch, seq_len, alphabet_size) for linear mode, or integer
+                token IDs (batch, seq_len) for token embedding mode.
             masks: Optional attention masks.
 
         Returns:
@@ -280,13 +310,19 @@ class TransformerSequenceEncoder(SequenceOperator):
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply transformer encoding to sequence data.
 
-        This method encodes one-hot encoded DNA/RNA sequences into
-        dense embeddings using a transformer encoder architecture.
+        This method encodes DNA/RNA sequences into dense embeddings using
+        a transformer encoder architecture.
+
+        Input shape depends on ``input_embedding_type``:
+
+        - "linear": one-hot ``(seq_len, alphabet_size)`` or
+          ``(batch, seq_len, alphabet_size)``
+        - "token_embedding": integer token IDs ``(seq_len,)`` or
+          ``(batch, seq_len)``
 
         Args:
             data: Dictionary containing:
-                - "sequence": One-hot encoded sequence(s)
-                  Shape: (seq_len, alphabet_size) or (batch, seq_len, alphabet_size)
+                - "sequence": Encoded sequence(s) (see above for shapes)
                 - "attention_mask": Optional mask (seq_len,) or (batch, seq_len)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
@@ -308,12 +344,16 @@ class TransformerSequenceEncoder(SequenceOperator):
         sequence = data["sequence"]
         mask = data.get("attention_mask", None)
 
-        # Handle batched vs single sequence
-        if sequence.ndim == 2:
-            # Single sequence: (seq_len, alphabet_size)
+        is_token_mode = self.config.input_embedding_type == "token_embedding"
+
+        # Determine single vs batch based on input dimensionality:
+        # - token mode: single=(seq_len,) ndim=1, batch=(batch, seq_len) ndim=2
+        # - linear mode: single=(seq_len, alphabet) ndim=2, batch=(batch, seq_len, alphabet) ndim=3
+        single_ndim = 1 if is_token_mode else 2
+
+        if sequence.ndim == single_ndim:
             embedding, position_embeddings = self._encode_single(sequence, mask)
         else:
-            # Batched: (batch, seq_len, alphabet_size)
             embedding, position_embeddings = self._encode_batch(sequence, mask)
 
         # Build output data, preserving all input keys
