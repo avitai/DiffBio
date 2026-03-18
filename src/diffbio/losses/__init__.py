@@ -21,6 +21,7 @@ from diffbio.losses.singlecell_losses import (
     ClusteringCompactnessLoss,
     VelocityConsistencyLoss,
 )
+from diffbio.losses.metric_losses import DifferentiableAUROC, ExactAUROC
 from diffbio.losses.statistical_losses import (
     HMMLikelihoodLoss,
     NegativeBinomialLoss,
@@ -38,6 +39,9 @@ __all__ = [
     "GapPatternRegularization",
     "GCContentRegularization",
     "SequenceComplexityLoss",
+    # Metric losses
+    "DifferentiableAUROC",
+    "ExactAUROC",
     # Single-cell losses
     "BatchMixingLoss",
     "ClusteringCompactnessLoss",

@@ -713,6 +713,22 @@ wheels = [
 ]
 
 [[package]]
+name = "calibrax"
+version = "0.1.0"
+source = { git = "https://github.com/avitai/calibrax.git#339ced8ed2761839163dd17e9a5e8335d6383ac9" }
+dependencies = [
+    { name = "click" },
+    { name = "flax", version = "0.12.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "flax", version = "0.12.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "jax" },
+    { name = "jaxlib" },
+    { name = "jaxtyping" },
+    { name = "numpy" },
+    { name = "psutil" },
+    { name = "typing-extensions" },
+]
+
+[[package]]
 name = "certifi"
 version = "2026.1.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1348,6 +1364,7 @@ dependencies = [
     { name = "artifex" },
     { name = "beartype" },
     { name = "biopython" },
+    { name = "calibrax" },
     { name = "chex" },
     { name = "datarax" },
     { name = "flax", version = "0.12.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -1487,6 +1504,7 @@ requires-dist = [
     { name = "beartype", marker = "extra == 'test'", specifier = ">=0.14.1" },
     { name = "biopython", specifier = ">=1.81" },
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.0.3" },
+    { name = "calibrax", git = "https://github.com/avitai/calibrax.git" },
     { name = "chex", specifier = ">=0.1.7" },
     { name = "coverage", marker = "extra == 'dev'", specifier = ">=7" },
     { name = "coverage", marker = "extra == 'test'", specifier = ">=7" },
@@ -2519,7 +2537,7 @@ name = "gunicorn"
 version = "25.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "packaging" },
+    { name = "packaging", marker = "platform_system != 'Windows'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/66/13/ef67f59f6a7896fdc2c1d62b5665c5219d6b0a9a1784938eb9a28e55e128/gunicorn-25.1.0.tar.gz", hash = "sha256:1426611d959fa77e7de89f8c0f32eed6aa03ee735f98c01efba3e281b1c47616", size = 594377 }
 wheels = [
