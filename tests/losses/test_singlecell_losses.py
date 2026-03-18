@@ -10,6 +10,8 @@ import jax.numpy as jnp
 from diffbio.losses.singlecell_losses import (
     BatchMixingLoss,
     ClusteringCompactnessLoss,
+    ShannonDiversityLoss,
+    SimpsonDiversityLoss,
     VelocityConsistencyLoss,
 )
 
@@ -323,3 +325,114 @@ class TestJITCompatibility:
 
         loss = jit_loss(expression, velocity, future_expression)
         assert jnp.isfinite(loss)
+
+
+class TestShannonDiversityLoss:
+    """Tests for ShannonDiversityLoss."""
+
+    def test_uniform_assignments_max_entropy(self) -> None:
+        """Uniform assignments over K clusters should yield entropy = log(K)."""
+        loss_fn = ShannonDiversityLoss()
+        n_cells, n_clusters = 20, 5
+        # Uniform soft assignments: each cell assigns 1/K to each cluster
+        assignments = jnp.ones((n_cells, n_clusters)) / n_clusters
+        loss = loss_fn(assignments)
+        expected = jnp.log(jnp.array(n_clusters, dtype=jnp.float32))
+        assert jnp.allclose(loss, expected, atol=1e-5)
+
+    def test_one_hot_assignments_zero_entropy(self) -> None:
+        """Concentrated (one-hot) assignments should yield entropy near 0."""
+        loss_fn = ShannonDiversityLoss()
+        n_cells, n_clusters = 20, 5
+        # Each cell fully assigned to cluster 0
+        assignments = jax.nn.one_hot(jnp.zeros(n_cells, dtype=jnp.int32), n_clusters)
+        loss = loss_fn(assignments)
+        assert jnp.allclose(loss, 0.0, atol=1e-5)
+
+    def test_gradient_flow(self) -> None:
+        """Gradients should flow through soft assignments."""
+        loss_fn = ShannonDiversityLoss()
+
+        def compute_loss(logits: jax.Array) -> jax.Array:
+            assignments = jax.nn.softmax(logits, axis=-1)
+            return loss_fn(assignments)
+
+        logits = jax.random.normal(jax.random.key(0), (10, 4))
+        grad = jax.grad(compute_loss)(logits)
+        assert grad.shape == logits.shape
+        assert jnp.isfinite(grad).all()
+        # Gradients should be non-trivial (not all zeros)
+        assert jnp.any(grad != 0.0)
+
+    def test_jit_compatible(self) -> None:
+        """Loss should work under jax.jit."""
+        loss_fn = ShannonDiversityLoss()
+        assignments = jnp.ones((10, 4)) / 4
+
+        @jax.jit
+        def jit_loss(a: jax.Array) -> jax.Array:
+            return loss_fn(a)
+
+        loss = jit_loss(assignments)
+        assert jnp.isfinite(loss)
+
+    def test_output_shape(self) -> None:
+        """Loss should return a scalar."""
+        loss_fn = ShannonDiversityLoss()
+        assignments = jnp.ones((15, 6)) / 6
+        loss = loss_fn(assignments)
+        assert loss.shape == ()
+
+
+class TestSimpsonDiversityLoss:
+    """Tests for SimpsonDiversityLoss."""
+
+    def test_uniform_assignments(self) -> None:
+        """Uniform assignments over K clusters should yield 1/K."""
+        loss_fn = SimpsonDiversityLoss()
+        n_cells, n_clusters = 20, 5
+        assignments = jnp.ones((n_cells, n_clusters)) / n_clusters
+        loss = loss_fn(assignments)
+        expected = 1.0 / n_clusters
+        assert jnp.allclose(loss, expected, atol=1e-5)
+
+    def test_one_hot_assignments(self) -> None:
+        """Concentrated (one-hot) assignments should yield 1.0."""
+        loss_fn = SimpsonDiversityLoss()
+        n_cells, n_clusters = 20, 5
+        assignments = jax.nn.one_hot(jnp.zeros(n_cells, dtype=jnp.int32), n_clusters)
+        loss = loss_fn(assignments)
+        assert jnp.allclose(loss, 1.0, atol=1e-5)
+
+    def test_gradient_flow(self) -> None:
+        """Gradients should flow through soft assignments."""
+        loss_fn = SimpsonDiversityLoss()
+
+        def compute_loss(logits: jax.Array) -> jax.Array:
+            assignments = jax.nn.softmax(logits, axis=-1)
+            return loss_fn(assignments)
+
+        logits = jax.random.normal(jax.random.key(0), (10, 4))
+        grad = jax.grad(compute_loss)(logits)
+        assert grad.shape == logits.shape
+        assert jnp.isfinite(grad).all()
+        assert jnp.any(grad != 0.0)
+
+    def test_jit_compatible(self) -> None:
+        """Loss should work under jax.jit."""
+        loss_fn = SimpsonDiversityLoss()
+        assignments = jnp.ones((10, 4)) / 4
+
+        @jax.jit
+        def jit_loss(a: jax.Array) -> jax.Array:
+            return loss_fn(a)
+
+        loss = jit_loss(assignments)
+        assert jnp.isfinite(loss)
+
+    def test_output_shape(self) -> None:
+        """Loss should return a scalar."""
+        loss_fn = SimpsonDiversityLoss()
+        assignments = jnp.ones((15, 6)) / 6
+        loss = loss_fn(assignments)
+        assert loss.shape == ()

@@ -1,16 +1,19 @@
 """Single-cell specific loss functions for differentiable bioinformatics.
 
 This module provides differentiable loss functions for single-cell analysis
-pipelines, including batch correction, clustering, and RNA velocity.
+pipelines, including batch correction, clustering, RNA velocity, and diversity.
 
 Includes:
 - BatchMixingLoss: Maximizes batch mixing in latent space
 - ClusteringCompactnessLoss: Encourages tight, well-separated clusters
 - VelocityConsistencyLoss: Enforces consistency between velocity and trajectory
+- ShannonDiversityLoss: Shannon entropy of soft cluster assignments
+- SimpsonDiversityLoss: Simpson concentration index of soft cluster assignments
 """
 
 import jax
 import jax.numpy as jnp
+from calibrax.metrics.functional.information import entropy
 from flax import nnx
 from jaxtyping import Array, Float, Int
 
@@ -299,3 +302,76 @@ class VelocityConsistencyLoss(nnx.Module):
 
         # Combined loss
         return self.cosine_weight * cosine_loss + self.magnitude_weight * magnitude_loss
+
+
+class ShannonDiversityLoss(nnx.Module):
+    """Mean Shannon entropy of soft cluster assignments across cells.
+
+    Measures assignment diversity using Shannon entropy. Higher values indicate
+    more uniform (diverse) cluster assignments, while lower values indicate
+    concentrated assignments.
+
+    Delegates to ``calibrax.metrics.functional.information.entropy`` for the
+    per-cell entropy computation.
+
+    Example:
+        ```python
+        loss_fn = ShannonDiversityLoss()
+        # Soft cluster probabilities: (n_cells, n_clusters)
+        assignments = jax.nn.softmax(logits, axis=-1)
+        diversity = loss_fn(assignments)  # scalar, higher = more diverse
+        ```
+    """
+
+    def __call__(
+        self,
+        assignments: Float[Array, "n_cells n_clusters"],
+    ) -> Float[Array, ""]:
+        """Compute mean Shannon entropy of soft cluster assignments.
+
+        Args:
+            assignments: Soft cluster probabilities of shape ``(n_cells, n_clusters)``.
+                Each row should sum to 1.
+
+        Returns:
+            Mean Shannon entropy across cells (scalar). Range ``[0, log(K)]``
+            where ``K`` is the number of clusters.
+        """
+        # Compute per-cell Shannon entropy via calibrax, then average
+        per_cell_entropy = jax.vmap(entropy)(assignments)
+        return jnp.mean(per_cell_entropy)
+
+
+class SimpsonDiversityLoss(nnx.Module):
+    """Mean Simpson concentration index of soft cluster assignments.
+
+    Computes the sum of squared assignment probabilities per cell, averaged
+    across all cells. Lower values indicate more diverse (uniform) assignments.
+
+    - Uniform assignments over K clusters yield ``1/K``.
+    - Fully concentrated (one-hot) assignments yield ``1.0``.
+
+    Example:
+        ```python
+        loss_fn = SimpsonDiversityLoss()
+        assignments = jax.nn.softmax(logits, axis=-1)
+        concentration = loss_fn(assignments)  # scalar, lower = more diverse
+        ```
+    """
+
+    def __call__(
+        self,
+        assignments: Float[Array, "n_cells n_clusters"],
+    ) -> Float[Array, ""]:
+        """Compute mean Simpson concentration index.
+
+        Args:
+            assignments: Soft cluster probabilities of shape ``(n_cells, n_clusters)``.
+                Each row should sum to 1.
+
+        Returns:
+            Mean sum-of-squared-probabilities across cells (scalar).
+            Range ``[1/K, 1.0]`` where ``K`` is the number of clusters.
+        """
+        per_cell_simpson = jnp.sum(assignments**2, axis=-1)
+        return jnp.mean(per_cell_simpson)
