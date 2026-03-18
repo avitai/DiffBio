@@ -18,6 +18,7 @@ Usage:
 
 import diffbio.core.base_operators as _base_operators
 import diffbio.core.differentiable_ops as _differentiable_ops
+import diffbio.core.graph_utils as _graph_utils
 import diffbio.core.neural_components as _neural_components
 
 TemperatureOperator = _base_operators.TemperatureOperator
@@ -45,6 +46,11 @@ RoPE = _neural_components.RoPE
 ResidualBlock1D = _neural_components.ResidualBlock1D
 ResidualBlock2D = _neural_components.ResidualBlock2D
 
+compute_pairwise_distances = _graph_utils.compute_pairwise_distances
+compute_knn_graph = _graph_utils.compute_knn_graph
+compute_fuzzy_membership = _graph_utils.compute_fuzzy_membership
+symmetrize_graph = _graph_utils.symmetrize_graph
+
 # Data types
 from diffbio.core.data_types import (
     AlignmentResultData,
@@ -71,6 +77,7 @@ from diffbio.core.data_types import (
 __all__ = [  # pyright: ignore[reportUnsupportedDunderAll]
     *_base_operators.__all__,
     *_differentiable_ops.__all__,
+    *_graph_utils.__all__,
     *_neural_components.__all__,
     "soft_one_hot",
     "soft_attention_weights",

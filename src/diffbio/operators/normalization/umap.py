@@ -14,6 +14,12 @@ import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 
+from diffbio.core.graph_utils import (
+    compute_fuzzy_membership,
+    compute_pairwise_distances,
+    symmetrize_graph,
+)
+
 
 @dataclass
 class UMAPConfig(OperatorConfig):
@@ -126,6 +132,7 @@ class DifferentiableUMAP(OperatorModule):
         """Compute high-dimensional fuzzy set membership (p_ij).
 
         Uses k-nearest neighbors and Gaussian kernel with local bandwidth.
+        Delegates to reusable graph utilities in ``diffbio.core.graph_utils``.
 
         Args:
             features: Input features of shape (n_samples, n_features).
@@ -136,39 +143,11 @@ class DifferentiableUMAP(OperatorModule):
         n_samples = features.shape[0]
         n_neighbors = min(self.config.n_neighbors, n_samples - 1)
 
-        # Compute pairwise distances
-        if self.config.metric == "cosine":
-            # Normalize features for cosine distance
-            features_norm = features / (jnp.linalg.norm(features, axis=-1, keepdims=True) + 1e-8)
-            # Cosine similarity -> distance
-            sim = jnp.dot(features_norm, features_norm.T)
-            distances = jnp.sqrt(2 * (1 - sim + 1e-8))
-        else:
-            # Euclidean distance
-            diff = features[:, None, :] - features[None, :, :]
-            distances = jnp.sqrt(jnp.sum(diff**2, axis=-1) + 1e-8)
-
-        # Set diagonal to large value to exclude self-connections
+        distances = compute_pairwise_distances(features, metric=self.config.metric)
         distances = distances + jnp.eye(n_samples) * 1e10
 
-        # Find local bandwidth (distance to k-th neighbor) using soft top-k
-        # Sort distances and take k-th smallest
-        sorted_dists = jnp.sort(distances, axis=-1)
-        sigma = sorted_dists[:, n_neighbors - 1 : n_neighbors].squeeze(-1)
-        sigma = jnp.maximum(sigma, 1e-8)
-
-        # Compute fuzzy membership using Gaussian kernel
-        # p_ij = exp(-max(0, d_ij - rho_i) / sigma_i)
-        # Simplified: use sigma as bandwidth
-        p_ij = jnp.exp(-distances / sigma[:, None])
-
-        # Set diagonal to 0
-        p_ij = p_ij * (1 - jnp.eye(n_samples))
-
-        # Symmetrize: p_sym = p_ij + p_ji - p_ij * p_ji
-        p_sym = p_ij + p_ij.T - p_ij * p_ij.T
-
-        return p_sym
+        p_ij = compute_fuzzy_membership(distances, k=n_neighbors)
+        return symmetrize_graph(p_ij)
 
     def _compute_low_dim_similarities(self, embedding: jax.Array) -> jax.Array:
         """Compute low-dimensional similarities (q_ij).
