@@ -4,6 +4,7 @@ This module provides differentiable components for single-cell analysis:
 - DifferentiableAmbientRemoval: CellBender-style ambient RNA removal
 - SoftKMeansClustering: Differentiable soft k-means clustering
 - DifferentiableHarmony: Harmony-style batch correction
+- DifferentiableSwitchDE: Sigmoidal switch differential expression
 - DifferentiableVelocity: RNA velocity via Neural ODEs
 """
 
@@ -18,6 +19,10 @@ from diffbio.operators.singlecell.batch_correction import (
 from diffbio.operators.singlecell.soft_clustering import (
     SoftClusteringConfig,
     SoftKMeansClustering,
+)
+from diffbio.operators.singlecell.switch_de import (
+    DifferentiableSwitchDE,
+    SwitchDEConfig,
 )
 from diffbio.operators.singlecell.velocity import (
     DifferentiableVelocity,
@@ -34,6 +39,9 @@ __all__ = [
     # Batch Correction
     "BatchCorrectionConfig",
     "DifferentiableHarmony",
+    # Switch DE
+    "DifferentiableSwitchDE",
+    "SwitchDEConfig",
     # Velocity
     "DifferentiableVelocity",
     "VelocityConfig",
