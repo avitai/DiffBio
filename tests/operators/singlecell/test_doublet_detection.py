@@ -1,7 +1,8 @@
 """Tests for diffbio.operators.singlecell.doublet_detection module.
 
 These tests define the expected behavior of the DifferentiableDoubletScorer
-operator for Scrublet-style doublet detection in single-cell data.
+operator for Scrublet-style doublet detection in single-cell data, and the
+DifferentiableSoloDetector for Solo-style VAE doublet detection.
 """
 
 import jax
@@ -11,7 +12,9 @@ from flax import nnx
 
 from diffbio.operators.singlecell.doublet_detection import (
     DifferentiableDoubletScorer,
+    DifferentiableSoloDetector,
     DoubletScorerConfig,
+    SoloDetectorConfig,
 )
 
 
@@ -365,3 +368,262 @@ class TestEdgeCases:
         scores = result["doublet_scores"]
         # All identical cells -> scores should have very low variance
         assert jnp.std(scores) < 0.1
+
+
+# =============================================================================
+# Solo VAE Doublet Detector Tests
+# =============================================================================
+
+N_CELLS_SOLO = 30
+N_GENES_SOLO = 30
+LATENT_DIM_SOLO = 5
+HIDDEN_DIMS_SOLO = [16, 8]
+
+
+class TestSoloDetectorConfig:
+    """Tests for SoloDetectorConfig."""
+
+    def test_default_config(self) -> None:
+        """Test default configuration values including stochastic=True."""
+        config = SoloDetectorConfig()
+        assert config.n_genes == 2000
+        assert config.latent_dim == 10
+        assert config.hidden_dims == [128, 64]
+        assert config.classifier_hidden_dim == 64
+        assert config.sim_doublet_ratio == 2.0
+        assert config.stochastic is True
+        assert config.stream_name == "sample"
+
+    def test_custom_latent_dim(self) -> None:
+        """Test custom latent dimension configuration."""
+        config = SoloDetectorConfig(latent_dim=20, hidden_dims=[32])
+        assert config.latent_dim == 20
+        assert config.hidden_dims == [32]
+
+
+class TestDifferentiableSoloDetector:
+    """Tests for DifferentiableSoloDetector operator."""
+
+    @pytest.fixture()
+    def solo_config(self) -> SoloDetectorConfig:
+        """Provide small config for fast tests."""
+        return SoloDetectorConfig(
+            n_genes=N_GENES_SOLO,
+            latent_dim=LATENT_DIM_SOLO,
+            hidden_dims=HIDDEN_DIMS_SOLO,
+            classifier_hidden_dim=8,
+        )
+
+    @pytest.fixture()
+    def solo_count_data(self) -> dict[str, jax.Array]:
+        """Provide count data for Solo detector testing."""
+        key = jax.random.key(0)
+        counts = jnp.abs(jax.random.normal(key, (N_CELLS_SOLO, N_GENES_SOLO))) * 5.0 + 0.1
+        return {"counts": counts}
+
+    def test_output_keys(
+        self,
+        rngs: nnx.Rngs,
+        solo_config: SoloDetectorConfig,
+        solo_count_data: dict[str, jax.Array],
+    ) -> None:
+        """Test that apply returns doublet_probabilities, doublet_labels, latent."""
+        op = DifferentiableSoloDetector(solo_config, rngs=rngs)
+        rng_key = jax.random.key(99)
+        random_params = op.generate_random_params(
+            rng_key, {"counts": solo_count_data["counts"].shape}
+        )
+        result, _, _ = op.apply(solo_count_data, {}, None, random_params=random_params)
+
+        assert "doublet_probabilities" in result
+        assert "doublet_labels" in result
+        assert "latent" in result
+        assert "counts" in result
+
+    def test_output_shapes(
+        self,
+        rngs: nnx.Rngs,
+        solo_config: SoloDetectorConfig,
+        solo_count_data: dict[str, jax.Array],
+    ) -> None:
+        """Test output shapes: (n_cells,), (n_cells,), (n_cells, latent_dim)."""
+        op = DifferentiableSoloDetector(solo_config, rngs=rngs)
+        n_cells = solo_count_data["counts"].shape[0]
+        rng_key = jax.random.key(99)
+        random_params = op.generate_random_params(
+            rng_key, {"counts": solo_count_data["counts"].shape}
+        )
+        result, _, _ = op.apply(solo_count_data, {}, None, random_params=random_params)
+
+        assert result["doublet_probabilities"].shape == (n_cells,)
+        assert result["doublet_labels"].shape == (n_cells,)
+        assert result["latent"].shape == (n_cells, LATENT_DIM_SOLO)
+
+    def test_probabilities_in_range(
+        self,
+        rngs: nnx.Rngs,
+        solo_config: SoloDetectorConfig,
+        solo_count_data: dict[str, jax.Array],
+    ) -> None:
+        """Test that all doublet probabilities are in [0, 1]."""
+        op = DifferentiableSoloDetector(solo_config, rngs=rngs)
+        rng_key = jax.random.key(99)
+        random_params = op.generate_random_params(
+            rng_key, {"counts": solo_count_data["counts"].shape}
+        )
+        result, _, _ = op.apply(solo_count_data, {}, None, random_params=random_params)
+
+        probs = result["doublet_probabilities"]
+        assert jnp.all(probs >= 0.0)
+        assert jnp.all(probs <= 1.0)
+
+    def test_labels_binary(
+        self,
+        rngs: nnx.Rngs,
+        solo_config: SoloDetectorConfig,
+        solo_count_data: dict[str, jax.Array],
+    ) -> None:
+        """Test that doublet labels are binary (0 or 1)."""
+        op = DifferentiableSoloDetector(solo_config, rngs=rngs)
+        rng_key = jax.random.key(99)
+        random_params = op.generate_random_params(
+            rng_key, {"counts": solo_count_data["counts"].shape}
+        )
+        result, _, _ = op.apply(solo_count_data, {}, None, random_params=random_params)
+
+        labels = result["doublet_labels"]
+        # Labels should be soft-thresholded but still in {0, 1} range
+        assert jnp.all((labels >= 0.0) & (labels <= 1.0))
+
+
+class TestSoloGradientFlow:
+    """Tests for gradient flow through Solo VAE doublet detector."""
+
+    @pytest.fixture()
+    def solo_config(self) -> SoloDetectorConfig:
+        """Provide small config for gradient tests."""
+        return SoloDetectorConfig(
+            n_genes=N_GENES_SOLO,
+            latent_dim=LATENT_DIM_SOLO,
+            hidden_dims=HIDDEN_DIMS_SOLO,
+            classifier_hidden_dim=8,
+        )
+
+    def test_gradient_wrt_input(self, rngs: nnx.Rngs, solo_config: SoloDetectorConfig) -> None:
+        """Test that gradients flow from doublet_probabilities back to input counts."""
+        op = DifferentiableSoloDetector(solo_config, rngs=rngs)
+        key = jax.random.key(0)
+        counts = jnp.abs(jax.random.normal(key, (N_CELLS_SOLO, N_GENES_SOLO))) * 5.0 + 0.1
+
+        rng_key = jax.random.key(99)
+        random_params = op.generate_random_params(rng_key, {"counts": counts.shape})
+
+        def loss_fn(c: jax.Array) -> jax.Array:
+            result, _, _ = op.apply({"counts": c}, {}, None, random_params=random_params)
+            return jnp.sum(result["doublet_probabilities"])
+
+        grad = jax.grad(loss_fn)(counts)
+        assert grad is not None
+        assert grad.shape == counts.shape
+        assert jnp.any(grad != 0.0)
+
+    def test_gradient_wrt_vae_and_classifier(
+        self, rngs: nnx.Rngs, solo_config: SoloDetectorConfig
+    ) -> None:
+        """Test that gradients flow through encoder, decoder, AND classifier."""
+        op = DifferentiableSoloDetector(solo_config, rngs=rngs)
+        key = jax.random.key(0)
+        counts = jnp.abs(jax.random.normal(key, (N_CELLS_SOLO, N_GENES_SOLO))) * 5.0 + 0.1
+
+        rng_key = jax.random.key(99)
+        random_params = op.generate_random_params(rng_key, {"counts": counts.shape})
+
+        def loss_fn(model: DifferentiableSoloDetector) -> jax.Array:
+            result, _, _ = model.apply({"counts": counts}, {}, None, random_params=random_params)
+            return jnp.sum(result["doublet_probabilities"])
+
+        grads = nnx.grad(loss_fn)(op)
+
+        # Encoder should have gradients
+        assert jnp.any(grads.encoder_layers[0].kernel[...] != 0.0)
+        # Classifier should have gradients
+        assert jnp.any(grads.classifier_hidden.kernel[...] != 0.0)
+        assert jnp.any(grads.classifier_output.kernel[...] != 0.0)
+
+
+class TestSoloJIT:
+    """Tests for JAX JIT compilation of Solo detector."""
+
+    @pytest.fixture()
+    def solo_config(self) -> SoloDetectorConfig:
+        """Provide small config for JIT tests."""
+        return SoloDetectorConfig(
+            n_genes=N_GENES_SOLO,
+            latent_dim=LATENT_DIM_SOLO,
+            hidden_dims=HIDDEN_DIMS_SOLO,
+            classifier_hidden_dim=8,
+        )
+
+    def test_jit_apply(self, rngs: nnx.Rngs, solo_config: SoloDetectorConfig) -> None:
+        """Test that jax.jit compiles and runs apply."""
+        op = DifferentiableSoloDetector(solo_config, rngs=rngs)
+        key = jax.random.key(0)
+        counts = jnp.abs(jax.random.normal(key, (N_CELLS_SOLO, N_GENES_SOLO))) * 5.0 + 0.1
+
+        rng_key = jax.random.key(99)
+        random_params = op.generate_random_params(rng_key, {"counts": counts.shape})
+
+        @nnx.jit
+        def jit_apply(
+            model: DifferentiableSoloDetector,
+            d: dict[str, jax.Array],
+            rp: jax.Array,
+        ) -> tuple:
+            return model.apply(d, {}, None, random_params=rp)
+
+        result, _, _ = jit_apply(op, {"counts": counts}, random_params)
+        assert jnp.isfinite(result["doublet_probabilities"]).all()
+
+    def test_jit_gradient(self, rngs: nnx.Rngs, solo_config: SoloDetectorConfig) -> None:
+        """Test that jax.jit + jax.grad works together."""
+        op = DifferentiableSoloDetector(solo_config, rngs=rngs)
+        key = jax.random.key(0)
+        counts = jnp.abs(jax.random.normal(key, (N_CELLS_SOLO, N_GENES_SOLO))) * 5.0 + 0.1
+
+        rng_key = jax.random.key(99)
+        random_params = op.generate_random_params(rng_key, {"counts": counts.shape})
+
+        @jax.jit
+        def grad_fn(c: jax.Array) -> jax.Array:
+            def loss(x: jax.Array) -> jax.Array:
+                result, _, _ = op.apply({"counts": x}, {}, None, random_params=random_params)
+                return jnp.sum(result["doublet_probabilities"])
+
+            return jax.grad(loss)(c)
+
+        grad = grad_fn(counts)
+        assert jnp.isfinite(grad).all()
+
+
+class TestSoloEdgeCases:
+    """Tests for Solo detector edge cases."""
+
+    def test_small_dataset(self, rngs: nnx.Rngs) -> None:
+        """Test that Solo detector works with only 10 cells, 20 genes."""
+        config = SoloDetectorConfig(
+            n_genes=20,
+            latent_dim=3,
+            hidden_dims=[8],
+            classifier_hidden_dim=4,
+        )
+        op = DifferentiableSoloDetector(config, rngs=rngs)
+        key = jax.random.key(0)
+        counts = jnp.abs(jax.random.normal(key, (10, 20))) + 0.1
+
+        rng_key = jax.random.key(99)
+        random_params = op.generate_random_params(rng_key, {"counts": counts.shape})
+        result, _, _ = op.apply({"counts": counts}, {}, None, random_params=random_params)
+
+        assert result["doublet_probabilities"].shape == (10,)
+        assert result["latent"].shape == (10, 3)
+        assert jnp.isfinite(result["doublet_probabilities"]).all()

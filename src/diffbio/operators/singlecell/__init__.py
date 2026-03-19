@@ -35,7 +35,9 @@ from diffbio.operators.singlecell.batch_correction import (
 )
 from diffbio.operators.singlecell.doublet_detection import (
     DifferentiableDoubletScorer,
+    DifferentiableSoloDetector,
     DoubletScorerConfig,
+    SoloDetectorConfig,
 )
 from diffbio.operators.singlecell.imputation import (
     DifferentiableDiffusionImputer,
@@ -82,7 +84,9 @@ __all__ = [
     "DifferentiableHarmony",
     # Doublet Detection
     "DifferentiableDoubletScorer",
+    "DifferentiableSoloDetector",
     "DoubletScorerConfig",
+    "SoloDetectorConfig",
     # Imputation
     "DifferentiableDiffusionImputer",
     "DifferentiableTransformerDenoiser",
