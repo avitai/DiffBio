@@ -41,6 +41,9 @@ class CellAnnotatorConfig(OperatorConfig):
         latent_dim: Latent-space dimensionality for VAE encoder.
         hidden_dims: Hidden layer sizes for encoder and decoder.
         marker_matrix_shape: Shape (n_types, n_genes) for cellassign mode.
+        gene_likelihood: Reconstruction likelihood for scanvi mode.
+            ``"poisson"`` for standard Poisson NLL (default),
+            ``"zinb"`` for Zero-Inflated Negative Binomial.
         stochastic: Whether the operator uses randomness.
         stream_name: RNG stream name for sampling.
     """
@@ -51,6 +54,7 @@ class CellAnnotatorConfig(OperatorConfig):
     latent_dim: int = 10
     hidden_dims: list[int] = field(default_factory=lambda: [128, 64])
     marker_matrix_shape: tuple[int, int] | None = None
+    gene_likelihood: Literal["poisson", "zinb"] = "poisson"
     stochastic: bool = True
     stream_name: str = "sample"
 
@@ -145,6 +149,21 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
             )
             self.prior_logvars = nnx.Param(jnp.zeros((config.n_cell_types, config.latent_dim)))
 
+        if config.annotation_mode == "scanvi" and config.gene_likelihood == "zinb":
+            # ZINB decoder heads: log-dispersion and dropout logit
+            # Decoder reverses hidden_dims, so the final hidden dim is the first
+            last_hidden = config.hidden_dims[0] if config.hidden_dims else config.latent_dim
+            self.fc_log_theta = nnx.Linear(
+                in_features=last_hidden,
+                out_features=config.n_genes,
+                rngs=rngs,
+            )
+            self.fc_pi_logit = nnx.Linear(
+                in_features=last_hidden,
+                out_features=config.n_genes,
+                rngs=rngs,
+            )
+
         if config.annotation_mode == "cellassign":
             # Learnable log-rate parameters: mu_type_g (in log space).
             # Initialise to log(5) so Poisson rates start at ~5;
@@ -222,19 +241,29 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
     def decode(
         self,
         z: Float[Array, "batch latent_dim"],
-    ) -> Float[Array, "batch n_genes"]:
-        """Decode latent vectors to log-rate gene expression.
+    ) -> dict[str, Float[Array, "batch n_genes"]]:
+        """Decode latent vectors to gene expression parameters.
 
         Args:
             z: Latent representations, shape ``(n, latent_dim)``.
 
         Returns:
-            Reconstructed log-rates, shape ``(n, n_genes)``.
+            Dictionary with ``"log_rate"`` (always present) and optionally
+            ``"log_theta"`` and ``"pi_logit"`` when ZINB likelihood is active.
         """
         x = z
         for layer in self.decoder_layers:
             x = nnx.relu(layer(x))
-        return self.fc_output(x)
+
+        result: dict[str, Float[Array, "batch n_genes"]] = {
+            "log_rate": self.fc_output(x),
+        }
+
+        if hasattr(self, "fc_log_theta"):
+            result["log_theta"] = self.fc_log_theta(x)
+            result["pi_logit"] = self.fc_pi_logit(x)
+
+        return result
 
     # ------------------------------------------------------------------
     # Per-mode annotation logic
@@ -384,6 +413,104 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
         return probs
 
     # ------------------------------------------------------------------
+    # Reconstruction loss helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _poisson_nll(
+        counts: Float[Array, "batch n_genes"],
+        log_rate: Float[Array, "batch n_genes"],
+    ) -> Float[Array, ""]:
+        """Compute Poisson negative log-likelihood.
+
+        Args:
+            counts: Original counts.
+            log_rate: Log rates from decoder.
+
+        Returns:
+            Negative log-likelihood (scalar, summed over all elements).
+        """
+        rate = jnp.exp(log_rate)
+        return jnp.sum(rate - counts * log_rate)
+
+    @staticmethod
+    def _zinb_nll(
+        counts: Float[Array, "batch n_genes"],
+        log_rate: Float[Array, "batch n_genes"],
+        log_theta: Float[Array, "batch n_genes"],
+        pi_logit: Float[Array, "batch n_genes"],
+    ) -> Float[Array, ""]:
+        """Compute Zero-Inflated Negative Binomial negative log-likelihood.
+
+        Uses the scVI-style logit-space formulation for numerical stability.
+        Key identities used:
+            ``log(sigmoid(pi))   = -softplus(-pi)``
+            ``log(1-sigmoid(pi)) = -softplus(pi)``
+
+        Args:
+            counts: Original counts.
+            log_rate: Log mean parameter from decoder.
+            log_theta: Log dispersion parameter.
+            pi_logit: Logit of zero-inflation probability.
+
+        Returns:
+            Negative log-likelihood (scalar, summed over all elements).
+        """
+        mu = jnp.exp(log_rate)
+        theta = jnp.exp(jnp.clip(log_theta, -10.0, 10.0))
+        eps = EPSILON
+
+        # Log-space sigmoid computations (numerically stable)
+        softplus_pi = jax.nn.softplus(-pi_logit)  # = -log(sigmoid(pi_logit))
+        log_theta_mu = jnp.log(theta + mu + eps)
+
+        # NB(0) in log-space combined with dropout logit
+        pi_theta_log = -pi_logit + theta * (jnp.log(theta + eps) - log_theta_mu)
+
+        # Case x == 0: log[sigmoid(pi) + (1 - sigmoid(pi)) * NB(0)]
+        case_zero = jax.nn.softplus(pi_theta_log) - softplus_pi
+
+        # Case x > 0: log[(1 - sigmoid(pi)) * NB(x)]
+        case_nonzero = (
+            -softplus_pi
+            + pi_theta_log
+            + counts * (jnp.log(mu + eps) - log_theta_mu)
+            + jax.scipy.special.gammaln(counts + theta)
+            - jax.scipy.special.gammaln(theta)
+            - jax.scipy.special.gammaln(counts + 1.0)
+        )
+
+        is_zero = (counts < eps).astype(jnp.float32)
+        log_prob = is_zero * case_zero + (1.0 - is_zero) * case_nonzero
+
+        return -jnp.sum(log_prob)
+
+    def _reconstruction_loss(
+        self,
+        counts: Float[Array, "batch n_genes"],
+        decode_output: dict[str, Float[Array, "batch n_genes"]],
+    ) -> Float[Array, ""]:
+        """Compute reconstruction loss based on configured likelihood.
+
+        Args:
+            counts: Original counts.
+            decode_output: Dictionary from ``decode()`` containing
+                ``"log_rate"`` and optionally ``"log_theta"``, ``"pi_logit"``.
+
+        Returns:
+            Negative log-likelihood (scalar).
+        """
+        log_rate = decode_output["log_rate"]
+        if "log_theta" in decode_output:
+            return self._zinb_nll(
+                counts,
+                log_rate,
+                decode_output["log_theta"],
+                decode_output["pi_logit"],
+            )
+        return self._poisson_nll(counts, log_rate)
+
+    # ------------------------------------------------------------------
     # Training loss (scanvi ELBO)
     # ------------------------------------------------------------------
 
@@ -403,6 +530,9 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
         For other modes (celltypist, cellassign) the standard
         ``KL(q(z|x) || N(0,I))`` is used via artifex.
 
+        When ``gene_likelihood="zinb"`` (scanvi only), the reconstruction
+        loss uses the ZINB negative log-likelihood instead of Poisson NLL.
+
         Loss = reconstruction + beta * KL + cross_entropy_on_labeled.
 
         Args:
@@ -417,10 +547,9 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
         mean, logvar = self.encode(counts)
         z = self.reparameterize(mean, logvar)
 
-        # Reconstruction: Poisson NLL
-        log_rate = self.decode(z)
-        rate = jnp.exp(log_rate)
-        recon_loss = jnp.sum(rate - counts * log_rate)
+        # Reconstruction loss (Poisson or ZINB depending on config)
+        decode_output = self.decode(z)
+        recon_loss = self._reconstruction_loss(counts, decode_output)
 
         # KL divergence -- type-conditioned for scanvi, standard otherwise
         if self.annotation_mode == "scanvi":

@@ -596,6 +596,66 @@ class DifferentiableSoloDetector(EncoderDecoderOperator):
 
         return recon_loss + kl
 
+    def compute_solo_loss(
+        self,
+        counts: Float[Array, "batch n_genes"],
+        random_params: jax.Array,
+        classifier_weight: float = 1.0,
+    ) -> dict[str, Float[Array, ""]]:
+        """Full Solo training loss: VAE ELBO + classifier binary cross-entropy.
+
+        Generates synthetic doublets, encodes all cells (real + synthetic)
+        through the VAE, computes the ELBO on the combined set, and adds
+        a binary cross-entropy term from the classifier distinguishing
+        singlets from doublets in latent space.
+
+        Args:
+            counts: Real gene expression counts, shape ``(n_real, n_genes)``.
+            random_params: JAX random key for synthetic doublet generation.
+            classifier_weight: Weight for the classifier BCE term
+                (default 1.0).
+
+        Returns:
+            Dictionary with ``"total_loss"``, ``"elbo"``, and
+            ``"classifier_loss"`` scalar entries.
+        """
+        n_real = counts.shape[0]
+
+        # 1. Generate synthetic doublets
+        synthetic = self._generate_synthetic_doublets(
+            counts, random_params, self.config.sim_doublet_ratio
+        )
+        n_synthetic = synthetic.shape[0]
+
+        # 2. Combine real + synthetic
+        combined = jnp.concatenate([counts, synthetic], axis=0)
+
+        # 3. Encode all to latent space
+        mean, logvar = self.encode(combined)
+        z = self.reparameterize(mean, logvar)
+
+        # 4. VAE ELBO on all cells
+        log_rate = self.decode(z)
+        rate = jnp.exp(log_rate)
+        recon_loss = jnp.sum(rate - combined * log_rate)
+        kl = gaussian_kl_divergence(mean, logvar, reduction="sum")
+        elbo = recon_loss + kl
+
+        # 5. Classifier BCE on all cells
+        # Labels: 0 for real (first n_real), 1 for synthetic
+        labels = jnp.concatenate([jnp.zeros(n_real), jnp.ones(n_synthetic)])
+        logits = self.classify(z)  # returns sigmoid probabilities
+        # Use numerically stable BCE from logits (reconstruct logits)
+        # classify returns sigmoid(logits), so we use log-sigmoid formulation
+        bce = -jnp.mean(
+            labels * jnp.log(logits + 1e-8) + (1.0 - labels) * jnp.log(1.0 - logits + 1e-8)
+        )
+
+        # 6. Total = ELBO + classifier_weight * BCE
+        total = elbo + classifier_weight * bce
+
+        return {"total_loss": total, "elbo": elbo, "classifier_loss": bce}
+
     def apply(
         self,
         data: PyTree,

@@ -627,3 +627,59 @@ class TestSoloEdgeCases:
         assert result["doublet_probabilities"].shape == (10,)
         assert result["latent"].shape == (10, 3)
         assert jnp.isfinite(result["doublet_probabilities"]).all()
+
+
+class TestSoloLoss:
+    """Tests for the compute_solo_loss method."""
+
+    @pytest.fixture()
+    def solo_config(self) -> SoloDetectorConfig:
+        """Provide small config for loss tests."""
+        return SoloDetectorConfig(
+            n_genes=N_GENES_SOLO,
+            latent_dim=LATENT_DIM_SOLO,
+            hidden_dims=HIDDEN_DIMS_SOLO,
+            classifier_hidden_dim=8,
+        )
+
+    def test_solo_loss_includes_classifier(
+        self, rngs: nnx.Rngs, solo_config: SoloDetectorConfig
+    ) -> None:
+        """Classifier loss term must be non-zero and gradients must flow through it."""
+        op = DifferentiableSoloDetector(solo_config, rngs=rngs)
+        key = jax.random.key(0)
+        counts = jnp.abs(jax.random.normal(key, (N_CELLS_SOLO, N_GENES_SOLO))) * 5.0 + 0.1
+        rng_key = jax.random.key(99)
+
+        losses = op.compute_solo_loss(counts, rng_key)
+
+        # All losses must be finite
+        assert jnp.isfinite(losses["total_loss"])
+        assert jnp.isfinite(losses["elbo"])
+        assert jnp.isfinite(losses["classifier_loss"])
+
+        # Classifier loss must be non-zero
+        assert float(losses["classifier_loss"]) > 0.0
+
+        # Total = elbo + classifier_loss
+        expected_total = losses["elbo"] + losses["classifier_loss"]
+        assert jnp.allclose(losses["total_loss"], expected_total, atol=1e-5)
+
+    def test_solo_loss_gradient_flow(self, rngs: nnx.Rngs, solo_config: SoloDetectorConfig) -> None:
+        """Gradients must flow through both VAE and classifier via compute_solo_loss."""
+        op = DifferentiableSoloDetector(solo_config, rngs=rngs)
+        key = jax.random.key(0)
+        counts = jnp.abs(jax.random.normal(key, (N_CELLS_SOLO, N_GENES_SOLO))) * 5.0 + 0.1
+        rng_key = jax.random.key(99)
+
+        def loss_fn(model: DifferentiableSoloDetector) -> jax.Array:
+            result = model.compute_solo_loss(counts, rng_key)
+            return result["total_loss"]
+
+        grads = nnx.grad(loss_fn)(op)
+
+        # Encoder must receive gradients
+        assert jnp.any(grads.encoder_layers[0].kernel[...] != 0.0)
+        # Classifier must receive gradients
+        assert jnp.any(grads.classifier_hidden.kernel[...] != 0.0)
+        assert jnp.any(grads.classifier_output.kernel[...] != 0.0)

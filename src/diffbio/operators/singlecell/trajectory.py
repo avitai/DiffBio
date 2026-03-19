@@ -385,8 +385,7 @@ class DifferentiableFateProbability(OperatorModule):
         fate = fate.at[transient_indices].set(absorption)
 
         # Set absorbing-cell probabilities: 1 for self, 0 for others
-        for i in range(n_terminal):
-            fate = fate.at[terminal_states[i], i].set(1.0)
+        fate = fate.at[terminal_states, jnp.arange(n_terminal)].set(1.0)
 
         # Macrostate assignment = argmax of fate probabilities
         macrostates = jnp.argmax(fate, axis=1)

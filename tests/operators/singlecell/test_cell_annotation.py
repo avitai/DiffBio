@@ -535,3 +535,68 @@ class TestEdgeCases:
         assert result["cell_type_probabilities"].shape == (2, N_TYPES)
         row_sums = jnp.sum(result["cell_type_probabilities"], axis=-1)
         assert jnp.allclose(row_sums, 1.0, atol=1e-5)
+
+
+# ===========================================================================
+# ZINB likelihood tests
+# ===========================================================================
+
+
+class TestScanviZINBLikelihood:
+    """Tests for ZINB likelihood option in scanvi mode."""
+
+    def test_scanvi_zinb_likelihood(self, rngs) -> None:
+        """ZINB mode must produce finite ELBO with non-zero gradients."""
+        config = CellAnnotatorConfig(
+            annotation_mode="scanvi",
+            n_cell_types=N_TYPES,
+            n_genes=N_GENES,
+            latent_dim=LATENT_DIM,
+            hidden_dims=HIDDEN_DIMS,
+            gene_likelihood="zinb",
+            stochastic=True,
+            stream_name="sample",
+        )
+        op = DifferentiableCellAnnotator(config, rngs=rngs)
+
+        key = jax.random.key(20)
+        counts = jax.random.poisson(key, lam=5.0, shape=(N_CELLS, N_GENES)).astype(jnp.float32)
+
+        # ELBO must be finite
+        elbo = op.compute_elbo_loss(counts)
+        assert jnp.isfinite(elbo)
+
+        # Gradients must flow through ZINB heads
+        @nnx.value_and_grad
+        def loss_fn(model: DifferentiableCellAnnotator) -> jax.Array:
+            return model.compute_elbo_loss(counts)
+
+        loss, grads = loss_fn(op)
+        assert jnp.isfinite(loss)
+        # ZINB decoder heads must receive gradients
+        assert hasattr(grads, "fc_log_theta")
+        assert hasattr(grads, "fc_pi_logit")
+        assert jnp.any(grads.fc_log_theta.kernel[...] != 0.0)
+        assert jnp.any(grads.fc_pi_logit.kernel[...] != 0.0)
+
+    def test_zinb_has_decoder_heads(self, rngs) -> None:
+        """ZINB mode must create fc_log_theta and fc_pi_logit layers."""
+        config = CellAnnotatorConfig(
+            annotation_mode="scanvi",
+            n_cell_types=N_TYPES,
+            n_genes=N_GENES,
+            latent_dim=LATENT_DIM,
+            hidden_dims=HIDDEN_DIMS,
+            gene_likelihood="zinb",
+            stochastic=True,
+            stream_name="sample",
+        )
+        op = DifferentiableCellAnnotator(config, rngs=rngs)
+        assert hasattr(op, "fc_log_theta")
+        assert hasattr(op, "fc_pi_logit")
+
+    def test_poisson_default_no_zinb_heads(self, rngs, scanvi_config) -> None:
+        """Default poisson mode must NOT create ZINB decoder heads."""
+        op = DifferentiableCellAnnotator(scanvi_config, rngs=rngs)
+        assert not hasattr(op, "fc_log_theta")
+        assert not hasattr(op, "fc_pi_logit")
