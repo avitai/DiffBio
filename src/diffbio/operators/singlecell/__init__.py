@@ -39,7 +39,9 @@ from diffbio.operators.singlecell.doublet_detection import (
 )
 from diffbio.operators.singlecell.imputation import (
     DifferentiableDiffusionImputer,
+    DifferentiableTransformerDenoiser,
     DiffusionImputerConfig,
+    TransformerDenoiserConfig,
 )
 from diffbio.operators.singlecell.soft_clustering import (
     SoftClusteringConfig,
@@ -83,7 +85,9 @@ __all__ = [
     "DoubletScorerConfig",
     # Imputation
     "DifferentiableDiffusionImputer",
+    "DifferentiableTransformerDenoiser",
     "DiffusionImputerConfig",
+    "TransformerDenoiserConfig",
     # Switch DE
     "DifferentiableSwitchDE",
     "SwitchDEConfig",
