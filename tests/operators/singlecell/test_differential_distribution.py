@@ -34,9 +34,7 @@ def sample_data() -> dict[str, jax.Array]:
     k1, k2 = jax.random.split(key)
     counts = jax.random.uniform(k1, (N_CELLS, N_GENES), minval=0.0, maxval=10.0)
     # First half condition 0, second half condition 1
-    condition_labels = jnp.concatenate(
-        [jnp.zeros(N_CELLS // 2), jnp.ones(N_CELLS // 2)]
-    )
+    condition_labels = jnp.concatenate([jnp.zeros(N_CELLS // 2), jnp.ones(N_CELLS // 2)])
     return {"counts": counts, "condition_labels": condition_labels}
 
 
@@ -161,9 +159,7 @@ class TestKnownPatterns:
         counts_a = jax.random.uniform(k1, (n_cells // 2, n_genes), minval=0.0, maxval=2.0)
         counts_b = jax.random.uniform(k2, (n_cells // 2, n_genes), minval=8.0, maxval=10.0)
         counts = jnp.concatenate([counts_a, counts_b], axis=0)
-        condition_labels = jnp.concatenate(
-            [jnp.zeros(n_cells // 2), jnp.ones(n_cells // 2)]
-        )
+        condition_labels = jnp.concatenate([jnp.zeros(n_cells // 2), jnp.ones(n_cells // 2)])
 
         config = DifferentialDistributionConfig(
             n_genes=n_genes, temperature=0.1, n_pattern_classes=N_PATTERNS
@@ -184,9 +180,7 @@ class TestKnownPatterns:
 
         # Same distribution for both conditions
         counts = jax.random.uniform(key, (n_cells, n_genes), minval=0.0, maxval=5.0)
-        condition_labels = jnp.concatenate(
-            [jnp.zeros(n_cells // 2), jnp.ones(n_cells // 2)]
-        )
+        condition_labels = jnp.concatenate([jnp.zeros(n_cells // 2), jnp.ones(n_cells // 2)])
 
         config = DifferentialDistributionConfig(
             n_genes=n_genes, temperature=0.1, n_pattern_classes=N_PATTERNS
@@ -248,9 +242,7 @@ class TestGradientFlow:
         """Gradients should flow back to input counts."""
         op = DifferentiableDifferentialDistribution(default_config, rngs=rngs)
 
-        condition_labels = jnp.concatenate(
-            [jnp.zeros(N_CELLS // 2), jnp.ones(N_CELLS // 2)]
-        )
+        condition_labels = jnp.concatenate([jnp.zeros(N_CELLS // 2), jnp.ones(N_CELLS // 2)])
         counts = jnp.ones((N_CELLS, N_GENES))
 
         def loss_fn(c: jax.Array) -> jax.Array:
@@ -276,9 +268,7 @@ class TestJITCompatibility:
         op = DifferentiableDifferentialDistribution(default_config, rngs=rngs)
 
         @jax.jit
-        def jit_apply(
-            data: dict, state: dict
-        ) -> tuple[dict, dict, dict[str, Any] | None]:
+        def jit_apply(data: dict, state: dict) -> tuple[dict, dict, dict[str, Any] | None]:
             return op.apply(data, state, None)
 
         result, _, _ = jit_apply(sample_data, {})
@@ -314,9 +304,7 @@ class TestEdgeCases:
         n_genes = 20
         # All cells have the exact same expression value per gene
         counts = jnp.ones((n_cells, n_genes)) * 5.0
-        condition_labels = jnp.concatenate(
-            [jnp.zeros(n_cells // 2), jnp.ones(n_cells // 2)]
-        )
+        condition_labels = jnp.concatenate([jnp.zeros(n_cells // 2), jnp.ones(n_cells // 2)])
 
         config = DifferentialDistributionConfig(
             n_genes=n_genes, temperature=1.0, n_pattern_classes=N_PATTERNS
@@ -358,9 +346,7 @@ class TestEdgeCases:
         op = DifferentiableDifferentialDistribution(config, rngs=rngs)
 
         counts = jnp.ones((N_CELLS, N_GENES))
-        condition_labels = jnp.concatenate(
-            [jnp.zeros(N_CELLS // 2), jnp.ones(N_CELLS // 2)]
-        )
+        condition_labels = jnp.concatenate([jnp.zeros(N_CELLS // 2), jnp.ones(N_CELLS // 2)])
         data = {"counts": counts, "condition_labels": condition_labels}
 
         @nnx.value_and_grad

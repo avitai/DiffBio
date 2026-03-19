@@ -21,6 +21,7 @@ This module provides differentiable components for single-cell analysis:
 - DifferentiableDifferentialDistribution: scDD-style differential distribution testing
 - DifferentiableSimulator: Splatter-style single-cell count simulation
 - DifferentiableArchetypalAnalysis: PCHA-style archetypal analysis
+- DifferentiableOTTrajectory: Waddington-OT-style optimal transport trajectory
 """
 
 from diffbio.operators.singlecell.archetypes import (
@@ -66,6 +67,10 @@ from diffbio.operators.singlecell.imputation import (
     DifferentiableTransformerDenoiser,
     DiffusionImputerConfig,
     TransformerDenoiserConfig,
+)
+from diffbio.operators.singlecell.ot_trajectory import (
+    DifferentiableOTTrajectory,
+    OTTrajectoryConfig,
 )
 from diffbio.operators.singlecell.soft_clustering import (
     SoftClusteringConfig,
@@ -158,6 +163,9 @@ __all__ = [
     # Simulation
     "DifferentiableSimulator",
     "SimulationConfig",
+    # OT Trajectory
+    "DifferentiableOTTrajectory",
+    "OTTrajectoryConfig",
     # Velocity
     "DifferentiableVelocity",
     "VelocityConfig",

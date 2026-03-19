@@ -260,9 +260,7 @@ class TestEdgeCases:
 
     def test_single_archetype(self, rngs: nnx.Rngs, sample_counts: dict) -> None:
         """With one archetype, all weights must be 1.0."""
-        config = ArchetypalAnalysisConfig(
-            n_genes=N_GENES, n_archetypes=1, hidden_dim=HIDDEN_DIM
-        )
+        config = ArchetypalAnalysisConfig(n_genes=N_GENES, n_archetypes=1, hidden_dim=HIDDEN_DIM)
         op = DifferentiableArchetypalAnalysis(config, rngs=rngs)
         result, _, _ = op.apply(sample_counts, {}, None)
 

@@ -219,15 +219,13 @@ class DifferentiableDifferentialDistribution(TemperatureOperator):
         condition_labels = data["condition_labels"]
 
         # Process all genes in parallel using vmap over gene dimension (axis 1)
-        def process_gene(gene_col: Float[Array, "n_cells"]) -> tuple[
-            Float[Array, ""], Float[Array, "n_patterns"]
-        ]:
+        def process_gene(
+            gene_col: Float[Array, "n_cells"],
+        ) -> tuple[Float[Array, ""], Float[Array, "n_patterns"]]:
             return self._process_single_gene(gene_col, condition_labels)
 
         # vmap over columns (genes) of counts: (n_cells, n_genes) -> per-gene
-        ks_statistics, pattern_logits = jax.vmap(
-            process_gene, in_axes=1
-        )(counts)
+        ks_statistics, pattern_logits = jax.vmap(process_gene, in_axes=1)(counts)
 
         pattern_labels = jnp.argmax(pattern_logits, axis=-1)
 

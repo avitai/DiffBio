@@ -4,7 +4,7 @@ This module provides operators for:
 
 - VAE-based count normalization (scVI-style)
 - Sequence embedding with learned representations
-- Differentiable dimensionality reduction
+- Differentiable dimensionality reduction (UMAP, PHATE)
 
 All operators maintain gradient flow for end-to-end training.
 """
@@ -12,6 +12,10 @@ All operators maintain gradient flow for end-to-end training.
 from diffbio.operators.normalization.embedding import (
     SequenceEmbedding,
     SequenceEmbeddingConfig,
+)
+from diffbio.operators.normalization.phate import (
+    DifferentiablePHATE,
+    PHATEConfig,
 )
 from diffbio.operators.normalization.umap import (
     DifferentiableUMAP,
@@ -32,4 +36,7 @@ __all__ = [
     # UMAP Dimensionality Reduction
     "UMAPConfig",
     "DifferentiableUMAP",
+    # PHATE Dimensionality Reduction
+    "PHATEConfig",
+    "DifferentiablePHATE",
 ]

@@ -9,8 +9,13 @@ Sources:
     MolNetSource: MoleculeNet benchmark datasets for drug discovery
     BAMSource: BAM/CRAM file reading for aligned sequencing reads
     FastaSource: FASTA file reading for DNA/RNA sequences
+
+Interop:
+    to_anndata: Convert DiffBio data dict to AnnData object
+    from_anndata: Convert AnnData object to DiffBio data dict
 """
 
+from diffbio.sources.anndata_interop import from_anndata, to_anndata
 from diffbio.sources.anndata_source import AnnDataSource, AnnDataSourceConfig
 from diffbio.sources.bam import BAMSource, BAMSourceConfig
 from diffbio.sources.fasta import FastaSource, FastaSourceConfig
@@ -28,4 +33,6 @@ __all__ = [
     "IndexedViewSourceConfig",
     "MolNetSource",
     "MolNetSourceConfig",
+    "from_anndata",
+    "to_anndata",
 ]
