@@ -1,21 +1,21 @@
-"""Ligand-receptor co-expression scoring for cell-cell communication.
+"""Differentiable cell-cell communication analysis.
 
-This module provides a differentiable implementation of ligand-receptor
-interaction scoring, enabling gradient-based optimization of cell-cell
-communication analysis in single-cell data.
+This module provides two complementary operators for analysing cell-cell
+communication in single-cell data:
 
-Key technique: Soft adjacency weighting via fuzzy k-NN combined with
-product-of-expression scoring yields fully differentiable L-R scores
-with analytical z-score significance testing.
+1. **DifferentiableLigandReceptor** -- ligand-receptor co-expression scoring
+   using fuzzy k-NN adjacency graphs and analytical z-score significance.
+2. **DifferentiableCellCommunication** -- GNN-based communication analysis
+   using GATv2 graph attention on a spatial cell graph with per-edge
+   L-R expression features.
 
-Applications: CellChat/CellPhoneDB-style cell-cell communication
-analysis with end-to-end differentiability.
+Key techniques:
+- Soft adjacency weighting via fuzzy k-NN (L-R scoring)
+- GATv2 message passing on spatial cell graphs (cell communication)
+- Temperature-controlled smooth approximations throughout
 
-Inherits from TemperatureOperator to get:
-
-- _temperature property for temperature-controlled smoothing
-- soft_max() for logsumexp-based smooth maximum
-- soft_argmax() for soft position selection
+Applications: CellChat/CellPhoneDB-style communication analysis, spatial
+transcriptomics niche identification, pathway-level signaling inference.
 """
 
 from dataclasses import dataclass
@@ -28,12 +28,14 @@ from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
 from diffbio.constants import EPSILON
-from diffbio.core.base_operators import TemperatureOperator
+from diffbio.core.base_operators import GraphOperator, TemperatureOperator
+from diffbio.core.gnn_components import GATv2Layer
 from diffbio.core.graph_utils import (
     compute_fuzzy_membership,
     compute_pairwise_distances,
     symmetrize_graph,
 )
+from diffbio.utils.nn_utils import ensure_rngs
 
 
 @dataclass
@@ -262,6 +264,388 @@ class DifferentiableLigandReceptor(TemperatureOperator):
             **data,
             "lr_scores": lr_scores,
             "lr_pvalues": lr_pvalues,
+        }
+
+        return transformed_data, state, metadata
+
+
+# =============================================================================
+# GNN-based cell-cell communication
+# =============================================================================
+
+
+@dataclass
+class CellCommunicationConfig(OperatorConfig):
+    """Configuration for GNN-based cell-cell communication analysis.
+
+    Attributes:
+        n_genes: Number of genes in the expression matrix.
+        n_lr_pairs: Number of ligand-receptor pairs (determines edge feature
+            projection input dimension and communication score output width).
+        hidden_dim: Hidden dimension for GNN layers (must be divisible by num_heads).
+        num_heads: Number of attention heads in GATv2 layers.
+        edge_features_dim: Dimension of per-edge L-R features fed to GATv2.
+        num_gnn_layers: Number of stacked GATv2 layers.
+        n_pathways: Number of signaling pathways to infer.
+        dropout_rate: Dropout rate for regularization.
+    """
+
+    n_genes: int = 2000
+    n_lr_pairs: int = 10
+    hidden_dim: int = 64
+    num_heads: int = 4
+    edge_features_dim: int = 8
+    num_gnn_layers: int = 2
+    n_pathways: int = 20
+    dropout_rate: float = 0.1
+
+
+class SpatialAttentionGNN(nnx.Module):
+    """Stacked GATv2 layers with residual connections for spatial cell graphs.
+
+    Each layer applies GATv2 attention followed by a LayerNorm and residual
+    connection.  An input projection maps node features to the hidden dimension
+    before the first GATv2 layer.
+
+    Args:
+        in_features: Dimension of input node features.
+        hidden_dim: Hidden dimension (must be divisible by num_heads).
+        num_heads: Number of attention heads per GATv2 layer.
+        edge_features_dim: Edge feature dimension.
+        num_layers: Number of GATv2 layers.
+        dropout_rate: Dropout rate.
+        rngs: Flax NNX random number generators.
+    """
+
+    def __init__(
+        self,
+        in_features: int,
+        hidden_dim: int,
+        num_heads: int,
+        edge_features_dim: int,
+        num_layers: int,
+        dropout_rate: float,
+        *,
+        rngs: nnx.Rngs,
+    ) -> None:
+        """Initialize the spatial attention GNN.
+
+        Args:
+            in_features: Input feature dimension.
+            hidden_dim: Hidden dimension.
+            num_heads: Number of attention heads.
+            edge_features_dim: Edge feature dimension.
+            num_layers: Number of GATv2 layers.
+            dropout_rate: Dropout rate.
+            rngs: Random number generators.
+        """
+        super().__init__()
+
+        # Project input features to hidden dimension
+        self.input_proj = nnx.Linear(
+            in_features=in_features,
+            out_features=hidden_dim,
+            rngs=rngs,
+        )
+
+        self.gat_layers = nnx.List(
+            [
+                GATv2Layer(
+                    in_features=hidden_dim,
+                    out_features=hidden_dim,
+                    num_heads=num_heads,
+                    edge_features=edge_features_dim,
+                    dropout_rate=dropout_rate,
+                    rngs=rngs,
+                )
+                for _ in range(num_layers)
+            ]
+        )
+
+        self.layer_norms = nnx.List(
+            [nnx.LayerNorm(num_features=hidden_dim, rngs=rngs) for _ in range(num_layers)]
+        )
+
+    def __call__(
+        self,
+        node_features: Float[Array, "n_nodes in_features"],
+        edge_index: Int[Array, "2 n_edges"],
+        edge_features: Float[Array, "n_edges edge_features_dim"],
+        *,
+        deterministic: bool = True,
+    ) -> Float[Array, "n_nodes hidden_dim"]:
+        """Run stacked GATv2 attention with residual connections.
+
+        Args:
+            node_features: Input node features.
+            edge_index: Edge indices ``(source, target)`` of shape ``(2, n_edges)``.
+            edge_features: Per-edge features.
+            deterministic: If True, disable dropout.
+
+        Returns:
+            Updated node embeddings of shape ``(n_nodes, hidden_dim)``.
+        """
+        x = self.input_proj(node_features)
+
+        for gat_layer, norm in zip(self.gat_layers, self.layer_norms):
+            residual = x
+            x = gat_layer(x, edge_index, edge_features, deterministic=deterministic)
+            x = norm(x + residual)
+
+        return x
+
+
+class SignalingDecoder(nnx.Module):
+    """Map node embeddings to pathway activities and communication scores.
+
+    Two heads:
+    - **Pathway head**: ``Linear(hidden_dim, n_pathways)`` produces per-node
+      pathway activity.
+    - **Communication head**: ``Linear(hidden_dim, n_lr_pairs)`` produces
+      per-node communication scores for each L-R pair.
+
+    Args:
+        hidden_dim: Input embedding dimension.
+        n_pathways: Number of output pathways.
+        n_lr_pairs: Number of L-R pairs (communication score outputs).
+        rngs: Flax NNX random number generators.
+    """
+
+    def __init__(
+        self,
+        hidden_dim: int,
+        n_pathways: int,
+        n_lr_pairs: int,
+        *,
+        rngs: nnx.Rngs,
+    ) -> None:
+        """Initialize the signaling decoder.
+
+        Args:
+            hidden_dim: Hidden dimension.
+            n_pathways: Number of signaling pathways.
+            n_lr_pairs: Number of L-R pairs.
+            rngs: Random number generators.
+        """
+        super().__init__()
+
+        self.pathway_head = nnx.Linear(
+            in_features=hidden_dim,
+            out_features=n_pathways,
+            rngs=rngs,
+        )
+        self.comm_head = nnx.Linear(
+            in_features=hidden_dim,
+            out_features=n_lr_pairs,
+            rngs=rngs,
+        )
+
+    def __call__(
+        self,
+        node_embeddings: Float[Array, "n_nodes hidden_dim"],
+    ) -> tuple[
+        Float[Array, "n_nodes n_pathways"],
+        Float[Array, "n_nodes n_lr_pairs"],
+    ]:
+        """Decode node embeddings into pathway activities and communication scores.
+
+        Args:
+            node_embeddings: Node embedding matrix.
+
+        Returns:
+            Tuple of (signaling_activity, communication_scores).
+        """
+        signaling_activity = self.pathway_head(node_embeddings)
+        communication_scores = self.comm_head(node_embeddings)
+        return signaling_activity, communication_scores
+
+
+class DifferentiableCellCommunication(GraphOperator):
+    """GNN-based differentiable cell-cell communication analysis.
+
+    Analyses inter-cellular signaling by applying GATv2 graph attention on a
+    spatial cell graph whose edges carry ligand-receptor expression features.
+
+    Algorithm:
+        1. Build per-edge L-R expression features from ``counts`` and
+           ``lr_pairs``: for each edge (i, j) the feature vector is the
+           concatenation of ``[L_expr[source], R_expr[target]]`` across all
+           L-R pairs, projected to ``edge_features_dim``.
+        2. Project per-node gene expression to initial node embeddings.
+        3. Apply stacked GATv2 layers (``SpatialAttentionGNN``) for message
+           passing on the spatial cell graph.
+        4. Decode node embeddings into per-node pathway activity and per-node
+           communication scores via ``SignalingDecoder``.
+
+    Inherits from GraphOperator to get:
+
+    - scatter_aggregate() for message aggregation
+    - global_pool() for graph-level pooling
+
+    Args:
+        config: CellCommunicationConfig with model parameters.
+        rngs: Flax NNX random number generators.
+        name: Optional operator name.
+
+    Example:
+        >>> config = CellCommunicationConfig(n_genes=50, n_lr_pairs=3, hidden_dim=32)
+        >>> op = DifferentiableCellCommunication(config, rngs=nnx.Rngs(0))
+        >>> data = {"counts": counts, "spatial_graph": graph, "lr_pairs": pairs}
+        >>> result, state, meta = op.apply(data, {}, None)
+        >>> result["communication_scores"].shape
+        (n_cells, 3)
+    """
+
+    def __init__(
+        self,
+        config: CellCommunicationConfig,
+        *,
+        rngs: nnx.Rngs | None = None,
+        name: str | None = None,
+    ) -> None:
+        """Initialize the cell communication operator.
+
+        Args:
+            config: Cell communication configuration.
+            rngs: Random number generators for parameter initialization.
+            name: Optional operator name.
+        """
+        super().__init__(config, rngs=rngs, name=name)
+
+        rngs = ensure_rngs(rngs)
+
+        self.hidden_dim = config.hidden_dim
+
+        # Node feature projection: n_genes -> hidden_dim
+        self.node_proj = nnx.Linear(
+            in_features=config.n_genes,
+            out_features=config.hidden_dim,
+            rngs=rngs,
+        )
+
+        # Edge feature projection: raw LR features (2 * n_lr_pairs) -> edge_features_dim
+        self.edge_proj = nnx.Linear(
+            in_features=2 * config.n_lr_pairs,
+            out_features=config.edge_features_dim,
+            rngs=rngs,
+        )
+
+        # GATv2 stack
+        self.spatial_gnn = SpatialAttentionGNN(
+            in_features=config.hidden_dim,
+            hidden_dim=config.hidden_dim,
+            num_heads=config.num_heads,
+            edge_features_dim=config.edge_features_dim,
+            num_layers=config.num_gnn_layers,
+            dropout_rate=config.dropout_rate,
+            rngs=rngs,
+        )
+
+        # Signaling decoder
+        self.decoder = SignalingDecoder(
+            hidden_dim=config.hidden_dim,
+            n_pathways=config.n_pathways,
+            n_lr_pairs=config.n_lr_pairs,
+            rngs=rngs,
+        )
+
+    def _build_edge_features(
+        self,
+        counts: Float[Array, "n_cells n_genes"],
+        spatial_graph: Int[Array, "2 n_edges"],
+        lr_pairs: Int[Array, "n_pairs 2"],
+    ) -> Float[Array, "n_edges edge_features_dim"]:
+        """Compute per-edge L-R expression features.
+
+        For each edge (i, j) and each L-R pair (l, r) the raw feature is
+        ``[counts[source, l], counts[target, r]]``.  These are concatenated
+        across all pairs then projected to ``edge_features_dim``.
+
+        Args:
+            counts: Gene expression matrix ``(n_cells, n_genes)``.
+            spatial_graph: Edge indices ``(source, target)`` ``(2, n_edges)``.
+            lr_pairs: L-R pair gene indices ``(n_pairs, 2)``.
+
+        Returns:
+            Projected edge features ``(n_edges, edge_features_dim)``.
+        """
+        sources = spatial_graph[0]  # (n_edges,)
+        targets = spatial_graph[1]  # (n_edges,)
+
+        # For each LR pair, gather ligand expression of source and receptor
+        # expression of target.  Shape per pair: (n_edges, 2)
+        def _pair_features(pair: Int[Array, "2"]) -> Float[Array, "n_edges 2"]:
+            ligand_idx = pair[0]
+            receptor_idx = pair[1]
+            l_expr = counts[sources, ligand_idx]  # (n_edges,)
+            r_expr = counts[targets, receptor_idx]  # (n_edges,)
+            return jnp.stack([l_expr, r_expr], axis=-1)
+
+        # (n_pairs, n_edges, 2)
+        raw_features = jax.vmap(_pair_features)(lr_pairs)
+        # Reshape to (n_edges, 2*n_pairs)
+        n_edges = spatial_graph.shape[1]
+        raw_features = raw_features.transpose(1, 0, 2).reshape(n_edges, -1)
+
+        return self.edge_proj(raw_features)
+
+    def apply(
+        self,
+        data: PyTree,
+        state: PyTree,
+        metadata: dict[str, Any] | None,
+        random_params: Any = None,
+        stats: dict[str, Any] | None = None,
+    ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
+        """Apply GNN-based cell-cell communication analysis.
+
+        Args:
+            data: Dictionary containing:
+                - ``"counts"``: Gene expression matrix ``(n_cells, n_genes)``
+                - ``"spatial_graph"``: Edge indices ``(2, n_edges)`` where
+                  row 0 = source nodes, row 1 = target nodes
+                - ``"lr_pairs"``: L-R pair gene indices ``(n_pairs, 2)``
+            state: Element state (passed through unchanged).
+            metadata: Element metadata (passed through unchanged).
+            random_params: Not used (non-stochastic operator).
+            stats: Not used.
+
+        Returns:
+            Tuple of (transformed_data, state, metadata):
+                - transformed_data contains all original keys plus:
+
+                    - ``"communication_scores"``: ``(n_cells, n_pairs)``
+                    - ``"signaling_activity"``: ``(n_cells, n_pathways)``
+                    - ``"niche_embeddings"``: ``(n_cells, hidden_dim)``
+                - state is passed through unchanged
+                - metadata is passed through unchanged
+        """
+        counts: Float[Array, "n_cells n_genes"] = data["counts"]
+        spatial_graph: Int[Array, "2 n_edges"] = data["spatial_graph"]
+        lr_pairs: Int[Array, "n_pairs 2"] = data["lr_pairs"]
+
+        # Step 1: Build per-edge L-R features
+        edge_features = self._build_edge_features(counts, spatial_graph, lr_pairs)
+
+        # Step 2: Project per-node gene expression to hidden dim
+        node_features = self.node_proj(counts)  # (n_cells, hidden_dim)
+
+        # Step 3: GATv2 message passing
+        niche_embeddings = self.spatial_gnn(
+            node_features,
+            spatial_graph,
+            edge_features,
+            deterministic=True,
+        )
+
+        # Step 4: Decode to pathway activities and communication scores
+        signaling_activity, communication_scores = self.decoder(niche_embeddings)
+
+        transformed_data = {
+            **data,
+            "communication_scores": communication_scores,
+            "signaling_activity": signaling_activity,
+            "niche_embeddings": niche_embeddings,
         }
 
         return transformed_data, state, metadata

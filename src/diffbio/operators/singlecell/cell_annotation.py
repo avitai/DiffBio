@@ -164,9 +164,7 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
             prev_dim = hidden_dim
         self.encoder_layers = nnx.List(encoder_layers)
         self.fc_mean = nnx.Linear(in_features=prev_dim, out_features=config.latent_dim, rngs=rngs)
-        self.fc_logvar = nnx.Linear(
-            in_features=prev_dim, out_features=config.latent_dim, rngs=rngs
-        )
+        self.fc_logvar = nnx.Linear(in_features=prev_dim, out_features=config.latent_dim, rngs=rngs)
 
     def _build_decoder(self, config: CellAnnotatorConfig, rngs: nnx.Rngs) -> None:
         """Build the VAE decoder layers.
@@ -431,9 +429,7 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
         elif mode == "scanvi":
             known_labels = data.get("known_labels")
             label_indices = data.get("label_indices")
-            probs = self._annotate_scanvi(
-                z, mean, logvar, counts, known_labels, label_indices
-            )
+            probs = self._annotate_scanvi(z, mean, logvar, counts, known_labels, label_indices)
         else:
             raise ValueError(f"Unknown annotation_mode: {mode}")
 

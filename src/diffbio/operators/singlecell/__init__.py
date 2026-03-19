@@ -5,6 +5,7 @@ This module provides differentiable components for single-cell analysis:
 - DifferentiableCellAnnotator: Cell type annotation (celltypist/cellassign/scanvi)
 - DifferentiableDiffusionImputer: MAGIC-style diffusion imputation
 - DifferentiableDoubletScorer: Scrublet-style doublet detection
+- DifferentiableCellCommunication: GNN-based cell-cell communication analysis
 - DifferentiableLigandReceptor: Ligand-receptor co-expression scoring
 - SoftKMeansClustering: Differentiable soft k-means clustering
 - DifferentiableHarmony: Harmony-style batch correction
@@ -23,6 +24,8 @@ from diffbio.operators.singlecell.cell_annotation import (
     DifferentiableCellAnnotator,
 )
 from diffbio.operators.singlecell.communication import (
+    CellCommunicationConfig,
+    DifferentiableCellCommunication,
     DifferentiableLigandReceptor,
     LRScoringConfig,
 )
@@ -67,7 +70,9 @@ __all__ = [
     # Clustering
     "SoftClusteringConfig",
     "SoftKMeansClustering",
-    # Communication (L-R scoring)
+    # Communication (L-R scoring + GNN-based)
+    "CellCommunicationConfig",
+    "DifferentiableCellCommunication",
     "DifferentiableLigandReceptor",
     "LRScoringConfig",
     # Batch Correction
