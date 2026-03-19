@@ -3,6 +3,10 @@
 This module implements a CNN-based differentiable peak caller that can be
 used for ChIP-seq and ATAC-seq analysis with end-to-end gradient flow.
 
+Optionally includes a VAE-based denoising stage (inspired by SCALE) that
+encodes the coverage signal into a latent space and decodes it using a
+Poisson decoder before peak detection.
+
 Inherits from TemperatureOperator to get:
 
 - _temperature property for temperature-controlled smoothing
@@ -16,9 +20,11 @@ from typing import Any
 import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
+from artifex.generative_models.core.losses.divergence import gaussian_kl_divergence
 from datarax.core.config import OperatorConfig
 
 from diffbio.core.base_operators import TemperatureOperator
+from diffbio.utils.nn_utils import ensure_rngs, get_rng_key
 
 
 @dataclass
@@ -32,6 +38,11 @@ class PeakCallerConfig(OperatorConfig):
         threshold: Initial threshold for peak calling.
         temperature: Temperature for sigmoid smoothing.
         min_peak_width: Minimum width for called peaks.
+        use_vae_denoising: Whether to apply VAE-based denoising before
+            peak detection. When enabled, the coverage signal is encoded
+            to a latent space and decoded with a Poisson decoder.
+        vae_latent_dim: Latent space dimension for VAE denoiser.
+        vae_hidden_dim: Hidden layer dimension for VAE encoder/decoder.
         stream_name: Name of the data stream to process.
     """
 
@@ -42,6 +53,111 @@ class PeakCallerConfig(OperatorConfig):
     temperature: float = 1.0
     learnable_temperature: bool = True
     min_peak_width: int = 50
+    use_vae_denoising: bool = False
+    vae_latent_dim: int = 16
+    vae_hidden_dim: int = 64
+
+
+class SignalVAE(nnx.Module):
+    """VAE for denoising coverage signals with Poisson decoder.
+
+    Inspired by SCALE (Single-Cell ATAC-seq Analysis via Latent feature
+    Extraction), this module uses a VAE with a Poisson decoder to denoise
+    coverage signals. The Poisson distribution naturally models count data
+    (read coverage) and the latent space captures the underlying signal.
+
+    Architecture:
+        Encoder: coverage -> hidden -> (mean, logvar)
+        Reparameterize: z = mean + exp(0.5 * logvar) * epsilon
+        Decoder: z -> hidden -> log_rate (Poisson parameter)
+    """
+
+    def __init__(
+        self,
+        signal_dim: int,
+        latent_dim: int = 16,
+        hidden_dim: int = 64,
+        *,
+        rngs: nnx.Rngs,
+    ) -> None:
+        """Initialize the signal VAE.
+
+        Args:
+            signal_dim: Dimension of the input signal (length).
+            latent_dim: Dimension of the latent space.
+            hidden_dim: Dimension of hidden layers.
+            rngs: Random number generators for initialization.
+        """
+        super().__init__()
+        self.signal_dim = signal_dim
+        self.latent_dim = latent_dim
+
+        # Encoder
+        self.enc_hidden = nnx.Linear(signal_dim, hidden_dim, rngs=rngs)
+        self.enc_mean = nnx.Linear(hidden_dim, latent_dim, rngs=rngs)
+        self.enc_logvar = nnx.Linear(hidden_dim, latent_dim, rngs=rngs)
+
+        # Decoder (Poisson: outputs log-rate)
+        self.dec_hidden = nnx.Linear(latent_dim, hidden_dim, rngs=rngs)
+        self.dec_output = nnx.Linear(hidden_dim, signal_dim, rngs=rngs)
+
+    def encode(self, x: jax.Array) -> tuple[jax.Array, jax.Array]:
+        """Encode signal to latent distribution parameters.
+
+        Args:
+            x: Input signal of shape (..., signal_dim).
+
+        Returns:
+            Tuple of (mean, logvar) each of shape (..., latent_dim).
+        """
+        h = nnx.relu(self.enc_hidden(x))
+        mean = self.enc_mean(h)
+        logvar = jnp.clip(self.enc_logvar(h), -10.0, 10.0)
+        return mean, logvar
+
+    def decode(self, z: jax.Array) -> jax.Array:
+        """Decode latent representation to Poisson log-rate.
+
+        Args:
+            z: Latent representation of shape (..., latent_dim).
+
+        Returns:
+            Log-rate for Poisson decoder of shape (..., signal_dim).
+        """
+        h = nnx.relu(self.dec_hidden(z))
+        log_rate = self.dec_output(h)
+        return log_rate
+
+    def __call__(
+        self,
+        x: jax.Array,
+        rng_key: jax.Array,
+    ) -> tuple[jax.Array, jax.Array, jax.Array, jax.Array]:
+        """Forward pass: encode, sample, decode.
+
+        Args:
+            x: Input signal of shape (..., signal_dim).
+            rng_key: JAX PRNG key for reparameterization sampling.
+
+        Returns:
+            Tuple of (denoised, mean, logvar, log_rate):
+                - denoised: Denoised signal (exp(log_rate)), shape (..., signal_dim).
+                - mean: Latent mean, shape (..., latent_dim).
+                - logvar: Latent log-variance, shape (..., latent_dim).
+                - log_rate: Raw Poisson log-rate, shape (..., signal_dim).
+        """
+        mean, logvar = self.encode(x)
+
+        # Reparameterization trick
+        std = jnp.exp(0.5 * logvar)
+        epsilon = jax.random.normal(rng_key, mean.shape)
+        z = mean + std * epsilon
+
+        log_rate = self.decode(z)
+        # Poisson rate = exp(log_rate), clamp for stability
+        denoised = jnp.exp(jnp.clip(log_rate, -10.0, 10.0))
+
+        return denoised, mean, logvar, log_rate
 
 
 class PeakDetectionCNN(nnx.Module):
@@ -136,10 +252,16 @@ class DifferentiablePeakCaller(TemperatureOperator):
     This operator uses a CNN-based approach to detect peaks in coverage
     signals, with soft thresholding for end-to-end differentiability.
 
+    Optionally applies VAE-based denoising before peak detection, using a
+    Poisson decoder (per SCALE) to model count data. When VAE denoising
+    is enabled, the pipeline is:
+        coverage -> VAE encoder -> latent -> Poisson decoder -> denoised -> CNN -> peaks
+
     The operator processes coverage data and outputs:
     - Peak probabilities at each position
     - Peak boundaries (soft)
     - Peak summits
+    - Denoised coverage (when VAE is enabled)
 
     Example:
         ```python
@@ -147,6 +269,7 @@ class DifferentiablePeakCaller(TemperatureOperator):
             window_size=200,
             num_filters=32,
             threshold=0.5,
+            use_vae_denoising=True,
         )
         peak_caller = DifferentiablePeakCaller(config, rngs=rngs)
 
@@ -170,6 +293,8 @@ class DifferentiablePeakCaller(TemperatureOperator):
         if rngs is None:
             rngs = nnx.Rngs(0)
 
+        self._rngs = ensure_rngs(rngs)
+
         # Learnable threshold parameter
         self.threshold = nnx.Param(jnp.array(config.threshold))
 
@@ -184,6 +309,73 @@ class DifferentiablePeakCaller(TemperatureOperator):
 
         # Local maximum detection kernel (for summit finding)
         self.summit_kernel_size = config.min_peak_width
+
+        # Optional VAE denoiser
+        self._use_vae = config.use_vae_denoising
+        if self._use_vae:
+            # Signal dim is set per-call since it depends on input length,
+            # but we pre-initialize the VAE with a fixed config dim.
+            # For position-independent denoising, we use a 1D VAE per position
+            # applied across the signal length. This uses a fixed-dim VAE.
+            self.vae_encoder = SignalVAE(
+                signal_dim=config.window_size,
+                latent_dim=config.vae_latent_dim,
+                hidden_dim=config.vae_hidden_dim,
+                rngs=rngs,
+            )
+
+    def _vae_denoise(self, coverage: jax.Array) -> tuple[jax.Array, jax.Array]:
+        """Apply VAE-based denoising to coverage signal.
+
+        Processes each sample in the batch independently through the VAE.
+        The signal is reshaped into windows of size window_size, denoised
+        per-window, and reassembled.
+
+        Args:
+            coverage: Coverage signal of shape (batch, length).
+
+        Returns:
+            Tuple of (denoised_coverage, kl_loss):
+                - denoised_coverage: Denoised signal of shape (batch, length).
+                - kl_loss: Scalar KL divergence loss.
+        """
+        batch_size, length = coverage.shape
+        window_size = self.config.window_size
+
+        # Pad signal to be divisible by window_size
+        remainder = length % window_size
+        if remainder != 0:
+            pad_amount = window_size - remainder
+            coverage_padded = jnp.pad(coverage, ((0, 0), (0, pad_amount)), mode="edge")
+        else:
+            pad_amount = 0
+            coverage_padded = coverage
+
+        padded_length = coverage_padded.shape[1]
+        num_windows = padded_length // window_size
+
+        # Reshape to (batch * num_windows, window_size)
+        windows = coverage_padded.reshape(batch_size * num_windows, window_size)
+
+        # Log-transform for VAE input (coverage is count-like data)
+        vae_input = jnp.log1p(jnp.abs(windows))
+
+        # Get RNG key for sampling
+        rng_key = get_rng_key(self._rngs, "sample", fallback_seed=0)
+
+        # Run VAE forward pass
+        denoised_windows, mean, logvar, _ = self.vae_encoder(vae_input, rng_key)
+
+        # KL divergence via artifex
+        kl_loss = gaussian_kl_divergence(mean, logvar, reduction="sum")
+
+        # Reassemble signal
+        denoised_padded = denoised_windows.reshape(batch_size, padded_length)
+
+        # Remove padding
+        denoised = denoised_padded[:, :length]
+
+        return denoised, kl_loss
 
     def _soft_local_max(
         self, scores: jax.Array, window_size: int, temperature: jax.Array | float
@@ -207,7 +399,7 @@ class DifferentiablePeakCaller(TemperatureOperator):
         )
 
         # Extract windows around each position
-        def extract_windows(padded_row):
+        def extract_windows(padded_row: jax.Array) -> jax.Array:
             indices = jnp.arange(length)
             windows = jax.vmap(lambda i: jax.lax.dynamic_slice(padded_row, (i,), (window_size,)))(
                 indices
@@ -257,6 +449,9 @@ class DifferentiablePeakCaller(TemperatureOperator):
     ) -> tuple[dict, dict, dict | None]:
         """Apply peak calling to coverage data.
 
+        When VAE denoising is enabled, the coverage signal is first denoised
+        through a VAE with Poisson decoder before peak detection.
+
         Args:
             data: Dictionary containing:
                 - 'coverage': Coverage signal of shape (batch, length) or (length,)
@@ -274,6 +469,8 @@ class DifferentiablePeakCaller(TemperatureOperator):
                 - 'peak_summits': Soft summit indicators
                 - 'peak_starts': Soft peak start indicators
                 - 'peak_ends': Soft peak end indicators
+                - 'denoised_coverage': Denoised signal (only when VAE enabled)
+                - 'vae_kl_loss': KL divergence loss (only when VAE enabled)
         """
         del random_params, stats  # Unused
 
@@ -284,8 +481,19 @@ class DifferentiablePeakCaller(TemperatureOperator):
         if single_input:
             coverage = coverage[None, :]
 
+        # Optional VAE denoising
+        vae_extras: dict[str, Any] = {}
+        if self._use_vae:
+            denoised, kl_loss = self._vae_denoise(coverage)
+            vae_extras["denoised_coverage"] = denoised
+            vae_extras["vae_kl_loss"] = kl_loss
+            # Use denoised signal for peak detection
+            cnn_input = denoised
+        else:
+            cnn_input = coverage
+
         # Get peak scores from CNN
-        peak_scores = self.peak_cnn(coverage)
+        peak_scores = self.peak_cnn(cnn_input)
 
         # Apply soft threshold
         temperature = jnp.abs(self._temperature) + 1e-6
@@ -309,6 +517,9 @@ class DifferentiablePeakCaller(TemperatureOperator):
             peak_starts = peak_starts[0]
             peak_ends = peak_ends[0]
             coverage = coverage[0]
+            for key in list(vae_extras.keys()):
+                if key == "denoised_coverage":
+                    vae_extras[key] = vae_extras[key][0]
 
         output_data = {
             **data,
@@ -317,6 +528,7 @@ class DifferentiablePeakCaller(TemperatureOperator):
             "peak_summits": summit_probs,
             "peak_starts": peak_starts,
             "peak_ends": peak_ends,
+            **vae_extras,
         }
 
         return output_data, state, metadata

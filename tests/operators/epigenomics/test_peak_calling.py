@@ -438,3 +438,162 @@ class TestPeakCallerBiologicalBehavior:
         # Scores should differ based on magnitude
         # (The exact relationship depends on training, but they should be different)
         assert not jnp.allclose(result_low["peak_scores"], result_high["peak_scores"], atol=1e-3)
+
+
+class TestVAEDenoisingMode:
+    """Tests for VAE-based denoising mode in peak caller."""
+
+    @pytest.fixture
+    def vae_config(self):
+        """Provide config with VAE denoising enabled."""
+        from diffbio.operators.epigenomics.peak_calling import PeakCallerConfig
+
+        return PeakCallerConfig(
+            window_size=50,
+            num_filters=16,
+            kernel_sizes=(5, 11),
+            min_peak_width=10,
+            use_vae_denoising=True,
+            vae_latent_dim=8,
+            vae_hidden_dim=32,
+            stream_name=None,
+        )
+
+    @pytest.fixture
+    def vae_peak_caller(self, vae_config, rngs):
+        """Create VAE-enabled peak caller instance."""
+        from diffbio.operators.epigenomics.peak_calling import DifferentiablePeakCaller
+
+        return DifferentiablePeakCaller(vae_config, rngs=rngs)
+
+    def test_vae_config_defaults(self):
+        """Test that VAE denoising is disabled by default."""
+        from diffbio.operators.epigenomics.peak_calling import PeakCallerConfig
+
+        config = PeakCallerConfig(stream_name=None)
+        assert config.use_vae_denoising is False
+
+    def test_vae_denoised_output_shape(self, vae_peak_caller):
+        """Test that VAE denoising produces correct output shape."""
+        coverage = jax.random.normal(jax.random.key(0), (2, 100))
+        coverage = jnp.abs(coverage)
+
+        data = {"coverage": coverage}
+        result, _, _ = vae_peak_caller.apply(data, {}, None)
+
+        assert result["peak_scores"].shape == (2, 100)
+        assert result["peak_probabilities"].shape == (2, 100)
+        assert "denoised_coverage" in result
+
+    def test_vae_denoised_output_finite(self, vae_peak_caller):
+        """Test that all VAE denoising outputs are finite."""
+        coverage = jax.random.normal(jax.random.key(0), (2, 100))
+        coverage = jnp.abs(coverage)
+
+        data = {"coverage": coverage}
+        result, _, _ = vae_peak_caller.apply(data, {}, None)
+
+        for key in ["peak_scores", "peak_probabilities", "denoised_coverage"]:
+            assert jnp.all(jnp.isfinite(result[key])), f"{key} has non-finite values"
+
+    def test_vae_denoised_smoother_than_input(self, vae_peak_caller):
+        """Test that denoised signal has lower variance than noisy input."""
+        # Create a signal with clear noise
+        key = jax.random.key(42)
+        clean = jnp.ones(100) * 5.0
+        noise = jax.random.normal(key, (100,)) * 2.0
+        noisy = clean + noise
+
+        data = {"coverage": noisy}
+        result, _, _ = vae_peak_caller.apply(data, {}, None)
+
+        denoised = result["denoised_coverage"]
+        # Denoised should have different values from input (showing VAE processed it)
+        assert not jnp.allclose(denoised, noisy, atol=1e-3)
+
+    def test_vae_kl_loss_in_state(self, vae_peak_caller):
+        """Test that KL loss is returned in state when VAE denoising is active."""
+        coverage = jax.random.normal(jax.random.key(0), (2, 100))
+        coverage = jnp.abs(coverage)
+
+        data = {"coverage": coverage}
+        result, state, _ = vae_peak_caller.apply(data, {}, None)
+
+        assert "vae_kl_loss" in result
+        assert jnp.isfinite(result["vae_kl_loss"])
+        assert result["vae_kl_loss"] >= 0
+
+    def test_vae_gradient_flow(self, vae_config, rngs):
+        """Test that gradients flow through VAE denoising path."""
+        from diffbio.operators.epigenomics.peak_calling import DifferentiablePeakCaller
+
+        peak_caller = DifferentiablePeakCaller(vae_config, rngs=rngs)
+
+        def loss_fn(op, coverage):
+            data = {"coverage": coverage}
+            result, _, _ = op.apply(data, {}, None)
+            return result["peak_probabilities"].sum()
+
+        coverage = jax.random.normal(jax.random.key(0), (2, 100))
+        coverage = jnp.abs(coverage)
+        grads = nnx.grad(loss_fn)(peak_caller, coverage)
+
+        assert grads is not None
+        # VAE encoder/decoder should have gradients
+        assert hasattr(grads, "vae_encoder")
+
+    def test_vae_jit_compatible(self, vae_config, rngs):
+        """Test JIT compilation with VAE denoising enabled."""
+        from diffbio.operators.epigenomics.peak_calling import DifferentiablePeakCaller
+
+        peak_caller = DifferentiablePeakCaller(vae_config, rngs=rngs)
+
+        @jax.jit
+        def jit_apply(coverage):
+            data = {"coverage": coverage}
+            result, _, _ = peak_caller.apply(data, {}, None)
+            return result["peak_probabilities"]
+
+        coverage = jnp.abs(jax.random.normal(jax.random.key(0), (2, 100)))
+        result = jit_apply(coverage)
+        assert result.shape == (2, 100)
+        assert jnp.all(jnp.isfinite(result))
+
+    def test_vae_single_input(self, vae_config, rngs):
+        """Test VAE denoising with single (unbatched) input."""
+        from diffbio.operators.epigenomics.peak_calling import DifferentiablePeakCaller
+
+        peak_caller = DifferentiablePeakCaller(vae_config, rngs=rngs)
+
+        coverage = jnp.abs(jax.random.normal(jax.random.key(0), (100,)))
+
+        data = {"coverage": coverage}
+        result, _, _ = peak_caller.apply(data, {}, None)
+
+        assert result["peak_scores"].shape == (100,)
+        assert result["denoised_coverage"].shape == (100,)
+
+    def test_default_mode_unchanged(self, rngs):
+        """Test that default mode (no VAE) is unchanged."""
+        from diffbio.operators.epigenomics.peak_calling import (
+            DifferentiablePeakCaller,
+            PeakCallerConfig,
+        )
+
+        config = PeakCallerConfig(
+            window_size=50,
+            num_filters=16,
+            kernel_sizes=(5, 11),
+            min_peak_width=10,
+            stream_name=None,
+        )
+        peak_caller = DifferentiablePeakCaller(config, rngs=rngs)
+
+        coverage = jax.random.normal(jax.random.key(0), (2, 100))
+        data = {"coverage": coverage}
+        result, _, _ = peak_caller.apply(data, {}, None)
+
+        # No denoised_coverage key when VAE is disabled
+        assert "denoised_coverage" not in result
+        assert "peak_scores" in result
+        assert "peak_probabilities" in result

@@ -3,6 +3,11 @@
 This module implements a differentiable HMM-based chromatin state annotator
 that can be used for learning chromatin states from histone modification data.
 
+Optionally supports cell-type-conditioned emission probabilities, where each
+chromatin state has per-cell-type Gaussian emission parameters. GMM-style soft
+state assignment (gamma/responsibility) is computed via softmax over
+log-likelihoods, inspired by SCALE.
+
 Inherits from TemperatureOperator to get:
 
 - _temperature property for temperature-controlled smoothing
@@ -11,9 +16,10 @@ Inherits from TemperatureOperator to get:
 
 Note: This uses a Bernoulli emission model (for histone marks) rather than
 categorical emissions, so it doesn't inherit from HMMOperator which assumes
-categorical emissions.
+categorical emissions. The conditioned mode uses Gaussian emissions.
 """
 
+import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -33,12 +39,18 @@ class ChromatinStateConfig(OperatorConfig):
         num_states: Number of chromatin states to learn.
         num_marks: Number of histone marks in input.
         temperature: Temperature for soft operations.
+        use_cell_type_conditioning: Whether to condition emission
+            probabilities on cell type. When enabled, each state has
+            per-cell-type Gaussian emission parameters.
+        num_cell_types: Number of cell types for conditioning.
         stream_name: Name of the data stream to process.
     """
 
     num_states: int = 15
     num_marks: int = 6
     temperature: float = 1.0
+    use_cell_type_conditioning: bool = False
+    num_cell_types: int = 1
 
 
 class ChromatinStateAnnotator(TemperatureOperator):
@@ -54,26 +66,35 @@ class ChromatinStateAnnotator(TemperatureOperator):
     - Learnable emission probabilities for each histone mark per state
     - Learnable initial state distribution
 
+    When cell-type conditioning is enabled:
+    - Each state has per-cell-type Gaussian emission parameters (mean, variance)
+    - The cell type vector is used to blend emission parameters
+    - GMM-style soft assignment (gamma) is computed via softmax over
+      log-likelihoods, per SCALE
+
     Inherits from TemperatureOperator to get:
 
     - _temperature property for temperature-controlled smoothing
     - soft_max() for logsumexp-based smooth maximum
     - soft_argmax() for soft Viterbi decoding
 
-    Note: Uses Bernoulli emission model for histone marks rather than
-    categorical emissions (doesn't inherit from HMMOperator).
-
     Example:
         ```python
         config = ChromatinStateConfig(
             num_states=15,
             num_marks=6,
+            use_cell_type_conditioning=True,
+            num_cell_types=5,
         )
         annotator = ChromatinStateAnnotator(config, rngs=rngs)
 
-        data = {"histone_marks": marks}  # (length, num_marks) or (batch, length, num_marks)
+        data = {
+            "histone_marks": marks,  # (length, num_marks)
+            "cell_type": cell_type,  # (num_cell_types,) soft vector
+        }
         result, state, metadata = annotator.apply(data, {}, None)
         state_probs = result["state_probabilities"]
+        gamma = result["gamma"]  # soft state assignment
         ```
     """
 
@@ -96,14 +117,13 @@ class ChromatinStateAnnotator(TemperatureOperator):
         # Initialize transition matrix (log-space)
         # Start with slight preference for self-transitions
         key = rngs.params() if hasattr(rngs, "params") else jax.random.key(0)
-        k1, k2, k3 = jax.random.split(key, 3)
+        k1, k2, k3, k4, k5 = jax.random.split(key, 5)
 
         transition_init = jax.random.normal(k1, (num_states, num_states)) * 0.1
         transition_init = transition_init + jnp.eye(num_states) * 2.0  # Self-loop bias
         self.transition_logits = nnx.Param(transition_init)
 
-        # Initialize emission parameters
-        # For each state, we model P(mark_present | state) as Bernoulli
+        # Initialize emission parameters (Bernoulli model for default mode)
         emission_init = jax.random.normal(k2, (num_states, num_marks)) * 0.5
         self.emission_logits = nnx.Param(emission_init)
 
@@ -111,6 +131,19 @@ class ChromatinStateAnnotator(TemperatureOperator):
         initial_init = jax.random.normal(k3, (num_states,)) * 0.1
         self.initial_logits = nnx.Param(initial_init)
         # Temperature is now managed by TemperatureOperator via self._temperature
+
+        # Cell-type conditioned emission parameters
+        self._use_conditioning = config.use_cell_type_conditioning
+        if self._use_conditioning:
+            num_cell_types = config.num_cell_types
+
+            # Per-type emission means: (num_cell_types, num_states, num_marks)
+            means_init = jax.random.normal(k4, (num_cell_types, num_states, num_marks)) * 0.5
+            self.emission_means = nnx.Param(means_init)
+
+            # Per-type emission log-variances: (num_cell_types, num_states, num_marks)
+            logvar_init = jax.random.normal(k5, (num_cell_types, num_states, num_marks)) * 0.1
+            self.emission_logvars = nnx.Param(logvar_init)
 
     def _log_transition_matrix(self) -> jax.Array:
         """Get log transition probabilities (row-normalized)."""
@@ -121,7 +154,7 @@ class ChromatinStateAnnotator(TemperatureOperator):
         return jax.nn.log_softmax(self.initial_logits[...])
 
     def _log_emission_probs(self, observations: jax.Array) -> jax.Array:
-        """Compute log emission probabilities.
+        """Compute log emission probabilities using Bernoulli model.
 
         Args:
             observations: Histone mark signals of shape (..., num_marks).
@@ -157,6 +190,71 @@ class ChromatinStateAnnotator(TemperatureOperator):
         # Sum over marks
         return log_emission.sum(axis=-1)  # (..., num_states)
 
+    def _log_emission_probs_conditioned(
+        self,
+        observations: jax.Array,
+        cell_type: jax.Array,
+    ) -> jax.Array:
+        """Compute log emission probabilities conditioned on cell type.
+
+        Uses Gaussian emission model where parameters are a weighted blend
+        of per-cell-type parameters.
+
+        Args:
+            observations: Histone mark signals of shape (..., num_marks).
+            cell_type: Cell type vector of shape (num_cell_types,), soft assignment.
+
+        Returns:
+            Log emission probabilities of shape (..., num_states).
+        """
+        # Blend per-type emission parameters using cell_type weights
+        # emission_means: (num_cell_types, num_states, num_marks)
+        # cell_type: (num_cell_types,)
+        blended_means = jnp.einsum(
+            "c,csm->sm", cell_type, self.emission_means[...]
+        )  # (num_states, num_marks)
+
+        blended_logvars = jnp.einsum(
+            "c,csm->sm", cell_type, self.emission_logvars[...]
+        )  # (num_states, num_marks)
+
+        # Gaussian log-likelihood: -0.5 * (log(2*pi*var) + (x-mu)^2 / var)
+        variance = jnp.exp(blended_logvars) + 1e-8  # (num_states, num_marks)
+
+        # observations: (..., num_marks) -> (..., 1, num_marks) for broadcasting
+        obs_expanded = observations[..., None, :]  # (..., 1, num_marks)
+
+        log_emission = -0.5 * (
+            jnp.log(2 * math.pi * variance) + (obs_expanded - blended_means) ** 2 / variance
+        )  # (..., num_states, num_marks)
+
+        # Sum over marks
+        return log_emission.sum(axis=-1)  # (..., num_states)
+
+    def _compute_gamma(self, log_emissions: jax.Array) -> jax.Array:
+        """Compute GMM-style soft state assignment (responsibility).
+
+        Gamma is the soft assignment probability of each position to each
+        state, computed via softmax over log-likelihoods. This follows the
+        SCALE approach where gamma = p(c|z) = p(c)*p(z|c) / p(z).
+
+        Args:
+            log_emissions: Log emission probabilities, shape (length, num_states).
+
+        Returns:
+            Gamma (responsibility) of shape (length, num_states).
+        """
+        # Use log initial distribution as prior p(c)
+        log_prior = self._log_initial_distribution()  # (num_states,)
+
+        # p(c,z) = p(c) * p(z|c) in log space
+        log_joint = log_prior + log_emissions  # (length, num_states)
+
+        # Softmax to normalize: gamma = p(c|z) = softmax(log_joint)
+        gamma = jax.nn.softmax(log_joint, axis=-1)
+
+        return gamma
+
     def _forward_algorithm(self, log_emissions: jax.Array) -> tuple[jax.Array, jax.Array]:
         """Run forward algorithm in log-space.
 
@@ -169,7 +267,10 @@ class ChromatinStateAnnotator(TemperatureOperator):
         log_trans = self._log_transition_matrix()
         log_init = self._log_initial_distribution()
 
-        def forward_step(log_alpha_prev, log_emit_t):
+        def forward_step(
+            log_alpha_prev: jax.Array,
+            log_emit_t: jax.Array,
+        ) -> tuple[jax.Array, jax.Array]:
             # log_alpha_prev: (num_states,)
             # log_emit_t: (num_states,)
             # log_alpha_t[j] = log_emit_t[j] + logsumexp_i(log_alpha_prev[i] + log_trans[i,j])
@@ -205,7 +306,10 @@ class ChromatinStateAnnotator(TemperatureOperator):
         log_trans = self._log_transition_matrix()
         num_states = self.config.num_states
 
-        def backward_step(log_beta_next, log_emit_next):
+        def backward_step(
+            log_beta_next: jax.Array,
+            log_emit_next: jax.Array,
+        ) -> tuple[jax.Array, jax.Array]:
             # log_beta_next: (num_states,)
             # log_emit_next: (num_states,)
             # log_beta_t[i] = logsumexp_j(log_trans[i,j] + log_emit_next[j] + log_beta_next[j])
@@ -255,7 +359,10 @@ class ChromatinStateAnnotator(TemperatureOperator):
         # Use inherited _temperature property from TemperatureOperator
         temperature = jnp.abs(self._temperature) + 1e-6
 
-        def viterbi_step(log_delta_prev, log_emit_t):
+        def viterbi_step(
+            log_delta_prev: jax.Array,
+            log_emit_t: jax.Array,
+        ) -> tuple[jax.Array, jax.Array]:
             # Soft max over previous states
             log_delta_trans = log_delta_prev[:, None] + log_trans
             # Use logsumexp with temperature scaling for soft max
@@ -277,17 +384,27 @@ class ChromatinStateAnnotator(TemperatureOperator):
 
         return most_likely
 
-    def _apply_single(self, marks: jax.Array) -> dict:
+    def _apply_single(
+        self,
+        marks: jax.Array,
+        cell_type: jax.Array | None = None,
+    ) -> dict:
         """Apply HMM to a single sequence.
 
         Args:
             marks: Histone mark signals of shape (length, num_marks).
+            cell_type: Optional cell type vector of shape (num_cell_types,).
 
         Returns:
             Dictionary of outputs.
         """
-        # Compute log emissions
-        log_emissions = self._log_emission_probs(marks)  # (length, num_states)
+        # Compute log emissions based on mode
+        if self._use_conditioning and cell_type is not None:
+            log_emissions = self._log_emission_probs_conditioned(
+                marks, cell_type
+            )  # (length, num_states)
+        else:
+            log_emissions = self._log_emission_probs(marks)  # (length, num_states)
 
         # Forward algorithm
         log_alphas, log_likelihood = self._forward_algorithm(log_emissions)
@@ -304,12 +421,19 @@ class ChromatinStateAnnotator(TemperatureOperator):
         # Soft Viterbi path
         viterbi_path = self._soft_viterbi(log_emissions)
 
-        return {
+        result = {
             "state_probabilities": state_probs,
             "state_posteriors": posteriors,
             "viterbi_path": viterbi_path,
             "log_likelihood": log_likelihood,
         }
+
+        # Add gamma (GMM-style soft assignment) for conditioned mode
+        if self._use_conditioning and cell_type is not None:
+            gamma = self._compute_gamma(log_emissions)
+            result["gamma"] = gamma
+
+        return result
 
     def apply(
         self,
@@ -325,6 +449,8 @@ class ChromatinStateAnnotator(TemperatureOperator):
             data: Dictionary containing:
                 - 'histone_marks': Signals of shape (length, num_marks) or
                   (batch, length, num_marks)
+                - 'cell_type': Optional cell type vector of shape
+                  (num_cell_types,) when conditioning is enabled
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
             random_params: Optional random parameters (unused).
@@ -338,18 +464,24 @@ class ChromatinStateAnnotator(TemperatureOperator):
                 - 'state_posteriors': Posterior state probabilities
                 - 'viterbi_path': Soft Viterbi decoding result
                 - 'log_likelihood': Log likelihood of the sequence
+                - 'gamma': Soft state assignment (only when conditioning enabled)
         """
         del random_params, stats  # Unused
 
         marks = data["histone_marks"]
+        cell_type = data.get("cell_type") if self._use_conditioning else None
 
         # Handle single vs batched input
         single_input = marks.ndim == 2
         if single_input:
-            result = self._apply_single(marks)
+            result = self._apply_single(marks, cell_type)
         else:
             # Batched input - vmap over batch dimension
-            result = jax.vmap(self._apply_single)(marks)
+            # For conditioned mode, cell_type is shared across batch
+            if cell_type is not None:
+                result = jax.vmap(lambda m: self._apply_single(m, cell_type))(marks)
+            else:
+                result = jax.vmap(self._apply_single)(marks)
 
         output_data = {**data, **result}
 

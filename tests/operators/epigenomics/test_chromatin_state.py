@@ -354,3 +354,207 @@ class TestChromatinStateHMMBehavior:
         # They should be in valid range
         assert jnp.all(viterbi >= 0)
         assert jnp.all(viterbi < config.num_states)
+
+
+class TestCellTypeConditionedEmission:
+    """Tests for cell-type-conditioned emission model."""
+
+    @pytest.fixture
+    def conditioned_config(self):
+        """Provide config with cell-type conditioning enabled."""
+        from diffbio.operators.epigenomics.chromatin_state import ChromatinStateConfig
+
+        return ChromatinStateConfig(
+            num_states=4,
+            num_marks=3,
+            num_cell_types=3,
+            use_cell_type_conditioning=True,
+            temperature=1.0,
+            stream_name=None,
+        )
+
+    @pytest.fixture
+    def conditioned_annotator(self, conditioned_config, rngs):
+        """Create annotator with cell-type conditioning."""
+        from diffbio.operators.epigenomics.chromatin_state import ChromatinStateAnnotator
+
+        return ChromatinStateAnnotator(conditioned_config, rngs=rngs)
+
+    def test_conditioned_config_defaults(self):
+        """Test that cell-type conditioning is disabled by default."""
+        from diffbio.operators.epigenomics.chromatin_state import ChromatinStateConfig
+
+        config = ChromatinStateConfig(stream_name=None)
+        assert config.use_cell_type_conditioning is False
+
+    def test_conditioned_output_shape(self, conditioned_annotator, conditioned_config):
+        """Test output shape with cell-type conditioning."""
+        length = 50
+        num_marks = conditioned_config.num_marks
+        num_cell_types = conditioned_config.num_cell_types
+
+        marks = jax.random.normal(jax.random.key(0), (length, num_marks))
+        cell_type = jax.nn.softmax(jax.random.normal(jax.random.key(1), (num_cell_types,)))
+
+        data = {"histone_marks": marks, "cell_type": cell_type}
+        result, _, _ = conditioned_annotator.apply(data, {}, None)
+
+        assert result["state_probabilities"].shape == (length, conditioned_config.num_states)
+        assert "gamma" in result
+
+    def test_conditioned_output_finite(self, conditioned_annotator, conditioned_config):
+        """Test that all outputs are finite with conditioning."""
+        length = 50
+        marks = jax.random.normal(jax.random.key(0), (length, conditioned_config.num_marks))
+        cell_type = jax.nn.softmax(
+            jax.random.normal(jax.random.key(1), (conditioned_config.num_cell_types,))
+        )
+
+        data = {"histone_marks": marks, "cell_type": cell_type}
+        result, _, _ = conditioned_annotator.apply(data, {}, None)
+
+        for key in ["state_probabilities", "state_posteriors", "gamma"]:
+            assert jnp.all(jnp.isfinite(result[key])), f"{key} has non-finite values"
+
+    def test_conditioned_differs_from_unconditioned(self, conditioned_config, rngs):
+        """Test that conditioned output differs from unconditioned."""
+        from diffbio.operators.epigenomics.chromatin_state import (
+            ChromatinStateAnnotator,
+            ChromatinStateConfig,
+        )
+
+        # Create both annotators with same seed
+        uncond_config = ChromatinStateConfig(
+            num_states=conditioned_config.num_states,
+            num_marks=conditioned_config.num_marks,
+            temperature=1.0,
+            stream_name=None,
+        )
+        uncond_annotator = ChromatinStateAnnotator(uncond_config, rngs=nnx.Rngs(42))
+        cond_annotator = ChromatinStateAnnotator(conditioned_config, rngs=nnx.Rngs(42))
+
+        marks = jax.random.normal(jax.random.key(0), (50, conditioned_config.num_marks))
+        cell_type = jax.nn.softmax(
+            jax.random.normal(jax.random.key(1), (conditioned_config.num_cell_types,))
+        )
+
+        # Unconditioned
+        result_uncond, _, _ = uncond_annotator.apply({"histone_marks": marks}, {}, None)
+
+        # Conditioned
+        result_cond, _, _ = cond_annotator.apply(
+            {"histone_marks": marks, "cell_type": cell_type}, {}, None
+        )
+
+        # Outputs should differ (different emission model)
+        assert not jnp.allclose(
+            result_uncond["state_probabilities"],
+            result_cond["state_probabilities"],
+            atol=1e-3,
+        )
+
+    def test_per_type_emissions_vary(self, conditioned_annotator, conditioned_config):
+        """Test that different cell types produce different emissions."""
+        length = 50
+        marks = jax.random.normal(jax.random.key(0), (length, conditioned_config.num_marks))
+
+        # Two different cell types
+        cell_type_a = jnp.array([1.0, 0.0, 0.0])
+        cell_type_b = jnp.array([0.0, 0.0, 1.0])
+
+        result_a, _, _ = conditioned_annotator.apply(
+            {"histone_marks": marks, "cell_type": cell_type_a}, {}, None
+        )
+        result_b, _, _ = conditioned_annotator.apply(
+            {"histone_marks": marks, "cell_type": cell_type_b}, {}, None
+        )
+
+        # Different cell types should produce different state assignments
+        assert not jnp.allclose(
+            result_a["state_probabilities"],
+            result_b["state_probabilities"],
+            atol=1e-3,
+        )
+
+    def test_gamma_is_valid_distribution(self, conditioned_annotator, conditioned_config):
+        """Test that gamma (soft assignment) is a valid probability distribution."""
+        length = 50
+        marks = jax.random.normal(jax.random.key(0), (length, conditioned_config.num_marks))
+        cell_type = jax.nn.softmax(
+            jax.random.normal(jax.random.key(1), (conditioned_config.num_cell_types,))
+        )
+
+        data = {"histone_marks": marks, "cell_type": cell_type}
+        result, _, _ = conditioned_annotator.apply(data, {}, None)
+
+        gamma = result["gamma"]
+        # Gamma should sum to 1 over states at each position
+        gamma_sums = gamma.sum(axis=-1)
+        assert jnp.allclose(gamma_sums, 1.0, atol=1e-5)
+        assert jnp.all(gamma >= 0)
+
+    def test_conditioned_gradient_flow(self, conditioned_config, rngs):
+        """Test gradient flow through cell-type conditioned model."""
+        from diffbio.operators.epigenomics.chromatin_state import ChromatinStateAnnotator
+
+        annotator = ChromatinStateAnnotator(conditioned_config, rngs=rngs)
+
+        def loss_fn(op, marks):
+            cell_type = jax.nn.softmax(
+                jax.random.normal(jax.random.key(1), (conditioned_config.num_cell_types,))
+            )
+            data = {"histone_marks": marks, "cell_type": cell_type}
+            result, _, _ = op.apply(data, {}, None)
+            return result["state_probabilities"].sum()
+
+        marks = jax.random.normal(jax.random.key(0), (50, conditioned_config.num_marks))
+        grads = nnx.grad(loss_fn)(annotator, marks)
+
+        assert grads is not None
+        # Should have gradients for emission means
+        assert hasattr(grads, "emission_means")
+
+    def test_conditioned_jit_compatible(self, conditioned_config, rngs):
+        """Test JIT compilation with cell-type conditioning."""
+        from diffbio.operators.epigenomics.chromatin_state import ChromatinStateAnnotator
+
+        annotator = ChromatinStateAnnotator(conditioned_config, rngs=rngs)
+
+        @jax.jit
+        def jit_apply(marks, cell_type):
+            data = {"histone_marks": marks, "cell_type": cell_type}
+            result, _, _ = annotator.apply(data, {}, None)
+            return result["state_probabilities"]
+
+        marks = jax.random.normal(jax.random.key(0), (50, conditioned_config.num_marks))
+        cell_type = jax.nn.softmax(
+            jax.random.normal(jax.random.key(1), (conditioned_config.num_cell_types,))
+        )
+
+        result = jit_apply(marks, cell_type)
+        assert result.shape == (50, conditioned_config.num_states)
+        assert jnp.all(jnp.isfinite(result))
+
+    def test_unconditioned_mode_unchanged(self, rngs):
+        """Test that default unconditioned mode is unchanged."""
+        from diffbio.operators.epigenomics.chromatin_state import (
+            ChromatinStateAnnotator,
+            ChromatinStateConfig,
+        )
+
+        config = ChromatinStateConfig(
+            num_states=4,
+            num_marks=3,
+            temperature=1.0,
+            stream_name=None,
+        )
+        annotator = ChromatinStateAnnotator(config, rngs=rngs)
+
+        marks = jax.random.normal(jax.random.key(0), (50, config.num_marks))
+        data = {"histone_marks": marks}
+        result, _, _ = annotator.apply(data, {}, None)
+
+        # No gamma key when conditioning is disabled
+        assert "gamma" not in result
+        assert "state_probabilities" in result
+        assert "state_posteriors" in result
