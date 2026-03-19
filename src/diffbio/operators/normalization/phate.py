@@ -381,9 +381,7 @@ class DifferentiablePHATE(OperatorModule):
         diffusion_op = self._diffuse_eigendecomposition(markov, self.config.diffusion_t)
 
         # Step 6: Potential distances
-        potential_distances = self._compute_potential_distances(
-            diffusion_op, self.config.gamma
-        )
+        potential_distances = self._compute_potential_distances(diffusion_op, self.config.gamma)
 
         # Step 7: Classical MDS embedding
         embedding = self._classical_mds(potential_distances, self.config.n_components)

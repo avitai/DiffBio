@@ -155,9 +155,7 @@ class TestDifferentiableSimulator:
         result, _, _ = sample_output
         assert jnp.all(result["gene_means"] > 0.0)
 
-    def test_state_and_metadata_passthrough(
-        self, simulator: DifferentiableSimulator
-    ) -> None:
+    def test_state_and_metadata_passthrough(self, simulator: DifferentiableSimulator) -> None:
         """State and metadata should pass through unchanged."""
         rng = jax.random.key(0)
         rp = simulator.generate_random_params(rng, {})
@@ -167,9 +165,7 @@ class TestDifferentiableSimulator:
         assert out_state is in_state
         assert out_meta is in_meta
 
-    def test_generate_random_params(
-        self, simulator: DifferentiableSimulator
-    ) -> None:
+    def test_generate_random_params(self, simulator: DifferentiableSimulator) -> None:
         """generate_random_params should return a dict of JAX arrays."""
         rng = jax.random.key(0)
         rp = simulator.generate_random_params(rng, {})
@@ -265,26 +261,20 @@ class TestGradientFlow:
 class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
 
-    def test_jit_apply(
-        self, simulator: DifferentiableSimulator
-    ) -> None:
+    def test_jit_apply(self, simulator: DifferentiableSimulator) -> None:
         """jax.jit(apply) should compile and produce correct shapes."""
         rng = jax.random.key(0)
         rp = simulator.generate_random_params(rng, {})
 
         @jax.jit
-        def jit_apply(
-            data: dict, state: dict
-        ) -> tuple[dict, dict, dict[str, Any] | None]:
+        def jit_apply(data: dict, state: dict) -> tuple[dict, dict, dict[str, Any] | None]:
             return simulator.apply(data, state, None, random_params=rp)
 
         result, _, _ = jit_apply({}, {})
         assert result["counts"].shape == (N_CELLS, N_GENES)
         assert jnp.all(jnp.isfinite(result["counts"]))
 
-    def test_jit_gradient(
-        self, default_config: SimulationConfig, rngs: nnx.Rngs
-    ) -> None:
+    def test_jit_gradient(self, default_config: SimulationConfig, rngs: nnx.Rngs) -> None:
         """jax.jit + nnx.value_and_grad should work together."""
         sim = DifferentiableSimulator(default_config, rngs=rngs)
         rng = jax.random.key(0)
@@ -356,9 +346,7 @@ class TestEdgeCases:
         assert jnp.all(labels >= 0)
         assert jnp.all(labels < 3)
 
-    def test_input_data_passthrough(
-        self, simulator: DifferentiableSimulator
-    ) -> None:
+    def test_input_data_passthrough(self, simulator: DifferentiableSimulator) -> None:
         """Existing data keys should be preserved in output."""
         rng = jax.random.key(0)
         rp = simulator.generate_random_params(rng, {})

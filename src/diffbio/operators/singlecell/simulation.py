@@ -278,10 +278,8 @@ class DifferentiableSimulator(OperatorModule):
         ).astype(jnp.float32)
 
         # LogNormal fold-changes for DE genes
-        log_fc = (
-            self.de_fac_loc
-            + self.de_fac_scale
-            * jax.random.normal(de_fold_key, (self.n_groups, self.n_genes))
+        log_fc = self.de_fac_loc + self.de_fac_scale * jax.random.normal(
+            de_fold_key, (self.n_groups, self.n_genes)
         )
         fold_changes_raw = jnp.exp(log_fc)
 
@@ -327,9 +325,7 @@ class DifferentiableSimulator(OperatorModule):
             Dropout-adjusted cell means.
         """
         log_means = jnp.log(cell_means + EPSILON)
-        keep_prob = jax.nn.sigmoid(
-            self.dropout_shape_param * (log_means - self.dropout_mid)
-        )
+        keep_prob = jax.nn.sigmoid(self.dropout_shape_param * (log_means - self.dropout_mid))
         return cell_means * keep_prob
 
     def apply(
@@ -374,9 +370,7 @@ class DifferentiableSimulator(OperatorModule):
         group_labels, soft_assignments = self._assign_groups(rp["group_key"])
 
         # Step 4: DE fold-changes per group
-        fold_changes, de_mask = self._compute_de_fold_changes(
-            rp["de_mask_key"], rp["de_fold_key"]
-        )
+        fold_changes, de_mask = self._compute_de_fold_changes(rp["de_mask_key"], rp["de_fold_key"])
 
         # Step 5: Compute cell means = lib_size * gene_mean * group_fold_change
         # Use soft assignments for differentiability:

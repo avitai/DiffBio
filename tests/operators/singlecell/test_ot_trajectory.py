@@ -390,9 +390,7 @@ class TestEdgeCases:
         config_early = OTTrajectoryConfig(
             n_genes=N_GENES, sinkhorn_iters=50, interpolation_time=0.1
         )
-        config_late = OTTrajectoryConfig(
-            n_genes=N_GENES, sinkhorn_iters=50, interpolation_time=0.9
-        )
+        config_late = OTTrajectoryConfig(n_genes=N_GENES, sinkhorn_iters=50, interpolation_time=0.9)
         op_early = DifferentiableOTTrajectory(config_early)
         op_late = DifferentiableOTTrajectory(config_late)
 

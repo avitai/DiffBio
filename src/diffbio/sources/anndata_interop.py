@@ -37,8 +37,7 @@ def _require_anndata() -> Any:
         return ad
     except ImportError as err:
         raise ImportError(
-            "anndata is required for AnnData interop. "
-            "Install with: uv pip install anndata"
+            "anndata is required for AnnData interop. Install with: uv pip install anndata"
         ) from err
 
 
@@ -57,8 +56,7 @@ def _require_pandas() -> Any:
         return pd
     except ImportError as err:
         raise ImportError(
-            "pandas is required for AnnData interop. "
-            "Install with: uv pip install pandas"
+            "pandas is required for AnnData interop. Install with: uv pip install pandas"
         ) from err
 
 
