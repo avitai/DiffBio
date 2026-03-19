@@ -1,17 +1,23 @@
-"""DNA/RNA language model operators for DiffBio.
+"""Language model operators for DiffBio.
 
-This module provides transformer-based sequence encoders following
-DNABERT and RNA-FM architecture patterns for DNA/RNA sequence
-embedding and analysis.
+This module provides transformer-based sequence encoders and single-cell
+foundation model infrastructure.
 
 Operators:
     TransformerSequenceEncoder: BERT-style transformer for sequence embedding
+    DifferentiableFoundationModel: Geneformer/scGPT-style foundation model
+    GeneTokenizer: Rank-value gene tokenization via soft sorting
 
 Factory Functions:
     create_dna_encoder: Create encoder for DNA sequences
     create_rna_encoder: Create encoder for RNA sequences
 """
 
+from diffbio.operators.language_models.foundation_model import (
+    DifferentiableFoundationModel,
+    FoundationModelConfig,
+    GeneTokenizer,
+)
 from diffbio.operators.language_models.transformer_encoder import (
     TransformerSequenceEncoder,
     TransformerSequenceEncoderConfig,
@@ -20,6 +26,9 @@ from diffbio.operators.language_models.transformer_encoder import (
 )
 
 __all__ = [
+    "DifferentiableFoundationModel",
+    "FoundationModelConfig",
+    "GeneTokenizer",
     "TransformerSequenceEncoder",
     "TransformerSequenceEncoderConfig",
     "create_dna_encoder",
