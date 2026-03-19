@@ -20,6 +20,8 @@ from diffbio.operators.variant.cnn_classifier import (
 from diffbio.operators.variant.cnv_segmentation import (
     CNVSegmentationConfig,
     DifferentiableCNVSegmentation,
+    EnhancedCNVSegmentation,
+    EnhancedCNVSegmentationConfig,
 )
 from diffbio.operators.variant.deepvariant_pileup import (
     DeepVariantPileupConfig,
@@ -50,4 +52,7 @@ __all__ = [
     # CNV Segmentation
     "CNVSegmentationConfig",
     "DifferentiableCNVSegmentation",
+    # Enhanced CNV Segmentation
+    "EnhancedCNVSegmentation",
+    "EnhancedCNVSegmentationConfig",
 ]
