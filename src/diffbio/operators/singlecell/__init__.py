@@ -2,6 +2,7 @@
 
 This module provides differentiable components for single-cell analysis:
 - DifferentiableAmbientRemoval: CellBender-style ambient RNA removal
+- DifferentiableCellAnnotator: Cell type annotation (celltypist/cellassign/scanvi)
 - DifferentiableDiffusionImputer: MAGIC-style diffusion imputation
 - DifferentiableDoubletScorer: Scrublet-style doublet detection
 - DifferentiableLigandReceptor: Ligand-receptor co-expression scoring
@@ -16,6 +17,10 @@ This module provides differentiable components for single-cell analysis:
 from diffbio.operators.singlecell.ambient_removal import (
     AmbientRemovalConfig,
     DifferentiableAmbientRemoval,
+)
+from diffbio.operators.singlecell.cell_annotation import (
+    CellAnnotatorConfig,
+    DifferentiableCellAnnotator,
 )
 from diffbio.operators.singlecell.communication import (
     DifferentiableLigandReceptor,
@@ -56,6 +61,9 @@ __all__ = [
     # Ambient Removal
     "AmbientRemovalConfig",
     "DifferentiableAmbientRemoval",
+    # Cell Annotation
+    "CellAnnotatorConfig",
+    "DifferentiableCellAnnotator",
     # Clustering
     "SoftClusteringConfig",
     "SoftKMeansClustering",
