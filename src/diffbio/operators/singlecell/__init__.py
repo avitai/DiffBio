@@ -9,6 +9,8 @@ This module provides differentiable components for single-cell analysis:
 - DifferentiableLigandReceptor: Ligand-receptor co-expression scoring
 - SoftKMeansClustering: Differentiable soft k-means clustering
 - DifferentiableHarmony: Harmony-style batch correction
+- DifferentiableMMDBatchCorrection: MMD-regularised autoencoder batch correction
+- DifferentiableWGANBatchCorrection: Adversarial (WGAN) batch correction
 - DifferentiableSwitchDE: Sigmoidal switch differential expression
 - DifferentiableVelocity: RNA velocity via Neural ODEs
 - DifferentiablePseudotime: Diffusion-map pseudotime ordering
@@ -32,6 +34,12 @@ from diffbio.operators.singlecell.communication import (
 from diffbio.operators.singlecell.batch_correction import (
     BatchCorrectionConfig,
     DifferentiableHarmony,
+)
+from diffbio.operators.singlecell.enhanced_batch_correction import (
+    DifferentiableMMDBatchCorrection,
+    DifferentiableWGANBatchCorrection,
+    MMDBatchCorrectionConfig,
+    WGANBatchCorrectionConfig,
 )
 from diffbio.operators.singlecell.doublet_detection import (
     DifferentiableDoubletScorer,
@@ -79,9 +87,14 @@ __all__ = [
     "DifferentiableCellCommunication",
     "DifferentiableLigandReceptor",
     "LRScoringConfig",
-    # Batch Correction
+    # Batch Correction (Harmony)
     "BatchCorrectionConfig",
     "DifferentiableHarmony",
+    # Batch Correction (MMD + WGAN)
+    "DifferentiableMMDBatchCorrection",
+    "DifferentiableWGANBatchCorrection",
+    "MMDBatchCorrectionConfig",
+    "WGANBatchCorrectionConfig",
     # Doublet Detection
     "DifferentiableDoubletScorer",
     "DifferentiableSoloDetector",
