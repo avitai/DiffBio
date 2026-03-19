@@ -6,6 +6,7 @@ This module provides differentiable components for single-cell analysis:
 - DifferentiableDiffusionImputer: MAGIC-style diffusion imputation
 - DifferentiableDoubletScorer: Scrublet-style doublet detection
 - DifferentiableCellCommunication: GNN-based cell-cell communication analysis
+- DifferentiableGRN: GATv2-based gene regulatory network inference
 - DifferentiableLigandReceptor: Ligand-receptor co-expression scoring
 - SoftKMeansClustering: Differentiable soft k-means clustering
 - DifferentiableHarmony: Harmony-style batch correction
@@ -15,6 +16,8 @@ This module provides differentiable components for single-cell analysis:
 - DifferentiableVelocity: RNA velocity via Neural ODEs
 - DifferentiablePseudotime: Diffusion-map pseudotime ordering
 - DifferentiableFateProbability: Absorption-based fate estimation
+- DifferentiableSpatialDomain: STAGATE-style spatial domain identification
+- DifferentiablePASTEAlignment: PASTE-style spatial slice alignment
 """
 
 from diffbio.operators.singlecell.ambient_removal import (
@@ -41,6 +44,10 @@ from diffbio.operators.singlecell.enhanced_batch_correction import (
     MMDBatchCorrectionConfig,
     WGANBatchCorrectionConfig,
 )
+from diffbio.operators.singlecell.grn_inference import (
+    DifferentiableGRN,
+    GRNInferenceConfig,
+)
 from diffbio.operators.singlecell.doublet_detection import (
     DifferentiableDoubletScorer,
     DifferentiableSoloDetector,
@@ -66,6 +73,12 @@ from diffbio.operators.singlecell.trajectory import (
     DifferentiablePseudotime,
     FateProbabilityConfig,
     PseudotimeConfig,
+)
+from diffbio.operators.singlecell.spatial_domains import (
+    DifferentiablePASTEAlignment,
+    DifferentiableSpatialDomain,
+    PASTEAlignmentConfig,
+    SpatialDomainConfig,
 )
 from diffbio.operators.singlecell.velocity import (
     DifferentiableVelocity,
@@ -95,6 +108,9 @@ __all__ = [
     "DifferentiableWGANBatchCorrection",
     "MMDBatchCorrectionConfig",
     "WGANBatchCorrectionConfig",
+    # GRN Inference
+    "DifferentiableGRN",
+    "GRNInferenceConfig",
     # Doublet Detection
     "DifferentiableDoubletScorer",
     "DifferentiableSoloDetector",
@@ -113,6 +129,11 @@ __all__ = [
     "DifferentiablePseudotime",
     "FateProbabilityConfig",
     "PseudotimeConfig",
+    # Spatial Domain Identification
+    "DifferentiablePASTEAlignment",
+    "DifferentiableSpatialDomain",
+    "PASTEAlignmentConfig",
+    "SpatialDomainConfig",
     # Velocity
     "DifferentiableVelocity",
     "VelocityConfig",

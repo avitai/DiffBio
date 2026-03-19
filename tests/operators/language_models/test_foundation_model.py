@@ -229,9 +229,7 @@ class TestGradientFlow:
         """Test gradient flows from predicted expression back to input counts."""
         gene_ids = sample_data["gene_ids"]
         counts = sample_data["counts"]
-        rp = model.generate_random_params(
-            jax.random.key(0), {"counts": counts.shape}
-        )
+        rp = model.generate_random_params(jax.random.key(0), {"counts": counts.shape})
 
         def loss_fn(c: jax.Array) -> jax.Array:
             data = {"counts": c, "gene_ids": gene_ids}
@@ -252,9 +250,7 @@ class TestGradientFlow:
         """Test gradient flows from gene embeddings back to input counts."""
         gene_ids = sample_data["gene_ids"]
         counts = sample_data["counts"]
-        rp = model.generate_random_params(
-            jax.random.key(0), {"counts": counts.shape}
-        )
+        rp = model.generate_random_params(jax.random.key(0), {"counts": counts.shape})
 
         def loss_fn(c: jax.Array) -> jax.Array:
             data = {"counts": c, "gene_ids": gene_ids}
@@ -284,9 +280,7 @@ class TestJITCompatibility:
         """Test that apply runs under jax.jit."""
         gene_ids = sample_data["gene_ids"]
         counts = sample_data["counts"]
-        rp = model.generate_random_params(
-            jax.random.key(0), {"counts": counts.shape}
-        )
+        rp = model.generate_random_params(jax.random.key(0), {"counts": counts.shape})
 
         @jax.jit
         def run(c: jax.Array) -> dict[str, jax.Array]:
@@ -306,9 +300,7 @@ class TestJITCompatibility:
         """Test that gradient computation runs under jax.jit."""
         gene_ids = sample_data["gene_ids"]
         counts = sample_data["counts"]
-        rp = model.generate_random_params(
-            jax.random.key(0), {"counts": counts.shape}
-        )
+        rp = model.generate_random_params(jax.random.key(0), {"counts": counts.shape})
 
         @jax.jit
         def grad_fn(c: jax.Array) -> jax.Array:
@@ -352,9 +344,7 @@ class TestEdgeCases:
         gene_ids = jnp.arange(N_GENES, dtype=jnp.int32)
         data = {"counts": counts, "gene_ids": gene_ids}
 
-        rp = mdl.generate_random_params(
-            jax.random.key(0), {"counts": counts.shape}
-        )
+        rp = mdl.generate_random_params(jax.random.key(0), {"counts": counts.shape})
         result, _, _ = mdl.apply(data, {}, None, random_params=rp)
 
         assert result["cell_embeddings"].shape == (1, HIDDEN_DIM)
@@ -381,9 +371,7 @@ class TestEdgeCases:
         gene_ids = jnp.arange(N_GENES, dtype=jnp.int32)
         data = {"counts": counts, "gene_ids": gene_ids}
 
-        rp = mdl.generate_random_params(
-            jax.random.key(0), {"counts": counts.shape}
-        )
+        rp = mdl.generate_random_params(jax.random.key(0), {"counts": counts.shape})
         result, _, _ = mdl.apply(data, {}, None, random_params=rp)
 
         assert result["predicted_expression"].shape == (N_CELLS, N_GENES)

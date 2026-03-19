@@ -238,9 +238,7 @@ class DifferentiableFoundationModel(OperatorModule):
         )
 
         # Learned mask token embedding (replaces expression embedding for masked genes)
-        self.mask_token = nnx.Param(
-            jax.random.normal(rngs.params(), (config.hidden_dim,)) * 0.02
-        )
+        self.mask_token = nnx.Param(jax.random.normal(rngs.params(), (config.hidden_dim,)) * 0.02)
 
         # Output head: hidden_dim -> 1 (predict scalar expression per gene)
         self.output_head = nnx.Linear(config.hidden_dim, 1, rngs=rngs)
@@ -285,18 +283,12 @@ class DifferentiableFoundationModel(OperatorModule):
         gene_embeddings = self.encoder.input_projection(gene_ids)  # (n_genes, hidden_dim)
 
         # Step 2: Project expression values to hidden_dim (scGPT-style value encoder)
-        expr_projected = self.expression_projection(
-            expression[:, None]
-        )  # (n_genes, hidden_dim)
+        expr_projected = self.expression_projection(expression[:, None])  # (n_genes, hidden_dim)
 
         # Step 3: Apply mask -- replace masked expression embeddings with mask token
         mask_expanded = mask[:, None]  # (n_genes, 1)
-        mask_token_broadcast = jnp.broadcast_to(
-            self.mask_token[...][None, :], expr_projected.shape
-        )
-        expr_projected = jnp.where(
-            mask_expanded > 0.5, mask_token_broadcast, expr_projected
-        )
+        mask_token_broadcast = jnp.broadcast_to(self.mask_token[...][None, :], expr_projected.shape)
+        expr_projected = jnp.where(mask_expanded > 0.5, mask_token_broadcast, expr_projected)
 
         # Step 4: Combine gene identity embeddings + expression value embeddings
         hidden = gene_embeddings + expr_projected  # (n_genes, hidden_dim)
@@ -313,9 +305,9 @@ class DifferentiableFoundationModel(OperatorModule):
         # Use (1 - mask) to select non-masked genes
         non_masked_weight = (1.0 - mask)[:, None]  # (n_genes, 1)
         non_masked_count = jnp.maximum(jnp.sum(1.0 - mask), 1.0)
-        cell_embedding = jnp.sum(
-            hidden * non_masked_weight, axis=0
-        ) / non_masked_count  # (hidden_dim,)
+        cell_embedding = (
+            jnp.sum(hidden * non_masked_weight, axis=0) / non_masked_count
+        )  # (hidden_dim,)
 
         return hidden, cell_embedding, predicted
 

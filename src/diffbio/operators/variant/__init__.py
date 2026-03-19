@@ -4,12 +4,15 @@ This module provides differentiable components for variant calling:
 - DifferentiablePileup: Generates pileup from aligned reads
 - DeepVariantStylePileup: DeepVariant-style multi-channel pileup images
 - VariantClassifier: MLP-based variant classifier
+- CellTypeAwareVariantClassifier: Cell-type-weighted variant classifier
 - CNNVariantClassifier: CNN-based pileup image classifier (DeepVariant-style)
 - SoftVariantQualityFilter: GMM-based quality filtering (VQSR-style)
 - DifferentiableCNVSegmentation: Attention-based CNV detection
 """
 
 from diffbio.operators.variant.classifier import (
+    CellTypeAwareVariantClassifier,
+    CellTypeAwareVariantClassifierConfig,
     VariantClassifier,
     VariantClassifierConfig,
 )
@@ -43,6 +46,9 @@ __all__ = [
     # MLP Classifier
     "VariantClassifier",
     "VariantClassifierConfig",
+    # Cell-Type-Aware Classifier
+    "CellTypeAwareVariantClassifier",
+    "CellTypeAwareVariantClassifierConfig",
     # CNN Classifier
     "CNNVariantClassifier",
     "CNNVariantClassifierConfig",

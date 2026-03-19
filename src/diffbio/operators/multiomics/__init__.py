@@ -1,6 +1,7 @@
 """Multi-omics analysis operators for differentiable integration.
 
 This module provides differentiable operators for multi-omics data analysis:
+- DifferentiableMultiOmicsVAE: PoE-based multi-omics VAE integration
 - SpatialDeconvolution: Cell type deconvolution for spatial transcriptomics
 - HiCContactAnalysis: Chromatin contact analysis for Hi-C data
 - DifferentiableSpatialGeneDetector: SpatialDE-style spatial gene detection
@@ -9,6 +10,10 @@ This module provides differentiable operators for multi-omics data analysis:
 from diffbio.operators.multiomics.hic_contact import (
     HiCContactAnalysis,
     HiCContactAnalysisConfig,
+)
+from diffbio.operators.multiomics.multiomics_vae import (
+    DifferentiableMultiOmicsVAE,
+    MultiOmicsVAEConfig,
 )
 from diffbio.operators.multiomics.spatial_deconvolution import (
     SpatialDeconvolution,
@@ -21,6 +26,8 @@ from diffbio.operators.multiomics.spatial_gene_detection import (
 )
 
 __all__ = [
+    "DifferentiableMultiOmicsVAE",
+    "MultiOmicsVAEConfig",
     "SpatialDeconvolution",
     "SpatialDeconvolutionConfig",
     "HiCContactAnalysis",

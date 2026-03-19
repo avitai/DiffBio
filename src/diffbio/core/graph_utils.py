@@ -33,13 +33,16 @@ def compute_pairwise_distances(
     """
     if metric == "cosine":
         norms = jnp.linalg.norm(features, axis=-1, keepdims=True)
-        features_norm = features / (norms + 1e-8)
+        features_norm = features / jnp.maximum(norms, jnp.finfo(features.dtype).eps)
         similarity = jnp.dot(features_norm, features_norm.T)
-        # Clamp to avoid sqrt of negative due to floating-point drift
-        distances = jnp.sqrt(jnp.maximum(2.0 * (1.0 - similarity), 0.0) + 1e-8)
+        distances = jnp.clip(1.0 - similarity, 0.0, 2.0)
     else:
         diff = features[:, None, :] - features[None, :, :]
-        distances = jnp.sqrt(jnp.sum(diff**2, axis=-1) + 1e-8)
+        distances = jnp.sqrt(jnp.sum(diff**2, axis=-1) + 1e-16)
+
+    # Self-distance is zero by definition; float32 matmul cannot guarantee this
+    n = features.shape[0]
+    distances = distances.at[jnp.diag_indices(n)].set(0.0)
 
     return distances
 
