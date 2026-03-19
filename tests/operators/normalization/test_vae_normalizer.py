@@ -464,6 +464,48 @@ class TestZINBVAENormalizer:
         assert loss.shape == ()
         assert jnp.isfinite(loss)
 
+    def test_zinb_nll_stable_extreme_pi_logit(self, zinb_op: VAENormalizer) -> None:
+        """ZINB NLL should be finite even with extreme dropout logits.
+
+        Large positive pi_logit means sigmoid(pi_logit) near 1 (heavy dropout).
+        The old formulation materialized sigmoid(pi) then computed log(1-pi),
+        which is -inf when pi near 1. The softplus formulation avoids this.
+        """
+        counts = jax.random.poisson(jax.random.key(1), lam=5.0, shape=(N_GENES,)).astype(
+            jnp.float32
+        )
+        log_rate = jnp.zeros(N_GENES)
+        log_theta = jnp.zeros(N_GENES)
+
+        # Extreme positive pi_logit: sigmoid(50) ~ 1.0, so 1-pi ~ 0
+        extreme_pi_logit = jnp.full((N_GENES,), 50.0)
+        loss_pos = zinb_op._zinb_nll(counts, log_rate, log_theta, extreme_pi_logit)
+        assert jnp.isfinite(loss_pos), f"NaN/inf with pi_logit=+50: {loss_pos}"
+
+        # Extreme negative pi_logit: sigmoid(-50) ~ 0, so pi ~ 0
+        extreme_pi_logit_neg = jnp.full((N_GENES,), -50.0)
+        loss_neg = zinb_op._zinb_nll(counts, log_rate, log_theta, extreme_pi_logit_neg)
+        assert jnp.isfinite(loss_neg), f"NaN/inf with pi_logit=-50: {loss_neg}"
+
+    def test_zinb_nll_gradient_stable_extreme_pi_logit(self, zinb_op: VAENormalizer) -> None:
+        """ZINB NLL gradients should be finite with extreme dropout logits."""
+        counts = jax.random.poisson(jax.random.key(2), lam=5.0, shape=(N_GENES,)).astype(
+            jnp.float32
+        )
+        log_rate = jnp.zeros(N_GENES)
+        log_theta = jnp.zeros(N_GENES)
+
+        def nll_fn(pi_logit: jax.Array) -> jax.Array:
+            return zinb_op._zinb_nll(counts, log_rate, log_theta, pi_logit)
+
+        # Gradient at extreme positive pi_logit
+        grad_pos = jax.grad(nll_fn)(jnp.full((N_GENES,), 50.0))
+        assert jnp.all(jnp.isfinite(grad_pos)), "NaN/inf gradient at pi_logit=+50"
+
+        # Gradient at extreme negative pi_logit
+        grad_neg = jax.grad(nll_fn)(jnp.full((N_GENES,), -50.0))
+        assert jnp.all(jnp.isfinite(grad_neg)), "NaN/inf gradient at pi_logit=-50"
+
 
 class TestZINBGradientFlow:
     """Tests for gradient flow through ZINB components."""
