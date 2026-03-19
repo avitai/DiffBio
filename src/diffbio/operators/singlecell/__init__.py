@@ -3,6 +3,7 @@
 This module provides differentiable components for single-cell analysis:
 - DifferentiableAmbientRemoval: CellBender-style ambient RNA removal
 - DifferentiableDiffusionImputer: MAGIC-style diffusion imputation
+- DifferentiableDoubletScorer: Scrublet-style doublet detection
 - SoftKMeansClustering: Differentiable soft k-means clustering
 - DifferentiableHarmony: Harmony-style batch correction
 - DifferentiableSwitchDE: Sigmoidal switch differential expression
@@ -16,6 +17,10 @@ from diffbio.operators.singlecell.ambient_removal import (
 from diffbio.operators.singlecell.batch_correction import (
     BatchCorrectionConfig,
     DifferentiableHarmony,
+)
+from diffbio.operators.singlecell.doublet_detection import (
+    DifferentiableDoubletScorer,
+    DoubletScorerConfig,
 )
 from diffbio.operators.singlecell.imputation import (
     DifferentiableDiffusionImputer,
@@ -44,6 +49,9 @@ __all__ = [
     # Batch Correction
     "BatchCorrectionConfig",
     "DifferentiableHarmony",
+    # Doublet Detection
+    "DifferentiableDoubletScorer",
+    "DoubletScorerConfig",
     # Imputation
     "DifferentiableDiffusionImputer",
     "DiffusionImputerConfig",
