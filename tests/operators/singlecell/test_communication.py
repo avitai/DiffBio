@@ -29,6 +29,8 @@ class TestLRScoringConfig:
         assert config.temperature == 1.0
         assert config.learnable_temperature is False
         assert config.metric == "euclidean"
+        assert config.kh == 0.5
+        assert config.hill_n == 1.0
         assert config.stochastic is False
 
     def test_custom_neighbors(self) -> None:
@@ -105,6 +107,34 @@ class TestDifferentiableLigandReceptor:
         mean_score_correlated = jnp.mean(result["lr_scores"][:, 0])
         mean_score_random = jnp.mean(result["lr_scores"][:, 1])
         assert float(mean_score_correlated) > float(mean_score_random)
+
+        # Hill function output is bounded in [0, 1)
+        assert jnp.all(result["lr_scores"] >= 0.0)
+        assert jnp.all(result["lr_scores"] < 1.0 + 1e-6)
+
+    def test_hill_function_saturation(self, rngs: nnx.Rngs) -> None:
+        """At high L*R product, Hill function score approaches 1.0."""
+        n_cells = 20
+        n_genes = 4
+        key = jax.random.key(42)
+
+        # Very high ligand and receptor expression for all cells
+        counts = jnp.ones((n_cells, n_genes)) * 100.0
+        # Add small noise so the k-NN graph is well-defined
+        counts = counts + jax.random.uniform(key, (n_cells, n_genes), maxval=0.01)
+
+        lr_pairs = jnp.array([[0, 1]])
+        config = LRScoringConfig(n_neighbors=5, temperature=1.0)
+        op = DifferentiableLigandReceptor(config, rngs=rngs)
+        data = {"counts": counts, "lr_pairs": lr_pairs}
+        result, _, _ = op.apply(data, {}, None)
+
+        # With very large L*R, Hill function P = (LR)^n / (Kh^n + (LR)^n) -> 1
+        scores = result["lr_scores"][:, 0]
+        assert jnp.all(scores > 0.9), (
+            f"Expected scores > 0.9 at saturation, got min={float(jnp.min(scores))}"
+        )
+        assert jnp.isfinite(scores).all()
 
     def test_scores_finite(
         self, rngs: nnx.Rngs, config: LRScoringConfig, sample_data: dict[str, jax.Array | int]

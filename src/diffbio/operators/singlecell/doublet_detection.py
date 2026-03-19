@@ -316,6 +316,10 @@ class DifferentiableDoubletScorer(OperatorModule):
         )
 
         # Step 7: Bayesian likelihood-ratio scoring (Scrublet formula)
+        # Clip soft synthetic count so it cannot exceed k_adj (soft weights
+        # may overshoot the hard budget, making the denominator negative).
+        syn_neighbor_count = jnp.clip(syn_neighbor_count, 0.0, float(k_adj))
+
         # q = Laplace-smoothed fraction of synthetic neighbors
         q = (syn_neighbor_count + 1) / (k_adj + 2)
         rho = config.expected_doublet_rate

@@ -47,12 +47,16 @@ class LRScoringConfig(OperatorConfig):
         temperature: Temperature for soft p-value sigmoid.
         learnable_temperature: Whether the temperature is a learnable parameter.
         metric: Distance metric for k-NN, either ``"euclidean"`` or ``"cosine"``.
+        kh: Hill function half-maximal constant (CellChat default 0.5).
+        hill_n: Hill function cooperativity coefficient (CellChat default 1.0).
     """
 
     n_neighbors: int = 15
     temperature: float = 1.0
     learnable_temperature: bool = False
     metric: str = "euclidean"
+    kh: float = 0.5
+    hill_n: float = 1.0
 
 
 class DifferentiableLigandReceptor(TemperatureOperator):
@@ -136,12 +140,16 @@ class DifferentiableLigandReceptor(TemperatureOperator):
         ligand_expression: Float[Array, "n_cells"],
         receptor_expression: Float[Array, "n_cells"],
     ) -> Float[Array, "n_cells"]:
-        """Compute per-cell L-R interaction score for a single pair.
+        """Score L-R pair using Hill function (CellChat-style).
 
-        ``score_i = sum_j(adjacency[i,j] * L[j] * R[i])``
+        For each receiver cell *i* the score is a saturating Hill function
+        of the neighbor-averaged ligand signal times the receiver's own
+        receptor expression:
 
-        The score captures how much ligand signal cell *i* receives from its
-        neighbors, weighted by its own receptor expression.
+        ``P = (L*R)^n / (Kh^n + (L*R)^n)``
+
+        where ``Kh`` and ``n`` are configured via ``LRScoringConfig.kh``
+        and ``LRScoringConfig.hill_n``.
 
         Args:
             adjacency: Symmetric adjacency matrix.
@@ -151,10 +159,18 @@ class DifferentiableLigandReceptor(TemperatureOperator):
         Returns:
             Per-cell interaction score of shape ``(n_cells,)``.
         """
-        # Weighted ligand signal from neighbors: sum_j(A[i,j] * L[j])
+        # Neighbor-averaged ligand expression (sender perspective)
         neighbor_ligand = adjacency @ ligand_expression  # (n_cells,)
-        # Multiply by receiver's receptor expression
-        return neighbor_ligand * receptor_expression
+
+        # L-R product per cell (receiver's receptor * sender's ligand)
+        lr_product = neighbor_ligand * receptor_expression
+
+        # Hill function for saturation (CellChat: Kh=0.5, n=1)
+        kh: float = self.config.kh
+        n: float = self.config.hill_n
+        score = lr_product**n / (kh**n + lr_product**n + EPSILON)
+
+        return score
 
     def _compute_soft_pvalues(
         self,
@@ -194,15 +210,25 @@ class DifferentiableLigandReceptor(TemperatureOperator):
 
             # Expected under null: E[score_i] = mean(L) * R[i] * degree_i
             mean_ligand = jnp.mean(ligand_expr)
+            mean_receptor = jnp.mean(receptor_expr)
             expected = jnp.sum(mean_ligand * receptor_expr * row_sums)
 
-            # Approximate std: use the variance of the product L[j]*R[i]
-            # scaled by the adjacency magnitude
+            # Correct variance for Var(sum_j A[i,j]*L[j]*R[i]) under
+            # independence of L and R:
+            #   Var(sum) = sum(A^2) * (Var(L)*Var(R)
+            #              + Var(L)*E[R]^2 + Var(R)*E[L]^2)
             var_ligand = jnp.var(ligand_expr) + EPSILON
             var_receptor = jnp.var(receptor_expr) + EPSILON
-            # Variance approximation for the sum of weighted products
             sum_adj_sq = jnp.sum(adjacency**2)
-            std_approx = jnp.sqrt(var_ligand * var_receptor * sum_adj_sq + EPSILON)
+            std_approx = jnp.sqrt(
+                sum_adj_sq
+                * (
+                    var_ligand * var_receptor
+                    + var_ligand * mean_receptor**2
+                    + var_receptor * mean_ligand**2
+                )
+                + EPSILON
+            )
 
             z_score = (observed - expected) / (std_approx + EPSILON)
 
