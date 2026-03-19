@@ -19,8 +19,14 @@ This module provides differentiable components for single-cell analysis:
 - DifferentiableSpatialDomain: STAGATE-style spatial domain identification
 - DifferentiablePASTEAlignment: PASTE-style spatial slice alignment
 - DifferentiableDifferentialDistribution: scDD-style differential distribution testing
+- DifferentiableSimulator: Splatter-style single-cell count simulation
+- DifferentiableArchetypalAnalysis: PCHA-style archetypal analysis
 """
 
+from diffbio.operators.singlecell.archetypes import (
+    ArchetypalAnalysisConfig,
+    DifferentiableArchetypalAnalysis,
+)
 from diffbio.operators.singlecell.ambient_removal import (
     AmbientRemovalConfig,
     DifferentiableAmbientRemoval,
@@ -85,12 +91,19 @@ from diffbio.operators.singlecell.differential_distribution import (
     DifferentiableDifferentialDistribution,
     DifferentialDistributionConfig,
 )
+from diffbio.operators.singlecell.simulation import (
+    DifferentiableSimulator,
+    SimulationConfig,
+)
 from diffbio.operators.singlecell.velocity import (
     DifferentiableVelocity,
     VelocityConfig,
 )
 
 __all__ = [
+    # Archetypal Analysis
+    "ArchetypalAnalysisConfig",
+    "DifferentiableArchetypalAnalysis",
     # Ambient Removal
     "AmbientRemovalConfig",
     "DifferentiableAmbientRemoval",
@@ -142,6 +155,9 @@ __all__ = [
     # Differential Distribution
     "DifferentiableDifferentialDistribution",
     "DifferentialDistributionConfig",
+    # Simulation
+    "DifferentiableSimulator",
+    "SimulationConfig",
     # Velocity
     "DifferentiableVelocity",
     "VelocityConfig",
