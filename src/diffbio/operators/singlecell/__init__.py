@@ -9,6 +9,8 @@ This module provides differentiable components for single-cell analysis:
 - DifferentiableHarmony: Harmony-style batch correction
 - DifferentiableSwitchDE: Sigmoidal switch differential expression
 - DifferentiableVelocity: RNA velocity via Neural ODEs
+- DifferentiablePseudotime: Diffusion-map pseudotime ordering
+- DifferentiableFateProbability: Absorption-based fate estimation
 """
 
 from diffbio.operators.singlecell.ambient_removal import (
@@ -39,6 +41,12 @@ from diffbio.operators.singlecell.switch_de import (
     DifferentiableSwitchDE,
     SwitchDEConfig,
 )
+from diffbio.operators.singlecell.trajectory import (
+    DifferentiableFateProbability,
+    DifferentiablePseudotime,
+    FateProbabilityConfig,
+    PseudotimeConfig,
+)
 from diffbio.operators.singlecell.velocity import (
     DifferentiableVelocity,
     VelocityConfig,
@@ -66,6 +74,11 @@ __all__ = [
     # Switch DE
     "DifferentiableSwitchDE",
     "SwitchDEConfig",
+    # Trajectory Inference
+    "DifferentiableFateProbability",
+    "DifferentiablePseudotime",
+    "FateProbabilityConfig",
+    "PseudotimeConfig",
     # Velocity
     "DifferentiableVelocity",
     "VelocityConfig",
