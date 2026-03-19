@@ -30,8 +30,12 @@ class DoubletScorerConfig(OperatorConfig):
     """Configuration for Scrublet-style doublet detection.
 
     Attributes:
-        n_neighbors: Number of nearest neighbors for scoring.
-        expected_doublet_rate: Expected fraction of doublets in the dataset.
+        n_neighbors: Base number of nearest neighbors for scoring (adjusted
+            upward to account for synthetic pool size).
+        expected_doublet_rate: Prior expected fraction of doublets (rho in
+            the Bayesian likelihood ratio).
+        sim_doublet_ratio: Ratio of synthetic doublets to real cells. Scrublet
+            default is 2.0, meaning 2x as many synthetics as real cells.
         n_pca_components: Number of PCA components for embedding.
         n_genes: Number of genes in expression profiles.
         threshold_temperature: Temperature for sigmoid doublet thresholding.
@@ -41,6 +45,7 @@ class DoubletScorerConfig(OperatorConfig):
 
     n_neighbors: int = 30
     expected_doublet_rate: float = 0.06
+    sim_doublet_ratio: float = 2.0
     n_pca_components: int = 30
     n_genes: int = 2000
     threshold_temperature: float = 10.0
@@ -53,17 +58,19 @@ class DifferentiableDoubletScorer(OperatorModule):
 
     Detects doublets by generating synthetic doublet profiles from random
     cell pairs, embedding real and synthetic cells into PCA space, and
-    scoring each real cell by the fraction of its k-nearest neighbors
-    that are synthetic.
+    scoring each real cell via the Bayesian k-NN likelihood ratio from
+    Scrublet (Wolock et al., 2019).
 
     Algorithm:
-        1. Generate synthetic doublets by summing random cell pairs
+        1. Generate ``n_cells * sim_doublet_ratio`` synthetic doublets
         2. Concatenate real and synthetic cells
         3. PCA-embed via truncated SVD
         4. Compute pairwise distances in PCA space
-        5. For each real cell, compute soft fraction of k-NN that are synthetic
-        6. Normalize score by expected synthetic fraction
-        7. Apply sigmoid threshold for predicted doublet calls
+        5. Adjust k upward: ``k_adj = round(k * (1 + n_syn / n_cells))``
+        6. Count soft synthetic neighbors in each real cell's k-NN
+        7. Compute Laplace-smoothed fraction ``q`` of synthetic neighbors
+        8. Bayesian likelihood ratio: ``Ld = q * rho / r / denom``
+        9. Apply sigmoid threshold for predicted doublet calls
 
     Args:
         config: DoubletScorerConfig with operator parameters.
@@ -122,20 +129,27 @@ class DifferentiableDoubletScorer(OperatorModule):
         self,
         counts: Float[Array, "n_cells n_genes"],
         rng: jax.Array,
+        sim_doublet_ratio: float,
     ) -> Float[Array, "n_synthetic n_genes"]:
         """Generate synthetic doublets by summing random cell pairs.
+
+        The number of synthetic doublets is ``n_cells * sim_doublet_ratio``,
+        matching Scrublet's default 2:1 synthetic-to-real ratio.
 
         Args:
             counts: Real count matrix of shape ``(n_cells, n_genes)``.
             rng: JAX random key for pair selection.
+            sim_doublet_ratio: Ratio of synthetic doublets to real cells.
 
         Returns:
-            Synthetic doublet profiles of shape ``(n_cells, n_genes)``.
+            Synthetic doublet profiles of shape
+            ``(n_cells * sim_doublet_ratio, n_genes)``.
         """
         n_cells = counts.shape[0]
+        n_synthetic = int(n_cells * sim_doublet_ratio)
         k1, k2 = jax.random.split(rng)
-        idx_a = jax.random.randint(k1, (n_cells,), 0, n_cells)
-        idx_b = jax.random.randint(k2, (n_cells,), 0, n_cells)
+        idx_a = jax.random.randint(k1, (n_synthetic,), 0, n_cells)
+        idx_b = jax.random.randint(k2, (n_synthetic,), 0, n_cells)
         return counts[idx_a] + counts[idx_b]
 
     def _pca_embed(
@@ -163,30 +177,32 @@ class DifferentiableDoubletScorer(OperatorModule):
         projection = vt[:n_components_eff]  # (n_components_eff, n_genes)
         return centered @ projection.T
 
-    def _compute_soft_knn_fraction(
+    def _compute_soft_knn_synthetic_count(
         self,
         distances: Float[Array, "n_real n_total"],
         n_real: int,
         n_total: int,
-        k: int,
+        k_adj: int,
     ) -> Float[Array, "n_real"]:
-        """Compute soft fraction of k-nearest neighbors that are synthetic.
+        """Compute soft count of synthetic neighbors in adjusted k-NN.
 
         Uses a softmax-weighted membership approach: for each real cell,
-        the k smallest distances are selected, and the fraction of those
-        neighbors that are synthetic is computed as a differentiable score.
+        the ``k_adj`` smallest distances are selected, and the weighted
+        count of synthetic neighbors is returned for the Bayesian
+        likelihood-ratio formula.
 
         Args:
             distances: Distance matrix from real cells to all cells,
                 shape ``(n_real, n_total)``.
             n_real: Number of real cells.
             n_total: Total number of cells (real + synthetic).
-            k: Number of nearest neighbors.
+            k_adj: Adjusted number of nearest neighbors (accounts for
+                synthetic pool size).
 
         Returns:
-            Soft synthetic fraction per real cell, shape ``(n_real,)``.
+            Soft synthetic neighbor count per real cell, shape ``(n_real,)``.
         """
-        k_eff = min(k, n_total - 1)
+        k_eff = min(k_adj, n_total - 1)
 
         # Create label vector: 0 for real, 1 for synthetic
         is_synthetic = jnp.concatenate(
@@ -216,12 +232,11 @@ class DifferentiableDoubletScorer(OperatorModule):
         temperature = 10.0
         knn_mask = jax.nn.sigmoid(temperature * (kth_dist - masked_distances))
 
-        # Weighted synthetic fraction
+        # Weighted synthetic count (not fraction -- the Bayesian formula needs count)
         masked_weights = weights * knn_mask
         synthetic_weight = masked_weights @ is_synthetic
-        total_weight = jnp.sum(masked_weights, axis=-1) + 1e-8
 
-        return synthetic_weight / total_weight
+        return synthetic_weight
 
     def apply(
         self,
@@ -232,6 +247,15 @@ class DifferentiableDoubletScorer(OperatorModule):
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply doublet detection to single-cell count data.
+
+        Implements Scrublet's Bayesian k-NN likelihood-ratio scoring:
+
+        1. Generate ``n_cells * sim_doublet_ratio`` synthetic doublets
+        2. Adjust k upward: ``k_adj = round(k * (1 + n_syn / n_cells))``
+        3. For each real cell, count synthetic neighbors in its k-NN
+        4. Compute Laplace-smoothed fraction ``q = (syn_count + 1) / (k_adj + 2)``
+        5. Bayesian likelihood ratio:
+           ``Ld = q * rho / r / (1 - rho - q*(1 - rho - rho/r))``
 
         Args:
             data: Dictionary containing:
@@ -246,48 +270,56 @@ class DifferentiableDoubletScorer(OperatorModule):
                 - transformed_data contains:
 
                     - ``"counts"``: Original counts
-                    - ``"doublet_scores"``: Per-cell doublet score in [0, 1]
+                    - ``"doublet_scores"``: Bayesian likelihood ratio per cell
                     - ``"predicted_doublets"``: Soft doublet predictions in [0, 1]
                 - state is passed through unchanged
                 - metadata is passed through unchanged
         """
         counts = data["counts"]
         n_cells = counts.shape[0]
+        config = self.config
 
         # Use provided random key or fallback
         rng = random_params if random_params is not None else jax.random.key(0)
 
-        # Step 1: Generate synthetic doublets
-        synthetic = self._generate_synthetic_doublets(counts, rng)
+        # Step 1: Generate synthetic doublets (n_cells * sim_doublet_ratio)
+        synthetic = self._generate_synthetic_doublets(
+            counts, rng, config.sim_doublet_ratio
+        )
+        n_synthetic = synthetic.shape[0]
 
         # Step 2: Combine real + synthetic
         combined = jnp.concatenate([counts, synthetic], axis=0)
         n_total = combined.shape[0]
 
         # Step 3: PCA embed
-        pca = self._pca_embed(combined, self.config.n_pca_components)
+        pca = self._pca_embed(combined, config.n_pca_components)
 
         # Step 4: Pairwise distances in PCA space, then extract real-to-all block
         distances = compute_pairwise_distances(pca)
         real_to_all = distances[:n_cells]
 
-        # Step 5: Soft k-NN fraction of synthetic neighbors
-        raw_scores = self._compute_soft_knn_fraction(
-            real_to_all, n_cells, n_total, self.config.n_neighbors
+        # Step 5: Adjust k for the enlarged pool (Scrublet convention)
+        k_adj = round(config.n_neighbors * (1 + n_synthetic / n_cells))
+
+        # Step 6: Soft k-NN synthetic neighbor count
+        syn_neighbor_count = self._compute_soft_knn_synthetic_count(
+            real_to_all, n_cells, n_total, k_adj
         )
 
-        # Step 6: Normalize by expected fraction
-        fraction_synthetic = n_cells / (n_total + 1e-8)
-        fraction_real = 1.0 - fraction_synthetic
-        normalized_scores = raw_scores / (fraction_synthetic + fraction_real + 1e-8)
+        # Step 7: Bayesian likelihood-ratio scoring (Scrublet formula)
+        # q = Laplace-smoothed fraction of synthetic neighbors
+        q = (syn_neighbor_count + 1) / (k_adj + 2)
+        rho = config.expected_doublet_rate
+        r = n_synthetic / n_cells  # synthetic-to-real ratio
 
-        # Clamp scores to [0, 1]
-        doublet_scores = jnp.clip(normalized_scores, 0.0, 1.0)
+        # Denominator with numerical guard to avoid division by zero
+        denominator = jnp.maximum(1 - rho - q * (1 - rho - rho / r), 1e-8)
+        doublet_scores = q * rho / r / denominator
 
-        # Step 7: Soft threshold for predicted doublets
-        threshold = self.config.expected_doublet_rate * 2.0
+        # Step 8: Soft threshold for predicted doublets (sigmoid on score)
         predicted_doublets = jax.nn.sigmoid(
-            self.config.threshold_temperature * (doublet_scores - threshold)
+            config.threshold_temperature * (doublet_scores - 0.5)
         )
 
         transformed_data = {
