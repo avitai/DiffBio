@@ -18,6 +18,7 @@ This module provides differentiable components for single-cell analysis:
 - DifferentiableFateProbability: Absorption-based fate estimation
 - DifferentiableSpatialDomain: STAGATE-style spatial domain identification
 - DifferentiablePASTEAlignment: PASTE-style spatial slice alignment
+- DifferentiableDifferentialDistribution: scDD-style differential distribution testing
 """
 
 from diffbio.operators.singlecell.ambient_removal import (
@@ -80,6 +81,10 @@ from diffbio.operators.singlecell.spatial_domains import (
     PASTEAlignmentConfig,
     SpatialDomainConfig,
 )
+from diffbio.operators.singlecell.differential_distribution import (
+    DifferentiableDifferentialDistribution,
+    DifferentialDistributionConfig,
+)
 from diffbio.operators.singlecell.velocity import (
     DifferentiableVelocity,
     VelocityConfig,
@@ -134,6 +139,9 @@ __all__ = [
     "DifferentiableSpatialDomain",
     "PASTEAlignmentConfig",
     "SpatialDomainConfig",
+    # Differential Distribution
+    "DifferentiableDifferentialDistribution",
+    "DifferentialDistributionConfig",
     # Velocity
     "DifferentiableVelocity",
     "VelocityConfig",

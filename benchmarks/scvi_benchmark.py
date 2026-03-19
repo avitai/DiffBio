@@ -185,9 +185,7 @@ def create_jit_train_step(
             losses = jax.vmap(per_cell_loss)(counts_batch, library_size_batch)
             return jnp.mean(losses)
 
-        loss, grads = nnx.value_and_grad(
-            loss_fn, argnums=nnx.DiffState(0, nnx.Param)
-        )(m)
+        loss, grads = nnx.value_and_grad(loss_fn, argnums=nnx.DiffState(0, nnx.Param))(m)
         opt.update(m, grads)
         return loss
 
@@ -316,9 +314,7 @@ def run_scvi_benchmark(
     # Cluster with SoftKMeans and evaluate
     cluster_labels = _cluster_latent(latent_means, n_clusters=n_types, seed=seed)
     ari = float(adjusted_rand_index(cell_type_labels, cluster_labels))
-    nmi = float(
-        normalized_mutual_information_clustering(cell_type_labels, cluster_labels)
-    )
+    nmi = float(normalized_mutual_information_clustering(cell_type_labels, cluster_labels))
 
     results = {
         "elbo": elbo_value,

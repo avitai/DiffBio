@@ -109,9 +109,7 @@ class TestBenchmarkRuns:
         batch_asw = benchmark_results["batch_asw"]
         assert -0.01 <= batch_asw <= 1.01, f"Batch ASW out of range: {batch_asw}"
 
-    def test_reconstruction_mse_nonnegative(
-        self, benchmark_results: dict[str, float]
-    ) -> None:
+    def test_reconstruction_mse_nonnegative(self, benchmark_results: dict[str, float]) -> None:
         """Verify reconstruction MSE is non-negative."""
         mse = benchmark_results["reconstruction_mse"]
         assert mse >= 0.0, f"Reconstruction MSE is negative: {mse}"
