@@ -298,9 +298,7 @@ class DifferentiableGRN(OperatorModule):
         all_expr = jnp.concatenate([tf_expr, mean_counts], axis=0)  # (n_tfs + n_genes,)
 
         # Project scalar expression to hidden_dim
-        node_features = self.node_proj(
-            all_expr[:, None]
-        )  # (n_tfs + n_genes, hidden_dim)
+        node_features = self.node_proj(all_expr[:, None])  # (n_tfs + n_genes, hidden_dim)
 
         # Step 4: Compute edge features
         edge_features = self._compute_edge_features(mean_counts, tf_indices)

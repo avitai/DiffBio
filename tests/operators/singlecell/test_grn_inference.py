@@ -187,9 +187,7 @@ class TestGradientFlow:
         grads = nnx.grad(loss_fn)(op)
         # Check that the GATv2 layer has non-zero gradients
         attn_vector_grad = grads.gat_layer.attn_vector[...]
-        assert jnp.any(attn_vector_grad != 0.0), (
-            "GATv2 attention vector should receive gradients"
-        )
+        assert jnp.any(attn_vector_grad != 0.0), "GATv2 attention vector should receive gradients"
 
     def test_gradients_through_counts(
         self,
@@ -241,9 +239,7 @@ class TestJITCompatibility:
         op = DifferentiableGRN(config, rngs=rngs)
 
         @nnx.jit
-        def jitted_apply(
-            model: DifferentiableGRN, data: dict[str, jax.Array]
-        ) -> tuple:
+        def jitted_apply(model: DifferentiableGRN, data: dict[str, jax.Array]) -> tuple:
             return model.apply(data, {}, None)
 
         result, _, _ = jitted_apply(op, sample_data)

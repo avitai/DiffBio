@@ -32,7 +32,34 @@ from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.base_operators import EncoderDecoderOperator
 from diffbio.core.graph_utils import compute_pairwise_distances
-from diffbio.utils.nn_utils import ensure_rngs
+from diffbio.utils.nn_utils import build_mlp_decoder, build_mlp_encoder, ensure_rngs, forward_mlp
+
+
+def generate_synthetic_doublets(
+    counts: Float[Array, "n_cells n_genes"],
+    rng: jax.Array,
+    sim_doublet_ratio: float,
+) -> Float[Array, "n_synthetic n_genes"]:
+    """Generate synthetic doublets by summing random cell pairs.
+
+    The number of synthetic doublets is ``n_cells * sim_doublet_ratio``,
+    matching Scrublet's default 2:1 synthetic-to-real ratio.
+
+    Args:
+        counts: Real count matrix of shape ``(n_cells, n_genes)``.
+        rng: JAX random key for pair selection.
+        sim_doublet_ratio: Ratio of synthetic doublets to real cells.
+
+    Returns:
+        Synthetic doublet profiles of shape
+        ``(n_cells * sim_doublet_ratio, n_genes)``.
+    """
+    n_cells = counts.shape[0]
+    n_synthetic = int(n_cells * sim_doublet_ratio)
+    k1, k2 = jax.random.split(rng)
+    idx_a = jax.random.randint(k1, (n_synthetic,), 0, n_cells)
+    idx_b = jax.random.randint(k2, (n_synthetic,), 0, n_cells)
+    return counts[idx_a] + counts[idx_b]
 
 
 @dataclass
@@ -134,33 +161,6 @@ class DifferentiableDoubletScorer(OperatorModule):
             A JAX random key for reproducible pair generation inside apply.
         """
         return rng
-
-    def _generate_synthetic_doublets(
-        self,
-        counts: Float[Array, "n_cells n_genes"],
-        rng: jax.Array,
-        sim_doublet_ratio: float,
-    ) -> Float[Array, "n_synthetic n_genes"]:
-        """Generate synthetic doublets by summing random cell pairs.
-
-        The number of synthetic doublets is ``n_cells * sim_doublet_ratio``,
-        matching Scrublet's default 2:1 synthetic-to-real ratio.
-
-        Args:
-            counts: Real count matrix of shape ``(n_cells, n_genes)``.
-            rng: JAX random key for pair selection.
-            sim_doublet_ratio: Ratio of synthetic doublets to real cells.
-
-        Returns:
-            Synthetic doublet profiles of shape
-            ``(n_cells * sim_doublet_ratio, n_genes)``.
-        """
-        n_cells = counts.shape[0]
-        n_synthetic = int(n_cells * sim_doublet_ratio)
-        k1, k2 = jax.random.split(rng)
-        idx_a = jax.random.randint(k1, (n_synthetic,), 0, n_cells)
-        idx_b = jax.random.randint(k2, (n_synthetic,), 0, n_cells)
-        return counts[idx_a] + counts[idx_b]
 
     def _pca_embed(
         self,
@@ -293,7 +293,7 @@ class DifferentiableDoubletScorer(OperatorModule):
         rng = random_params if random_params is not None else jax.random.key(0)
 
         # Step 1: Generate synthetic doublets (n_cells * sim_doublet_ratio)
-        synthetic = self._generate_synthetic_doublets(counts, rng, config.sim_doublet_ratio)
+        synthetic = generate_synthetic_doublets(counts, rng, config.sim_doublet_ratio)
         n_synthetic = synthetic.shape[0]
 
         # Step 2: Combine real + synthetic
@@ -430,35 +430,25 @@ class DifferentiableSoloDetector(EncoderDecoderOperator):
         self.stream_name = config.stream_name
 
         # --- VAE Encoder ---
-        encoder_layers: list[nnx.Linear] = []
-        prev_dim = config.n_genes
-        for hidden_dim in config.hidden_dims:
-            encoder_layers.append(
-                nnx.Linear(in_features=prev_dim, out_features=hidden_dim, rngs=safe_rngs)
-            )
-            prev_dim = hidden_dim
-        self.encoder_layers = nnx.List(encoder_layers)
+        self.encoder_layers = build_mlp_encoder(config.n_genes, config.hidden_dims, rngs=safe_rngs)
+        encoder_out_dim = config.hidden_dims[-1] if config.hidden_dims else config.n_genes
 
         # Latent space projection
         self.fc_mean = nnx.Linear(
-            in_features=prev_dim, out_features=config.latent_dim, rngs=safe_rngs
+            in_features=encoder_out_dim, out_features=config.latent_dim, rngs=safe_rngs
         )
         self.fc_logvar = nnx.Linear(
-            in_features=prev_dim, out_features=config.latent_dim, rngs=safe_rngs
+            in_features=encoder_out_dim, out_features=config.latent_dim, rngs=safe_rngs
         )
 
         # --- VAE Decoder ---
-        decoder_layers: list[nnx.Linear] = []
-        decoder_prev_dim = config.latent_dim
-        for hidden_dim in reversed(config.hidden_dims):
-            decoder_layers.append(
-                nnx.Linear(in_features=decoder_prev_dim, out_features=hidden_dim, rngs=safe_rngs)
-            )
-            decoder_prev_dim = hidden_dim
-        self.decoder_layers = nnx.List(decoder_layers)
+        self.decoder_layers = build_mlp_decoder(
+            config.latent_dim, config.hidden_dims, rngs=safe_rngs
+        )
+        decoder_out_dim = config.hidden_dims[0] if config.hidden_dims else config.latent_dim
 
         self.fc_output = nnx.Linear(
-            in_features=decoder_prev_dim, out_features=config.n_genes, rngs=safe_rngs
+            in_features=decoder_out_dim, out_features=config.n_genes, rngs=safe_rngs
         )
 
         # --- Classifier (operates on latent z) ---
@@ -502,9 +492,7 @@ class DifferentiableSoloDetector(EncoderDecoderOperator):
             Tuple of (mean, logvar) for latent distribution.
         """
         x = jnp.log1p(counts)
-
-        for layer in self.encoder_layers:
-            x = jax.nn.relu(layer(x))
+        x = forward_mlp(self.encoder_layers, x)
 
         mean = self.fc_mean(x)
         logvar = jnp.clip(self.fc_logvar(x), -10.0, 10.0)
@@ -523,9 +511,7 @@ class DifferentiableSoloDetector(EncoderDecoderOperator):
         Returns:
             Log rates for each gene, shape ``(batch, n_genes)``.
         """
-        x = z
-        for layer in self.decoder_layers:
-            x = jax.nn.relu(layer(x))
+        x = forward_mlp(self.decoder_layers, z)
         return self.fc_output(x)
 
     def classify(
@@ -540,33 +526,9 @@ class DifferentiableSoloDetector(EncoderDecoderOperator):
         Returns:
             Doublet probabilities in [0, 1], shape ``(batch,)``.
         """
-        h = jax.nn.relu(self.classifier_hidden(z))
+        h = nnx.relu(self.classifier_hidden(z))
         logits = self.classifier_output(h)
         return jax.nn.sigmoid(logits).squeeze(-1)
-
-    def _generate_synthetic_doublets(
-        self,
-        counts: Float[Array, "n_cells n_genes"],
-        rng: jax.Array,
-        sim_doublet_ratio: float,
-    ) -> Float[Array, "n_synthetic n_genes"]:
-        """Generate synthetic doublets by summing random cell pairs.
-
-        Args:
-            counts: Real count matrix, shape ``(n_cells, n_genes)``.
-            rng: JAX random key for pair selection.
-            sim_doublet_ratio: Ratio of synthetic doublets to real cells.
-
-        Returns:
-            Synthetic doublet profiles, shape
-            ``(n_cells * sim_doublet_ratio, n_genes)``.
-        """
-        n_cells = counts.shape[0]
-        n_synthetic = int(n_cells * sim_doublet_ratio)
-        k1, k2 = jax.random.split(rng)
-        idx_a = jax.random.randint(k1, (n_synthetic,), 0, n_cells)
-        idx_b = jax.random.randint(k2, (n_synthetic,), 0, n_cells)
-        return counts[idx_a] + counts[idx_b]
 
     def compute_elbo_loss(
         self,
@@ -622,7 +584,7 @@ class DifferentiableSoloDetector(EncoderDecoderOperator):
         n_real = counts.shape[0]
 
         # 1. Generate synthetic doublets
-        synthetic = self._generate_synthetic_doublets(
+        synthetic = generate_synthetic_doublets(
             counts, random_params, self.config.sim_doublet_ratio
         )
         n_synthetic = synthetic.shape[0]
@@ -701,7 +663,7 @@ class DifferentiableSoloDetector(EncoderDecoderOperator):
         rng = random_params if random_params is not None else jax.random.key(0)
 
         # Step 1: Generate synthetic doublets
-        synthetic = self._generate_synthetic_doublets(counts, rng, config.sim_doublet_ratio)
+        synthetic = generate_synthetic_doublets(counts, rng, config.sim_doublet_ratio)
 
         # Step 2: Combine real + synthetic counts
         combined = jnp.concatenate([counts, synthetic], axis=0)

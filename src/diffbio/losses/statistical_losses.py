@@ -4,6 +4,7 @@ This module provides differentiable implementations of statistical loss
 functions commonly used in bioinformatics applications.
 
 Includes:
+- zinb_negative_log_likelihood: Zero-Inflated Negative Binomial NLL
 - NegativeBinomialLoss: For count data modeling (scRNA-seq, RNA-seq)
 - VAELoss: ELBO loss for variational autoencoders
 - HMMLikelihoodLoss: Negative log-likelihood for HMM sequence models
@@ -13,6 +14,68 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 from jaxtyping import Array, Float, Int
+
+from diffbio.constants import EPSILON
+
+
+def zinb_negative_log_likelihood(
+    counts: Float[Array, "... n_genes"],
+    log_rate: Float[Array, "... n_genes"],
+    log_theta: Float[Array, "... n_genes"],
+    pi_logit: Float[Array, "... n_genes"],
+) -> Float[Array, ""]:
+    """Zero-Inflated Negative Binomial negative log-likelihood.
+
+    Uses the scVI-style logit-space formulation for numerical stability.
+    All log-sigmoid terms are computed via softplus, avoiding explicit
+    materialisation of ``sigmoid(pi_logit)`` which is unstable when
+    ``pi_logit`` is large positive (pi near 1, so 1-pi near 0).
+
+    Key identities::
+
+        log(sigmoid(pi))   = -softplus(-pi)
+        log(1-sigmoid(pi)) = -softplus(pi)
+
+    ZINB: ``P(x) = sigmoid(pi) * delta_0(x) + (1 - sigmoid(pi)) * NB(x; mu, theta)``
+    where ``mu = exp(log_rate)``, ``theta = exp(log_theta)``.
+
+    Args:
+        counts: Observed counts.
+        log_rate: Log mean parameter from decoder.
+        log_theta: Log dispersion parameter.
+        pi_logit: Logit of zero-inflation probability.
+
+    Returns:
+        Negative log-likelihood (scalar, summed over all elements).
+    """
+    mu = jnp.exp(log_rate)
+    theta = jnp.exp(jnp.clip(log_theta, -10.0, 10.0))
+    eps = EPSILON
+
+    # Log-space sigmoid computations (numerically stable)
+    softplus_pi = jax.nn.softplus(-pi_logit)  # = -log(sigmoid(pi_logit))
+    log_theta_mu = jnp.log(theta + mu + eps)
+
+    # NB(0) in log-space combined with dropout logit
+    pi_theta_log = -pi_logit + theta * (jnp.log(theta + eps) - log_theta_mu)
+
+    # Case x == 0: log[sigmoid(pi) + (1 - sigmoid(pi)) * NB(0)]
+    case_zero = jax.nn.softplus(pi_theta_log) - softplus_pi
+
+    # Case x > 0: log[(1 - sigmoid(pi)) * NB(x)]
+    case_nonzero = (
+        -softplus_pi
+        + pi_theta_log
+        + counts * (jnp.log(mu + eps) - log_theta_mu)
+        + jax.scipy.special.gammaln(counts + theta)
+        - jax.scipy.special.gammaln(theta)
+        - jax.scipy.special.gammaln(counts + 1.0)
+    )
+
+    is_zero = (counts < eps).astype(jnp.float32)
+    log_prob = is_zero * case_zero + (1.0 - is_zero) * case_nonzero
+
+    return -jnp.sum(log_prob)
 
 
 class NegativeBinomialLoss(nnx.Module):

@@ -159,12 +159,8 @@ class _SpatialGATEncoder(nnx.Module):
         h = self.input_proj(node_features)
 
         # Dual-graph attention (STAGATE: (1-alpha)*full + alpha*pruned)
-        h_full = self.gat_full(
-            h, full_edge_index, full_edge_weights, deterministic=True
-        )
-        h_pruned = self.gat_pruned(
-            h, pruned_edge_index, pruned_edge_weights, deterministic=True
-        )
+        h_full = self.gat_full(h, full_edge_index, full_edge_weights, deterministic=True)
+        h_pruned = self.gat_pruned(h, pruned_edge_index, pruned_edge_weights, deterministic=True)
 
         h = (1.0 - alpha) * h_full + alpha * h_pruned
 
@@ -289,9 +285,7 @@ class DifferentiableSpatialDomain(GraphOperator):
 
         # Domain prototypes for soft assignment
         key = rngs.params()
-        init_prototypes = jax.random.normal(
-            key, (config.n_domains, config.hidden_dim)
-        ) * 0.1
+        init_prototypes = jax.random.normal(key, (config.n_domains, config.hidden_dim)) * 0.1
         self.domain_prototypes = nnx.Param(init_prototypes)
 
     def _build_spatial_graphs(
@@ -332,9 +326,7 @@ class DifferentiableSpatialDomain(GraphOperator):
         # Pruned (mutual) k-NN graph: keep only mutual edges
         # Build adjacency indicator for fast mutual check
         adj_indicator = jnp.zeros((n_cells, n_cells))
-        adj_indicator = adj_indicator.at[
-            edge_indices[:, 0], edge_indices[:, 1]
-        ].set(1.0)
+        adj_indicator = adj_indicator.at[edge_indices[:, 0], edge_indices[:, 1]].set(1.0)
 
         # Edge is mutual if both (i,j) and (j,i) are in the k-NN graph
         mutual_mask = (
@@ -658,10 +650,7 @@ class DifferentiablePASTEAlignment(GraphOperator):
         gw_cost_norm = gw_cost / gw_max
 
         # Step 5: Fused cost = (1-alpha) * expression + alpha * GW_spatial
-        fused_cost = (
-            (1.0 - self.alpha_cost) * expression_cost_norm
-            + self.alpha_cost * gw_cost_norm
-        )
+        fused_cost = (1.0 - self.alpha_cost) * expression_cost_norm + self.alpha_cost * gw_cost_norm
 
         # Step 6: Solve OT via Sinkhorn
         a = jnp.ones(n1) / n1  # uniform source marginal

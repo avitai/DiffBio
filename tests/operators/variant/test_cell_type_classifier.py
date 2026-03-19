@@ -128,9 +128,7 @@ class TestCellTypeVariantClassifier:
         prob_sum = jnp.sum(transformed["variant_probabilities"], axis=-1)
         assert jnp.allclose(prob_sum, 1.0, atol=1e-5)
 
-    def test_per_type_probabilities_sum_to_one(
-        self, rngs, small_config, sample_data
-    ) -> None:
+    def test_per_type_probabilities_sum_to_one(self, rngs, small_config, sample_data) -> None:
         """Test that per-type probabilities sum to 1 along class axis."""
         op = CellTypeAwareVariantClassifier(small_config, rngs=rngs)
         transformed, _, _ = op.apply(sample_data, {}, None)
@@ -148,9 +146,7 @@ class TestCellTypeVariantClassifier:
         assert "pileup" in transformed
         assert "cell_type_assignments" in transformed
 
-    def test_state_and_metadata_pass_through(
-        self, rngs, small_config, sample_data
-    ) -> None:
+    def test_state_and_metadata_pass_through(self, rngs, small_config, sample_data) -> None:
         """Test that state and metadata are passed through unchanged."""
         op = CellTypeAwareVariantClassifier(small_config, rngs=rngs)
         state_in = {"some_state": jnp.array(1.0)}
@@ -172,9 +168,7 @@ class TestCellTypeVariantClassifier:
 class TestGradientFlow:
     """Tests for gradient flow through cell-type-aware classifier."""
 
-    def test_gradient_through_cell_type_weights(
-        self, rngs, small_config
-    ) -> None:
+    def test_gradient_through_cell_type_weights(self, rngs, small_config) -> None:
         """Test that gradients flow through cell-type assignment weights."""
         op = CellTypeAwareVariantClassifier(small_config, rngs=rngs)
 
@@ -246,9 +240,7 @@ class TestJITCompatibility:
         op = CellTypeAwareVariantClassifier(small_config, rngs=rngs)
 
         @jax.jit
-        def jit_apply(
-            data: dict[str, jax.Array], state: dict
-        ) -> tuple[dict, dict, None]:
+        def jit_apply(data: dict[str, jax.Array], state: dict) -> tuple[dict, dict, None]:
             return op.apply(data, state, None)
 
         transformed, _, _ = jit_apply(sample_data, {})

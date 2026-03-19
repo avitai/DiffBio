@@ -22,6 +22,8 @@ from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.base_operators import EncoderDecoderOperator
+from diffbio.losses.statistical_losses import zinb_negative_log_likelihood
+from diffbio.utils.nn_utils import build_mlp_decoder, build_mlp_encoder, forward_mlp
 
 
 @dataclass
@@ -109,45 +111,33 @@ class VAENormalizer(EncoderDecoderOperator):
         self.stream_name = config.stream_name
 
         # Build encoder layers
-        encoder_layers: list[nnx.Linear] = []
-        prev_dim = config.n_genes
-
-        for hidden_dim in config.hidden_dims:
-            encoder_layers.append(
-                nnx.Linear(in_features=prev_dim, out_features=hidden_dim, rngs=rngs)
-            )
-            prev_dim = hidden_dim
-
-        self.encoder_layers = nnx.List(encoder_layers)
+        self.encoder_layers = build_mlp_encoder(config.n_genes, config.hidden_dims, rngs=rngs)
+        encoder_out_dim = config.hidden_dims[-1] if config.hidden_dims else config.n_genes
 
         # Latent space projection (mean and logvar)
-        self.fc_mean = nnx.Linear(in_features=prev_dim, out_features=config.latent_dim, rngs=rngs)
-        self.fc_logvar = nnx.Linear(in_features=prev_dim, out_features=config.latent_dim, rngs=rngs)
+        self.fc_mean = nnx.Linear(
+            in_features=encoder_out_dim, out_features=config.latent_dim, rngs=rngs
+        )
+        self.fc_logvar = nnx.Linear(
+            in_features=encoder_out_dim, out_features=config.latent_dim, rngs=rngs
+        )
 
         # Build decoder layers
-        decoder_layers: list[nnx.Linear] = []
-        decoder_prev_dim = config.latent_dim
-
-        for hidden_dim in reversed(config.hidden_dims):
-            decoder_layers.append(
-                nnx.Linear(in_features=decoder_prev_dim, out_features=hidden_dim, rngs=rngs)
-            )
-            decoder_prev_dim = hidden_dim
-
-        self.decoder_layers = nnx.List(decoder_layers)
+        self.decoder_layers = build_mlp_decoder(config.latent_dim, config.hidden_dims, rngs=rngs)
+        decoder_out_dim = config.hidden_dims[0] if config.hidden_dims else config.latent_dim
 
         # Output layer (log rates)
         self.fc_output = nnx.Linear(
-            in_features=decoder_prev_dim, out_features=config.n_genes, rngs=rngs
+            in_features=decoder_out_dim, out_features=config.n_genes, rngs=rngs
         )
 
         # ZINB-specific decoder heads
         if config.likelihood == "zinb":
             self.fc_log_theta = nnx.Linear(
-                in_features=decoder_prev_dim, out_features=config.n_genes, rngs=rngs
+                in_features=decoder_out_dim, out_features=config.n_genes, rngs=rngs
             )
             self.fc_pi_logit = nnx.Linear(
-                in_features=decoder_prev_dim, out_features=config.n_genes, rngs=rngs
+                in_features=decoder_out_dim, out_features=config.n_genes, rngs=rngs
             )
 
     def encode(
@@ -166,9 +156,7 @@ class VAENormalizer(EncoderDecoderOperator):
         x = jnp.log1p(counts)
 
         # Pass through encoder layers
-        for layer in self.encoder_layers:
-            x = layer(x)
-            x = jax.nn.relu(x)
+        x = forward_mlp(self.encoder_layers, x)
 
         # Project to latent space
         mean = self.fc_mean(x)
@@ -198,12 +186,8 @@ class VAENormalizer(EncoderDecoderOperator):
                 - 'log_theta': Log dispersion parameter (ZINB only).
                 - 'pi_logit': Dropout logit for zero inflation (ZINB only).
         """
-        x = z
-
         # Pass through decoder layers
-        for layer in self.decoder_layers:
-            x = layer(x)
-            x = jax.nn.relu(x)
+        x = forward_mlp(self.decoder_layers, z)
 
         # Output layer (log rates, normalized by library size)
         log_rate = self.fc_output(x)
@@ -247,17 +231,8 @@ class VAENormalizer(EncoderDecoderOperator):
     ) -> Float[Array, ""]:
         """Compute Zero-Inflated Negative Binomial negative log-likelihood.
 
-        Uses the scVI-style logit-space formulation for numerical stability.
-        All log-sigmoid terms are computed via softplus, avoiding explicit
-        materialization of sigmoid(pi_logit) which is unstable when pi_logit
-        is large positive (pi near 1, so 1-pi near 0).
-
-        Key identities:
-            log(sigmoid(pi))   = -softplus(-pi)
-            log(1-sigmoid(pi)) = -softplus(pi)
-
-        ZINB: P(x) = sigmoid(pi) * delta_0(x) + (1 - sigmoid(pi)) * NB(x; mu, theta)
-        where mu = exp(log_rate), theta = exp(log_theta).
+        Delegates to the shared ``zinb_negative_log_likelihood`` function
+        in ``diffbio.losses.statistical_losses``.
 
         Args:
             counts: Original counts.
@@ -268,36 +243,7 @@ class VAENormalizer(EncoderDecoderOperator):
         Returns:
             Negative log-likelihood (scalar).
         """
-        mu = jnp.exp(log_rate)
-        theta = jnp.exp(jnp.clip(log_theta, -10.0, 10.0))
-        eps = 1e-8
-
-        # Log-space sigmoid computations (numerically stable)
-        softplus_pi = jax.nn.softplus(-pi_logit)  # = -log(sigmoid(pi_logit))
-        log_theta_mu = jnp.log(theta + mu + eps)
-
-        # NB(0) in log-space combined with dropout logit:
-        # -pi_logit + theta * log(theta / (theta + mu))
-        pi_theta_log = -pi_logit + theta * (jnp.log(theta + eps) - log_theta_mu)
-
-        # Case x == 0: log[sigmoid(pi) + (1-sigmoid(pi)) * NB(0)]
-        case_zero = jax.nn.softplus(pi_theta_log) - softplus_pi
-
-        # Case x > 0: log[(1-sigmoid(pi)) * NB(x)]
-        case_nonzero = (
-            -softplus_pi
-            + pi_theta_log
-            + counts * (jnp.log(mu + eps) - log_theta_mu)
-            + jax.scipy.special.gammaln(counts + theta)
-            - jax.scipy.special.gammaln(theta)
-            - jax.scipy.special.gammaln(counts + 1.0)
-        )
-
-        # Select case based on count value
-        is_zero = (counts < eps).astype(jnp.float32)
-        log_prob = is_zero * case_zero + (1.0 - is_zero) * case_nonzero
-
-        return -jnp.sum(log_prob)
+        return zinb_negative_log_likelihood(counts, log_rate, log_theta, pi_logit)
 
     def reconstruction_loss(
         self,

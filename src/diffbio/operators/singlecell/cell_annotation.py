@@ -27,7 +27,14 @@ from jaxtyping import Array, Float, Int, PyTree
 
 from diffbio.constants import EPSILON
 from diffbio.core.base_operators import EncoderDecoderOperator
-from diffbio.utils.nn_utils import ensure_rngs, get_rng_key
+from diffbio.losses.statistical_losses import zinb_negative_log_likelihood
+from diffbio.utils.nn_utils import (
+    build_mlp_decoder,
+    build_mlp_encoder,
+    ensure_rngs,
+    forward_mlp,
+    get_rng_key,
+)
 
 
 @dataclass
@@ -187,16 +194,14 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
             config: Annotator configuration.
             rngs: Random number generators.
         """
-        encoder_layers: list[nnx.Linear] = []
-        prev_dim = config.n_genes
-        for hidden_dim in config.hidden_dims:
-            encoder_layers.append(
-                nnx.Linear(in_features=prev_dim, out_features=hidden_dim, rngs=rngs)
-            )
-            prev_dim = hidden_dim
-        self.encoder_layers = nnx.List(encoder_layers)
-        self.fc_mean = nnx.Linear(in_features=prev_dim, out_features=config.latent_dim, rngs=rngs)
-        self.fc_logvar = nnx.Linear(in_features=prev_dim, out_features=config.latent_dim, rngs=rngs)
+        self.encoder_layers = build_mlp_encoder(config.n_genes, config.hidden_dims, rngs=rngs)
+        encoder_out_dim = config.hidden_dims[-1] if config.hidden_dims else config.n_genes
+        self.fc_mean = nnx.Linear(
+            in_features=encoder_out_dim, out_features=config.latent_dim, rngs=rngs
+        )
+        self.fc_logvar = nnx.Linear(
+            in_features=encoder_out_dim, out_features=config.latent_dim, rngs=rngs
+        )
 
     def _build_decoder(self, config: CellAnnotatorConfig, rngs: nnx.Rngs) -> None:
         """Build the VAE decoder layers.
@@ -205,15 +210,11 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
             config: Annotator configuration.
             rngs: Random number generators.
         """
-        decoder_layers: list[nnx.Linear] = []
-        prev_dim = config.latent_dim
-        for hidden_dim in reversed(config.hidden_dims):
-            decoder_layers.append(
-                nnx.Linear(in_features=prev_dim, out_features=hidden_dim, rngs=rngs)
-            )
-            prev_dim = hidden_dim
-        self.decoder_layers = nnx.List(decoder_layers)
-        self.fc_output = nnx.Linear(in_features=prev_dim, out_features=config.n_genes, rngs=rngs)
+        self.decoder_layers = build_mlp_decoder(config.latent_dim, config.hidden_dims, rngs=rngs)
+        decoder_out_dim = config.hidden_dims[0] if config.hidden_dims else config.latent_dim
+        self.fc_output = nnx.Linear(
+            in_features=decoder_out_dim, out_features=config.n_genes, rngs=rngs
+        )
 
     # ------------------------------------------------------------------
     # Encoder / decoder forward passes
@@ -232,8 +233,7 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
             Tuple of (mean, logvar) for the latent Gaussian.
         """
         x = jnp.log1p(counts)
-        for layer in self.encoder_layers:
-            x = nnx.relu(layer(x))
+        x = forward_mlp(self.encoder_layers, x)
         mean = self.fc_mean(x)
         logvar = jnp.clip(self.fc_logvar(x), -10.0, 10.0)
         return mean, logvar
@@ -251,9 +251,7 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
             Dictionary with ``"log_rate"`` (always present) and optionally
             ``"log_theta"`` and ``"pi_logit"`` when ZINB likelihood is active.
         """
-        x = z
-        for layer in self.decoder_layers:
-            x = nnx.relu(layer(x))
+        x = forward_mlp(self.decoder_layers, z)
 
         result: dict[str, Float[Array, "batch n_genes"]] = {
             "log_rate": self.fc_output(x),
@@ -442,10 +440,8 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
     ) -> Float[Array, ""]:
         """Compute Zero-Inflated Negative Binomial negative log-likelihood.
 
-        Uses the scVI-style logit-space formulation for numerical stability.
-        Key identities used:
-            ``log(sigmoid(pi))   = -softplus(-pi)``
-            ``log(1-sigmoid(pi)) = -softplus(pi)``
+        Delegates to the shared ``zinb_negative_log_likelihood`` function
+        in ``diffbio.losses.statistical_losses``.
 
         Args:
             counts: Original counts.
@@ -456,34 +452,7 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
         Returns:
             Negative log-likelihood (scalar, summed over all elements).
         """
-        mu = jnp.exp(log_rate)
-        theta = jnp.exp(jnp.clip(log_theta, -10.0, 10.0))
-        eps = EPSILON
-
-        # Log-space sigmoid computations (numerically stable)
-        softplus_pi = jax.nn.softplus(-pi_logit)  # = -log(sigmoid(pi_logit))
-        log_theta_mu = jnp.log(theta + mu + eps)
-
-        # NB(0) in log-space combined with dropout logit
-        pi_theta_log = -pi_logit + theta * (jnp.log(theta + eps) - log_theta_mu)
-
-        # Case x == 0: log[sigmoid(pi) + (1 - sigmoid(pi)) * NB(0)]
-        case_zero = jax.nn.softplus(pi_theta_log) - softplus_pi
-
-        # Case x > 0: log[(1 - sigmoid(pi)) * NB(x)]
-        case_nonzero = (
-            -softplus_pi
-            + pi_theta_log
-            + counts * (jnp.log(mu + eps) - log_theta_mu)
-            + jax.scipy.special.gammaln(counts + theta)
-            - jax.scipy.special.gammaln(theta)
-            - jax.scipy.special.gammaln(counts + 1.0)
-        )
-
-        is_zero = (counts < eps).astype(jnp.float32)
-        log_prob = is_zero * case_zero + (1.0 - is_zero) * case_nonzero
-
-        return -jnp.sum(log_prob)
+        return zinb_negative_log_likelihood(counts, log_rate, log_theta, pi_logit)
 
     def _reconstruction_loss(
         self,

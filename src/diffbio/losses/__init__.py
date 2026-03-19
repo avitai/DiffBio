@@ -28,6 +28,7 @@ from diffbio.losses.statistical_losses import (
     HMMLikelihoodLoss,
     NegativeBinomialLoss,
     VAELoss,
+    zinb_negative_log_likelihood,
 )
 
 __all__ = [
@@ -54,4 +55,5 @@ __all__ = [
     "HMMLikelihoodLoss",
     "NegativeBinomialLoss",
     "VAELoss",
+    "zinb_negative_log_likelihood",
 ]

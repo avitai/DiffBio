@@ -15,6 +15,7 @@ from diffbio.operators.singlecell.doublet_detection import (
     DifferentiableSoloDetector,
     DoubletScorerConfig,
     SoloDetectorConfig,
+    generate_synthetic_doublets,
 )
 
 
@@ -220,11 +221,11 @@ class TestDifferentiableDoubletScorer:
             sim_doublet_ratio=3.0,
         )
 
-        op_1x = DifferentiableDoubletScorer(config_1x, rngs=rngs)
-        op_3x = DifferentiableDoubletScorer(config_3x, rngs=rngs)
+        DifferentiableDoubletScorer(config_1x, rngs=rngs)
+        DifferentiableDoubletScorer(config_3x, rngs=rngs)
 
-        syn_1x = op_1x._generate_synthetic_doublets(counts, rng_key, 1.0)
-        syn_3x = op_3x._generate_synthetic_doublets(counts, rng_key, 3.0)
+        syn_1x = generate_synthetic_doublets(counts, rng_key, 1.0)
+        syn_3x = generate_synthetic_doublets(counts, rng_key, 3.0)
 
         assert syn_1x.shape[0] == n_cells
         assert syn_3x.shape[0] == n_cells * 3
