@@ -251,8 +251,7 @@ class MolNetSource(DataSourceModule):
 
         if not self.config.download:
             raise FileNotFoundError(
-                f"Dataset file not found: {data_path}. "
-                f"Set download=True to download automatically."
+                f"Dataset file not found: {data_path}. Set download=True to download automatically."
             )
 
         if self._copy_from_default_cache(data_path):

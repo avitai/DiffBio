@@ -115,9 +115,7 @@ class GraphAttentionLayer(nnx.Module):
             rngs=rngs,
         )
 
-        self.dropout = (
-            nnx.Dropout(rate=dropout_rate, rngs=rngs) if dropout_rate > 0 else None
-        )
+        self.dropout = nnx.Dropout(rate=dropout_rate, rngs=rngs) if dropout_rate > 0 else None
 
     def __call__(
         self,

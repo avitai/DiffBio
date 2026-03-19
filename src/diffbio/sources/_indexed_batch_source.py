@@ -17,9 +17,11 @@ class IndexedBatchSourceMixin:
         raise NotImplementedError
 
     def reset(self, seed: int | None = None) -> None:
+        """Reset iteration state, optionally with a new seed."""
         reset_iteration_state(self, seed)
 
     def get_batch(self, batch_size: int, key: jax.Array | None = None) -> list[Element]:
+        """Return the next batch of elements, advancing the internal index."""
         batch, self._current_idx = next_batch(
             batch_size=batch_size,
             key=key,
@@ -28,4 +30,3 @@ class IndexedBatchSourceMixin:
             get_element=self._batch_element,
         )
         return batch
-

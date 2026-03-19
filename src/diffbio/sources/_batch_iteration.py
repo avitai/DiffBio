@@ -32,4 +32,3 @@ def next_batch(
         batch.append(get_element(idx))
         idx += 1
     return batch, idx
-

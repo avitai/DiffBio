@@ -64,9 +64,7 @@ class TestDifferentiableDoubletScorer:
         """Test that apply returns doublet_scores and predicted_doublets."""
         op = DifferentiableDoubletScorer(default_config, rngs=rngs)
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(
-            rng_key, {"counts": count_data["counts"].shape}
-        )
+        random_params = op.generate_random_params(rng_key, {"counts": count_data["counts"].shape})
         result, state, metadata = op.apply(count_data, {}, None, random_params=random_params)
 
         assert "doublet_scores" in result
@@ -83,9 +81,7 @@ class TestDifferentiableDoubletScorer:
         op = DifferentiableDoubletScorer(default_config, rngs=rngs)
         n_cells = count_data["counts"].shape[0]
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(
-            rng_key, {"counts": count_data["counts"].shape}
-        )
+        random_params = op.generate_random_params(rng_key, {"counts": count_data["counts"].shape})
         result, _, _ = op.apply(count_data, {}, None, random_params=random_params)
 
         assert result["doublet_scores"].shape == (n_cells,)
@@ -100,9 +96,7 @@ class TestDifferentiableDoubletScorer:
         """Test that doublet scores lie in [0, 1]."""
         op = DifferentiableDoubletScorer(default_config, rngs=rngs)
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(
-            rng_key, {"counts": count_data["counts"].shape}
-        )
+        random_params = op.generate_random_params(rng_key, {"counts": count_data["counts"].shape})
         result, _, _ = op.apply(count_data, {}, None, random_params=random_params)
 
         scores = result["doublet_scores"]
@@ -161,9 +155,7 @@ class TestGradientFlow:
             n_genes=15,
         )
 
-    def test_gradient_wrt_input(
-        self, rngs: nnx.Rngs, config: DoubletScorerConfig
-    ) -> None:
+    def test_gradient_wrt_input(self, rngs: nnx.Rngs, config: DoubletScorerConfig) -> None:
         """Test that gradients flow from doublet_scores back to input counts."""
         op = DifferentiableDoubletScorer(config, rngs=rngs)
         key = jax.random.key(0)
@@ -181,9 +173,7 @@ class TestGradientFlow:
         assert grad.shape == counts.shape
         assert jnp.any(grad != 0.0)
 
-    def test_gradient_finite(
-        self, rngs: nnx.Rngs, config: DoubletScorerConfig
-    ) -> None:
+    def test_gradient_finite(self, rngs: nnx.Rngs, config: DoubletScorerConfig) -> None:
         """Test that all gradients are finite (no NaN or Inf)."""
         op = DifferentiableDoubletScorer(config, rngs=rngs)
         key = jax.random.key(0)

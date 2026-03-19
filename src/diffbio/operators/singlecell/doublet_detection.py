@@ -189,10 +189,12 @@ class DifferentiableDoubletScorer(OperatorModule):
         k_eff = min(k, n_total - 1)
 
         # Create label vector: 0 for real, 1 for synthetic
-        is_synthetic = jnp.concatenate([
-            jnp.zeros(n_real),
-            jnp.ones(n_total - n_real),
-        ])
+        is_synthetic = jnp.concatenate(
+            [
+                jnp.zeros(n_real),
+                jnp.ones(n_total - n_real),
+            ]
+        )
 
         # Mask self-distances for real cells (first n_real columns correspond to real)
         self_mask = jnp.eye(n_real, n_total) * 1e10
@@ -200,7 +202,7 @@ class DifferentiableDoubletScorer(OperatorModule):
 
         # Soft k-NN: convert distances to weights via negative exponential
         # Use temperature scaling for smoother gradients
-        sigma = jnp.sort(masked_distances, axis=-1)[:, k_eff - 1:k_eff]
+        sigma = jnp.sort(masked_distances, axis=-1)[:, k_eff - 1 : k_eff]
         sigma = jnp.maximum(sigma, 1e-8)
         weights = jnp.exp(-masked_distances / sigma)
 
@@ -209,7 +211,7 @@ class DifferentiableDoubletScorer(OperatorModule):
 
         # Get top-k mask via soft approximation: use sorted threshold
         sorted_dists = jnp.sort(masked_distances, axis=-1)
-        kth_dist = sorted_dists[:, k_eff - 1:k_eff]  # (n_real, 1)
+        kth_dist = sorted_dists[:, k_eff - 1 : k_eff]  # (n_real, 1)
         # Soft indicator for being within k-NN (sigmoid approximation)
         temperature = 10.0
         knn_mask = jax.nn.sigmoid(temperature * (kth_dist - masked_distances))

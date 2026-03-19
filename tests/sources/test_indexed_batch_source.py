@@ -42,4 +42,3 @@ def test_reset_restores_iteration_state_and_key_is_accepted():
 
     source.reset(seed=123)
     assert source._current_idx == 0
-

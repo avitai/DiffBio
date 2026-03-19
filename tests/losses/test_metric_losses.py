@@ -17,12 +17,12 @@ class TestDifferentiableAUROCConfig:
     def test_default_temperature(self) -> None:
         """Default temperature should be 1.0."""
         auroc = DifferentiableAUROC()
-        assert float(auroc.temperature) == pytest.approx(1.0)
+        assert float(auroc.temperature[...]) == pytest.approx(1.0)
 
     def test_custom_temperature(self) -> None:
         """Custom temperature should be stored correctly."""
         auroc = DifferentiableAUROC(temperature=0.5)
-        assert float(auroc.temperature) == pytest.approx(0.5)
+        assert float(auroc.temperature[...]) == pytest.approx(0.5)
 
 
 class TestDifferentiableAUROC:
