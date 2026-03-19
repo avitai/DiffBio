@@ -283,9 +283,7 @@ class DifferentiableDoubletScorer(OperatorModule):
         rng = random_params if random_params is not None else jax.random.key(0)
 
         # Step 1: Generate synthetic doublets (n_cells * sim_doublet_ratio)
-        synthetic = self._generate_synthetic_doublets(
-            counts, rng, config.sim_doublet_ratio
-        )
+        synthetic = self._generate_synthetic_doublets(counts, rng, config.sim_doublet_ratio)
         n_synthetic = synthetic.shape[0]
 
         # Step 2: Combine real + synthetic
@@ -318,9 +316,7 @@ class DifferentiableDoubletScorer(OperatorModule):
         doublet_scores = q * rho / r / denominator
 
         # Step 8: Soft threshold for predicted doublets (sigmoid on score)
-        predicted_doublets = jax.nn.sigmoid(
-            config.threshold_temperature * (doublet_scores - 0.5)
-        )
+        predicted_doublets = jax.nn.sigmoid(config.threshold_temperature * (doublet_scores - 0.5))
 
         transformed_data = {
             **data,

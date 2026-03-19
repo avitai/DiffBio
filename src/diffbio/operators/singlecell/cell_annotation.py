@@ -5,8 +5,11 @@ annotation strategies inspired by popular tools:
 
 - **celltypist**: Logistic-regression classifier on a VAE latent space.
 - **cellassign**: Marker-gene likelihood model with learnable rate parameters.
-- **scanvi**: Semi-supervised VAE that combines reconstruction, KL, and
-  cross-entropy on labelled cells.
+- **scanvi**: Semi-supervised VAE with type-conditioned latent prior.
+  For each cell type y, learns prior parameters mu_y and logvar_y so that
+  ``KL(q(z|x) || p(z|y))`` encourages different types to occupy distinct
+  latent regions.  For unlabelled cells the KL is marginalised over
+  predicted type probabilities.
 
 All three modes are end-to-end differentiable and JIT-compatible, enabling
 gradient-based optimisation of annotation models within a Datarax pipeline.
@@ -24,7 +27,7 @@ from jaxtyping import Array, Float, Int, PyTree
 
 from diffbio.constants import EPSILON
 from diffbio.core.base_operators import EncoderDecoderOperator
-from diffbio.utils.nn_utils import ensure_rngs
+from diffbio.utils.nn_utils import ensure_rngs, get_rng_key
 
 
 @dataclass
@@ -64,10 +67,11 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
         Given a binary marker matrix *M*, compute per-type Poisson
         log-likelihoods with learnable rate parameters, then softmax.
 
-    **scanvi** (semi-supervised VAE):
-        VAE encoder + classifier head.  For labelled cells the known labels
-        contribute a cross-entropy term; for unlabelled cells the type
-        probabilities are predicted from the latent.
+    **scanvi** (semi-supervised VAE with type-conditioned prior):
+        VAE encoder + classifier head with learnable per-type Gaussian priors
+        in latent space.  The KL divergence uses ``p(z|y) = N(mu_y, sigma_y)``
+        instead of the standard ``N(0, I)``, and is marginalised over predicted
+        type probabilities for unlabelled cells.
 
     All modes additionally produce a latent representation via a shared
     VAE encoder.
@@ -131,6 +135,15 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
                 out_features=config.n_cell_types,
                 rngs=rngs,
             )
+
+        if config.annotation_mode == "scanvi":
+            # Type-conditioned prior parameters: each cell type y has its own
+            # Gaussian prior N(mu_y, diag(exp(logvar_y))) in latent space.
+            params_key = get_rng_key(rngs, "params", fallback_seed=7)
+            self.prior_means = nnx.Param(
+                jax.random.normal(params_key, (config.n_cell_types, config.latent_dim)) * 0.01
+            )
+            self.prior_logvars = nnx.Param(jnp.zeros((config.n_cell_types, config.latent_dim)))
 
         if config.annotation_mode == "cellassign":
             # Learnable log-rate parameters: mu_type_g (in log space).
@@ -282,6 +295,55 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
 
         return jax.nn.softmax(log_lik, axis=-1)
 
+    def _type_conditioned_kl(
+        self,
+        mean: Float[Array, "batch latent_dim"],
+        logvar: Float[Array, "batch latent_dim"],
+        type_probs: Float[Array, "batch n_cell_types"],
+    ) -> Float[Array, ""]:
+        """KL divergence with type-conditioned prior, marginalised over types.
+
+        For each cell type y with prior ``N(mu_y, diag(exp(logvar_y)))``,
+        compute the analytic KL from ``q(z|x) = N(mean, diag(exp(logvar)))``
+        then marginalise:
+
+            KL = sum_y  p(y) * KL( q(z|x) || p(z|y) )
+
+        Args:
+            mean: Encoder mean, shape ``(n, latent_dim)``.
+            logvar: Encoder log-variance, shape ``(n, latent_dim)``.
+            type_probs: Cell-type probabilities, shape ``(n, n_cell_types)``.
+
+        Returns:
+            Scalar marginalised KL divergence (summed over batch).
+        """
+        prior_mu = self.prior_means[...]  # (n_types, latent_dim)
+        prior_lv = self.prior_logvars[...]  # (n_types, latent_dim)
+
+        # Expand for broadcasting:
+        #   mean/logvar: (n, 1, d), prior: (1, t, d)
+        mean_e = mean[:, None, :]  # (n, 1, d)
+        logvar_e = logvar[:, None, :]  # (n, 1, d)
+        prior_mu_e = prior_mu[None, :, :]  # (1, t, d)
+        prior_lv_e = prior_lv[None, :, :]  # (1, t, d)
+
+        # Analytic KL between two diagonal Gaussians per dimension:
+        # KL(N(m1,s1)||N(m2,s2))
+        #   = 0.5*(lv2-lv1 + (exp(lv1)+(m1-m2)^2)/exp(lv2) - 1)
+        kl_per_dim = 0.5 * (
+            prior_lv_e
+            - logvar_e
+            + (jnp.exp(logvar_e) + (mean_e - prior_mu_e) ** 2) / (jnp.exp(prior_lv_e) + EPSILON)
+            - 1.0
+        )  # (n, t, d)
+
+        kl_per_type = jnp.sum(kl_per_dim, axis=-1)  # (n, t)
+
+        # Marginalise over types: sum_y p(y) * KL_y
+        kl_marginal = jnp.sum(type_probs * kl_per_type, axis=-1)  # (n,)
+
+        return jnp.sum(kl_marginal)
+
     def _annotate_scanvi(
         self,
         z: Float[Array, "batch latent_dim"],
@@ -291,12 +353,12 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
         known_labels: Int[Array, "n_labeled"] | None,
         label_indices: Int[Array, "n_labeled"] | None,
     ) -> Float[Array, "batch n_cell_types"]:
-        """Scanvi: semi-supervised VAE annotation.
+        """Scanvi: semi-supervised VAE with type-conditioned prior.
 
         The classifier head produces type probabilities from latent z.
-        When ``known_labels`` and ``label_indices`` are provided, the
-        probabilities of labelled cells are blended toward their known
-        types via a soft cross-entropy weighting.
+        For labelled cells the known labels are used directly as one-hot
+        type probabilities.  For unlabelled cells the predicted
+        probabilities are returned as-is.
 
         Args:
             z: Latent representations.
@@ -315,15 +377,9 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
         if known_labels is None or label_indices is None:
             return probs
 
-        # Blend known labels into the probability for labelled cells.
-        # Create one-hot targets for labelled cells.
-        one_hot_targets = jax.nn.one_hot(known_labels, self.n_cell_types)  # (n_l, t)
-
-        # Blend: 0.8 * one_hot + 0.2 * predicted (keeps differentiability)
-        blended = 0.8 * one_hot_targets + 0.2 * probs[label_indices]
-
-        # Scatter blended back
-        probs = probs.at[label_indices].set(blended)
+        # For labelled cells, set probabilities to one-hot of the known type.
+        one_hot_targets = jax.nn.one_hot(known_labels, self.n_cell_types)
+        probs = probs.at[label_indices].set(one_hot_targets)
 
         return probs
 
@@ -338,11 +394,16 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
         label_indices: Int[Array, "n_labeled"] | None = None,
         beta: float = 1.0,
     ) -> Float[Array, ""]:
-        """Compute the negative ELBO for training (scanvi / celltypist).
+        """Compute the negative ELBO for training.
 
-        ELBO = reconstruction_loss + beta * KL + cross_entropy_on_labeled.
+        For **scanvi** mode the KL term uses a type-conditioned prior:
+        each cell type y has its own Gaussian prior ``N(mu_y, sigma_y)``
+        and the KL is marginalised over predicted/known type probabilities.
 
-        Uses ``gaussian_kl_divergence`` from artifex for the KL term (DRY).
+        For other modes (celltypist, cellassign) the standard
+        ``KL(q(z|x) || N(0,I))`` is used via artifex.
+
+        Loss = reconstruction + beta * KL + cross_entropy_on_labeled.
 
         Args:
             counts: Gene expression counts ``(n, n_genes)``.
@@ -361,12 +422,23 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
         rate = jnp.exp(log_rate)
         recon_loss = jnp.sum(rate - counts * log_rate)
 
-        # KL divergence via artifex (handles batched inputs)
-        kl = gaussian_kl_divergence(mean, logvar, reduction="sum")
+        # KL divergence -- type-conditioned for scanvi, standard otherwise
+        if self.annotation_mode == "scanvi":
+            logits = self.classifier_head(z)
+            type_probs = jax.nn.softmax(logits, axis=-1)
+
+            # For labelled cells, override predicted probs with known labels
+            if known_labels is not None and label_indices is not None:
+                one_hot_known = jax.nn.one_hot(known_labels, self.n_cell_types)
+                type_probs = type_probs.at[label_indices].set(one_hot_known)
+
+            kl = self._type_conditioned_kl(mean, logvar, type_probs)
+        else:
+            kl = gaussian_kl_divergence(mean, logvar, reduction="sum")
 
         loss = recon_loss + beta * kl
 
-        # Cross-entropy on labelled cells (scanvi mode)
+        # Cross-entropy on labelled cells (scanvi / celltypist)
         if (
             self.annotation_mode in ("scanvi", "celltypist")
             and known_labels is not None

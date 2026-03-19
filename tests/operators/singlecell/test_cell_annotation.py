@@ -267,6 +267,79 @@ class TestScanviMode:
         labeled_prob_for_others = jnp.mean(probs[:10, :2])
         assert labeled_prob_for_type2 > labeled_prob_for_others
 
+    def test_has_type_conditioned_prior_params(self, rngs, scanvi_config) -> None:
+        """Scanvi must have learnable prior_means and prior_logvars."""
+        op = DifferentiableCellAnnotator(scanvi_config, rngs=rngs)
+        assert hasattr(op, "prior_means")
+        assert hasattr(op, "prior_logvars")
+        assert op.prior_means[...].shape == (N_TYPES, LATENT_DIM)
+        assert op.prior_logvars[...].shape == (N_TYPES, LATENT_DIM)
+
+    def test_type_conditioned_kl_differs_from_standard(self, rngs, scanvi_config) -> None:
+        """Type-conditioned KL must differ from standard N(0,I) KL."""
+        op = DifferentiableCellAnnotator(scanvi_config, rngs=rngs)
+
+        # Shift one prior mean away from zero so the two KLs diverge
+        op.prior_means = nnx.Param(op.prior_means[...].at[0, :].set(jnp.ones(LATENT_DIM) * 3.0))
+
+        key = jax.random.key(11)
+        counts = jax.random.poisson(key, lam=5.0, shape=(N_CELLS, N_GENES)).astype(jnp.float32)
+
+        mean, logvar = op.encode(counts)
+        uniform_probs = jnp.ones((N_CELLS, N_TYPES)) / N_TYPES
+
+        kl_conditioned = op._type_conditioned_kl(mean, logvar, uniform_probs)
+        kl_standard = op.kl_divergence(mean, logvar)
+
+        assert jnp.isfinite(kl_conditioned)
+        assert jnp.isfinite(kl_standard)
+        # They should NOT be equal because prior_means[0] != 0
+        assert not jnp.allclose(kl_conditioned, kl_standard, atol=1e-3)
+
+    def test_type_conditioned_kl_reduces_to_standard_at_zero_prior(
+        self, rngs, scanvi_config
+    ) -> None:
+        """When all priors are N(0,I), type-conditioned KL equals standard KL."""
+        op = DifferentiableCellAnnotator(scanvi_config, rngs=rngs)
+
+        # Reset priors to N(0, I) -- means=0, logvars=0
+        op.prior_means = nnx.Param(jnp.zeros((N_TYPES, LATENT_DIM)))
+        op.prior_logvars = nnx.Param(jnp.zeros((N_TYPES, LATENT_DIM)))
+
+        key = jax.random.key(12)
+        counts = jax.random.poisson(key, lam=5.0, shape=(N_CELLS, N_GENES)).astype(jnp.float32)
+
+        mean, logvar = op.encode(counts)
+        uniform_probs = jnp.ones((N_CELLS, N_TYPES)) / N_TYPES
+
+        kl_conditioned = op._type_conditioned_kl(mean, logvar, uniform_probs)
+        kl_standard = op.kl_divergence(mean, logvar)
+
+        assert jnp.allclose(kl_conditioned, kl_standard, atol=1e-3)
+
+    def test_scanvi_elbo_uses_type_conditioned_kl(self, rngs, scanvi_config) -> None:
+        """Scanvi ELBO must use type-conditioned KL, not standard KL."""
+        op = DifferentiableCellAnnotator(scanvi_config, rngs=rngs)
+
+        # Push prior for type 0 far away so the ELBO changes measurably
+        op.prior_means = nnx.Param(op.prior_means[...].at[0, :].set(jnp.ones(LATENT_DIM) * 5.0))
+
+        key = jax.random.key(13)
+        counts = jax.random.poisson(key, lam=5.0, shape=(N_CELLS, N_GENES)).astype(jnp.float32)
+
+        elbo_shifted = op.compute_elbo_loss(counts)
+
+        # Reset priors to N(0,I) and recompute
+        op.prior_means = nnx.Param(jnp.zeros((N_TYPES, LATENT_DIM)))
+        op.prior_logvars = nnx.Param(jnp.zeros((N_TYPES, LATENT_DIM)))
+
+        elbo_standard = op.compute_elbo_loss(counts)
+
+        assert jnp.isfinite(elbo_shifted)
+        assert jnp.isfinite(elbo_standard)
+        # Shifted prior should produce a different ELBO
+        assert not jnp.allclose(elbo_shifted, elbo_standard, atol=1e-2)
+
 
 # ===========================================================================
 # Gradient flow tests
@@ -321,6 +394,49 @@ class TestGradientFlow:
         assert jnp.isfinite(loss)
         assert hasattr(grads, "classifier_head")
 
+    def test_gradient_scanvi_prior_params(self, rngs, scanvi_config) -> None:
+        """Gradients must flow through prior_means and prior_logvars via ELBO."""
+        op = DifferentiableCellAnnotator(scanvi_config, rngs=rngs)
+
+        key = jax.random.key(14)
+        counts = jax.random.poisson(key, lam=5.0, shape=(N_CELLS, N_GENES)).astype(jnp.float32)
+
+        @nnx.value_and_grad
+        def loss_fn(model: DifferentiableCellAnnotator) -> jax.Array:
+            return model.compute_elbo_loss(counts)
+
+        loss, grads = loss_fn(op)
+        assert jnp.isfinite(loss)
+
+        # Prior parameters must receive gradients
+        assert hasattr(grads, "prior_means")
+        assert hasattr(grads, "prior_logvars")
+        grad_means = grads.prior_means[...]
+        grad_logvars = grads.prior_logvars[...]
+        assert jnp.any(grad_means != 0.0)
+        assert jnp.any(grad_logvars != 0.0)
+
+    def test_gradient_scanvi_elbo_with_labels(self, rngs, scanvi_config) -> None:
+        """Gradients flow through scanvi ELBO when labels are provided."""
+        op = DifferentiableCellAnnotator(scanvi_config, rngs=rngs)
+
+        key = jax.random.key(15)
+        counts = jax.random.poisson(key, lam=5.0, shape=(N_CELLS, N_GENES)).astype(jnp.float32)
+
+        known_labels = jnp.array([0, 1, 2, 3, 4], dtype=jnp.int32)
+        label_indices = jnp.arange(5, dtype=jnp.int32)
+
+        @nnx.value_and_grad
+        def loss_fn(model: DifferentiableCellAnnotator) -> jax.Array:
+            return model.compute_elbo_loss(counts, known_labels, label_indices)
+
+        loss, grads = loss_fn(op)
+        assert jnp.isfinite(loss)
+        # Both classifier and prior params should get gradients
+        assert hasattr(grads, "prior_means")
+        assert hasattr(grads, "classifier_head")
+        assert jnp.any(grads.prior_means[...] != 0.0)
+
 
 # ===========================================================================
 # JIT compatibility tests
@@ -366,6 +482,20 @@ class TestJITCompatibility:
 
         result = run(counts_data)
         assert jnp.isfinite(result["cell_type_probabilities"]).all()
+
+    def test_jit_scanvi_elbo(self, rngs, scanvi_config) -> None:
+        """Scanvi ELBO with type-conditioned KL must be JIT-compilable."""
+        op = DifferentiableCellAnnotator(scanvi_config, rngs=rngs)
+
+        key = jax.random.key(16)
+        counts = jax.random.poisson(key, lam=5.0, shape=(N_CELLS, N_GENES)).astype(jnp.float32)
+
+        @jax.jit
+        def run_elbo(c: jax.Array) -> jax.Array:
+            return op.compute_elbo_loss(c)
+
+        loss = run_elbo(counts)
+        assert jnp.isfinite(loss)
 
 
 # ===========================================================================
