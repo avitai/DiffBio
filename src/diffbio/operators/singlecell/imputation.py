@@ -3,8 +3,9 @@
 This module provides two complementary imputation strategies:
 
 1. **DifferentiableDiffusionImputer**: MAGIC-style diffusion imputation that
-   constructs a cell-cell affinity graph and diffuses information across
-   neighboring cells via eigendecomposition of the Markov transition matrix.
+   constructs a cell-cell affinity graph using an alpha-decaying kernel,
+   eigendecomposes the symmetric affinity matrix, and uses the relationship
+   ``M = D^{-1} A`` to compute M^t for diffusion-based imputation.
 
 2. **DifferentiableTransformerDenoiser**: Transformer-based gene denoiser that
    treats genes as tokens, randomly masks a fraction of them, and predicts
@@ -27,7 +28,6 @@ from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.graph_utils import (
-    compute_fuzzy_membership,
     compute_pairwise_distances,
     symmetrize_graph,
 )
@@ -45,31 +45,31 @@ class DiffusionImputerConfig(OperatorConfig):
         n_neighbors: Number of neighbors for local bandwidth estimation.
         diffusion_t: Number of diffusion time steps (matrix power).
         n_pca_components: Number of PCA components (reserved for future use).
+        decay: Exponent for the alpha-decaying kernel (MAGIC default is 1).
         metric: Distance metric, either ``"euclidean"`` or ``"cosine"``.
     """
 
-    n_neighbors: int = 15
+    n_neighbors: int = 5
     diffusion_t: int = 3
     n_pca_components: int = 100
+    decay: float = 1.0
     metric: str = "euclidean"
 
 
 class DifferentiableDiffusionImputer(OperatorModule):
     """Differentiable MAGIC-style diffusion imputation.
 
-    Constructs a cell-cell affinity graph from pairwise distances, computes
-    a fuzzy membership matrix, symmetrizes it, row-normalizes to obtain a
-    Markov transition matrix, and raises it to power *t* via eigendecomposition
-    to perform diffusion-based imputation.
+    Constructs a cell-cell affinity graph using an alpha-decaying kernel,
+    symmetrizes it, eigendecomposes the symmetric affinity matrix, and uses
+    the relationship ``M = D^{-1} A`` to compute M^t for imputation.
 
     Algorithm:
         1. Compute pairwise distances between cells
-        2. Mask the diagonal with a large sentinel value
-        3. Compute fuzzy membership using local bandwidth (k-th neighbor)
-        4. Symmetrize the graph via fuzzy set union
-        5. Row-normalize to obtain Markov transition matrix M
-        6. Compute M^t via eigendecomposition
-        7. Impute: ``imputed = M^t @ counts``
+        2. Build alpha-decay affinity: ``K(i,j) = exp(-(d/sigma_i)^decay)``
+        3. Symmetrize the affinity via fuzzy set union
+        4. Eigendecompose the symmetric affinity A_sym
+        5. Derive M^t = D^{-1/2} V diag((lambda/lambda_0)^t) V^T D^{1/2}
+        6. Impute: ``imputed = M^t @ counts``
 
     Args:
         config: DiffusionImputerConfig with operator parameters.
@@ -77,7 +77,7 @@ class DifferentiableDiffusionImputer(OperatorModule):
         name: Optional operator name.
 
     Example:
-        >>> config = DiffusionImputerConfig(n_neighbors=15, diffusion_t=3)
+        >>> config = DiffusionImputerConfig(n_neighbors=5, diffusion_t=3)
         >>> imputer = DifferentiableDiffusionImputer(config, rngs=nnx.Rngs(0))
         >>> data = {"counts": jnp.ones((100, 2000))}
         >>> result, state, meta = imputer.apply(data, {}, None)
@@ -101,80 +101,124 @@ class DifferentiableDiffusionImputer(OperatorModule):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-    def _build_markov_matrix(
+    def _build_alpha_decay_affinity(
+        self,
+        distances: Float[Array, "n n"],
+        k: int,
+        decay: float,
+    ) -> Float[Array, "n n"]:
+        """Build alpha-decaying kernel following MAGIC.
+
+        ``K(i,j) = exp(-(d(i,j) / sigma_i)^decay)`` where sigma_i is the
+        distance to the k-th nearest neighbor.
+
+        Args:
+            distances: Pairwise distance matrix with diagonal masked to 1e10.
+            k: Number of neighbors for local bandwidth estimation.
+            decay: Exponent for the alpha-decaying kernel.
+
+        Returns:
+            Affinity matrix of shape ``(n, n)`` with zero diagonal.
+        """
+        n = distances.shape[0]
+        k_eff = min(k, n - 2)
+
+        # Local bandwidth: k-th nearest neighbor distance
+        sorted_dists = jnp.sort(distances, axis=-1)
+        sigma = jnp.maximum(sorted_dists[:, k_eff], 1e-8)
+
+        # Alpha-decay kernel
+        affinity = jnp.exp(-((distances / sigma[:, None]) ** decay))
+
+        # Zero diagonal
+        affinity = affinity * (1.0 - jnp.eye(n))
+
+        return affinity
+
+    def _build_symmetric_affinity(
         self,
         counts: Float[Array, "n_cells n_genes"],
     ) -> Float[Array, "n_cells n_cells"]:
-        """Build the row-stochastic Markov transition matrix from counts.
+        """Build the symmetric affinity matrix from counts.
 
         Args:
             counts: Gene expression matrix of shape ``(n_cells, n_genes)``.
 
         Returns:
-            Row-stochastic Markov transition matrix of shape ``(n_cells, n_cells)``.
+            Symmetric affinity matrix of shape ``(n_cells, n_cells)``.
         """
         n_cells = counts.shape[0]
 
-        # Step 1: Pairwise distances
+        # Pairwise distances
         distances = compute_pairwise_distances(counts, metric=self.config.metric)
 
-        # Step 2: Mask diagonal
+        # Mask diagonal
         distances = distances + jnp.eye(n_cells) * 1e10
 
-        # Step 3: Fuzzy membership
-        membership = compute_fuzzy_membership(distances, k=self.config.n_neighbors)
+        # Alpha-decay kernel
+        affinity = self._build_alpha_decay_affinity(
+            distances, self.config.n_neighbors, self.config.decay
+        )
 
-        # Step 4: Symmetrize
-        symmetric = symmetrize_graph(membership)
-
-        # Step 5: Row-normalize to get Markov transition matrix
-        row_sums = jnp.sum(symmetric, axis=1, keepdims=True)
-        markov = symmetric / (row_sums + 1e-10)
-
-        return markov
+        # Symmetrize via fuzzy set union
+        return symmetrize_graph(affinity)
 
     def _diffuse(
         self,
-        markov: Float[Array, "n_cells n_cells"],
+        affinity_sym: Float[Array, "n_cells n_cells"],
         counts: Float[Array, "n_cells n_genes"],
         t: int,
     ) -> tuple[Float[Array, "n_cells n_genes"], Float[Array, "n_cells n_cells"]]:
-        """Apply diffusion by raising the Markov matrix to power t.
+        """Compute M^t via eigendecomposition of the symmetric affinity.
 
-        Uses eigendecomposition for differentiable matrix powering:
-        ``M^t = V @ diag(lambda^t) @ V^T``
+        The Markov matrix is ``M = D^{-1} A``. Since ``A = D^{1/2} S D^{1/2}``
+        where ``S = D^{-1/2} A D^{-1/2}`` is the normalized Laplacian-related
+        matrix, we eigendecompose ``A_sym`` directly and use the similarity
+        transform ``M^t = D^{-1/2} V diag((lambda/lambda_0)^t) V^T D^{1/2}``.
 
         Args:
-            markov: Row-stochastic Markov transition matrix.
+            affinity_sym: Symmetric affinity matrix.
             counts: Original gene expression counts.
             t: Diffusion time (exponent).
 
         Returns:
             Tuple of (imputed counts, diffusion operator M^t).
         """
-        n_cells = markov.shape[0]
+        n_cells = affinity_sym.shape[0]
 
         if t == 0:
             identity = jnp.eye(n_cells)
             return counts, identity
 
-        # Make the matrix symmetric for eigh (it should be nearly symmetric
-        # after symmetrize_graph + row normalization, but enforce it)
-        markov_sym = (markov + markov.T) / 2.0
+        # Eigendecompose the symmetric affinity matrix
+        eigenvalues, eigenvectors = jnp.linalg.eigh(affinity_sym)
 
-        # Eigendecomposition of the symmetric matrix
-        eigenvalues, eigenvectors = jnp.linalg.eigh(markov_sym)
+        # Clamp eigenvalues to non-negative for numerical stability
+        eigenvalues = jnp.maximum(eigenvalues, 0.0)
 
-        # Clamp eigenvalues to [0, 1] for numerical stability
-        eigenvalues = jnp.clip(eigenvalues, 0.0, 1.0)
+        # Degree vector from affinity
+        degree = jnp.maximum(affinity_sym.sum(axis=1), 1e-8)
+        d_inv_sqrt = 1.0 / jnp.sqrt(degree)
+        d_sqrt = jnp.sqrt(degree)
 
-        # M^t = V @ diag(lambda^t) @ V^T
-        eigenvalues_t = eigenvalues**t
-        diffusion_op = eigenvectors @ jnp.diag(eigenvalues_t) @ eigenvectors.T
+        # Normalized eigenvalues: the eigenvalues of M = D^{-1} A correspond
+        # to lambda / lambda_max when working through the similarity transform.
+        # For the row-stochastic matrix, the largest eigenvalue of A gives the
+        # stationary eigenvalue = 1 for M. We normalize so that the Markov
+        # eigenvalues are in [0, 1].
+        lambda_max = jnp.maximum(eigenvalues[-1], 1e-8)
+        markov_eigenvalues = eigenvalues / lambda_max
 
-        # Ensure row-stochasticity after powering
+        # M^t = D^{-1/2} V diag(markov_eigenvalues^t) V^T D^{1/2}
+        markov_eigenvalues_t = markov_eigenvalues**t
+        # V_scaled_left = D^{-1/2} V, V_scaled_right = D^{1/2} V
+        v_left = d_inv_sqrt[:, None] * eigenvectors
+        v_right = d_sqrt[:, None] * eigenvectors
+        diffusion_op = v_left @ jnp.diag(markov_eigenvalues_t) @ v_right.T
+
+        # Ensure row-stochasticity after powering (numerical correction)
         row_sums = jnp.sum(diffusion_op, axis=1, keepdims=True)
-        diffusion_op = diffusion_op / (row_sums + 1e-10)
+        diffusion_op = diffusion_op / jnp.maximum(row_sums, 1e-10)
 
         # Impute
         imputed = diffusion_op @ counts
@@ -211,11 +255,11 @@ class DifferentiableDiffusionImputer(OperatorModule):
         """
         counts = data["counts"]
 
-        # Build Markov transition matrix
-        markov = self._build_markov_matrix(counts)
+        # Build symmetric affinity matrix
+        affinity_sym = self._build_symmetric_affinity(counts)
 
-        # Diffuse
-        imputed, diffusion_op = self._diffuse(markov, counts, self.config.diffusion_t)
+        # Diffuse via eigendecomposition of affinity
+        imputed, diffusion_op = self._diffuse(affinity_sym, counts, self.config.diffusion_t)
 
         transformed_data = {
             **data,

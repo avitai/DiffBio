@@ -22,11 +22,12 @@ class TestDiffusionImputerConfig:
     """Tests for DiffusionImputerConfig."""
 
     def test_default_config(self) -> None:
-        """Test default configuration values."""
+        """Test default configuration values match MAGIC defaults."""
         config = DiffusionImputerConfig()
-        assert config.n_neighbors == 15
+        assert config.n_neighbors == 5
         assert config.diffusion_t == 3
         assert config.n_pca_components == 100
+        assert config.decay == 1.0
         assert config.metric == "euclidean"
         assert config.stochastic is False
         assert config.stream_name is None
@@ -36,6 +37,11 @@ class TestDiffusionImputerConfig:
         config = DiffusionImputerConfig(n_neighbors=30, diffusion_t=5)
         assert config.n_neighbors == 30
         assert config.diffusion_t == 5
+
+    def test_custom_decay(self) -> None:
+        """Test custom decay parameter."""
+        config = DiffusionImputerConfig(decay=2.0)
+        assert config.decay == 2.0
 
 
 class TestDifferentiableDiffusionImputer:
