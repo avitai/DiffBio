@@ -30,6 +30,7 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.constants import DISTANCE_MASK_SENTINEL
 from diffbio.core.base_operators import EncoderDecoderOperator
 from diffbio.core.graph_utils import compute_pairwise_distances
 from diffbio.utils.nn_utils import build_mlp_decoder, build_mlp_encoder, ensure_rngs, forward_mlp
@@ -223,7 +224,7 @@ class DifferentiableDoubletScorer(OperatorModule):
         )
 
         # Mask self-distances for real cells (first n_real columns correspond to real)
-        self_mask = jnp.eye(n_real, n_total) * 1e10
+        self_mask = jnp.eye(n_real, n_total) * DISTANCE_MASK_SENTINEL
         masked_distances = distances + self_mask
 
         # Soft k-NN: convert distances to weights via negative exponential
@@ -606,11 +607,10 @@ class DifferentiableSoloDetector(EncoderDecoderOperator):
         # 5. Classifier BCE on all cells
         # Labels: 0 for real (first n_real), 1 for synthetic
         labels = jnp.concatenate([jnp.zeros(n_real), jnp.ones(n_synthetic)])
-        logits = self.classify(z)  # returns sigmoid probabilities
-        # Use numerically stable BCE from logits (reconstruct logits)
+        probs = self.classify(z)  # returns sigmoid probabilities
         # classify returns sigmoid(logits), so we use log-sigmoid formulation
         bce = -jnp.mean(
-            labels * jnp.log(logits + 1e-8) + (1.0 - labels) * jnp.log(1.0 - logits + 1e-8)
+            labels * jnp.log(probs + 1e-8) + (1.0 - labels) * jnp.log(1.0 - probs + 1e-8)
         )
 
         # 6. Total = ELBO + classifier_weight * BCE

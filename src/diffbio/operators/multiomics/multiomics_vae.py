@@ -27,6 +27,8 @@ from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from opifex.core.physics.gradnorm import GradNormBalancer
+
 from diffbio.constants import EPSILON
 from diffbio.core.base_operators import EncoderDecoderOperator
 from diffbio.utils.nn_utils import ensure_rngs
@@ -54,6 +56,7 @@ class MultiOmicsVAEConfig(OperatorConfig):
     latent_dim: int = 10
     hidden_dim: int = 64
     modality_weight_mode: str = "equal"
+    use_gradnorm: bool = False
     stochastic: bool = True
     stream_name: str = "sample"
 
@@ -229,7 +232,7 @@ class DifferentiableMultiOmicsVAE(EncoderDecoderOperator):
         self.decoders = nnx.List(decoders)
 
         # Modality weight mode -------------------------------------------
-        self._weight_mode = config.modality_weight_mode
+        self._weight_mode = nnx.static(config.modality_weight_mode)
         if config.modality_weight_mode == "learnable":
             self.log_modality_weights = nnx.Param(jnp.zeros(n_modalities))
 
@@ -290,6 +293,34 @@ class DifferentiableMultiOmicsVAE(EncoderDecoderOperator):
         if self._weight_mode == "learnable":
             return jax.nn.softmax(self.log_modality_weights[...])
         return jnp.ones(n_modalities) / n_modalities
+
+    # ------------------------------------------------------------------
+    # Multi-task loss balancing
+    # ------------------------------------------------------------------
+
+    def compute_balanced_loss(
+        self,
+        losses: dict[str, Float[Array, ""]],
+    ) -> Float[Array, ""]:
+        """Combine multiple loss terms, optionally using GradNormBalancer.
+
+        When ``use_gradnorm`` is enabled in the config, uses
+        ``opifex.core.physics.gradnorm.GradNormBalancer`` to dynamically
+        weight the loss terms so that gradient magnitudes are balanced.
+        Otherwise, returns a simple sum of the losses.
+
+        Args:
+            losses: Mapping of loss name to scalar loss value, e.g.
+                ``{"recon_rna": ..., "recon_atac": ..., "kl": ...}``.
+
+        Returns:
+            Combined scalar loss.
+        """
+        loss_values = list(losses.values())
+        if self.config.use_gradnorm:
+            balancer = GradNormBalancer(num_losses=len(loss_values), rngs=nnx.Rngs(0))
+            return balancer(loss_values)
+        return sum(loss_values[1:], start=loss_values[0])
 
     # ------------------------------------------------------------------
     # Data key helpers

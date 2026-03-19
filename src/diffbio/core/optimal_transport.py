@@ -63,8 +63,8 @@ class SinkhornLayer(nnx.Module):
             rngs: Random number generators (for API consistency).
         """
         super().__init__()
-        self.epsilon = epsilon
-        self.num_iters = num_iters
+        self.epsilon = nnx.static(epsilon)
+        self.num_iters = nnx.static(num_iters)
 
     def __call__(
         self,

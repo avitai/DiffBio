@@ -17,6 +17,8 @@ from calibrax.metrics.functional.information import entropy
 from flax import nnx
 from jaxtyping import Array, Float, Int
 
+from diffbio.constants import DISTANCE_MASK_SENTINEL
+
 
 class BatchMixingLoss(nnx.Module):
     """Loss function to maximize batch mixing in latent space.
@@ -48,7 +50,7 @@ class BatchMixingLoss(nnx.Module):
         temperature: float = 1.0,
         *,
         rngs: nnx.Rngs | None = None,
-    ):
+    ) -> None:
         """Initialize the batch mixing loss.
 
         Args:
@@ -88,7 +90,7 @@ class BatchMixingLoss(nnx.Module):
         distances = sq_norms[:, None] + sq_norms[None, :] - 2 * embeddings @ embeddings.T
 
         # Set self-distance to inf to exclude self from neighbors
-        distances = distances + jnp.eye(n_cells) * 1e10
+        distances = distances + jnp.eye(n_cells) * DISTANCE_MASK_SENTINEL
 
         # Soft neighbor weights using softmax over negative distances
         neighbor_weights = jax.nn.softmax(-distances / self.temperature, axis=-1)
@@ -116,11 +118,11 @@ class BatchMixingLoss(nnx.Module):
         # Compute entropy of batch distribution
         # H = -sum(p * log(p))
         eps = 1e-8
-        entropy = -jnp.sum(batch_dist * jnp.log(batch_dist + eps), axis=-1)
+        per_cell_entropy = -jnp.sum(batch_dist * jnp.log(batch_dist + eps), axis=-1)
 
         # Normalized entropy (0 to 1, higher is better)
         # Use precomputed max_entropy for JIT compatibility
-        normalized_entropy = entropy / (self._max_entropy + eps)
+        normalized_entropy = per_cell_entropy / (self._max_entropy + eps)
 
         # Return negative mean entropy (lower loss = better mixing)
         return -jnp.mean(normalized_entropy)
@@ -153,7 +155,7 @@ class ClusteringCompactnessLoss(nnx.Module):
         min_separation: float = 1.0,
         *,
         rngs: nnx.Rngs | None = None,
-    ):
+    ) -> None:
         """Initialize the clustering compactness loss.
 
         Args:
@@ -249,7 +251,7 @@ class VelocityConsistencyLoss(nnx.Module):
         magnitude_weight: float = 1.0,
         *,
         rngs: nnx.Rngs | None = None,
-    ):
+    ) -> None:
         """Initialize the velocity consistency loss.
 
         Args:
@@ -323,6 +325,10 @@ class ShannonDiversityLoss(nnx.Module):
         ```
     """
 
+    def __init__(self) -> None:
+        """Initialize the Shannon diversity loss."""
+        super().__init__()
+
     def __call__(
         self,
         assignments: Float[Array, "n_cells n_clusters"],
@@ -358,6 +364,10 @@ class SimpsonDiversityLoss(nnx.Module):
         concentration = loss_fn(assignments)  # scalar, lower = more diverse
         ```
     """
+
+    def __init__(self) -> None:
+        """Initialize the Simpson diversity loss."""
+        super().__init__()
 
     def __call__(
         self,

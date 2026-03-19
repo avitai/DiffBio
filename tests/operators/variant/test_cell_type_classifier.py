@@ -5,6 +5,8 @@ operator, which performs cell-type-weighted variant calling using per-type
 classification heads.
 """
 
+from typing import Any
+
 import jax
 import jax.numpy as jnp
 import pytest
@@ -240,7 +242,9 @@ class TestJITCompatibility:
         op = CellTypeAwareVariantClassifier(small_config, rngs=rngs)
 
         @jax.jit
-        def jit_apply(data: dict[str, jax.Array], state: dict) -> tuple[dict, dict, None]:
+        def jit_apply(
+            data: dict[str, jax.Array], state: dict
+        ) -> tuple[dict, dict, dict[str, Any] | None]:
             return op.apply(data, state, None)
 
         transformed, _, _ = jit_apply(sample_data, {})

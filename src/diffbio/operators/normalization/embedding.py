@@ -196,12 +196,12 @@ class SequenceEmbedding(OperatorModule):
 
         # Apply first conv layer
         x = self._apply_conv_layer(sequence, self.conv_layers[0], self.kernel_size)
-        x = jax.nn.relu(x)
+        x = nnx.relu(x)
 
         # Apply remaining conv layers
         for layer in self.conv_layers[1:]:
             x = self._apply_conv_layer(x, layer, self.kernel_size)
-            x = jax.nn.relu(x)
+            x = nnx.relu(x)
 
         # x is now (length, embedding_dim)
         position_embeddings = x

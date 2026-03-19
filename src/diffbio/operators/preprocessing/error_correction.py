@@ -178,7 +178,7 @@ class SoftErrorCorrection(TemperatureOperator):
         # Pass through MLP layers with ReLU activation
         for layer in self.layers:
             x = layer(x)
-            x = jax.nn.relu(x)
+            x = nnx.relu(x)
 
         # Output layer
         logits = self.output_layer(x)

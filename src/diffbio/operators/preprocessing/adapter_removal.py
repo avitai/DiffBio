@@ -198,7 +198,7 @@ class SoftAdapterRemoval(TemperatureOperator):
         threshold = self.match_threshold[...]
 
         # Apply threshold - only consider positions with good matches
-        thresholded_scores = jax.nn.relu(adapter_scores - threshold)
+        thresholded_scores = nnx.relu(adapter_scores - threshold)
 
         # Soft position selection using softmax
         # Add small epsilon for numerical stability

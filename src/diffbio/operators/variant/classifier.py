@@ -54,7 +54,7 @@ class VariantClassifier(OperatorModule):
         *,
         rngs: nnx.Rngs,
         name: str | None = None,
-    ):
+    ) -> None:
         """Initialize variant classifier.
 
         Args:

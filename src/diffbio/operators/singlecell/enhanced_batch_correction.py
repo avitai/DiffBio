@@ -34,6 +34,8 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
+from opifex.core.physics.gradnorm import GradNormBalancer
+
 from diffbio.utils.nn_utils import ensure_rngs
 
 __all__ = [
@@ -133,12 +135,15 @@ class MMDBatchCorrectionConfig(OperatorConfig):
         hidden_dim: Width of hidden layers in the autoencoder.
         latent_dim: Dimensionality of the latent space.
         kernel_bandwidth: Bandwidth for the RBF kernel in the MMD loss.
+        use_gradnorm: Whether to use GradNormBalancer for multi-task loss
+            balancing between reconstruction and MMD losses.
     """
 
     n_genes: int = 2000
     hidden_dim: int = 128
     latent_dim: int = 64
     kernel_bandwidth: float = 1.0
+    use_gradnorm: bool = False
 
 
 @dataclass
@@ -150,12 +155,15 @@ class WGANBatchCorrectionConfig(OperatorConfig):
         hidden_dim: Width of hidden layers in the generator autoencoder.
         latent_dim: Dimensionality of the latent space.
         discriminator_hidden_dim: Width of hidden layers in the discriminator.
+        use_gradnorm: Whether to use GradNormBalancer for multi-task loss
+            balancing between generator and discriminator losses.
     """
 
     n_genes: int = 2000
     hidden_dim: int = 128
     latent_dim: int = 64
     discriminator_hidden_dim: int = 64
+    use_gradnorm: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -259,6 +267,30 @@ class DifferentiableMMDBatchCorrection(OperatorModule):
             self.decoder.layer2,
             self.decoder.layer3,
         )
+
+    def compute_balanced_loss(
+        self,
+        losses: dict[str, Float[Array, ""]],
+    ) -> Float[Array, ""]:
+        """Combine multiple loss terms, optionally using GradNormBalancer.
+
+        When ``use_gradnorm`` is enabled in the config, uses
+        ``opifex.core.physics.gradnorm.GradNormBalancer`` to dynamically
+        weight the loss terms so that gradient magnitudes are balanced.
+        Otherwise, returns a simple sum of the losses.
+
+        Args:
+            losses: Mapping of loss name to scalar loss value, e.g.
+                ``{"reconstruction_loss": ..., "mmd_loss": ...}``.
+
+        Returns:
+            Combined scalar loss.
+        """
+        loss_values = list(losses.values())
+        if self.config.use_gradnorm:
+            balancer = GradNormBalancer(num_losses=len(loss_values), rngs=nnx.Rngs(0))
+            return balancer(loss_values)
+        return sum(loss_values[1:], start=loss_values[0])
 
     def _compute_pairwise_mmd(
         self,
@@ -475,6 +507,30 @@ class DifferentiableWGANBatchCorrection(OperatorModule):
             self.decoder.layer2,
             self.decoder.layer3,
         )
+
+    def compute_balanced_loss(
+        self,
+        losses: dict[str, Float[Array, ""]],
+    ) -> Float[Array, ""]:
+        """Combine multiple loss terms, optionally using GradNormBalancer.
+
+        When ``use_gradnorm`` is enabled in the config, uses
+        ``opifex.core.physics.gradnorm.GradNormBalancer`` to dynamically
+        weight the loss terms so that gradient magnitudes are balanced.
+        Otherwise, returns a simple sum of the losses.
+
+        Args:
+            losses: Mapping of loss name to scalar loss value, e.g.
+                ``{"generator_loss": ..., "discriminator_loss": ...}``.
+
+        Returns:
+            Combined scalar loss.
+        """
+        loss_values = list(losses.values())
+        if self.config.use_gradnorm:
+            balancer = GradNormBalancer(num_losses=len(loss_values), rngs=nnx.Rngs(0))
+            return balancer(loss_values)
+        return sum(loss_values[1:], start=loss_values[0])
 
     def _discriminate(self, latent: Float[Array, "n_cells latent_dim"]) -> Float[Array, "n_cells"]:
         """Compute discriminator (critic) scores from latent representations.

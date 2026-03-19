@@ -71,6 +71,9 @@ EPSILON = 1e-8
 EPSILON_LOG = 1e-10
 """Smaller epsilon specifically for log operations to prevent -inf."""
 
+DISTANCE_MASK_SENTINEL = 1e10
+"""Large value used to mask out self-distances in pairwise distance matrices."""
+
 
 # =============================================================================
 # Pileup and Coverage Constants

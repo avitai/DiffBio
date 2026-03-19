@@ -141,7 +141,7 @@ class DifferentiableDuplicateWeighting(TemperatureOperator):
         )  # (1, embedding_dim, new_length)
 
         # Apply ReLU activation
-        conv_out = jax.nn.relu(conv_out)
+        conv_out = nnx.relu(conv_out)
 
         # Global average pooling
         embedding = jnp.mean(conv_out, axis=-1).squeeze(0)  # (embedding_dim,)

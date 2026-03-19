@@ -26,6 +26,7 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
+from diffbio.constants import DISTANCE_MASK_SENTINEL
 from diffbio.core.graph_utils import (
     compute_fuzzy_membership,
     compute_pairwise_distances,
@@ -147,7 +148,7 @@ class DifferentiablePseudotime(OperatorModule):
         distances = compute_pairwise_distances(embeddings, metric=self.config.metric)
 
         # Mask diagonal with large sentinel
-        distances = distances + jnp.eye(n_cells) * 1e10
+        distances = distances + jnp.eye(n_cells) * DISTANCE_MASK_SENTINEL
 
         # Fuzzy membership with local bandwidth
         membership = compute_fuzzy_membership(distances, k=self.config.n_neighbors)

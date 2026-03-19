@@ -35,7 +35,7 @@ from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
-from diffbio.constants import EPSILON
+from diffbio.constants import DISTANCE_MASK_SENTINEL, EPSILON
 from diffbio.core.base_operators import GraphOperator
 from diffbio.core.gnn_components import GATv2Layer
 from diffbio.core.graph_utils import compute_knn_graph, compute_pairwise_distances
@@ -315,7 +315,7 @@ class DifferentiableSpatialDomain(GraphOperator):
         # Compute pairwise spatial distances
         distances = compute_pairwise_distances(spatial_coords, metric="euclidean")
         # Mask self-distances
-        distances = distances + jnp.eye(n_cells) * 1e10
+        distances = distances + jnp.eye(n_cells) * DISTANCE_MASK_SENTINEL
 
         # Full k-NN graph
         edge_indices, edge_weights = compute_knn_graph(distances, k=self.n_neighbors)

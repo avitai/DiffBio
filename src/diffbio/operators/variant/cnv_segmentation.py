@@ -27,7 +27,6 @@ from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
-from diffbio.constants import EPSILON
 from diffbio.core.base_operators import TemperatureOperator
 
 
@@ -87,7 +86,7 @@ class DifferentiableCNVSegmentation(TemperatureOperator):
         *,
         rngs: nnx.Rngs | None = None,
         name: str | None = None,
-    ):
+    ) -> None:
         """Initialize the CNV segmentation operator.
 
         Args:
@@ -375,10 +374,10 @@ def _build_pyramidal_kernel(window_size: int) -> Float[Array, "window_size"]:
     return pyramid / jnp.sum(pyramid)
 
 
-class EnhancedCNVSegmentation(TemperatureOperator):
+class EnhancedCNVSegmentation(DifferentiableCNVSegmentation):
     """Enhanced CNV segmentation with multi-signal fusion and pyramidal smoothing.
 
-    Builds on DifferentiableCNVSegmentation by adding:
+    Inherits from DifferentiableCNVSegmentation and adds:
 
     1. **Multi-signal fusion** -- learnable linear combination of log-ratio
        coverage, BAF, and SNP density signals.
@@ -419,15 +418,22 @@ class EnhancedCNVSegmentation(TemperatureOperator):
             rngs: Random number generators for initialization.
             name: Optional operator name.
         """
-        super().__init__(config, rngs=rngs, name=name)
+        # Build a base CNVSegmentationConfig for the parent.
+        base_config = CNVSegmentationConfig(
+            max_segments=config.max_segments,
+            hidden_dim=config.hidden_dim,
+            attention_heads=config.attention_heads,
+            temperature=config.temperature,
+        )
+        super().__init__(base_config, rngs=rngs, name=name)
+
+        # Store the full enhanced config for use in apply().
+        self._enhanced_config = config
 
         if rngs is None:
             rngs = nnx.Rngs(0)
 
-        self.max_segments = config.max_segments
-        self.hidden_dim = config.hidden_dim
-        self.attention_heads = config.attention_heads
-        self.use_baf = config.use_baf
+        self.use_baf = nnx.static(config.use_baf)
         self.smoothing_window = config.smoothing_window
         self.threshold_scale = config.threshold_scale
         self.n_copy_states = config.n_copy_states
@@ -435,32 +441,8 @@ class EnhancedCNVSegmentation(TemperatureOperator):
         # --- Signal fusion ---
         # Number of input channels: coverage is always present.
         # BAF and SNP density are optional extras.
-        n_signals = 3 if self.use_baf else 1
+        n_signals = 3 if config.use_baf else 1
         self.signal_fusion = nnx.Linear(n_signals, 1, rngs=rngs)
-
-        # --- Base segmentation layers (same as DifferentiableCNVSegmentation) ---
-        self.input_proj = nnx.Linear(1, config.hidden_dim, rngs=rngs)
-        self.pos_proj = nnx.Linear(1, config.hidden_dim, rngs=rngs)
-        self.query_proj = nnx.Linear(
-            config.hidden_dim,
-            config.hidden_dim,
-            rngs=rngs,
-        )
-        self.key_proj = nnx.Linear(
-            config.hidden_dim,
-            config.hidden_dim,
-            rngs=rngs,
-        )
-        self.value_proj = nnx.Linear(
-            config.hidden_dim,
-            config.hidden_dim,
-            rngs=rngs,
-        )
-        self.boundary_head = nnx.Linear(config.hidden_dim, 1, rngs=rngs)
-
-        key = rngs.params()
-        init_centroids = jax.random.normal(key, (config.max_segments, config.hidden_dim)) * 0.1
-        self.segment_centroids = nnx.Param(init_centroids)
 
         # --- Copy-number state mapping head ---
         self.copy_number_head = nnx.Linear(
@@ -559,121 +541,6 @@ class EnhancedCNVSegmentation(TemperatureOperator):
         return filtered, noise_threshold
 
     # -----------------------------------------------------------------
-    # Attention-based segmentation (reuse DifferentiableCNVSegmentation logic)
-    # -----------------------------------------------------------------
-
-    def _compute_embeddings(
-        self,
-        signal: Float[Array, "n_positions"],
-    ) -> Float[Array, "n_positions hidden_dim"]:
-        """Compute position embeddings from a 1-D signal.
-
-        Args:
-            signal: Fused/smoothed signal values at each position.
-
-        Returns:
-            Embedded representation of each position.
-        """
-        n_positions = signal.shape[0]
-        signal_emb = self.input_proj(signal[:, None])
-        positions = jnp.arange(n_positions, dtype=jnp.float32) / n_positions
-        pos_emb = self.pos_proj(positions[:, None])
-        return signal_emb + pos_emb
-
-    def _compute_boundary_probs(
-        self,
-        embeddings: Float[Array, "n_positions hidden_dim"],
-    ) -> Float[Array, "n_positions"]:
-        """Compute soft boundary probabilities using self-attention.
-
-        Args:
-            embeddings: Position embeddings.
-
-        Returns:
-            Probability of being a segment boundary at each position.
-        """
-        n_positions = embeddings.shape[0]
-        head_dim = self.hidden_dim // self.attention_heads
-        scale = jnp.sqrt(jnp.array(head_dim, dtype=embeddings.dtype))
-
-        q = self.query_proj(embeddings).reshape(
-            n_positions,
-            self.attention_heads,
-            head_dim,
-        )
-        k = self.key_proj(embeddings).reshape(
-            n_positions,
-            self.attention_heads,
-            head_dim,
-        )
-        v = self.value_proj(embeddings).reshape(
-            n_positions,
-            self.attention_heads,
-            head_dim,
-        )
-
-        attn_scores = jnp.einsum("nhd,mhd->nhm", q, k) / scale
-        attn_weights = jax.nn.softmax(
-            attn_scores / self._temperature,
-            axis=-1,
-        )
-        attended = jnp.einsum("nhm,mhd->nhd", attn_weights, v)
-        attended = attended.reshape(n_positions, self.hidden_dim)
-
-        logits = self.boundary_head(attended).squeeze(-1)
-        return jax.nn.sigmoid(logits)
-
-    def _compute_segment_assignments(
-        self,
-        embeddings: Float[Array, "n_positions hidden_dim"],
-    ) -> Float[Array, "n_positions max_segments"]:
-        """Compute soft segment assignments via attention to centroids.
-
-        Args:
-            embeddings: Position embeddings.
-
-        Returns:
-            Soft assignment probability to each segment.
-        """
-        centroids = self.segment_centroids[...]
-        similarities = jnp.einsum("nh,sh->ns", embeddings, centroids)
-        return jax.nn.softmax(similarities / self._temperature, axis=-1)
-
-    def _compute_segment_means(
-        self,
-        signal: Float[Array, "n_positions"],
-        assignments: Float[Array, "n_positions max_segments"],
-    ) -> Float[Array, "max_segments"]:
-        """Compute weighted mean signal per segment.
-
-        Args:
-            signal: Input signal.
-            assignments: Soft segment assignments.
-
-        Returns:
-            Mean signal value for each segment.
-        """
-        weighted_sum = jnp.einsum("n,ns->s", signal, assignments)
-        weight_sum = jnp.sum(assignments, axis=0) + EPSILON
-        return weighted_sum / weight_sum
-
-    def _compute_smoothed_coverage(
-        self,
-        assignments: Float[Array, "n_positions max_segments"],
-        segment_means: Float[Array, "max_segments"],
-    ) -> Float[Array, "n_positions"]:
-        """Compute smoothed coverage from segment assignments.
-
-        Args:
-            assignments: Soft segment assignments.
-            segment_means: Mean value for each segment.
-
-        Returns:
-            Smoothed coverage signal.
-        """
-        return jnp.einsum("ns,s->n", assignments, segment_means)
-
-    # -----------------------------------------------------------------
     # HMM state mapping
     # -----------------------------------------------------------------
 
@@ -764,17 +631,13 @@ class EnhancedCNVSegmentation(TemperatureOperator):
         # 3. Dynamic thresholding
         thresholded, threshold_val = self.dynamic_threshold_filter(smoothed)
 
-        # 4. Attention-based segmentation on thresholded signal
-        embeddings = self._compute_embeddings(thresholded)
-        boundary_probs = self._compute_boundary_probs(embeddings)
-        segment_assignments = self._compute_segment_assignments(embeddings)
-        segment_means = self._compute_segment_means(
-            thresholded,
-            segment_assignments,
-        )
-        smoothed_coverage = self._compute_smoothed_coverage(
-            segment_assignments,
-            segment_means,
+        # 4. Attention-based segmentation on thresholded signal (inherited methods)
+        embeddings = self.compute_embeddings(thresholded)
+        boundary_probs = self.compute_boundary_probs(embeddings)
+        segment_assignments = self.compute_segment_assignments(embeddings)
+        segment_means = self.compute_segment_means(thresholded, segment_assignments)
+        smoothed_coverage = self.compute_smoothed_coverage(
+            thresholded, segment_assignments, segment_means
         )
 
         # 5. HMM state mapping

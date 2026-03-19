@@ -27,6 +27,7 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.constants import DISTANCE_MASK_SENTINEL
 from diffbio.core.graph_utils import (
     compute_pairwise_distances,
     symmetrize_graph,
@@ -113,7 +114,7 @@ class DifferentiableDiffusionImputer(OperatorModule):
         distance to the k-th nearest neighbor.
 
         Args:
-            distances: Pairwise distance matrix with diagonal masked to 1e10.
+            distances: Pairwise distance matrix with diagonal masked to DISTANCE_MASK_SENTINEL.
             k: Number of neighbors for local bandwidth estimation.
             decay: Exponent for the alpha-decaying kernel.
 
@@ -153,7 +154,7 @@ class DifferentiableDiffusionImputer(OperatorModule):
         distances = compute_pairwise_distances(counts, metric=self.config.metric)
 
         # Mask diagonal
-        distances = distances + jnp.eye(n_cells) * 1e10
+        distances = distances + jnp.eye(n_cells) * DISTANCE_MASK_SENTINEL
 
         # Alpha-decay kernel
         affinity = self._build_alpha_decay_affinity(

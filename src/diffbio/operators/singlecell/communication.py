@@ -27,7 +27,7 @@ from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
-from diffbio.constants import EPSILON
+from diffbio.constants import DISTANCE_MASK_SENTINEL, EPSILON
 from diffbio.core.base_operators import GraphOperator, TemperatureOperator
 from diffbio.core.gnn_components import GATv2Layer
 from diffbio.core.graph_utils import (
@@ -129,7 +129,7 @@ class DifferentiableLigandReceptor(TemperatureOperator):
         # Mask self-distances with large sentinel before k-NN computation
         n_cells = counts.shape[0]
         distances = compute_pairwise_distances(counts, metric=self.config.metric)
-        distances = distances + jnp.eye(n_cells) * 1e10
+        distances = distances + jnp.eye(n_cells) * DISTANCE_MASK_SENTINEL
 
         membership = compute_fuzzy_membership(distances, k=self.config.n_neighbors)
         return symmetrize_graph(membership)

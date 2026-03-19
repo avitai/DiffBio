@@ -14,6 +14,7 @@ import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 
+from diffbio.constants import DISTANCE_MASK_SENTINEL
 from diffbio.core.graph_utils import (
     compute_fuzzy_membership,
     compute_pairwise_distances,
@@ -144,7 +145,7 @@ class DifferentiableUMAP(OperatorModule):
         n_neighbors = min(self.config.n_neighbors, n_samples - 1)
 
         distances = compute_pairwise_distances(features, metric=self.config.metric)
-        distances = distances + jnp.eye(n_samples) * 1e10
+        distances = distances + jnp.eye(n_samples) * DISTANCE_MASK_SENTINEL
 
         p_ij = compute_fuzzy_membership(distances, k=n_neighbors)
         return symmetrize_graph(p_ij)

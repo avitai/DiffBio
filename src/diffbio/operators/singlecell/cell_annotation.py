@@ -156,6 +156,8 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
             )
             self.prior_logvars = nnx.Param(jnp.zeros((config.n_cell_types, config.latent_dim)))
 
+        self._use_zinb = nnx.static(config.gene_likelihood == "zinb")
+
         if config.annotation_mode == "scanvi" and config.gene_likelihood == "zinb":
             # ZINB decoder heads: log-dispersion and dropout logit
             # Decoder reverses hidden_dims, so the final hidden dim is the first
@@ -257,7 +259,7 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
             "log_rate": self.fc_output(x),
         }
 
-        if hasattr(self, "fc_log_theta"):
+        if self._use_zinb:
             result["log_theta"] = self.fc_log_theta(x)
             result["pi_logit"] = self.fc_pi_logit(x)
 

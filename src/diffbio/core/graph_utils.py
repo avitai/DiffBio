@@ -59,7 +59,7 @@ def compute_knn_graph(
 
     Args:
         distances: Dense distance matrix of shape ``(n, n)``.  The diagonal
-            should contain large sentinel values (e.g. ``1e10``) so that
+            should contain large sentinel values (e.g. ``DISTANCE_MASK_SENTINEL``) so that
             self-loops are never selected.
         k: Number of nearest neighbours per node.  Clipped to ``n - 1``
             when larger than the number of samples minus one.
