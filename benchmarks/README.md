@@ -207,7 +207,7 @@ The following benchmarks are planned but not yet implemented:
 | ARI/NMI | Clustering | Adjusted Rand Index |
 | scIB metrics | Single-Cell | Integration benchmarking |
 
-See `memory-bank/design-docs/deepchem-analysis-learnings.md` for the full gap analysis.
+See the project documentation for the full gap analysis.
 
 ## Benchmark Visualizations
 
