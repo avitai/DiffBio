@@ -1,135 +1,149 @@
 # Benchmarks
 
-This page documents the benchmarking methodology and results for DiffBio operators compared to reference implementations.
+DiffBio includes benchmark scripts that validate operator correctness against
+reference implementations and measure performance. Benchmarks live in the
+`benchmarks/` directory and write results to `benchmarks/results/` (gitignored).
 
-## Circular Fingerprint Benchmark
+---
 
-Compares DiffBio's `CircularFingerprintOperator` against DeepChem's `CircularFingerprint` featurizer to validate correctness and measure performance.
-
-### Metrics
-
-The benchmark evaluates:
-
-1. **Fingerprint Accuracy**
-   - **Tanimoto Similarity**: Measures similarity between DiffBio and DeepChem fingerprints (1.0 = identical)
-   - **Bit Agreement**: Percentage of bits that match exactly
-   - **Exact Match Rate**: Percentage of molecules with identical fingerprints
-
-2. **Performance**
-   - **Computation Time**: Milliseconds to compute fingerprints
-   - **Throughput**: Molecules processed per second
-   - **Speedup**: Ratio of DeepChem time to DiffBio time
-
-### Test Dataset
-
-The benchmark uses **87 diverse drug-like compounds** covering:
-
-| Category | Examples | Count |
-|----------|----------|-------|
-| Simple organic molecules | Ethanol, Benzene, Phenol, Glycine | 10 |
-| Common heterocycles | Pyridine, Thiophene, Imidazole, Indole, Purine | 9 |
-| NSAIDs | Aspirin, Ibuprofen, Naproxen, Diclofenac, Celecoxib | 6 |
-| Analgesics | Acetaminophen, Morphine, Codeine, Tramadol | 4 |
-| Antibiotics | Penicillin G, Amoxicillin, Ciprofloxacin, Azithromycin | 5 |
-| Cardiovascular drugs | Atorvastatin, Lisinopril, Amlodipine, Warfarin | 5 |
-| CNS drugs | Caffeine, Diazepam, Fluoxetine, Sertraline, Risperidone | 5 |
-| Antidiabetic drugs | Metformin, Glibenclamide, Pioglitazone | 3 |
-| Anticancer drugs | Doxorubicin, Methotrexate, Tamoxifen, Imatinib | 4 |
-| Proton pump inhibitors | Omeprazole, Lansoprazole, Pantoprazole | 3 |
-| Antihistamines | Diphenhydramine, Cetirizine, Loratadine | 3 |
-| Antiviral drugs | Acyclovir, Oseltamivir, Remdesivir | 3 |
-| Natural products | Quercetin, Curcumin, Resveratrol, Capsaicin | 4 |
-| Steroids | Cortisol, Prednisone, Testosterone | 3 |
-| Vitamins | Vitamin C, Vitamin B6, Nicotinamide | 3 |
-| Additional FDA-approved | Sildenafil, Gabapentin, Escitalopram, Clopidogrel, etc. | 17 |
-| Kinase inhibitors | Erlotinib, Gefitinib, Sorafenib | 3 |
-
-### Running the Benchmark
-
-#### Prerequisites
-
-Install benchmark dependencies:
+## Running Benchmarks
 
 ```bash
-uv pip install -e ".[benchmark]"
+source ./activate.sh
+uv run python benchmarks/<script_name>.py
 ```
 
-#### Execute
+Each benchmark prints a summary to stdout and saves detailed results as JSON.
+
+---
+
+## Available Benchmarks
+
+### Circular Fingerprint Benchmark
+
+Compares `CircularFingerprintOperator` against DeepChem's `CircularFingerprint`
+featurizer on 87 FDA-approved drug-like compounds.
 
 ```bash
-source activate.sh
-python benchmarks/circular_fingerprint_benchmark.py
+uv run python benchmarks/circular_fingerprint_benchmark.py
 ```
 
-### Results
+**Metrics**: Tanimoto similarity, bit agreement, exact match rate, throughput.
 
-#### Accuracy Comparison
+| Configuration | Tanimoto | Bit Agreement | Speedup |
+|---|---|---|---|
+| ECFP4 (radius=2, 2048 bits) | 1.000 | 100.00% | 1.81x |
+| ECFP6 (radius=3, 2048 bits) | 1.000 | 100.00% | 2.03x |
+| ECFP4 (radius=2, 4096 bits) | 1.000 | 100.00% | 2.67x |
 
-| Benchmark | Mean Tanimoto | Min Tanimoto | Bit Agreement | Exact Match |
-|-----------|---------------|--------------|---------------|-------------|
-| ECFP4 (radius=2, 2048 bits) | 1.0 | 1.0 | 100.00% | 100.00% |
-| ECFP6 (radius=3, 2048 bits) | 1.0 | 1.0 | 100.00% | 100.00% |
-| ECFP4 (radius=2, 1024 bits) | 1.0 | 1.0 | 100.00% | 100.00% |
-| ECFP4 (radius=2, 4096 bits) | 1.0 | 1.0 | 100.00% | 100.00% |
+DiffBio fingerprints are 100% identical to DeepChem and 1.9x faster on
+average, with better scaling for larger fingerprints.
 
-**Result**: DiffBio fingerprints are **100% identical** to DeepChem reference implementation.
+### Fingerprint Benchmark (Extended)
 
-#### Performance Comparison
+Evaluates all fingerprint operators (circular, MACCS, neural) with
+differentiability and JIT verification.
 
-| Benchmark | N Mols | DiffBio (ms) | DeepChem (ms) | DiffBio (mol/s) | DeepChem (mol/s) | Speedup |
-|-----------|--------|--------------|---------------|-----------------|------------------|---------|
-| ECFP4 (radius=2, 2048 bits) | 87 | 35.31 | 63.99 | 2,464 | 1,360 | 1.81x |
-| ECFP6 (radius=3, 2048 bits) | 87 | 34.34 | 69.89 | 2,533 | 1,245 | 2.03x |
-| ECFP4 (radius=2, 1024 bits) | 87 | 40.75 | 50.23 | 2,135 | 1,732 | 1.23x |
-| ECFP4 (radius=2, 4096 bits) | 87 | 39.58 | 105.77 | 2,198 | 823 | 2.67x |
+```bash
+uv run python benchmarks/fingerprint_benchmark.py
+```
 
-**Result**: DiffBio is **1.94x faster** on average, with up to **2.67x speedup** for larger fingerprints.
+**Metrics**: Fingerprint accuracy, gradient flow, JIT compilation, throughput
+comparison across fingerprint types.
 
-### Summary
+### Alignment Benchmark
 
-| Metric | Value |
-|--------|-------|
-| Test molecules | 87 FDA-approved drugs and drug-like compounds |
-| Average Tanimoto Similarity | 1.0000 |
-| Average Bit Agreement | 100.00% |
-| Average Speedup | 1.94x |
+Evaluates `SmoothSmithWaterman` for correctness (vs standard SW), temperature
+sensitivity, differentiability verification, and JIT performance.
 
-DiffBio's `CircularFingerprintOperator` achieves:
+```bash
+uv run python benchmarks/alignment_benchmark.py
+```
 
-- **Perfect accuracy**: 100% match with DeepChem reference
-- **Superior performance**: ~2x faster than DeepChem
-- **Better scaling**: Larger fingerprints show greater speedup (up to 2.67x for 4096 bits)
+**Metrics**: Score accuracy across temperature values, gradient norm, JIT
+speedup ratio, memory usage.
 
-### Implementation Details
+### MolNet Benchmark
 
-The performance advantage comes from:
+Evaluates molecular featurization operators on MoleculeNet benchmark datasets,
+following the standard MolNet evaluation protocol.
 
-1. **Optimized RDKit integration**: Using `ConvertToNumpyArray` for efficient bit vector conversion
-2. **Minimal memory allocation**: Direct buffer writes instead of intermediate objects
-3. **Efficient JAX conversion**: Zero-copy `jnp.asarray()` wrapping of numpy arrays
+```bash
+uv run python benchmarks/molnet_benchmark.py
+```
 
-### Benchmark Methodology
+**Metrics**: AUROC/RMSE on standard MolNet tasks (BACE, HIV, Tox21, etc.),
+featurization throughput, comparison against published baselines.
 
-- **Validation**: Molecules are validated with RDKit before benchmarking
-- **Warmup**: 5 full-dataset warmup runs to ensure JIT compilation is complete before timing
-- **Iterations**: 20 timed iterations per configuration
-- **Timing**: `time.perf_counter()` for high-resolution timing
+### scVI Benchmark
+
+Evaluates `VAENormalizer` with ZINB likelihood against scVI-style metrics on
+synthetic PBMC-like data.
+
+```bash
+uv run python benchmarks/scvi_benchmark.py
+```
+
+**Metrics**: ELBO convergence, reconstruction MSE, latent silhouette score,
+batch ASW, ARI, NMI (via calibrax). See the
+[scVI Benchmark Example](../examples/advanced/scvi-benchmark.md) for a
+walkthrough with figures.
+
+### Single-Cell Benchmark
+
+Evaluates single-cell operators (`DifferentiableHarmony`, `SoftKMeansClustering`,
+etc.) on synthetic multi-batch datasets.
+
+```bash
+uv run python benchmarks/singlecell_benchmark.py
+```
+
+**Metrics**: Batch mixing (entropy), clustering ARI/NMI, silhouette score,
+training convergence rate.
+
+---
+
+## Benchmark Methodology
+
+All benchmarks follow a consistent protocol:
+
+1. **Warmup**: 5 full runs to ensure JIT compilation before timing
+2. **Iterations**: 20 timed runs per configuration
+3. **Timing**: `time.perf_counter()` for high-resolution measurement
+4. **Validation**: Input molecules/sequences validated before benchmarking
+5. **Reproducibility**: Fixed random seeds, deterministic data generation
 
 ### Test Environment
 
-| Component | Specification |
-|-----------|---------------|
+| Component | Value |
+|---|---|
 | Platform | Linux 6.8.0 (Ubuntu) |
 | Python | 3.12.6 |
-| JAX | 0.8.0 |
+| JAX | 0.9.0.1 |
 | GPU | NVIDIA GeForce RTX 4090 (24 GB) |
-| Backend | gpu (CUDA) |
+| Backend | CUDA (gpu) |
 
-The benchmark uses `source activate.sh` to properly configure the GPU environment before running.
+---
 
-### Adding New Benchmarks
+## Adding a New Benchmark
 
-1. Create a new Python script in `benchmarks/`
-2. Follow the pattern in `circular_fingerprint_benchmark.py`
-3. Results are saved to `benchmarks/results/` (gitignored)
-4. Update this documentation with the new benchmark description
+1. Create `benchmarks/<name>_benchmark.py` following the existing pattern
+2. Use `time.perf_counter()` for timing, fixed seeds for reproducibility
+3. Save results to `benchmarks/results/<name>/` as JSON
+4. Add a section to this page documenting metrics and results
+5. Include a `if __name__ == "__main__"` guard so the script runs standalone
+
+---
+
+## Results Storage
+
+Benchmark results are saved to `benchmarks/results/` which is gitignored.
+To regenerate results:
+
+```bash
+source ./activate.sh
+for f in benchmarks/*_benchmark.py; do
+    echo "=== Running $(basename $f) ==="
+    uv run python "$f"
+done
+```

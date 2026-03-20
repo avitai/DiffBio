@@ -18,6 +18,14 @@ graph LR
     E --> F[State Annotations]
     C --> G[Regulatory Elements]
     F --> G
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style D fill:#d1fae5,stroke:#059669,color:#064e3b
+    style E fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style F fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style G fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 ### Key Concepts

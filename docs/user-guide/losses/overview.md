@@ -11,6 +11,15 @@ DiffBio provides specialized loss functions for training differentiable bioinfor
 | [BatchMixingLoss](singlecell.md#batchmixingloss) | Maximizes batch mixing in latent space |
 | [ClusteringCompactnessLoss](singlecell.md#clusteringcompactnessloss) | Encourages tight, well-separated clusters |
 | [VelocityConsistencyLoss](singlecell.md#velocityconsistencyloss) | Ensures RNA velocity consistency |
+| [ShannonDiversityLoss](singlecell.md#shannondiversityloss) | Shannon entropy of cluster assignments |
+| [SimpsonDiversityLoss](singlecell.md#simpsondiversityloss) | Simpson concentration index of assignments |
+
+### Metric Losses
+
+| Loss | Description |
+|------|-------------|
+| [DifferentiableAUROC](metric.md#differentiableauroc) | Sigmoid-approximated AUROC for training |
+| [ExactAUROC](metric.md#exactauroc) | Exact trapezoidal-rule AUROC for evaluation |
 
 ### Statistical Losses
 
@@ -129,4 +138,5 @@ def compute_loss(model, data):
 
 - Learn about [Single-Cell Losses](singlecell.md)
 - Explore [Statistical Losses](statistical.md)
+- Check [Metric Losses](metric.md) for AUROC training surrogates
 - See [Training Overview](../training/overview.md) for training workflows

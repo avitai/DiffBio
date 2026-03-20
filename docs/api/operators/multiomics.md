@@ -63,6 +63,23 @@ Differentiable operators for multi-omics analysis including spatial transcriptom
       show_root_heading: true
       show_source: false
 
+## DifferentiableMultiOmicsVAE
+
+::: diffbio.operators.multiomics.multiomics_vae.DifferentiableMultiOmicsVAE
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## MultiOmicsVAEConfig
+
+::: diffbio.operators.multiomics.multiomics_vae.MultiOmicsVAEConfig
+    options:
+      show_root_heading: true
+      members: []
+
 ## Usage Examples
 
 ### Spatial Deconvolution

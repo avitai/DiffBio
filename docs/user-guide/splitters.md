@@ -342,8 +342,8 @@ for epoch in range(10):
 
 - **[Data Sources Overview](sources.md)**: Load data before splitting
 - **[MolNet Datasets](sources.md#molnet-benchmark-datasets)**: MoleculeNet benchmark datasets
-- **[BAMSource](sources.md#bamsource---aligned-reads)**: Load aligned reads from BAM files
-- **[FastaSource](sources.md#fastasource---reference-sequences)**: Load sequences from FASTA files
+- **[BAMSource](sources.md#bamsource-aligned-reads)**: Load aligned reads from BAM files
+- **[FastaSource](sources.md#fastasource-reference-sequences)**: Load sequences from FASTA files
 
 ### Operators
 

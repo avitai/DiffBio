@@ -52,12 +52,16 @@ boundaries = result["peak_boundaries"]   # Peak start/end positions
 | `threshold` | float | 0.5 | Peak calling threshold |
 | `temperature` | float | 1.0 | Temperature for soft operations |
 
+### VAE Denoising Mode
+
+The peak caller supports an optional VAE denoising step that preprocesses the coverage signal before peak detection. When enabled, a Poisson decoder (following the SCALE approach) models count data, and the denoised signal is used for downstream peak calling. This is configured via the `use_vae_denoising` parameter.
+
 ### Architecture
 
 ```
-Input Signal → [Conv1D + ReLU] × 3 scales → Concat → Dense → Sigmoid → Peak Scores
-                     ↓
-              Multi-scale features capture peaks of different widths
+Input Signal → [VAE Denoising (optional)] → [Conv1D + ReLU] × 3 scales → Concat → Dense → Sigmoid → Peak Scores
+                                                     ↓
+                                              Multi-scale features capture peaks of different widths
 ```
 
 ### Training for Peak Calling

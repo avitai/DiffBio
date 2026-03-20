@@ -258,11 +258,12 @@ def filtered_alignment(seq1, qual1, seq2, qual2):
     filtered2, _, _ = filter_op.apply(data2, {}, None)
 
     # Align filtered sequences
-    result = aligner.align(
-        filtered1['sequence'],
-        filtered2['sequence']
-    )
-    return result.score
+    align_data = {
+        "seq1": filtered1['sequence'],
+        "seq2": filtered2['sequence'],
+    }
+    result, _, _ = aligner.apply(align_data, {}, None)
+    return result["score"]
 
 # Gradient flows through both filter and alignment
 grad_fn = jax.grad(filtered_alignment)

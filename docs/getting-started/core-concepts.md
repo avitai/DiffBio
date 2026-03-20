@@ -1,154 +1,152 @@
 # Core Concepts
 
-This guide covers the foundational concepts you need to understand DiffBio.
+This page covers the ideas you need before working with DiffBio. It focuses on
+what DiffBio provides — not general JAX or Flax documentation.
 
-## Differentiable Bioinformatics
+---
 
-Traditional bioinformatics algorithms use discrete operations like `max`, `argmax`, and hard thresholds that block gradient flow. DiffBio makes these operations differentiable by using smooth approximations:
+## Smooth Approximations
 
-| Discrete Operation | Differentiable Approximation |
-|-------------------|------------------------------|
-| `max(a, b)` | `logsumexp(a, b) / temperature` |
-| `argmax(x)` | `softmax(x / temperature)` |
-| `threshold(x > t)` | `sigmoid(x - t)` |
-| Hard counting | Soft weighted accumulation |
+Traditional bioinformatics algorithms rely on discrete operations that block
+gradient flow. DiffBio replaces each one with a temperature-controlled smooth
+approximation:
 
-The **temperature** parameter controls the smoothness:
+| Discrete Operation | DiffBio Approximation | Where Used |
+|---|---|---|
+| `max(a, b)` | `logsumexp(a/τ, b/τ) · τ` | Smith-Waterman recurrence |
+| `argmax(x)` | `softmax(x / τ)` | Soft k-means clustering |
+| `threshold(x > t)` | `sigmoid((x - t) / τ)` | Quality filtering, doublet scoring |
+| Hard counting | Weighted accumulation | Pileup generation |
+| Hard assignment | Soft assignment probabilities | Batch correction, cell annotation |
 
-- **Low temperature** ($\tau \to 0$): Approaches the hard/discrete behavior
-- **High temperature** ($\tau \to \infty$): More uniform/smooth distribution
+The **temperature** parameter `τ` controls the trade-off:
 
-## The Datarax Operator Pattern
+- **Low τ** — closer to the discrete algorithm, sharper decisions, weaker gradients
+- **High τ** — smoother output, stronger gradients, easier to optimize
 
-DiffBio operators inherit from Datarax's `OperatorModule`, providing a consistent interface for composable data processing:
+This is DiffBio's core mechanism: every operator in the library uses some form
+of smooth relaxation to stay differentiable.
 
-```python
-class OperatorModule:
-    def apply(
-        self,
-        data: PyTree,
-        state: PyTree,
-        metadata: dict | None,
-        random_params: Any = None,
-        stats: dict | None = None,
-    ) -> tuple[PyTree, PyTree, dict | None]:
-        """Transform data through the operator."""
-        ...
-```
+---
 
-### Key Concepts
+## The Operator Contract
 
-**Data**: A PyTree (usually a dictionary) containing input tensors.
-
-**State**: Per-element state that persists across operator applications.
-
-**Metadata**: Optional metadata about the data element.
-
-### Operator Configuration
-
-Each operator has a corresponding configuration dataclass:
+Every DiffBio operator inherits from datarax's `OperatorModule` and exposes
+a single entry point:
 
 ```python
-from dataclasses import dataclass
-from datarax.core.config import OperatorConfig
-
-@dataclass
-class SmithWatermanConfig(OperatorConfig):
-    temperature: float = 1.0
-    gap_open: float = -10.0
-    gap_extend: float = -1.0
+result, state, metadata = operator.apply(data, state, metadata)
 ```
 
-## Sequence Representation
+| Argument | Type | Typical Value | Purpose |
+|---|---|---|---|
+| `data` | `dict[str, Array]` | `{"counts": jnp.array(...)}` | Input tensors keyed by name |
+| `state` | `dict` | `{}` | Per-element state (empty for stateless ops) |
+| `metadata` | `dict \| None` | `None` | Optional metadata |
 
-DiffBio uses **one-hot encoding** for sequences to enable gradient flow:
+The result dict contains the original input keys plus new keys added by the
+operator. This makes chaining trivial — the output of one operator is the
+input to the next.
 
 ```python
-import jax.numpy as jnp
+# Chain: Impute → Cluster → Pseudotime
+result, _, _ = imputer.apply({"counts": counts}, {}, None)
+result["embeddings"] = result["imputed_counts"]
+result, _, _ = clusterer.apply(result, {}, None)
+result, _, _ = pseudotime.apply(result, {}, None)
 
-# DNA alphabet: A=0, C=1, G=2, T=3
-# Sequence "ACGT" as indices
-seq_indices = jnp.array([0, 1, 2, 3])
-
-# One-hot encode
-seq_onehot = jnp.eye(4)[seq_indices]
-# Result: [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]]
+# result now contains counts, imputed_counts, cluster_assignments, pseudotime, ...
 ```
 
-One-hot encoding allows gradients to flow through sequence-dependent operations like scoring matrices.
+---
 
-## Learnable Parameters
+## Operator Configuration
 
-DiffBio operators use Flax's `nnx.Param` to mark learnable parameters:
+Each operator has a frozen dataclass config that defines its parameters:
 
 ```python
-from flax import nnx
+from diffbio.operators.singlecell import SoftKMeansClustering, SoftClusteringConfig
 
-class SmoothSmithWaterman(OperatorModule):
-    def __init__(self, config, scoring_matrix, ...):
-        # Learnable parameters
-        self.temperature = nnx.Param(jnp.array(config.temperature))
-        self.scoring_matrix = nnx.Param(scoring_matrix)
-        self.gap_open = nnx.Param(jnp.array(config.gap_open))
+config = SoftClusteringConfig(
+    n_clusters=10,
+    n_features=50,
+    temperature=1.0,
+)
+operator = SoftKMeansClustering(config, rngs=nnx.Rngs(42))
 ```
 
-These parameters can be optimized using gradient descent:
+Configs are separate from the operator so you can serialize, compare, and
+reproduce configurations independently of model weights.
 
-```python
-import optax
+---
 
-# Get all learnable parameters
-params = nnx.state(aligner, nnx.Param)
+## Operator Domains
 
-# Create optimizer
-optimizer = optax.adam(learning_rate=0.001)
-opt_state = optimizer.init(params)
+DiffBio organizes operators by biological domain. Each domain corresponds to
+a subpackage under `diffbio.operators`:
 
-# Update step
-def update(params, grads, opt_state):
-    updates, opt_state = optimizer.update(grads, opt_state, params)
-    params = optax.apply_updates(params, updates)
-    return params, opt_state
+| Domain | Subpackage | Examples |
+|---|---|---|
+| Single-Cell | `singlecell` | Clustering, batch correction, trajectory, imputation, cell annotation |
+| Alignment | `alignment` | Smith-Waterman, profile HMM, soft MSA |
+| Variant Calling | `variant` | Pileup, classifier, CNV segmentation |
+| Normalization | `normalization` | VAE normalizer, UMAP, PHATE |
+| Drug Discovery | `drug_discovery` | Molecular fingerprints, ADMET, GNN property prediction |
+| Epigenomics | `epigenomics` | Peak calling, chromatin state annotation |
+| Multi-omics | `multiomics` | Hi-C contact maps, spatial deconvolution, multi-modal VAE |
+| RNA-seq | `rnaseq` | Splicing PSI, motif discovery |
+| Preprocessing | `preprocessing` | Adapter removal, error correction, duplicate filtering |
+| Statistical | `statistical` | HMM, EM quantification, negative binomial GLM |
+
+Every operator across all domains follows the same `apply()` contract.
+
+---
+
+## Gradient Flow Through Pipelines
+
+The central value proposition of DiffBio: gradients propagate backward through
+an entire pipeline of operators.
+
 ```
-
-## Gradient Flow
-
-The goal of DiffBio is to enable gradient flow through entire pipelines:
-
-```
-Input Sequences
+Input Data
       │
       ▼
 ┌─────────────────┐
-│ Quality Filter  │ ← ∂L/∂threshold
+│ Operator A      │ ← ∂L/∂params_A
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐
-│ Smith-Waterman  │ ← ∂L/∂scoring_matrix, ∂L/∂gap_penalties
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ Pileup          │ ← ∂L/∂temperature
+│ Operator B      │ ← ∂L/∂params_B
 └────────┬────────┘
          │
          ▼
      Loss Function
 ```
 
-Gradients flow backward through all operators, allowing joint optimization of all parameters.
+In practice this means you can define a loss at the end of a pipeline and
+optimize all upstream operator parameters jointly:
 
-## Temperature as a Hyperparameter
+```python
+def pipeline_loss(data):
+    r1, _, _ = normalizer.apply(data, {}, None)
+    r2, _, _ = clusterer.apply(r1, {}, None)
+    return r2["cluster_assignments"].sum()
 
-The temperature parameter ($\tau$) appears throughout DiffBio and controls the trade-off between:
+grad = jax.grad(pipeline_loss)(data)
+# grad["counts"] contains ∂loss/∂input through both operators
+```
 
-- **Accuracy** (low $\tau$): Closer to true discrete algorithm behavior
-- **Trainability** (high $\tau$): Smoother gradients, easier optimization
+Every example in the [Examples](../examples/overview.md) section demonstrates
+this with a gradient verification step.
 
-### Temperature Scheduling
+---
 
-A common practice is to start with high temperature and anneal:
+## Temperature Scheduling
+
+Because temperature controls the accuracy-trainability trade-off, a common
+pattern is **annealing** — start warm (smooth, easy gradients) and cool toward
+the discrete solution:
 
 ```python
 def temperature_schedule(step, initial=10.0, final=0.1, decay_steps=10000):
@@ -157,74 +155,71 @@ def temperature_schedule(step, initial=10.0, final=0.1, decay_steps=10000):
     return initial * (decay_rate ** step)
 ```
 
-This allows the model to first explore broadly, then focus on discrete solutions.
+When temperature is learnable (`nnx.Param`), the optimizer can also discover
+the right smoothness level from data.
 
-## JAX Transformations
+---
 
-DiffBio operators are designed to work with JAX transformations:
+## The Ecosystem
 
-### JIT Compilation
+DiffBio is part of a family of libraries that share the datarax operator
+contract:
 
-```python
-import jax
+| Library | Role | How DiffBio Uses It |
+|---|---|---|
+| **datarax** | Pipeline framework | Base `OperatorModule`, config system, data flow |
+| **calibrax** | Metrics and evaluation | ARI, NMI, silhouette, AUROC for evaluating results |
+| **artifex** | Generative model losses | KL divergence, ELBO components for VAE operators |
+| **opifex** | Multi-task training | `GradNormBalancer` for multi-loss optimization |
 
-@jax.jit
-def align_batch(aligner, seq1, seq2):
-    return aligner.align(seq1, seq2)
-
-# First call compiles, subsequent calls are fast
-result = align_batch(aligner, seq1, seq2)
-```
-
-### Vectorization (vmap)
-
-```python
-# Align many sequence pairs in parallel
-batch_align = jax.vmap(
-    lambda s1, s2: aligner.align(s1, s2),
-    in_axes=(0, 0)
-)
-
-results = batch_align(batch_seq1, batch_seq2)
-```
-
-### Parallelization (pmap)
+DiffBio operators produce results; calibrax evaluates them; artifex provides
+training losses; opifex balances multiple objectives. The integration is
+through standard JAX arrays — no special adapters needed.
 
 ```python
-# Distribute across multiple devices
-parallel_align = jax.pmap(
-    lambda s1, s2: aligner.align(s1, s2),
-    in_axes=(0, 0)
-)
+# DiffBio operator produces latent representations
+result, _, _ = vae_normalizer.apply(data, {}, None)
+
+# calibrax evaluates clustering quality
+from calibrax.metrics.functional.clustering import silhouette_score
+score = silhouette_score(result["latent_mean"], labels)
+
+# artifex provides training loss components
+from artifex.generative_models.core.losses.divergence import gaussian_kl_divergence
+kl = gaussian_kl_divergence(result["latent_mean"], result["latent_logvar"])
 ```
 
-## Functional vs Object-Oriented
+---
 
-DiffBio uses Flax NNX which supports both styles:
+## Data Representations
 
-### Object-Oriented (Recommended for Simple Cases)
+DiffBio operators expect JAX arrays in specific formats depending on the domain:
+
+| Data Type | Shape | Description |
+|---|---|---|
+| Count matrices | `(n_cells, n_genes)` | Gene expression counts (single-cell) |
+| Embeddings | `(n_samples, n_features)` | Latent or reduced representations |
+| Sequences (one-hot) | `(length, alphabet_size)` | One-hot encoded DNA/RNA/protein |
+| Batch labels | `(n_samples,)` | Integer batch assignments |
+| Spatial coordinates | `(n_spots, 2)` | Physical x, y positions |
+
+One-hot encoding is used for sequences because it allows gradients to flow
+through sequence-dependent operations:
 
 ```python
-aligner = SmoothSmithWaterman(config, scoring_matrix)
-result = aligner.align(seq1, seq2)
+# "ACGT" → one-hot with DNA alphabet (A=0, C=1, G=2, T=3)
+seq_indices = jnp.array([0, 1, 2, 3])
+seq_onehot = jnp.eye(4)[seq_indices]
+# Shape: (4, 4) — each row is a one-hot vector
 ```
 
-### Functional (For JAX Transformations)
+Count matrices and embeddings are used as-is — no special encoding needed.
 
-```python
-# Split into state and functions
-graphdef, state = nnx.split(aligner)
-
-def align_fn(state, seq1, seq2):
-    model = nnx.merge(graphdef, state)
-    return model.align(seq1, seq2)
-
-# Now safe for jax.jit, jax.grad, etc.
-result = jax.jit(align_fn)(state, seq1, seq2)
-```
+---
 
 ## Next Steps
 
-- See the [User Guide](../user-guide/concepts/differentiable-bioinformatics.md) for detailed algorithm explanations
-- Explore [Operators](../user-guide/operators/overview.md) to learn about specific operators
-- Read about [Training](../user-guide/training/overview.md) for optimization techniques
+- [Quick Start](quickstart.md) — run your first operator
+- [Operators Overview](../user-guide/operators/overview.md) — browse available operators by domain
+- [Examples](../examples/overview.md) — runnable examples with visual outputs
+- [Differentiable Bioinformatics](../user-guide/concepts/differentiable-bioinformatics.md) — deeper theory on smooth relaxations

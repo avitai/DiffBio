@@ -70,6 +70,329 @@ Differentiable operators for single-cell analysis including clustering, batch co
       show_root_heading: true
       members: []
 
+## DifferentiableCellAnnotator
+
+::: diffbio.operators.singlecell.cell_annotation.DifferentiableCellAnnotator
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## CellAnnotatorConfig
+
+::: diffbio.operators.singlecell.cell_annotation.CellAnnotatorConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiableDiffusionImputer
+
+::: diffbio.operators.singlecell.imputation.DifferentiableDiffusionImputer
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## DiffusionImputerConfig
+
+::: diffbio.operators.singlecell.imputation.DiffusionImputerConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiableTransformerDenoiser
+
+::: diffbio.operators.singlecell.imputation.DifferentiableTransformerDenoiser
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## TransformerDenoiserConfig
+
+::: diffbio.operators.singlecell.imputation.TransformerDenoiserConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiableDoubletScorer
+
+::: diffbio.operators.singlecell.doublet_detection.DifferentiableDoubletScorer
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## DoubletScorerConfig
+
+::: diffbio.operators.singlecell.doublet_detection.DoubletScorerConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiableSoloDetector
+
+::: diffbio.operators.singlecell.doublet_detection.DifferentiableSoloDetector
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## SoloDetectorConfig
+
+::: diffbio.operators.singlecell.doublet_detection.SoloDetectorConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiableCellCommunication
+
+::: diffbio.operators.singlecell.communication.DifferentiableCellCommunication
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## CellCommunicationConfig
+
+::: diffbio.operators.singlecell.communication.CellCommunicationConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiableLigandReceptor
+
+::: diffbio.operators.singlecell.communication.DifferentiableLigandReceptor
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## LRScoringConfig
+
+::: diffbio.operators.singlecell.communication.LRScoringConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiableGRN
+
+::: diffbio.operators.singlecell.grn_inference.DifferentiableGRN
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## GRNInferenceConfig
+
+::: diffbio.operators.singlecell.grn_inference.GRNInferenceConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiableMMDBatchCorrection
+
+::: diffbio.operators.singlecell.enhanced_batch_correction.DifferentiableMMDBatchCorrection
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## MMDBatchCorrectionConfig
+
+::: diffbio.operators.singlecell.enhanced_batch_correction.MMDBatchCorrectionConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiableWGANBatchCorrection
+
+::: diffbio.operators.singlecell.enhanced_batch_correction.DifferentiableWGANBatchCorrection
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## WGANBatchCorrectionConfig
+
+::: diffbio.operators.singlecell.enhanced_batch_correction.WGANBatchCorrectionConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiableSwitchDE
+
+::: diffbio.operators.singlecell.switch_de.DifferentiableSwitchDE
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## SwitchDEConfig
+
+::: diffbio.operators.singlecell.switch_de.SwitchDEConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiablePseudotime
+
+::: diffbio.operators.singlecell.trajectory.DifferentiablePseudotime
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## PseudotimeConfig
+
+::: diffbio.operators.singlecell.trajectory.PseudotimeConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiableFateProbability
+
+::: diffbio.operators.singlecell.trajectory.DifferentiableFateProbability
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## FateProbabilityConfig
+
+::: diffbio.operators.singlecell.trajectory.FateProbabilityConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiableSpatialDomain
+
+::: diffbio.operators.singlecell.spatial_domains.DifferentiableSpatialDomain
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## SpatialDomainConfig
+
+::: diffbio.operators.singlecell.spatial_domains.SpatialDomainConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiablePASTEAlignment
+
+::: diffbio.operators.singlecell.spatial_domains.DifferentiablePASTEAlignment
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## PASTEAlignmentConfig
+
+::: diffbio.operators.singlecell.spatial_domains.PASTEAlignmentConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiableDifferentialDistribution
+
+::: diffbio.operators.singlecell.differential_distribution.DifferentiableDifferentialDistribution
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## DifferentialDistributionConfig
+
+::: diffbio.operators.singlecell.differential_distribution.DifferentialDistributionConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiableSimulator
+
+::: diffbio.operators.singlecell.simulation.DifferentiableSimulator
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## SimulationConfig
+
+::: diffbio.operators.singlecell.simulation.SimulationConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiableArchetypalAnalysis
+
+::: diffbio.operators.singlecell.archetypes.DifferentiableArchetypalAnalysis
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## ArchetypalAnalysisConfig
+
+::: diffbio.operators.singlecell.archetypes.ArchetypalAnalysisConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## DifferentiableOTTrajectory
+
+::: diffbio.operators.singlecell.ot_trajectory.DifferentiableOTTrajectory
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## OTTrajectoryConfig
+
+::: diffbio.operators.singlecell.ot_trajectory.OTTrajectoryConfig
+    options:
+      show_root_heading: true
+      members: []
+
 ## Usage Examples
 
 ### Soft K-Means Clustering

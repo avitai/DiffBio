@@ -11,6 +11,7 @@ Multi-omics operators enable end-to-end optimization of:
 - **SpatialDeconvolution**: Cell type deconvolution for spatial transcriptomics
 - **HiCContactAnalysis**: Chromatin contact analysis for Hi-C data
 - **DifferentiableSpatialGeneDetector**: SpatialDE-style spatial gene detection
+- **DifferentiableMultiOmicsVAE**: Product-of-Experts multi-omics integration
 
 ## SpatialDeconvolution
 
@@ -303,6 +304,60 @@ plt.scatter(
 )
 ```
 
+## DifferentiableMultiOmicsVAE
+
+Multi-omics VAE with Product-of-Experts (PoE) latent fusion, inspired by MULTIVI. Jointly integrates data from multiple modalities (RNA-seq, ATAC-seq, protein, etc.) into a shared latent space via per-modality encoders whose posteriors are fused through PoE.
+
+### Quick Start
+
+```python
+from diffbio.operators.multiomics import DifferentiableMultiOmicsVAE, MultiOmicsVAEConfig
+
+config = MultiOmicsVAEConfig(
+    modality_dims=[2000, 500],  # RNA-seq (2000 genes), ATAC-seq (500 peaks)
+    latent_dim=10,
+    hidden_dim=64,
+    modality_weight_mode="equal",  # or "learnable"
+)
+
+rngs = nnx.Rngs(42)
+vae = DifferentiableMultiOmicsVAE(config, rngs=rngs)
+
+data = {
+    "rna_counts": rna_expression,    # (n_cells, 2000)
+    "atac_counts": atac_counts,      # (n_cells, 500)
+}
+result, state, metadata = vae.apply(data, {}, None)
+
+latent = result["joint_latent"]           # (n_cells, latent_dim)
+rna_recon = result["rna_reconstructed"]   # (n_cells, 2000)
+atac_recon = result["atac_reconstructed"]  # (n_cells, 500)
+elbo = result["elbo_loss"]               # scalar
+```
+
+### Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `modality_dims` | list[int] | [2000, 500] | Feature dimension per modality |
+| `latent_dim` | int | 10 | Shared latent space dimension |
+| `hidden_dim` | int | 64 | Encoder/decoder hidden layer width |
+| `modality_weight_mode` | str | "equal" | "equal" or "learnable" reconstruction weights |
+| `use_gradnorm` | bool | False | Use GradNormBalancer for multi-task loss |
+
+### Product-of-Experts Fusion
+
+For $M$ modalities, the PoE joint posterior is Gaussian with:
+
+$$\text{precision}_{joint} = \sum_m \text{precision}_m$$
+$$\mu_{joint} = \frac{\sum_m \mu_m \cdot \text{precision}_m}{\text{precision}_{joint}}$$
+
+where $\text{precision}_m = \exp(-\text{logvar}_m)$.
+
+### Data Key Convention
+
+With two modalities the canonical keys `rna` and `atac` are used automatically. For other modality counts, keys follow the pattern `modality_<i>_counts` / `modality_<i>_reconstructed`.
+
 ## Multi-omics Integration
 
 Combine multiple data modalities:
@@ -345,6 +400,8 @@ combined_features = jnp.concatenate([
 | TAD analysis | HiCContactAnalysis | Domain boundaries |
 | Spatial gene detection | DifferentiableSpatialGeneDetector | Find spatially variable genes |
 | Spatial patterns | DifferentiableSpatialGeneDetector | Identify spatial expression patterns |
+| Multi-omics integration | DifferentiableMultiOmicsVAE | Integrate RNA + ATAC/protein |
+| Shared latent space | DifferentiableMultiOmicsVAE | Joint embedding across modalities |
 
 ## Next Steps
 

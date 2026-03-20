@@ -9,13 +9,15 @@ import jax
 import jax.numpy as jnp
 import pytest
 
+from diffbio.operators.normalization import PHATEConfig
+
 
 class TestPHATEConfig:
     """Tests for PHATEConfig."""
 
     def test_default_config(self) -> None:
         """Test default configuration values."""
-        from diffbio.operators.normalization.phate import PHATEConfig
+        from diffbio.operators.normalization import PHATEConfig
 
         config = PHATEConfig(stream_name=None)
 
@@ -30,7 +32,7 @@ class TestPHATEConfig:
 
     def test_custom_config(self) -> None:
         """Test custom configuration values."""
-        from diffbio.operators.normalization.phate import PHATEConfig
+        from diffbio.operators.normalization import PHATEConfig
 
         config = PHATEConfig(
             n_components=3,
@@ -58,7 +60,7 @@ class TestDifferentiablePHATE:
     @pytest.fixture
     def config(self) -> "PHATEConfig":
         """Provide default config."""
-        from diffbio.operators.normalization.phate import PHATEConfig
+        from diffbio.operators.normalization import PHATEConfig
 
         return PHATEConfig(
             n_components=2,
@@ -74,7 +76,7 @@ class TestDifferentiablePHATE:
     @pytest.fixture
     def phate(self, config, rngs):
         """Create PHATE instance."""
-        from diffbio.operators.normalization.phate import DifferentiablePHATE
+        from diffbio.operators.normalization import DifferentiablePHATE
 
         return DifferentiablePHATE(config, rngs=rngs)
 
@@ -134,7 +136,7 @@ class TestDiffusionOperator:
     @pytest.fixture
     def config(self) -> "PHATEConfig":
         """Provide config for diffusion tests."""
-        from diffbio.operators.normalization.phate import PHATEConfig
+        from diffbio.operators.normalization import PHATEConfig
 
         return PHATEConfig(
             n_components=2,
@@ -149,7 +151,7 @@ class TestDiffusionOperator:
     @pytest.fixture
     def phate(self, config, rngs):
         """Create PHATE instance."""
-        from diffbio.operators.normalization.phate import DifferentiablePHATE
+        from diffbio.operators.normalization import DifferentiablePHATE
 
         return DifferentiablePHATE(config, rngs=rngs)
 
@@ -165,7 +167,7 @@ class TestDiffusionOperator:
 
     def test_converges_with_higher_t(self, rngs) -> None:
         """Test that diffusion operator converges (rows become similar) at high t."""
-        from diffbio.operators.normalization.phate import DifferentiablePHATE, PHATEConfig
+        from diffbio.operators.normalization import DifferentiablePHATE, PHATEConfig
 
         features = jax.random.normal(jax.random.key(0), (30, 10))
 
@@ -209,7 +211,7 @@ class TestGradientFlow:
     @pytest.fixture
     def config(self) -> "PHATEConfig":
         """Provide config for gradient tests."""
-        from diffbio.operators.normalization.phate import PHATEConfig
+        from diffbio.operators.normalization import PHATEConfig
 
         return PHATEConfig(
             n_components=2,
@@ -222,7 +224,7 @@ class TestGradientFlow:
 
     def test_grads_through_embedding(self, config, rngs) -> None:
         """Test that gradients flow through the embedding output."""
-        from diffbio.operators.normalization.phate import DifferentiablePHATE
+        from diffbio.operators.normalization import DifferentiablePHATE
 
         phate = DifferentiablePHATE(config, rngs=rngs)
 
@@ -239,7 +241,7 @@ class TestGradientFlow:
 
     def test_grads_through_potential_distance(self, config, rngs) -> None:
         """Test that gradients flow through the potential distance output."""
-        from diffbio.operators.normalization.phate import DifferentiablePHATE
+        from diffbio.operators.normalization import DifferentiablePHATE
 
         phate = DifferentiablePHATE(config, rngs=rngs)
 
@@ -261,7 +263,7 @@ class TestJITCompatibility:
     @pytest.fixture
     def config(self) -> "PHATEConfig":
         """Provide config for JIT tests."""
-        from diffbio.operators.normalization.phate import PHATEConfig
+        from diffbio.operators.normalization import PHATEConfig
 
         return PHATEConfig(
             n_components=2,
@@ -274,7 +276,7 @@ class TestJITCompatibility:
 
     def test_jit_apply(self, config, rngs) -> None:
         """Test JIT compilation of the apply method."""
-        from diffbio.operators.normalization.phate import DifferentiablePHATE
+        from diffbio.operators.normalization import DifferentiablePHATE
 
         phate = DifferentiablePHATE(config, rngs=rngs)
 
@@ -292,7 +294,7 @@ class TestJITCompatibility:
 
     def test_jit_gradient(self, config, rngs) -> None:
         """Test JIT compilation of gradient computation."""
-        from diffbio.operators.normalization.phate import DifferentiablePHATE
+        from diffbio.operators.normalization import DifferentiablePHATE
 
         phate = DifferentiablePHATE(config, rngs=rngs)
 
@@ -317,7 +319,7 @@ class TestEdgeCases:
 
     def test_small_graph(self, rngs) -> None:
         """Test with a very small number of samples (5)."""
-        from diffbio.operators.normalization.phate import DifferentiablePHATE, PHATEConfig
+        from diffbio.operators.normalization import DifferentiablePHATE, PHATEConfig
 
         config = PHATEConfig(
             n_components=2,
@@ -338,7 +340,7 @@ class TestEdgeCases:
 
     def test_gamma_zero_sqrt_potential(self, rngs) -> None:
         """Test gamma=0 which uses sqrt potential instead of log potential."""
-        from diffbio.operators.normalization.phate import DifferentiablePHATE, PHATEConfig
+        from diffbio.operators.normalization import DifferentiablePHATE, PHATEConfig
 
         config = PHATEConfig(
             n_components=2,

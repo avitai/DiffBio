@@ -72,6 +72,40 @@ Differentiable operators for variant calling and analysis.
       show_root_heading: true
       members: []
 
+## CellTypeAwareVariantClassifier
+
+::: diffbio.operators.variant.classifier.CellTypeAwareVariantClassifier
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## CellTypeAwareVariantClassifierConfig
+
+::: diffbio.operators.variant.classifier.CellTypeAwareVariantClassifierConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## EnhancedCNVSegmentation
+
+::: diffbio.operators.variant.cnv_segmentation.EnhancedCNVSegmentation
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## EnhancedCNVSegmentationConfig
+
+::: diffbio.operators.variant.cnv_segmentation.EnhancedCNVSegmentationConfig
+    options:
+      show_root_heading: true
+      members: []
+
 ## Usage Examples
 
 ### CNN Variant Classification

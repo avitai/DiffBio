@@ -53,6 +53,23 @@ Differentiable normalization operators for count data, dimensionality reduction,
       show_root_heading: true
       members: []
 
+## DifferentiablePHATE
+
+::: diffbio.operators.normalization.phate.DifferentiablePHATE
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## PHATEConfig
+
+::: diffbio.operators.normalization.phate.PHATEConfig
+    options:
+      show_root_heading: true
+      members: []
+
 ## Usage Examples
 
 ### VAE Normalization

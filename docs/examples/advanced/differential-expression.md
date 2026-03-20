@@ -17,6 +17,13 @@ graph LR
     C --> D[Wald Test]
     D --> E[P-value Calculation]
     E --> F[Significant Genes]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style D fill:#fef3c7,stroke:#d97706,color:#78350f
+    style E fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style F fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 ### Key Concepts

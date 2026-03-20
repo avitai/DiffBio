@@ -10,6 +10,7 @@ Normalization operators enable end-to-end optimization of:
 
 - **VAENormalizer**: scVI-style VAE for count normalization
 - **DifferentiableUMAP**: Differentiable UMAP dimensionality reduction
+- **DifferentiablePHATE**: Differentiable PHATE dimensionality reduction
 - **SequenceEmbedding**: Learned sequence embeddings
 
 ## VAENormalizer
@@ -131,6 +132,61 @@ umap.projection_layer1  # Input → Hidden
 umap.projection_layer2  # Hidden → Output
 ```
 
+## DifferentiablePHATE
+
+Differentiable PHATE (Potential of Heat-diffusion for Affinity-based Trajectory Embedding) for dimensionality reduction with end-to-end gradient flow. Particularly well-suited for trajectory-structured data in single-cell analysis.
+
+### Quick Start
+
+```python
+from diffbio.operators.normalization import DifferentiablePHATE, PHATEConfig
+
+config = PHATEConfig(
+    n_components=2,
+    n_neighbors=5,
+    decay=40.0,
+    diffusion_t=10,
+    gamma=1.0,
+)
+
+rngs = nnx.Rngs(42)
+phate = DifferentiablePHATE(config, rngs=rngs)
+
+data = {"features": high_dim_data}  # (n_samples, n_features)
+result, state, metadata = phate.apply(data, {}, None)
+
+embedding = result["embedding"]                  # (n_samples, n_components)
+potential_distances = result["potential_distances"]  # (n_samples, n_samples)
+diffusion_op = result["diffusion_operator"]      # M^t matrix
+```
+
+### Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `n_components` | int | 2 | Output embedding dimensions |
+| `n_neighbors` | int | 5 | Neighbors for local bandwidth |
+| `decay` | float | 40.0 | Alpha-decaying kernel exponent (higher = sharper) |
+| `diffusion_t` | int | 10 | Diffusion time (matrix power) |
+| `gamma` | float | 1.0 | Informational distance constant (1=log, 0=sqrt) |
+| `input_features` | int | 64 | Input feature dimension |
+| `hidden_dim` | int | 32 | Projection network hidden dimension |
+
+### PHATE Algorithm
+
+1. **Pairwise distances** between samples
+2. **Alpha-decay affinity kernel**: $K(i,j) = \exp(-\alpha \cdot (d / \sigma_i)^2)$ with adaptive bandwidth
+3. **Symmetrize** and row-normalize to Markov matrix $M$
+4. **Diffusion** $M^t$ via eigendecomposition
+5. **Potential distances**: $-\log(M^t + \epsilon)$ for $\gamma=1$
+6. **Classical MDS** on the potential distance matrix for low-dimensional embedding
+
+### Use Cases
+
+- Visualizing developmental trajectories in single-cell data
+- Embedding data with branching structures
+- Alternative to UMAP when trajectory preservation is important
+
 ## SequenceEmbedding
 
 Learned embeddings for biological sequences.
@@ -220,6 +276,7 @@ def train_umap(umap, features):
 | scRNA-seq normalization | VAENormalizer | Remove technical variation |
 | Visualization | DifferentiableUMAP | 2D/3D cell embeddings |
 | Sequence similarity | SequenceEmbedding | Compare sequences |
+| Trajectory visualization | DifferentiablePHATE | PHATE embedding |
 | Feature extraction | All | Learned representations |
 
 ## Next Steps

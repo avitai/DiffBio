@@ -15,13 +15,13 @@ graph LR
     E --> F[Clustering]
     F --> G[Results]
 
-    style A fill:#0d9488,color:#fff
-    style B fill:#6366f1,color:#fff
-    style C fill:#0891b2,color:#fff
-    style D fill:#7c3aed,color:#fff
-    style E fill:#f59e0b,color:#fff
-    style F fill:#ec4899,color:#fff
-    style G fill:#059669,color:#fff
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style D fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style E fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style F fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style G fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 1. **Ambient RNA Removal** (optional): CellBender-style VAE decontamination
@@ -465,6 +465,24 @@ adata.obsm["X_latent"] = result["latent"]
 adata.obsm["X_umap_diffbio"] = result["embeddings_2d"]
 adata.obs["cluster_diffbio"] = jnp.argmax(result["cluster_assignments"], axis=-1)
 ```
+
+## Extended Operator Ecosystem
+
+The single-cell pipeline provides the core workflow, but DiffBio offers many additional operators that can be composed with the pipeline or used independently:
+
+- **Imputation**: `DifferentiableDiffusionImputer` (MAGIC-style) and `DifferentiableTransformerDenoiser` can preprocess counts before pipeline input
+- **Trajectory inference**: `DifferentiablePseudotime`, `DifferentiableFateProbability`, and `DifferentiableOTTrajectory` operate on pipeline latent outputs
+- **Cell annotation**: `DifferentiableCellAnnotator` (celltypist/cellassign/scanvi) provides cell type labels from pipeline embeddings
+- **Doublet detection**: `DifferentiableDoubletScorer` and `DifferentiableSoloDetector` can filter doublets before pipeline input
+- **Advanced batch correction**: `DifferentiableMMDBatchCorrection` and `DifferentiableWGANBatchCorrection` offer alternatives to Harmony
+- **Cell communication**: `DifferentiableLigandReceptor` and `DifferentiableCellCommunication` analyse signaling from pipeline outputs
+- **Regulatory networks**: `DifferentiableGRN` infers gene regulatory networks from expression data
+- **Spatial analysis**: `DifferentiableSpatialDomain` and `DifferentiablePASTEAlignment` extend the pipeline to spatial transcriptomics
+- **Differential expression**: `DifferentiableSwitchDE` and `DifferentiableDifferentialDistribution` identify DE genes along pseudotime or between conditions
+- **Simulation**: `DifferentiableSimulator` generates synthetic data for benchmarking
+- **Archetypal analysis**: `DifferentiableArchetypalAnalysis` identifies extreme cell states
+
+See [Single-Cell Operators](../operators/singlecell.md) for full documentation of all operators.
 
 ## References
 

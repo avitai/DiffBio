@@ -44,6 +44,12 @@ Examples should run end to end with the commands shown in the docs. Prefer small
 working pipelines over aspirational pseudo-workflows. Every code block should be
 copy-pasteable and produce the shown output.
 
+However, **readers should not need to run the code to learn from the example.**
+The docs page must embed all visual outputs (figures, plots) and key textual
+results directly. A reader browsing the documentation should see exactly what
+the example produces — training curves, scatter plots, metric tables — without
+touching a terminal.
+
 ### Prefer Present-Tense API Guidance
 
 Document the current supported DiffBio surface. Avoid transitional language and
@@ -58,9 +64,11 @@ clear stages:
 2. imports and configuration
 3. data creation or loading (synthetic or via `AnnDataSource`)
 4. operator construction and `apply()`
-5. inspection of outputs (shapes, values, plots)
-6. gradient flow verification (differentiability is DiffBio's value proposition)
-7. optional extensions or experiments
+5. inspection of outputs (shapes and key scalar values)
+6. **visualization of results** (at least one matplotlib figure, saved to `docs/assets/examples/`)
+7. gradient flow verification (differentiability is DiffBio's value proposition)
+8. JIT compilation verification
+9. experiments with parameter sweeps (**each sweep produces a figure**)
 
 ### Differentiability First
 
@@ -332,7 +340,9 @@ actually runnable.
 
 ### The Standard Operator Example
 
-Every operator example follows this skeleton:
+Every operator example follows this skeleton. Note the **required visualization
+cell** after the operator run, and the `plt.savefig()` call that writes the
+figure to the docs assets directory.
 
 ```python
 # %% [markdown]
@@ -345,6 +355,7 @@ Every operator example follows this skeleton:
 # %%
 import jax
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
 from flax import nnx
 
 from diffbio.operators.domain.module import OperatorClass, OperatorConfig
@@ -376,6 +387,21 @@ for key_name, value in result.items():
     if hasattr(value, 'shape'):
         print(f"  {key_name}: {value.shape}")
 
+# %%
+# Visualize the output
+fig, ax = plt.subplots(figsize=(7, 4))
+ax.imshow(result["output_key"][:20, :], aspect="auto", cmap="viridis")
+ax.set_xlabel("Feature")
+ax.set_ylabel("Sample")
+ax.set_title("Operator Output")
+plt.colorbar(ax.images[0], ax=ax, label="Value")
+plt.tight_layout()
+plt.savefig(
+    "docs/assets/examples/domain/operator_name_output.png",
+    dpi=150, bbox_inches="tight",
+)
+plt.show()
+
 # %% [markdown]
 # ## Verify Differentiability
 
@@ -385,7 +411,9 @@ def loss_fn(input_data):
     return result["output_key"].sum()
 
 grad = jax.grad(loss_fn)(data)
-print(f"Gradient flows: {jnp.any(grad['counts'] != 0)}")
+print(f"Gradient shape: {grad['counts'].shape}")
+print(f"Gradient is non-zero: {bool(jnp.any(grad['counts'] != 0))}")
+print(f"Gradient is finite: {bool(jnp.all(jnp.isfinite(grad['counts'])))}")
 
 # %% [markdown]
 # ## JIT Compilation
@@ -393,7 +421,32 @@ print(f"Gradient flows: {jnp.any(grad['counts'] != 0)}")
 # %%
 jit_apply = jax.jit(lambda d: operator.apply(d, {}, None, None))
 result_jit, _, _ = jit_apply(data)
-print(f"JIT output matches: {jnp.allclose(result['output_key'], result_jit['output_key'])}")
+print(f"JIT output matches: {bool(jnp.allclose(result['output_key'], result_jit['output_key']))}")
+
+# %% [markdown]
+# ## Experiments
+
+# %%
+# Sweep a key parameter and visualize the effect
+param_values = [0.1, 0.5, 1.0, 5.0]
+metric_values = []
+for val in param_values:
+    cfg = OperatorConfig(param1=val)
+    op = OperatorClass(cfg, rngs=nnx.Rngs(42))
+    res, _, _ = op.apply(data, {}, None, None)
+    metric_values.append(float(res["output_key"].mean()))
+
+fig, ax = plt.subplots(figsize=(6, 4))
+ax.plot(param_values, metric_values, "o-", linewidth=2, markersize=7)
+ax.set_xlabel("param1")
+ax.set_ylabel("Mean Output")
+ax.set_title("Effect of param1 on Output")
+plt.tight_layout()
+plt.savefig(
+    "docs/assets/examples/domain/operator_name_sweep.png",
+    dpi=150, bbox_inches="tight",
+)
+plt.show()
 ```
 
 ### The Pipeline Composition Example
@@ -432,6 +485,14 @@ from opifex.core.physics.gradnorm import GradNormBalancer
 
 ## Writing the Companion Docs Page
 
+The docs page exists so readers can understand an example **without running
+the code**. A reader browsing the documentation should see the key figures,
+expected outputs, and explanations directly on the page. This means:
+
+- every figure produced by the example must be embedded in the docs page
+- every key textual output must appear in a fenced output block
+- code excerpts show the essential 5-10 lines, not the entire file
+
 Every `docs/examples/...` page should include:
 
 - what the example demonstrates
@@ -440,31 +501,166 @@ Every `docs/examples/...` page should include:
 - prerequisites (which DiffBio modules are needed)
 - exact execution command
 - a short map of the major sections
-- a few key code excerpts
-- expected outputs or result shapes
+- a few key code excerpts with commentary
+- **embedded figures** from `docs/assets/examples/...` with alt text
+- **expected textual output** in fenced code blocks
 - related examples
 
 Good top-of-page structure:
 
-1. title
-2. difficulty or duration
-3. runtime and device note
-4. overview
-5. quick start
-6. key concepts
-7. important code excerpts
-8. next steps
+```markdown
+# Example Title
+
+**Duration:** 10 min | **Level:** Intermediate | **Device:** CPU-compatible
+
+## Overview
+
+[1-3 sentences: what this example does and why it matters.]
+
+## Quick Start
+
+    source ./activate.sh
+    uv run python examples/singlecell/clustering.py
+
+## Key Code
+
+[5-10 line excerpt of the apply() call with a sentence of context.]
+
+## Results
+
+[Embedded figure + interpretation sentence + textual output block.]
+
+![Training loss curve](../../assets/examples/singlecell/clustering_loss.png)
+
+The loss decreases from 32,236 to 4,208 over 100 steps, confirming
+the soft k-means objective is being minimized.
+
+    Cluster assignments: (150, 3)
+    Training loss: 32236.27 -> 4208.34
+    Accuracy: 100.00%
+
+## Next Steps
+
+- [Related example link]
+- [API reference link]
+```
 
 ## Output Capture Requirements
 
-Examples should make it easy for readers to recognize success.
+Examples must produce visual and textual outputs that let readers recognize
+success at a glance. Outputs are captured from actual execution — never
+hand-written or fabricated.
 
-Preferred techniques:
+### Visual Outputs (Required)
 
-- show expected tensor shapes
-- show a few key scalar outputs (loss values, metric scores)
-- describe saved artifacts or plots
-- include short expected-output snippets in docs when stable
+Every example must produce at least one matplotlib figure. Figures are the
+primary evidence that the example works. Common patterns:
+
+| Example type | Minimum figures |
+|---|---|
+| Basic (single operator) | 1 figure: output visualization (heatmap, scatter, bar chart) |
+| Intermediate (multi-operator) | 2-3 figures: per-step outputs + parameter sweep |
+| Advanced (pipeline/ecosystem) | 3-4 figures: pipeline stages + metrics + experiments |
+
+In the `.py` source, use `plt.show()` so figures render in notebooks. Also
+use `plt.savefig()` to write each figure to a deterministic path:
+
+```python
+import matplotlib.pyplot as plt
+
+# After computing results...
+fig, ax = plt.subplots(figsize=(7, 4))
+ax.plot(losses)
+ax.set_xlabel("Step")
+ax.set_ylabel("Loss")
+ax.set_title("Training Loss")
+plt.tight_layout()
+plt.savefig("docs/assets/examples/singlecell/clustering_loss.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+### Asset Organization
+
+Place captured figures under `docs/assets/examples/`, mirroring the example
+directory structure:
+
+```
+docs/assets/examples/
+  basic/
+    operator_pattern_assignments.png
+  singlecell/
+    clustering_loss.png
+    clustering_scatter.png
+    imputation_heatmaps.png
+    imputation_correlation.png
+    ...
+  pipelines/
+    pipeline_overview.png
+  ecosystem/
+    scvi_elbo.png
+    scvi_latent.png
+```
+
+### Textual Outputs (Required)
+
+Every example must print key results in a structured format:
+
+- **Tensor shapes** for all outputs: `print(f"Output shape: {result['key'].shape}")`
+- **Key scalar values**: loss, accuracy, correlation, metric scores
+- **Verification results**: gradient non-zero, JIT matches eager
+
+Format textual output as compact, labeled lines — not raw dumps:
+
+```python
+# Good: structured, scannable
+print(f"Cluster assignments: {assignments.shape}")
+print(f"Training loss: {losses[0]:.2f} -> {losses[-1]:.2f}")
+print(f"Accuracy: {accuracy:.1%}")
+
+# Bad: unstructured wall of text
+print(result)
+print(grads)
+```
+
+### Linking from Doc Pages
+
+In the companion `docs/examples/.../*.md` page, embed figures with alt text
+and include textual output in fenced code blocks:
+
+```markdown
+## Results
+
+The training loss decreases steadily over 100 steps:
+
+![Training loss curve](../../assets/examples/singlecell/clustering_loss.png)
+
+After training, clusters separate cleanly in 2D projection:
+
+![Cluster scatter plot](../../assets/examples/singlecell/clustering_scatter.png)
+
+Expected output:
+
+    Cluster assignments: (150, 3)
+    Training loss: 32236.27 -> 4208.34
+    Accuracy: 100.00%
+```
+
+### Generating Assets
+
+The recommended workflow for capturing outputs:
+
+```bash
+source ./activate.sh
+
+# 1. Run the example (produces .png files via savefig)
+uv run python examples/singlecell/clustering.py
+
+# 2. Sync the notebook pair
+uv run python scripts/jupytext_converter.py sync examples/singlecell/clustering.py
+
+# 3. Verify assets exist
+ls docs/assets/examples/singlecell/clustering_*.png
+```
 
 Avoid long unstructured logs in docs pages.
 
@@ -474,17 +670,21 @@ Write example docs for comprehension, not marketing.
 
 Use:
 
-- concrete section titles
-- short explanatory paragraphs
-- code excerpts with commentary
+- concrete section titles (e.g., "Training Loss" not "Results")
+- short explanatory paragraphs between figures (1-3 sentences)
+- code excerpts with commentary — show the key 5-10 lines, not the whole file
+- embedded figures with descriptive alt text
+- fenced textual output blocks for key scalar results
 - direct statements about tradeoffs and limitations
 
 Avoid:
 
-- vague hype
+- vague hype ("powerful", "state-of-the-art")
 - unexplained jargon
 - giant code dumps with no framing
 - duplicated prose between the docs page and the example source
+- figures without interpretation — every figure needs a sentence explaining
+  what the reader should observe
 
 ## Example Difficulty Tiers
 
@@ -531,10 +731,27 @@ Also update contributor-facing surfaces if the workflow contract changed:
 
 Before merging an example:
 
+**Execution**
 - [ ] the example runs with `source ./activate.sh`
 - [ ] the example runs with `uv run python examples/path/to/example.py`
 - [ ] device requirements are stated accurately
 - [ ] the `.ipynb` pair was synced via `scripts/jupytext_converter.py sync`
+
+**Visual Outputs**
+- [ ] at least one matplotlib figure is produced
+- [ ] figures are saved via `plt.savefig()` to `docs/assets/examples/...`
+- [ ] saved figures exist on disk after running the example
+- [ ] the docs page embeds all figures with `![alt](path)` and alt text
+- [ ] every embedded figure has a short interpretation sentence
+
+**Textual Outputs**
+- [ ] output shapes are printed for all result tensors
+- [ ] key scalar values are printed (loss, accuracy, metrics)
+- [ ] gradient verification prints non-zero and finite checks
+- [ ] JIT verification prints match result
+- [ ] the docs page includes expected textual output in fenced blocks
+
+**Content**
 - [ ] the docs page matches the current source
 - [ ] imports use the supported DiffBio public API surface
 - [ ] commands use `uv`
@@ -544,26 +761,31 @@ Before merging an example:
 - [ ] JIT compilation is demonstrated
 - [ ] ecosystem building blocks are used where appropriate (calibrax, artifex, opifex)
 - [ ] synthetic data is generated (no external file dependencies)
-- [ ] output shapes and key values are printed for verification
 
 ## Recommended Author Workflow
 
 ```bash
 source ./activate.sh
 
-# create or edit the Python source
+# 1. create or edit the Python source
 $EDITOR examples/path/to/example.py
 
-# run the example to verify it works
+# 2. create the asset directory (if new example)
+mkdir -p docs/assets/examples/domain/
+
+# 3. run the example (produces figures via plt.savefig + verifies execution)
 uv run python examples/path/to/example.py
 
-# regenerate the notebook pair from the Python source
+# 4. verify figures were generated
+ls docs/assets/examples/domain/*.png
+
+# 5. regenerate the notebook pair from the Python source
 uv run python scripts/jupytext_converter.py sync examples/path/to/example.py
 
-# update the docs page
+# 6. write/update the docs page (embed figures and textual outputs)
 $EDITOR docs/examples/path/to/example-name.md
 
-# verify docs build
+# 7. verify docs build (confirms figure paths resolve)
 uv run mkdocs build
 ```
 

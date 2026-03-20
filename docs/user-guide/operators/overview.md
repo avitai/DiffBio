@@ -4,18 +4,18 @@ DiffBio provides a collection of differentiable operators for bioinformatics ana
 
 ## Available Operators
 
-<div class="performance-metrics">
-<div class="metric-card">
-  <div class="metric-value">Alignment</div>
-  <div class="metric-label">Smith-Waterman</div>
+<div class="stat-grid">
+<div class="stat-card">
+  <div class="stat-value">Alignment</div>
+  <div class="stat-label">Smith-Waterman</div>
 </div>
-<div class="metric-card">
-  <div class="metric-value">Pileup</div>
-  <div class="metric-label">Read Aggregation</div>
+<div class="stat-card">
+  <div class="stat-value">Pileup</div>
+  <div class="stat-label">Read Aggregation</div>
 </div>
-<div class="metric-card">
-  <div class="metric-value">Filter</div>
-  <div class="metric-label">Quality Control</div>
+<div class="stat-card">
+  <div class="stat-value">Filter</div>
+  <div class="stat-label">Quality Control</div>
 </div>
 </div>
 

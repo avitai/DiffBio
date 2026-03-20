@@ -20,6 +20,7 @@ DataSourceModule (Datarax)
 ├── BAMSource             # BAM/CRAM file reading
 ├── FastaSource           # FASTA file reading
 ├── MolNetSource          # MoleculeNet benchmark datasets
+├── AnnDataSource         # AnnData (.h5ad) single-cell data
 └── IndexedViewSource     # Lazy view over subset of another source
 ```
 
@@ -225,6 +226,111 @@ uv pip install -e ".[genomics]"
 
 # Or install individually
 pip install pysam pyfaidx
+```
+
+## AnnData Source (Single-Cell)
+
+### Overview
+
+AnnDataSource loads single-cell RNA-seq data from `.h5ad` files (AnnData format) and converts them to JAX-compatible data dicts suitable for DiffBio operators. Follows the datarax eager-loading pattern: all data is loaded to JAX arrays at init, then iteration/batching uses pure JAX operations.
+
+### Quick Start
+
+```python
+from diffbio.sources import AnnDataSource, AnnDataSourceConfig
+
+config = AnnDataSourceConfig(file_path="pbmc3k.h5ad")
+source = AnnDataSource(config)
+
+print(f"Cells: {len(source)}")               # 2700
+print(f"Shape: {source.load()['counts'].shape}")  # (2700, 32738)
+
+# Iterate over cells
+for cell in source:
+    print(cell["counts"].shape)  # (32738,)
+    break
+
+# Get a batch
+batch = source.get_batch(32)
+print(batch["counts"].shape)  # (32, 32738)
+```
+
+### Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `file_path` | str | required | Path to the .h5ad file |
+| `backed` | bool | False | Open in memory-mapped mode |
+| `shuffle` | bool | False | Shuffle during iteration |
+| `seed` | int | 42 | Seed for index shuffling |
+| `split` | str | None | Optional split name |
+
+### Output Format
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `counts` | JAX array (n_cells, n_genes) | Dense expression matrix from `.X` |
+| `obs` | dict of arrays | Cell metadata columns from `.obs` |
+| `var` | dict of arrays | Gene metadata columns from `.var` |
+| `obsm` | dict of JAX arrays | Embeddings from `.obsm` (PCA, UMAP, etc.) |
+
+### AnnData Interop Functions
+
+DiffBio provides bidirectional conversion between its standard data dict format and AnnData objects for interoperability with scanpy, scvi-tools, and other AnnData-based tools.
+
+#### to_anndata: DiffBio dict to AnnData
+
+```python
+from diffbio.sources.anndata_interop import to_anndata
+
+# Convert DiffBio data dict to AnnData
+data_dict = source.load()
+adata = to_anndata(data_dict)
+
+# Use with scanpy
+import scanpy as sc
+sc.pp.normalize_total(adata)
+sc.pp.log1p(adata)
+```
+
+#### from_anndata: AnnData to DiffBio dict
+
+```python
+from diffbio.sources.anndata_interop import from_anndata
+
+# Convert AnnData to DiffBio data dict
+import scanpy as sc
+adata = sc.read_h5ad("data.h5ad")
+data_dict = from_anndata(adata)
+
+# Use with DiffBio operators
+result, _, _ = operator.apply({"counts": data_dict["counts"]}, {}, None)
+```
+
+### Integration with Single-Cell Operators
+
+```python
+from diffbio.sources import AnnDataSource, AnnDataSourceConfig
+from diffbio.operators.singlecell import SoftKMeansClustering, SoftClusteringConfig
+
+# Load data
+source = AnnDataSource(AnnDataSourceConfig(file_path="pbmc3k.h5ad"))
+data = source.load()
+
+# Cluster
+clustering = SoftKMeansClustering(
+    SoftClusteringConfig(n_clusters=10, n_features=data["counts"].shape[1]),
+    rngs=nnx.Rngs(42),
+)
+result, _, _ = clustering.apply({"embeddings": data["counts"]}, {}, None)
+```
+
+### Installation
+
+AnnDataSource requires optional dependencies:
+
+```bash
+uv pip install anndata pandas
 ```
 
 ## MolNet Benchmark Datasets
@@ -580,6 +686,7 @@ for batch in sampler:
 | BAM/CRAM aligned reads | BAMSource |
 | FASTA reference sequences | FastaSource |
 | MolNet benchmarks | MolNetSource |
+| Single-cell .h5ad files | AnnDataSource |
 | Split views | IndexedViewSource (via splitter) |
 | Custom datasets | Extend DataSourceModule |
 

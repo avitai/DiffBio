@@ -136,6 +136,90 @@ def loss_fn(operator, data):
 grads = jax.grad(loss_fn)(operator, data)
 ```
 
+## Graph Utilities
+
+### compute_pairwise_distances
+
+::: diffbio.core.graph_utils.compute_pairwise_distances
+    options:
+      show_root_heading: true
+      show_source: false
+
+### compute_knn_graph
+
+::: diffbio.core.graph_utils.compute_knn_graph
+    options:
+      show_root_heading: true
+      show_source: false
+
+### compute_fuzzy_membership
+
+::: diffbio.core.graph_utils.compute_fuzzy_membership
+    options:
+      show_root_heading: true
+      show_source: false
+
+### symmetrize_graph
+
+::: diffbio.core.graph_utils.symmetrize_graph
+    options:
+      show_root_heading: true
+      show_source: false
+
+## GNN Components
+
+### GraphAttentionLayer
+
+::: diffbio.core.gnn_components.GraphAttentionLayer
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - __call__
+
+### GraphAttentionBlock
+
+::: diffbio.core.gnn_components.GraphAttentionBlock
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - __call__
+
+### GATv2Layer
+
+::: diffbio.core.gnn_components.GATv2Layer
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - __call__
+
+### GATv2Block
+
+::: diffbio.core.gnn_components.GATv2Block
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - __call__
+
+## Optimal Transport
+
+### SinkhornLayer
+
+::: diffbio.core.optimal_transport.SinkhornLayer
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - __call__
+
 ## Type Annotations
 
 DiffBio uses jaxtyping for array type annotations:

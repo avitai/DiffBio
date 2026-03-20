@@ -80,8 +80,9 @@ seq1 = jnp.eye(4)[jnp.array([0, 1, 2, 3])]  # ACGT
 seq2 = jnp.eye(4)[jnp.array([0, 1, 0, 3])]  # ACAT
 
 # Align
-result = aligner.align(seq1, seq2)
-print(f"Score: {result.score}")
+data = {"seq1": seq1, "seq2": seq2}
+result, _, _ = aligner.apply(data, {}, None)
+print(f"Score: {result['score']}")
 ```
 
 ### Datarax Interface
@@ -98,7 +99,9 @@ print(result_data["score"])
 import jax
 
 def alignment_loss(aligner, seq1, seq2):
-    return -aligner.align(seq1, seq2).score
+    data = {"seq1": seq1, "seq2": seq2}
+    result, _, _ = aligner.apply(data, {}, None)
+    return -result["score"]
 
 grads = jax.grad(alignment_loss)(aligner, seq1, seq2)
 ```

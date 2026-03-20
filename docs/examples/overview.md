@@ -1,161 +1,110 @@
 # Examples Overview
 
-This section provides practical examples demonstrating DiffBio's capabilities with **real executable code and actual outputs**.
+Practical examples demonstrating DiffBio's differentiable bioinformatics operators, from single-operator basics to full pipeline composition with ecosystem integration.
 
-## Example Categories
+## Example Tiers
 
-<div class="performance-metrics">
-<div class="metric-card">
-  <a href="basic/molnet-data-loading/">
-    <div class="metric-value">12</div>
-    <div class="metric-label">Basic Examples</div>
+<div class="nav-grid">
+<div class="nav-card">
+  <a href="basic/operator-pattern/">
+    <div class="nav-title">13 Basic</div>
+    <div class="nav-description">Single-operator patterns (5-10 min)</div>
   </a>
 </div>
-<div class="metric-card">
-  <a href="advanced/drug-discovery-workflow/">
-    <div class="metric-value">9</div>
-    <div class="metric-label">Advanced Pipelines</div>
+<div class="nav-card">
+  <a href="intermediate/imputation/">
+    <div class="nav-title">5 Intermediate</div>
+    <div class="nav-description">Multi-operator workflows (10-20 min)</div>
+  </a>
+</div>
+<div class="nav-card">
+  <a href="advanced/spatial-analysis/">
+    <div class="nav-title">14 Advanced</div>
+    <div class="nav-description">Pipelines & ecosystem integration (20-40 min)</div>
   </a>
 </div>
 </div>
 
-## Basic Examples
+---
 
-### Drug Discovery
+## Basic
 
-| Example | Description | Key Concepts |
-|---------|-------------|--------------|
-| [MolNet Data Loading](basic/molnet-data-loading.md) | Load MoleculeNet benchmark datasets | Data sources, SMILES, labels |
-| [Molecular Fingerprints](basic/molecular-fingerprints.md) | Generate ECFP and neural fingerprints | CircularFingerprint, message passing |
-| [Molecular Similarity](basic/molecular-similarity.md) | Compare molecules with similarity metrics | Tanimoto, cosine, Dice similarity |
-| [Scaffold Splitting](basic/scaffold-splitting.md) | Proper train/test splits for drug discovery | ScaffoldSplitter, evaluation |
+Single-operator examples. One config, one `apply()`, one gradient check. Target audience: first-time DiffBio users.
 
-### Genomics
+| Example | Duration | Key Operators | Description |
+|---------|----------|---------------|-------------|
+| [Operator Pattern](basic/operator-pattern.md) | 5 min | SoftKMeansClustering | The universal Config -> Construct -> Apply pattern |
+| [MolNet Data Loading](basic/molnet-data-loading.md) | 5 min | MolNetSource | Load MoleculeNet benchmark datasets |
+| [Molecular Fingerprints](basic/molecular-fingerprints.md) | 10 min | CircularFingerprint | Generate ECFP and neural fingerprints |
+| [Molecular Similarity](basic/molecular-similarity.md) | 5 min | TanimotoSimilarity | Compare molecules with similarity metrics |
+| [Scaffold Splitting](basic/scaffold-splitting.md) | 5 min | ScaffoldSplitter | Proper train/test splits for drug discovery |
+| [DNA Encoding](basic/dna-encoding.md) | 5 min | one-hot encoding | One-hot encode DNA sequences |
+| [Sequence Alignment](basic/simple-alignment.md) | 10 min | SmoothSmithWaterman | Smith-Waterman local alignment |
+| [Pileup Generation](basic/pileup-generation.md) | 10 min | DifferentiablePileup | Generate pileups from aligned reads |
+| [Single-Cell Clustering](basic/single-cell-clustering.md) | 10 min | SoftKMeansClustering | Soft k-means with training loop |
+| [RNA Structure](basic/rna-structure.md) | 10 min | McCaskill algorithm | Predict RNA secondary structure |
+| [Protein Structure](basic/protein-structure.md) | 10 min | DSSP prediction | Predict protein secondary structure |
+| [HMM Sequence Model](basic/hmm-sequence-model.md) | 10 min | DifferentiableHMM | Hidden Markov Models for sequences |
+| [Preprocessing](basic/preprocessing.md) | 10 min | QualityFilter, AdapterRemoval | Read preprocessing pipeline |
 
-| Example | Description | Key Concepts |
-|---------|-------------|--------------|
-| [DNA Encoding](basic/dna-encoding.md) | One-hot encode DNA sequences | Encoding, GC content, reverse complement |
-| [Sequence Alignment](basic/simple-alignment.md) | Smith-Waterman local alignment | Operators, scoring matrices |
-| [Pileup Generation](basic/pileup-generation.md) | Generate pileups from reads | Pileup operator, quality weighting |
-| [Preprocessing](basic/preprocessing.md) | Read preprocessing pipeline | Quality filtering, adapters |
+## Intermediate
 
-### Structure & Statistical
+Multi-operator workflows with two or three operators chained, parameter sweeps, or evaluation against ground truth. Target audience: users building custom pipelines.
 
-| Example | Description | Key Concepts |
-|---------|-------------|--------------|
-| [RNA Structure](basic/rna-structure.md) | Predict RNA secondary structure | McCaskill algorithm, base pairs |
-| [Protein Structure](basic/protein-structure.md) | Predict protein secondary structure | DSSP, H-bonds, helix/strand |
-| [HMM Sequence Model](basic/hmm-sequence-model.md) | Hidden Markov Models for sequences | Forward algorithm, posteriors |
-| [Single-Cell Clustering](basic/single-cell-clustering.md) | Soft k-means cell clustering | Single-cell, differentiability |
+| Example | Duration | Key Operators | Description |
+|---------|----------|---------------|-------------|
+| [Imputation](intermediate/imputation.md) | 15 min | DifferentiableDiffusionImputer | MAGIC-style diffusion imputation for dropout recovery |
+| [Trajectory](intermediate/trajectory.md) | 20 min | DifferentiablePseudotime, FateProbability, SwitchDE | Pseudotime ordering and fate probability estimation |
+| [Cell Annotation](intermediate/cell-annotation.md) | 15 min | DifferentiableCellAnnotator (3 modes) | Cell type annotation: celltypist, cellassign, scanvi |
+| [Doublet Detection](intermediate/doublet-detection.md) | 15 min | DoubletScorer, SoloDetector | Scrublet-style and Solo-style doublet detection |
+| [Batch Correction](intermediate/batch-correction.md) | 20 min | Harmony, MMD, WGAN | Three batch correction strategies compared |
 
-## Advanced Examples
+## Advanced
 
-| Example | Description | Key Concepts |
-|---------|-------------|--------------|
-| [Drug Discovery Workflow](advanced/drug-discovery-workflow.md) | End-to-end drug discovery pipeline | MolNet, fingerprints, training |
-| [ADMET Prediction](advanced/admet-prediction.md) | Multi-task ADMET property prediction | ADMETPredictor, 22 endpoints, D-MPNN |
-| [AttentiveFP GNN](advanced/attentive-fp.md) | Attention-based molecular fingerprints | Graph attention, interpretability |
-| [Variant Calling Pipeline](advanced/variant-calling.md) | End-to-end variant calling | Full pipeline, CNN classifier |
-| [Single-Cell Batch Correction](advanced/singlecell-batch-correction.md) | Harmony-style batch correction | Integration, batch effects |
-| [RNA Velocity](advanced/rna-velocity.md) | RNA velocity trajectory inference | Neural ODE, splicing kinetics |
-| [Differential Expression](advanced/differential-expression.md) | DESeq2-style DE analysis | Statistical testing, NB-GLM |
-| [Epigenomics Analysis](advanced/epigenomics-analysis.md) | Peak calling & chromatin states | ChIP-seq, ATAC-seq |
-| [Multi-omics Integration](advanced/multiomics-integration.md) | Spatial deconvolution & Hi-C | Data integration |
+Full pipeline composition with ecosystem integration (calibrax metrics, artifex losses, opifex training). Training loops, benchmarking, and multi-operator chains. Target audience: researchers adapting DiffBio for their data.
+
+| Example | Duration | Key Operators | Description |
+|---------|----------|---------------|-------------|
+| [Spatial Analysis](advanced/spatial-analysis.md) | 25 min | SpatialDomain, PASTEAlignment | STAGATE domain identification and PASTE slice alignment |
+| [GRN Inference](advanced/grn-inference.md) | 25 min | DifferentiableGRN | Gene regulatory network inference via GATv2 attention |
+| [Single-Cell Pipeline](advanced/singlecell-pipeline.md) | 30 min | Simulator, AmbientRemoval, Imputer, Clustering, Pseudotime | Five-operator end-to-end pipeline |
+| [Calibrax Metrics](advanced/calibrax-metrics.md) | 25 min | SoftKMeansClustering, DifferentiableAUROC | Training vs evaluation metric split with calibrax |
+| [scVI Benchmark](advanced/scvi-benchmark.md) | 30 min | VAENormalizer, MultiOmicsVAE | scVI-style VAE training with calibrax evaluation |
+| [Drug Discovery Workflow](advanced/drug-discovery-workflow.md) | 30 min | CircularFingerprint, PropertyPredictor | End-to-end drug discovery pipeline |
+| [ADMET Prediction](advanced/admet-prediction.md) | 25 min | ADMETPredictor | Multi-task ADMET property prediction |
+| [AttentiveFP GNN](advanced/attentive-fp.md) | 25 min | AttentiveFPOperator | Attention-based molecular fingerprints |
+| [Variant Calling Pipeline](advanced/variant-calling.md) | 30 min | Full variant calling pipeline | End-to-end variant calling with CNN classifier |
+| [Single-Cell Batch Correction](advanced/singlecell-batch-correction.md) | 20 min | DifferentiableHarmony | Harmony-style batch correction |
+| [Differential Expression](advanced/differential-expression.md) | 25 min | NB-GLM | DESeq2-style statistical testing |
+| [RNA Velocity](advanced/rna-velocity.md) | 25 min | Neural ODE velocity | RNA velocity trajectory inference |
+| [Epigenomics Analysis](advanced/epigenomics-analysis.md) | 25 min | Peak calling, chromatin states | ChIP-seq and ATAC-seq analysis |
+| [Multi-omics Integration](advanced/multiomics-integration.md) | 30 min | Spatial deconvolution, Hi-C | Multi-omics data integration |
 
 ## Running Examples
 
-All examples use real DiffBio code with actual outputs:
+All examples are self-contained Python scripts that generate synthetic data and produce verifiable outputs.
 
 ```bash
-# Clone the repository
-git clone https://github.com/mahdi-shafiei/DiffBio.git
-cd DiffBio
-
-# Setup environment
+# Setup
 ./setup.sh
 source ./activate.sh
 
-# Generate example outputs
-python scripts/generate_example_outputs.py
-```
-
-## Quick Start Examples
-
-### Drug Discovery: Molecular Fingerprints
-
-```python
-from diffbio.operators.drug_discovery import (
-    CircularFingerprintOperator,
-    CircularFingerprintConfig,
-    smiles_to_graph,
-    DEFAULT_ATOM_FEATURES,
-)
-from flax import nnx
-
-# Create fingerprint operator
-config = CircularFingerprintConfig(radius=2, n_bits=1024, in_features=DEFAULT_ATOM_FEATURES)
-fp_op = CircularFingerprintOperator(config, rngs=nnx.Rngs(42))
-
-# Generate fingerprint
-graph = smiles_to_graph("CC(=O)OC1=CC=CC=C1C(=O)O")  # Aspirin
-result, _, _ = fp_op.apply(graph, {}, None)
-print(f"Fingerprint shape: {result['fingerprint'].shape}")
-```
-
-**Output:**
-```
-Fingerprint shape: (1024,)
-```
-
-### Genomics: Sequence Alignment
-
-```python
-from diffbio.operators.alignment import SmoothSmithWaterman, SmithWatermanConfig, create_dna_scoring_matrix
-from diffbio.sequences import encode_dna_string
-from flax import nnx
-
-# Create aligner
-scoring = create_dna_scoring_matrix(match=2.0, mismatch=-1.0)
-config = SmithWatermanConfig(temperature=1.0, gap_open=-2.0)
-aligner = SmoothSmithWaterman(config, scoring_matrix=scoring, rngs=nnx.Rngs(42))
-
-# Align sequences
-data = {"seq1": encode_dna_string("ACGTACGT"), "seq2": encode_dna_string("ACGTTACGT")}
-result, _, _ = aligner.apply(data, {}, None)
-print(f"Alignment score: {float(result['score']):.2f}")
-```
-
-**Output:**
-```
-Alignment score: 14.45
-```
-
-### Single-Cell: Batch Correction
-
-```python
-from diffbio.operators.singlecell import DifferentiableHarmony, BatchCorrectionConfig
-import jax.numpy as jnp
-from flax import nnx
-
-# Create Harmony operator
-config = BatchCorrectionConfig(n_clusters=20, n_features=50, n_batches=3)
-harmony = DifferentiableHarmony(config, rngs=nnx.Rngs(42))
-
-# Correct batch effects
-data = {"embeddings": embeddings, "batch_labels": batch_labels}
-result, _, _ = harmony.apply(data, {}, None)
-print(f"Variance reduction: 97.7%")
+# Run any example
+uv run python examples/basics/operator_pattern.py
+uv run python examples/singlecell/clustering.py
+uv run python examples/ecosystem/scvi_benchmark.py
 ```
 
 ## Key Features Demonstrated
 
-All examples showcase DiffBio's core features:
+All examples showcase DiffBio's core capabilities:
 
-1. **Differentiability**: Every operator supports gradient computation
-2. **JAX/Flax NNX**: Modern neural network framework
-3. **Datarax Integration**: Consistent operator interface
-4. **Real Outputs**: All outputs from actual code execution
+1. **Differentiability** -- every operator supports `jax.grad` for gradient computation
+2. **JIT Compilation** -- all operators work with `jax.jit` for accelerated execution
+3. **apply() Contract** -- consistent `result, state, metadata = operator.apply(data, {}, None)` interface
+4. **Synthetic Data** -- self-contained examples with no external data dependencies
+5. **Ecosystem Integration** -- calibrax metrics, artifex losses, and opifex training utilities
 
 ## Contributing Examples
 
-We welcome example contributions! See the [Contributing Guide](../development/contributing.md) for details.
+See the [Contributing Guide](../development/contributing.md) and the [Example Documentation Design Guide](../development/example-documentation-design.md) for details on adding new examples.

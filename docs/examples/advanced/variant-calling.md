@@ -16,6 +16,12 @@ graph LR
     B --> C[Pileup]
     C --> D[MLP/CNN Classifier]
     D --> E[Variants]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style D fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style E fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 The key innovation is using **realistic synthetic data** where variants actually appear in the sequencing reads, enabling the model to learn meaningful patterns.

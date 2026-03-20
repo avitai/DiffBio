@@ -61,12 +61,13 @@ Sequence 2 shape: (8, 4)
 ## Perform Alignment
 
 ```python
-# Run the alignment
-result = aligner.align(seq1, seq2)
+# Run the alignment via apply()
+data = {"seq1": seq1, "seq2": seq2}
+result, _, _ = aligner.apply(data, {}, None)
 
-print(f"Alignment score: {result.score:.4f}")
-print(f"Alignment matrix shape: {result.alignment_matrix.shape}")  # (9, 9)
-print(f"Soft alignment shape: {result.soft_alignment.shape}")      # (8, 8)
+print(f"Alignment score: {result['score']:.4f}")
+print(f"Alignment matrix shape: {result['alignment_matrix'].shape}")  # (9, 9)
+print(f"Soft alignment shape: {result['soft_alignment'].shape}")      # (8, 8)
 ```
 
 **Output:**
@@ -85,7 +86,7 @@ The alignment score indicates overall similarity:
 
 ```python
 # Higher score = better alignment
-print(f"Score: {result.score:.4f}")
+print(f"Score: {result['score']:.4f}")
 ```
 
 **Output:**
@@ -100,7 +101,7 @@ The soft alignment shows position correspondences as probabilities:
 
 ```python
 # Find most likely corresponding positions
-best_matches = jnp.argmax(result.soft_alignment, axis=1)
+best_matches = jnp.argmax(result["soft_alignment"], axis=1)
 print(f"Position correspondences: {best_matches}")
 # Position i in seq1 corresponds to position best_matches[i] in seq2
 ```
@@ -117,7 +118,7 @@ Position correspondences: [2 5 6 7 4 5 6 7]
 import matplotlib.pyplot as plt
 
 plt.figure(figsize=(8, 6))
-plt.imshow(result.soft_alignment, cmap='viridis')
+plt.imshow(result["soft_alignment"], cmap='viridis')
 plt.colorbar(label='Alignment probability')
 plt.xlabel('Sequence 2 position')
 plt.ylabel('Sequence 1 position')
@@ -136,8 +137,9 @@ The key feature of DiffBio is differentiability:
 def alignment_loss(scoring_matrix, seq1, seq2):
     config = SmithWatermanConfig(temperature=1.0)
     aligner = SmoothSmithWaterman(config, scoring_matrix=scoring_matrix)
-    result = aligner.align(seq1, seq2)
-    return -result.score  # Negative because we want to maximize
+    data = {"seq1": seq1, "seq2": seq2}
+    result, _, _ = aligner.apply(data, {}, None)
+    return -result["score"]  # Negative because we want to maximize
 
 # Compute gradient w.r.t. scoring matrix
 grad_fn = jax.grad(alignment_loss)
@@ -205,12 +207,14 @@ batch_seq2 = jnp.stack([
 
 # Vectorize alignment
 def align_pair(s1, s2):
-    return aligner.align(s1, s2)
+    data = {"seq1": s1, "seq2": s2}
+    result, _, _ = aligner.apply(data, {}, None)
+    return result["score"]
 
 batch_align = jax.vmap(align_pair)
-batch_results = batch_align(batch_seq1, batch_seq2)
+batch_scores = batch_align(batch_seq1, batch_seq2)
 
-print(f"Batch scores: {batch_results.score}")
+print(f"Batch scores: {batch_scores}")
 ```
 
 **Output:**
@@ -229,8 +233,9 @@ temperatures = [0.1, 1.0, 5.0, 10.0]
 for temp in temperatures:
     config = SmithWatermanConfig(temperature=temp)
     aligner = SmoothSmithWaterman(config, scoring_matrix=scoring_matrix)
-    result = aligner.align(seq1, seq2)
-    print(f"Temperature {temp}: score = {result.score:.4f}")
+    data = {"seq1": seq1, "seq2": seq2}
+    result, _, _ = aligner.apply(data, {}, None)
+    print(f"Temperature {temp}: score = {result['score']:.4f}")
 ```
 
 **Output:**
@@ -264,8 +269,9 @@ aligner = SmoothSmithWaterman(config, scoring_matrix=initial_scoring)
 target_score = 10.0
 
 def loss(aligner, seq1, seq2, target):
-    result = aligner.align(seq1, seq2)
-    return (result.score - target) ** 2
+    data = {"seq1": seq1, "seq2": seq2}
+    result, _, _ = aligner.apply(data, {}, None)
+    return (result["score"] - target) ** 2
 
 # Optimizer
 params = nnx.state(aligner, nnx.Param)
@@ -284,8 +290,9 @@ for step in range(100):
         print(f"Step {step}: loss = {loss_val:.4f}")
 
 # Final score
-final_result = aligner.align(seq1, seq2)
-print(f"Final score: {final_result.score:.4f} (target: {target_score})")
+final_data = {"seq1": seq1, "seq2": seq2}
+final_result, _, _ = aligner.apply(final_data, {}, None)
+print(f"Final score: {final_result['score']:.4f} (target: {target_score})")
 ```
 
 **Output:**
@@ -305,26 +312,27 @@ Compare the soft alignment before and after training:
 
 ```python
 # Get alignment after training
-final_result = aligner.align(seq1, seq2)
+final_data = {"seq1": seq1, "seq2": seq2}
+final_result, _, _ = aligner.apply(final_data, {}, None)
 
 # Visualization comparing before and after
 fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
 # Before training (using initial aligner)
 initial_aligner = SmoothSmithWaterman(config, scoring_matrix=initial_scoring)
-initial_result = initial_aligner.align(seq1, seq2)
+initial_result, _, _ = initial_aligner.apply(final_data, {}, None)
 
-im1 = axes[0].imshow(initial_result.soft_alignment, cmap='viridis', vmin=0, vmax=1)
+im1 = axes[0].imshow(initial_result["soft_alignment"], cmap='viridis', vmin=0, vmax=1)
 axes[0].set_xlabel('Sequence 2 position')
 axes[0].set_ylabel('Sequence 1 position')
-axes[0].set_title(f'Before Training (score: {initial_result.score:.2f})')
+axes[0].set_title(f'Before Training (score: {initial_result["score"]:.2f})')
 plt.colorbar(im1, ax=axes[0], label='Alignment probability')
 
 # After training
-im2 = axes[1].imshow(final_result.soft_alignment, cmap='viridis', vmin=0, vmax=1)
+im2 = axes[1].imshow(final_result["soft_alignment"], cmap='viridis', vmin=0, vmax=1)
 axes[1].set_xlabel('Sequence 2 position')
 axes[1].set_ylabel('Sequence 1 position')
-axes[1].set_title(f'After Training (score: {final_result.score:.2f})')
+axes[1].set_title(f'After Training (score: {final_result["score"]:.2f})')
 plt.colorbar(im2, ax=axes[1], label='Alignment probability')
 
 plt.suptitle('Soft Alignment Matrix: Before vs After Parameter Learning')

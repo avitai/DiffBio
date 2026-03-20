@@ -224,7 +224,7 @@ match = ".*\\.py$"
 match-dir = "^(?!tests|examples).*"
 
 [tool.pyright]
-exclude = ["examples", "scripts", ".deprecated", "**/__pycache__", "**/.venv", "memory-bank"]
+exclude = ["docs", "examples", "scripts", ".deprecated", "**/__pycache__", "**/.venv", "memory-bank"]
 extraPaths = ["."]
 include = ["src", "tests"]
 reportAbstractUsage = false

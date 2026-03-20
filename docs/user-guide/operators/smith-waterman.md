@@ -35,9 +35,10 @@ aligner = SmoothSmithWaterman(config, scoring_matrix=scoring)
 seq1 = jnp.eye(4)[jnp.array([0, 1, 2, 3])]  # ACGT
 seq2 = jnp.eye(4)[jnp.array([0, 1, 0, 3])]  # ACAT
 
-# Perform alignment
-result = aligner.align(seq1, seq2)
-print(f"Score: {result.score:.2f}")
+# Perform alignment via the apply() interface
+data = {"seq1": seq1, "seq2": seq2}
+result, _, _ = aligner.apply(data, {}, None)
+print(f"Score: {result['score']:.2f}")
 ```
 
 ## Configuration
@@ -208,8 +209,9 @@ from flax import nnx
 def alignment_loss(aligner, seq_pairs, target_scores):
     total_loss = 0.0
     for (s1, s2), target in zip(seq_pairs, target_scores):
-        result = aligner.align(s1, s2)
-        total_loss += (result.score - target) ** 2
+        data = {"seq1": s1, "seq2": s2}
+        result, _, _ = aligner.apply(data, {}, None)
+        total_loss += (result["score"] - target) ** 2
     return total_loss / len(seq_pairs)
 
 # Get parameters
@@ -253,7 +255,9 @@ def score_fn(scoring_matrix, gap_open, gap_extend, temp, seq1, seq2):
         gap_extend=gap_extend
     )
     aligner = SmoothSmithWaterman(config, scoring_matrix=scoring_matrix)
-    return aligner.align(seq1, seq2).score
+    data = {"seq1": seq1, "seq2": seq2}
+    result, _, _ = aligner.apply(data, {}, None)
+    return result["score"]
 
 # Gradients w.r.t. all parameters
 grad_fn = jax.grad(score_fn, argnums=(0, 1, 2, 3))
@@ -270,10 +274,11 @@ print(f"Temperature gradient: {grads[3]:.4f}")
 ```python
 import matplotlib.pyplot as plt
 
-result = aligner.align(seq1, seq2)
+data = {"seq1": seq1, "seq2": seq2}
+result, _, _ = aligner.apply(data, {}, None)
 
 plt.figure(figsize=(8, 6))
-plt.imshow(result.soft_alignment, cmap='viridis')
+plt.imshow(result["soft_alignment"], cmap='viridis')
 plt.colorbar(label='Alignment probability')
 plt.xlabel('Sequence 2 position')
 plt.ylabel('Sequence 1 position')
@@ -289,11 +294,13 @@ data = {"seq1": seq1, "seq2": seq2}
 result_data, state, metadata = aligner.apply(data, {}, None)
 
 # Using vmap for batches
-def align_pair(pair):
-    return aligner.align(pair['seq1'], pair['seq2'])
+def align_pair(s1, s2):
+    data = {"seq1": s1, "seq2": s2}
+    result, _, _ = aligner.apply(data, {}, None)
+    return result["score"]
 
-batch_align = jax.vmap(align_pair)
-batch_results = batch_align(batch_data)
+batch_align = jax.vmap(align_pair, in_axes=(0, 0))
+batch_scores = batch_align(batch_data["seq1"], batch_data["seq2"])
 ```
 
 ## Implementation Details

@@ -92,6 +92,43 @@ Data source modules for loading bioinformatics and drug discovery datasets, exte
       show_root_heading: true
       members: []
 
+## AnnData Source
+
+### AnnDataSource
+
+::: diffbio.sources.anndata_source.AnnDataSource
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - __len__
+        - __getitem__
+        - __iter__
+
+### AnnDataSourceConfig
+
+::: diffbio.sources.anndata_source.AnnDataSourceConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## AnnData Interop
+
+### to_anndata
+
+::: diffbio.sources.anndata_interop.to_anndata
+    options:
+      show_root_heading: true
+      show_source: false
+
+### from_anndata
+
+::: diffbio.sources.anndata_interop.from_anndata
+    options:
+      show_root_heading: true
+      show_source: false
+
 ## Usage Examples
 
 ### Reading BAM/CRAM Files

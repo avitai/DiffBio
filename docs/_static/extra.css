@@ -200,7 +200,101 @@
   height: auto;
 }
 
-/* Performance metrics styling */
+/* ── Stat cards (display-only, non-interactive) ── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1em;
+  margin: 1em 0;
+}
+
+.stat-card {
+  background: color-mix(in srgb, var(--md-primary-fg-color) 8%, var(--md-default-bg-color));
+  border-radius: 8px;
+  padding: 1.2em 1em;
+  text-align: center;
+}
+
+.stat-card .stat-value {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: var(--md-primary-fg-color);
+  line-height: 1.2;
+}
+
+.stat-card .stat-label {
+  font-size: 0.85em;
+  color: var(--md-default-fg-color--light);
+  margin-top: 0.3em;
+}
+
+/* ── Nav cards (clickable, link to other pages) ── */
+.nav-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1em;
+  margin: 1em 0;
+}
+
+.nav-card {
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-left: 4px solid var(--md-primary-fg-color);
+  border-radius: 8px;
+  padding: 1.5em 2.5em 1.5em 1.5em;
+  text-align: left;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+  position: relative;
+}
+
+.nav-card:hover {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
+  border-left-color: var(--md-accent-fg-color);
+}
+
+.nav-card::after {
+  content: "\2192";
+  position: absolute;
+  right: 1em;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.3em;
+  color: var(--md-default-fg-color--lighter);
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.nav-card:hover::after {
+  color: var(--md-accent-fg-color);
+  transform: translateY(-50%) translateX(3px);
+}
+
+.nav-card a {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.nav-card .nav-title {
+  font-size: 1.4em;
+  font-weight: 700;
+  color: var(--md-primary-fg-color);
+  line-height: 1.2;
+}
+
+.nav-card:hover .nav-title {
+  color: var(--md-accent-fg-color);
+}
+
+.nav-card .nav-description {
+  font-size: 0.85em;
+  color: var(--md-default-fg-color--light);
+  margin-top: 0.3em;
+}
+
+/* ── Legacy metric-card fallback ── */
 .performance-metrics {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -211,8 +305,8 @@
 .metric-card {
   background: var(--md-default-bg-color);
   border: 1px solid var(--md-default-fg-color--lightest);
-  border-radius: 4px;
-  padding: 1em;
+  border-radius: 8px;
+  padding: 1.5em 1em;
   text-align: center;
 }
 
@@ -470,6 +564,19 @@
 
   .differentiability-note {
     background: linear-gradient(135deg, #4338ca, #6366f1);
+  }
+
+  .stat-card {
+    background: color-mix(in srgb, var(--md-primary-fg-color) 12%, var(--md-default-bg-color));
+  }
+
+  .nav-card {
+    background: var(--md-code-bg-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .nav-card:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
   }
 
   .metric-card {

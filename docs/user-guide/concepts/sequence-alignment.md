@@ -1,34 +1,41 @@
 # Sequence Alignment
 
-Sequence alignment is the process of arranging two or more sequences to identify regions of similarity. DiffBio provides differentiable implementations of alignment algorithms that enable gradient-based optimization.
+Sequence alignment arranges two or more biological sequences to identify
+regions of similarity that may reflect functional, structural, or evolutionary
+relationships. DiffBio provides differentiable alignment operators that enable
+gradient-based learning of alignment parameters.
 
-## Background
+---
 
-### The Alignment Problem
+## The Alignment Problem
 
-Given two sequences, find the optimal arrangement that:
+Given two sequences $A$ and $B$, find an arrangement that maximizes a scoring
+function:
 
-- Maximizes matches between similar characters
-- Minimizes penalties for mismatches and gaps
-- Reveals evolutionary or functional relationships
+$$
+\text{Score} = \sum_{\text{aligned pairs}} s(a_i, b_j) + \sum_{\text{gaps}} g(k)
+$$
 
-### Types of Alignment
+Where $s(a, b)$ is the substitution score and $g(k)$ is the gap penalty for a
+gap of length $k$.
 
-| Type | Description | Use Case |
-|------|-------------|----------|
-| **Global** | Aligns entire sequences end-to-end | Comparing full genes |
-| **Local** | Finds best matching subsequences | Finding domains, motifs |
-| **Semi-global** | Global in one sequence, local in other | Mapping reads to reference |
+### Local vs Global Alignment
 
-DiffBio currently implements **local alignment** (Smith-Waterman).
+| Type | Algorithm | Goal | DiffBio Operator |
+|---|---|---|---|
+| **Local** | Smith-Waterman | Best matching subsequence | `SmoothSmithWaterman` |
+| **Global** | Needleman-Wunsch | Full end-to-end alignment | — |
+| **Profile** | Profile HMM | Sequence-to-model alignment | `ProfileHMMAlignment` |
+| **Multiple** | Progressive | Align multiple sequences | `SoftMSA` |
 
-## Smith-Waterman Algorithm
+DiffBio focuses on local alignment (Smith-Waterman) as the foundation.
 
-The Smith-Waterman algorithm finds the optimal local alignment using dynamic programming.
+---
 
-### Recurrence Relation
+## Smith-Waterman Recurrence
 
-For sequences $A$ (length $m$) and $B$ (length $n$), define matrix $H$:
+For sequences $A$ (length $m$) and $B$ (length $n$), the standard recurrence
+fills a matrix $H$:
 
 $$
 H(i, j) = \max \begin{cases}
@@ -39,224 +46,125 @@ H(i, j-1) + g
 \end{cases}
 $$
 
-Where:
+The optimal local alignment score is $\max_{i,j} H(i,j)$.
 
-- $s(a, b)$ is the scoring function (match/mismatch)
-- $g$ is the gap penalty (usually negative)
-- $H(i, 0) = H(0, j) = 0$ (local alignment allows free ends)
+### Why This Blocks Gradients
 
-The optimal score is $\max_{i,j} H(i,j)$.
+The `max` operation selects one branch and discards the others. Gradients only
+flow through the winning branch — all other branches receive zero gradient.
+This creates a hard, non-differentiable decision at every cell.
 
-### The Differentiability Challenge
-
-The `max` operation in the recurrence is **non-differentiable**:
-
-- Gradient only flows through the winning branch
-- Most gradients are zero (vanishing gradient problem)
-- Cannot learn which branch *should* win
+---
 
 ## Smooth Smith-Waterman
 
-DiffBio's `SmoothSmithWaterman` replaces `max` with `logsumexp`:
+DiffBio replaces `max` with temperature-scaled `logsumexp`:
 
 $$
-H(i, j) = \tau \cdot \text{logsumexp}\left(\frac{1}{\tau} \begin{bmatrix} 0 \\ H(i-1, j-1) + s(A_i, B_j) \\ H(i-1, j) + g \\ H(i, j-1) + g \end{bmatrix}\right)
+H(i, j) = \tau \cdot \log \sum_{k} \exp\left(\frac{c_k}{\tau}\right)
 $$
 
-This is a smooth approximation where gradients flow through all branches, weighted by their probability.
+Where $c_k$ are the four candidates (0, diagonal, up, left). Gradients now
+flow to all branches, weighted by their relative magnitude.
 
-### Temperature Control
+### Temperature Effect
 
-The temperature $\tau$ controls the smoothness:
+| $\tau$ | Behavior | Use Case |
+|---|---|---|
+| 0.01 | Nearly identical to hard max | Final evaluation |
+| 0.1 - 1.0 | Balanced accuracy and gradient flow | Training |
+| 10.0+ | All branches contribute equally | Warm start / exploration |
 
-```python
-# Low temperature (τ = 0.1): Sharp, near-discrete
-# Medium temperature (τ = 1.0): Balanced
-# High temperature (τ = 10.0): Very smooth
+The operator uses a scan-based implementation that fills the matrix row by row,
+compatible with `jax.jit` and `jax.grad`.
 
-config = SmithWatermanConfig(temperature=1.0)
-```
-
-<div class="technique-card">
-<div class="technique-name">Temperature Annealing</div>
-<div class="technique-description">
-Start with high temperature for exploration, gradually decrease for convergence to discrete solutions.
-</div>
-<div class="technique-use-cases">
-Use when training aligners from scratch or fine-tuning on new domains.
-</div>
-</div>
+---
 
 ## Scoring Matrices
 
-The scoring function $s(a, b)$ is typically defined by a **substitution matrix**:
+The substitution score $s(a, b)$ determines how well two characters match.
 
 ### DNA Scoring
 
-For DNA sequences (A, C, G, T):
+For DNA (alphabet size 4: A, C, G, T), a simple match/mismatch matrix:
 
-```python
-from diffbio.operators.alignment import create_dna_scoring_matrix
+$$
+s(a, b) = \begin{cases}
++2 & \text{if } a = b \\
+-1 & \text{if } a \neq b
+\end{cases}
+$$
 
-# Simple match/mismatch scoring
-scoring = create_dna_scoring_matrix(match=2.0, mismatch=-1.0)
-# Result: 4x4 matrix with 2.0 on diagonal, -1.0 elsewhere
-```
+DiffBio provides `create_dna_scoring_matrix(match, mismatch)` for this.
 
 ### Learned Scoring
 
-DiffBio allows learning the scoring matrix:
+Because DiffBio's scoring matrix is an `nnx.Param`, gradients from a
+downstream loss update scoring values during training. This lets the alignment
+learn task-specific substitution preferences — for example, penalizing
+transitions less than transversions, or learning scoring from structural
+similarity rather than sequence identity.
 
-```python
-aligner = SmoothSmithWaterman(config, scoring_matrix=initial_scoring)
-
-# The scoring matrix is a learnable parameter
-print(aligner.scoring_matrix)  # nnx.Param
-
-# Train to optimize for your objective
-def loss_fn(aligner, seq1, seq2, target_score):
-    result = aligner.align(seq1, seq2)
-    return (result.score - target_score) ** 2
-
-grads = jax.grad(loss_fn)(aligner, seq1, seq2, target)
-```
+---
 
 ## Gap Penalties
 
-Gaps represent insertions or deletions (indels) in the alignment.
+Gaps represent insertions or deletions (indels). Two common models:
 
-### Linear Gap Penalty
+**Linear**: $g(k) = d \cdot k$ — each gap position costs $d$.
 
-Simple penalty per gap position:
+**Affine**: $g(k) = d_{\text{open}} + d_{\text{extend}} \cdot (k-1)$ — opening
+a gap is expensive, extending it is cheaper. This better models biological
+indels, which tend to occur in contiguous blocks.
 
-$$
-\text{gap\_cost}(k) = g \cdot k
-$$
+Both `gap_open` and `gap_extend` are learnable parameters in DiffBio.
 
-### Affine Gap Penalty
+---
 
-Separate penalties for opening and extending gaps:
+## Alignment Outputs
 
-$$
-\text{gap\_cost}(k) = g_o + g_e \cdot (k - 1)
-$$
+`SmoothSmithWaterman` returns three key outputs:
 
-Where:
+| Output Key | Shape | Description |
+|---|---|---|
+| `score` | scalar | Soft maximum alignment score |
+| `score_matrix` | $(m+1, n+1)$ | Full DP matrix |
+| `alignment_scores` | $(m, n)$ | Per-position alignment scores |
 
-- $g_o$ is the gap opening penalty
-- $g_e$ is the gap extension penalty
+The full DP matrix can be used for traceback analysis. The per-position scores
+give a soft alignment probability: higher values indicate positions that
+contribute more to the optimal alignment.
 
-```python
-config = SmithWatermanConfig(
-    gap_open=-10.0,    # Penalty for starting a gap
-    gap_extend=-1.0,   # Penalty per additional gap position
-)
-```
+---
 
-!!! tip "Learnable Gap Penalties"
-    Gap penalties are learnable parameters in DiffBio. The optimal penalties depend on your data and can be learned end-to-end.
+## When to Use Differentiable Alignment
 
-## Soft Alignment Output
+**Good fit:**
 
-The `SmoothSmithWaterman` operator returns three outputs:
+- Learning scoring matrices for non-standard alphabets or domains
+- Joint optimization where alignment feeds into a downstream classifier
+- Sensitivity analysis — which scoring parameters affect the result most
 
-### 1. Alignment Score
+**Not needed:**
 
-The soft maximum score:
+- Production alignment of millions of reads (BWA/minimap2 are faster)
+- Standard DNA alignment with known scoring (BLOSUM62, fixed gap penalties)
+- When alignment is a preprocessing step with no learnable parameters
 
-```python
-result.score  # Scalar, differentiable
-```
+DiffBio's alignment operators are designed for learning and analysis, not for
+replacing production aligners on large-scale data.
 
-### 2. Alignment Matrix
+---
 
-The full DP matrix showing scores at each position:
+## Further Reading
 
-```python
-result.alignment_matrix  # Shape: (len1+1, len2+1)
-```
+- [Smith-Waterman Operator](../operators/smith-waterman.md) — usage, configuration, code examples
+- [Alignment API](../../api/operators/smith-waterman.md) — full API reference
+- [Sequence Alignment Example](../../examples/basic/simple-alignment.md) — runnable example
 
-### 3. Soft Alignment
+### References
 
-A probability matrix showing the correspondence between positions:
-
-```python
-result.soft_alignment  # Shape: (len1, len2)
-# soft_alignment[i, j] = probability that position i aligns to position j
-```
-
-## Usage Example
-
-```python
-import jax.numpy as jnp
-from diffbio.operators import SmoothSmithWaterman, SmithWatermanConfig
-from diffbio.operators.alignment import create_dna_scoring_matrix
-
-# Setup
-config = SmithWatermanConfig(
-    temperature=1.0,
-    gap_open=-10.0,
-    gap_extend=-1.0
-)
-scoring = create_dna_scoring_matrix(match=2.0, mismatch=-1.0)
-aligner = SmoothSmithWaterman(config, scoring_matrix=scoring)
-
-# One-hot encode sequences
-def one_hot(indices, vocab_size=4):
-    return jnp.eye(vocab_size)[indices]
-
-seq1 = one_hot(jnp.array([0, 1, 2, 3, 0, 1, 2, 3]))  # ACGTACGT
-seq2 = one_hot(jnp.array([0, 1, 0, 3, 0, 1, 2, 3]))  # ACATACGT
-
-# Align
-result = aligner.align(seq1, seq2)
-
-print(f"Score: {result.score:.2f}")
-print(f"Best aligned positions: {jnp.argmax(result.soft_alignment, axis=1)}")
-```
-
-## Batch Processing
-
-Use the Datarax interface for batch processing:
-
-```python
-# Prepare batch data
-data = {"seq1": seq1, "seq2": seq2}
-state = {}
-metadata = None
-
-# Apply operator
-result_data, state, metadata = aligner.apply(data, state, metadata)
-
-# Access results
-print(result_data['score'])
-print(result_data['alignment_matrix'])
-print(result_data['soft_alignment'])
-```
-
-## Advanced: Gradient Analysis
-
-Analyze how alignment parameters affect the score:
-
-```python
-import jax
-
-# Gradient w.r.t. scoring matrix
-def alignment_score(scoring_matrix, seq1, seq2, config):
-    aligner = SmoothSmithWaterman(config, scoring_matrix=scoring_matrix)
-    return aligner.align(seq1, seq2).score
-
-grad_scoring = jax.grad(alignment_score)(scoring, seq1, seq2, config)
-print("Scoring matrix gradients:")
-print(grad_scoring)
-
-# Which positions in scoring matrix matter most for this alignment?
-important_pairs = jnp.unravel_index(jnp.argmax(jnp.abs(grad_scoring)), grad_scoring.shape)
-print(f"Most influential nucleotide pair: {important_pairs}")
-```
-
-## References
-
-1. Smith, T.F. & Waterman, M.S. (1981). "Identification of common molecular subsequences." *Journal of Molecular Biology*, 147(1), 195-197.
-
-2. Petti, S. et al. (2023). "End-to-end learning of multiple sequence alignments with differentiable Smith-Waterman." *Bioinformatics*, 39(1).
+1. Smith & Waterman. "Identification of common molecular subsequences."
+   *J. Mol. Biol.* 147(1), 1981.
+2. Petti et al. "End-to-end learning of multiple sequence alignments with
+   differentiable Smith-Waterman." *Bioinformatics* 39(1), 2023.

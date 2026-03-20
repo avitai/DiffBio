@@ -1,292 +1,144 @@
 # Variant Calling
 
-Variant calling is the process of identifying differences between a sample genome and a reference genome. DiffBio provides differentiable components for building end-to-end trainable variant calling pipelines.
+Variant calling identifies positions where a sample genome differs from a
+reference genome. DiffBio provides differentiable components for each stage
+of a variant calling pipeline, enabling joint optimization from raw reads to
+genotype predictions.
 
-## Background
+---
 
-### What is a Variant?
+## What Is a Variant?
 
-A genetic variant is a position where the sample differs from the reference:
+A genetic variant is a position where the sequenced sample differs from the
+reference:
 
-| Type | Description | Example |
-|------|-------------|---------|
-| **SNP** | Single nucleotide polymorphism | A → G |
-| **Insertion** | Extra bases in sample | AT → AGT |
-| **Deletion** | Missing bases in sample | AGT → AT |
-| **MNP** | Multiple nucleotide polymorphism | AT → GC |
+| Type | Change | Example | Size |
+|---|---|---|---|
+| **SNP** | Single base substitution | A → G | 1 bp |
+| **Insertion** | Bases added | AT → AGT | 1+ bp |
+| **Deletion** | Bases removed | AGT → AT | 1+ bp |
+| **CNV** | Copy number change | 2 copies → 4 copies | 1+ kb |
 
-### Traditional Pipeline
+SNPs are the most common. CNVs are the hardest to detect because they span
+large regions and require different statistical approaches.
+
+---
+
+## The Traditional Pipeline
 
 ```
-Reads → Alignment → Pileup → Statistical Model → Variants
-         (BWA)     (samtools)  (GATK/FreeBayes)
+Reads → Alignment → Pileup → Statistical Model → Variant Calls
+         (BWA)     (samtools)  (GATK/DeepVariant)
 ```
 
-Each step is optimized independently, limiting overall performance.
+Each stage is optimized independently:
 
-### DiffBio Approach
+- BWA minimizes alignment edit distance
+- samtools counts exact base observations
+- GATK applies a Bayesian genotyper with fixed priors
+
+Errors cascade forward without correction. A misaligned read produces a wrong
+pileup count, which the variant caller cannot distinguish from a real variant.
+
+---
+
+## The Differentiable Pipeline
+
+DiffBio replaces each hard decision with a soft, differentiable operation:
 
 ```
-Reads → Soft Alignment → Soft Pileup → Neural Classifier → Variants
-         (Learnable)     (Learnable)    (Learnable)
+Reads → Soft Filter → Soft Alignment → Soft Pileup → Neural Classifier
+         (sigmoid)     (logsumexp)       (segment_sum)  (MLP)
 ```
 
-All components are differentiable, enabling joint optimization.
+The key difference: gradients from the classifier's loss flow backward through
+the entire chain. If a quality threshold is too strict and filters out reads
+supporting a real variant, the gradient signal pushes the threshold lower.
 
-## The Variant Calling Problem
+### DiffBio Operators in the Pipeline
 
-### Mathematical Formulation
+| Stage | Operator | What It Learns |
+|---|---|---|
+| Quality filtering | `DifferentiableQualityFilter` | Optimal quality threshold |
+| Alignment | `SmoothSmithWaterman` | Scoring matrix, gap penalties |
+| Pileup | `DifferentiablePileup` | Quality-to-weight mapping |
+| SNP calling | `VariantClassifier` | Classification boundaries |
+| CNV detection | `EnhancedCNVSegmentation` | Segmentation breakpoints, state transitions |
 
-Given:
+---
 
-- Reference sequence $R = r_1, r_2, \ldots, r_n$
-- Aligned reads $\{(s_i, p_i, q_i)\}$ where $s_i$ is sequence, $p_i$ is position, $q_i$ is quality
+## Genotype Representation
 
-Goal: For each position $j$, determine:
+For diploid organisms, each position has a genotype:
 
-$$
-P(G_j | \text{reads}) = P(\text{genotype at position } j | \text{observed reads})
-$$
+| Genotype | Meaning | Label |
+|---|---|---|
+| 0/0 | Homozygous reference | Both alleles match reference |
+| 0/1 | Heterozygous | One reference, one alternate |
+| 1/1 | Homozygous alternate | Both alleles differ |
 
-### Genotype Representation
+The variant classifier outputs a probability distribution over these three
+classes at each position. During training, cross-entropy loss against known
+genotypes drives the learning.
 
-For diploid organisms, genotypes at each position:
+---
 
-- **Homozygous reference**: Both alleles match reference (0/0)
-- **Heterozygous**: One reference, one alternate allele (0/1)
-- **Homozygous alternate**: Both alleles differ from reference (1/1)
+## Why End-to-End Helps
 
-## Differentiable Variant Calling Pipeline
+### Error Correction Across Stages
 
-### Step 1: Quality Filtering
+In a traditional pipeline, a borderline-quality read is either kept or
+discarded based on a fixed threshold. If discarded, downstream stages never
+see it. In DiffBio's soft pipeline, the same read contributes with a reduced
+weight — and if that contribution improves the final genotype prediction, the
+gradient signal encourages keeping it.
 
-Filter low-quality bases before pileup:
+### Class Imbalance
 
-```python
-from diffbio.operators import DifferentiableQualityFilter, QualityFilterConfig
+Most genomic positions are reference (no variant). Traditional callers handle
+this with hand-tuned priors. DiffBio can learn the prior from data through
+the loss function — for example, using focal loss to down-weight easy
+reference predictions and focus on variant positions.
 
-filter_config = QualityFilterConfig(initial_threshold=20.0)
-quality_filter = DifferentiableQualityFilter(filter_config)
+### Copy Number Variants
 
-# Apply soft quality filtering
-# Low-quality positions are down-weighted rather than removed
-filtered_data, _, _ = quality_filter.apply(data, {}, None)
-```
+CNV detection requires integrating signals across large regions — depth
+changes, B-allele frequency shifts, breakpoint patterns. DiffBio's
+`EnhancedCNVSegmentation` uses a differentiable HMM with pyramidal smoothing
+to detect these multi-scale patterns with learnable transition probabilities.
 
-The threshold is learnable and can adapt during training.
+---
 
-### Step 2: Soft Alignment
+## Evaluation
 
-If reads aren't pre-aligned, use differentiable alignment:
+Variant calling quality is measured by:
 
-```python
-from diffbio.operators import SmoothSmithWaterman, SmithWatermanConfig
+| Metric | Definition | Ideal |
+|---|---|---|
+| **Precision** | TP / (TP + FP) | 1.0 |
+| **Recall** | TP / (TP + FN) | 1.0 |
+| **F1** | Harmonic mean of precision and recall | 1.0 |
 
-align_config = SmithWatermanConfig(temperature=1.0)
-aligner = SmoothSmithWaterman(align_config, scoring_matrix=scoring)
+Evaluation should be **stratified** — measured separately for SNPs,
+insertions, deletions, and CNVs, since callers often excel at one type and
+struggle with others.
 
-# Soft alignment produces probability distribution over positions
-result = aligner.align(read, reference)
-```
+DiffBio supports differentiable AUROC (`DifferentiableAUROC`) for training
+and exact metrics (`ExactAUROC` via calibrax) for evaluation.
 
-### Step 3: Pileup Generation
+---
 
-Aggregate reads into position-wise distributions:
+## Further Reading
 
-```python
-from diffbio.operators import DifferentiablePileup, PileupConfig
+- [Variant Operators](../operators/variant.md) — VariantClassifier, CNVSegmentation usage
+- [Pileup Generation](pileup-generation.md) — how pileup feeds into variant calling
+- [Quality Filter](../operators/quality-filter.md) — soft quality filtering
+- [Variant Calling Pipeline](../pipelines/variant-calling.md) — end-to-end pipeline
+- [Variant Calling Example](../../examples/advanced/variant-calling.md) — runnable example
 
-pileup_config = PileupConfig(
-    reference_length=1000,
-    use_quality_weights=True
-)
-pileup_op = DifferentiablePileup(pileup_config)
+### References
 
-data = {
-    "reads": reads,        # (num_reads, read_length, 4)
-    "positions": positions, # (num_reads,)
-    "quality": quality,     # (num_reads, read_length)
-}
-
-result, _, _ = pileup_op.apply(data, {}, None)
-pileup = result['pileup']  # (reference_length, 4)
-```
-
-The pileup is a continuous distribution, not discrete counts.
-
-### Step 4: Variant Classification
-
-Use the pileup to predict variant probabilities:
-
-```python
-from diffbio.operators.variant import VariantClassifier, VariantClassifierConfig
-
-# Neural network for variant classification
-classifier_config = VariantClassifierConfig(
-    hidden_dims=[64, 32],
-    num_classes=3  # ref/ref, ref/alt, alt/alt
-)
-classifier = VariantClassifier(classifier_config)
-
-# Predict genotypes from pileup
-predictions = classifier(pileup)  # (reference_length, 3)
-```
-
-## Loss Functions
-
-### Cross-Entropy Loss
-
-Standard classification loss for variant calling:
-
-```python
-import optax
-
-def variant_loss(predictions, true_genotypes):
-    return optax.softmax_cross_entropy(predictions, true_genotypes).mean()
-```
-
-### Focal Loss
-
-Handle class imbalance (most positions are reference):
-
-```python
-def focal_loss(predictions, targets, gamma=2.0):
-    probs = jax.nn.softmax(predictions)
-    ce = -targets * jnp.log(probs + 1e-8)
-    focal_weight = (1 - probs) ** gamma
-    return (focal_weight * ce).sum(axis=-1).mean()
-```
-
-### F1-Aware Loss
-
-Optimize directly for precision/recall:
-
-```python
-from diffbio.losses import F1Loss
-
-f1_loss = F1Loss(beta=1.0)  # F1 score
-loss = f1_loss(predictions, targets)
-```
-
-## Training Strategy
-
-### Data Preparation
-
-```python
-# Load aligned reads (BAM format conceptually)
-reads = load_reads(bam_file)
-
-# Load ground truth variants (VCF format conceptually)
-true_variants = load_vcf(vcf_file)
-
-# Convert to tensors
-train_data = prepare_training_data(reads, true_variants, reference)
-```
-
-### Training Loop
-
-```python
-import jax
-import optax
-
-# Initialize pipeline
-pipeline = VariantCallingPipeline(config)
-
-# Optimizer
-optimizer = optax.adamw(learning_rate=1e-4)
-opt_state = optimizer.init(pipeline.parameters())
-
-@jax.jit
-def train_step(params, opt_state, batch):
-    def loss_fn(params):
-        predictions = pipeline.apply(params, batch['reads'])
-        return variant_loss(predictions, batch['variants'])
-
-    loss, grads = jax.value_and_grad(loss_fn)(params)
-    updates, opt_state = optimizer.update(grads, opt_state, params)
-    params = optax.apply_updates(params, updates)
-    return params, opt_state, loss
-
-# Training
-for batch in data_loader:
-    params, opt_state, loss = train_step(params, opt_state, batch)
-```
-
-### Temperature Annealing
-
-Gradually sharpen soft decisions during training:
-
-```python
-def get_temperature(epoch, total_epochs):
-    # Start at 5.0, anneal to 0.5
-    start_temp = 5.0
-    end_temp = 0.5
-    progress = epoch / total_epochs
-    return start_temp * (end_temp / start_temp) ** progress
-
-for epoch in range(total_epochs):
-    temp = get_temperature(epoch, total_epochs)
-    pipeline.set_temperature(temp)
-    # ... train
-```
-
-## Evaluation Metrics
-
-### Standard Metrics
-
-```python
-def evaluate_variants(predictions, ground_truth):
-    # Discretize predictions for evaluation
-    called_variants = jnp.argmax(predictions, axis=-1)
-
-    # True positives, false positives, false negatives
-    tp = ((called_variants > 0) & (ground_truth > 0)).sum()
-    fp = ((called_variants > 0) & (ground_truth == 0)).sum()
-    fn = ((called_variants == 0) & (ground_truth > 0)).sum()
-
-    precision = tp / (tp + fp + 1e-8)
-    recall = tp / (tp + fn + 1e-8)
-    f1 = 2 * precision * recall / (precision + recall + 1e-8)
-
-    return {"precision": precision, "recall": recall, "f1": f1}
-```
-
-### Stratified Evaluation
-
-Evaluate separately by variant type:
-
-```python
-def evaluate_by_type(predictions, ground_truth, variant_types):
-    results = {}
-    for vtype in ['SNP', 'Insertion', 'Deletion']:
-        mask = variant_types == vtype
-        results[vtype] = evaluate_variants(
-            predictions[mask],
-            ground_truth[mask]
-        )
-    return results
-```
-
-## Comparison with Traditional Methods
-
-| Aspect | Traditional | DiffBio |
-|--------|-------------|---------|
-| Parameter tuning | Manual, grid search | Gradient-based |
-| Pipeline coupling | Loose, cascaded errors | Tight, joint optimization |
-| Adaptability | Fixed heuristics | Learnable from data |
-| Interpretability | High | Moderate |
-| Computational cost | Lower | Higher (but GPU-accelerated) |
-
-## Best Practices
-
-1. **Start with pre-trained components**: Initialize from traditional methods
-2. **Use temperature annealing**: Smooth → sharp during training
-3. **Balance the dataset**: Variants are rare, use focal loss or oversampling
-4. **Validate on held-out chromosomes**: Avoid overfitting to specific regions
-5. **Post-process for interpretation**: Convert soft outputs to VCF format
-
-## References
-
-1. Poplin, R. et al. (2018). "A universal SNP and small-indel variant caller using deep neural networks." *Nature Biotechnology*, 36(10), 983-987.
-
-2. Luo, R. et al. (2020). "Exploring the limit of using a deep neural network on pileup data for germline variant calling." *Nature Machine Intelligence*, 2(4), 220-227.
+1. Poplin et al. "A universal SNP and small-indel variant caller using deep
+   neural networks." *Nature Biotechnology* 36(10), 2018.
+2. Luo et al. "Exploring the limit of using a deep neural network on pileup
+   data for germline variant calling." *Nature Machine Intelligence* 2(4), 2020.

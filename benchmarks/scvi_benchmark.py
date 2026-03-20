@@ -65,7 +65,7 @@ def generate_synthetic_pbmc_data(
     n_batches: int = 2,
     n_types: int = 3,
     seed: int = 42,
-) -> dict[str, jax.Array]:
+) -> dict[str, jax.Array | int]:
     """Generate synthetic scRNA-seq data with known structure.
 
     Simulates PBMC-like data with:
@@ -210,7 +210,7 @@ def _compute_latent_representations(
 
     def encode_cell(counts_i: jax.Array, lib_i: jax.Array) -> tuple[jax.Array, jax.Array]:
         """Encode a single cell and decode for reconstruction."""
-        mean, _logvar = model.encode(counts_i)
+        mean, _ = model.encode(counts_i)
         # Use mean (no sampling) for evaluation
         decode_out = model.decode(mean, lib_i)
         reconstructed = jnp.exp(decode_out["log_rate"])
@@ -266,12 +266,12 @@ def run_scvi_benchmark(
     """
     # 1. Generate data
     data = generate_synthetic_pbmc_data(seed=seed)
-    counts = data["counts"]
-    library_size = data["library_size"]
-    cell_type_labels = data["cell_type_labels"]
-    batch_labels = data["batch_labels"]
-    n_genes = data["n_genes"]
-    n_types = data["n_types"]
+    counts = jnp.asarray(data["counts"])
+    library_size = jnp.asarray(data["library_size"])
+    cell_type_labels = jnp.asarray(data["cell_type_labels"])
+    batch_labels = jnp.asarray(data["batch_labels"])
+    n_genes = int(data["n_genes"])
+    n_types = int(data["n_types"])
 
     # 2. Create VAENormalizer with ZINB (scVI-like config)
     config = VAENormalizerConfig(
@@ -378,14 +378,14 @@ def main() -> None:
         n_genes=200,
         n_batches=2,
         n_types=3,
-        n_epochs=results["n_epochs"],
-        elbo=results["elbo"],
-        reconstruction_mse=results["reconstruction_mse"],
-        silhouette=results["silhouette"],
-        batch_asw=results["batch_asw"],
-        ari=results["ari"],
-        nmi=results["nmi"],
-        training_time_ms=results["training_time_ms"],
+        n_epochs=int(results["n_epochs"]),
+        elbo=float(results["elbo"]),
+        reconstruction_mse=float(results["reconstruction_mse"]),
+        silhouette=float(results["silhouette"]),
+        batch_asw=float(results["batch_asw"]),
+        ari=float(results["ari"]),
+        nmi=float(results["nmi"]),
+        training_time_ms=float(results["training_time_ms"]),
     )
     save_results(benchmark_result, Path("benchmarks/results"))
 

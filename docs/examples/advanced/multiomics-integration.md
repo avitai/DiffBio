@@ -29,6 +29,18 @@ graph TB
     E --> K[Integrated View]
     I --> K
     J --> K
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#d1fae5,stroke:#059669,color:#064e3b
+    style D fill:#d1fae5,stroke:#059669,color:#064e3b
+    style E fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style F fill:#d1fae5,stroke:#059669,color:#064e3b
+    style G fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style H fill:#d1fae5,stroke:#059669,color:#064e3b
+    style I fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style J fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style K fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 ### Key Concepts
@@ -77,6 +89,15 @@ graph LR
     D --> G[Deconvolution]
     F --> G
     G --> H[Cell Type Map]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style C fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style D fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style E fill:#d1fae5,stroke:#059669,color:#064e3b
+    style F fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style G fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style H fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 Real-world technologies include:
@@ -395,6 +416,15 @@ graph TB
     E --> F[Compartment Analysis]
     E --> G[TAD Detection]
     E --> H[Loop Calling]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style D fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style E fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style F fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style G fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style H fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
 ```
 
 ### Generate Synthetic Hi-C Data

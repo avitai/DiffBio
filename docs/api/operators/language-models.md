@@ -34,6 +34,33 @@ Differentiable transformer-based operators for DNA/RNA sequence embedding.
     options:
       show_root_heading: true
 
+## DifferentiableFoundationModel
+
+::: diffbio.operators.language_models.foundation_model.DifferentiableFoundationModel
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - apply
+
+## FoundationModelConfig
+
+::: diffbio.operators.language_models.foundation_model.FoundationModelConfig
+    options:
+      show_root_heading: true
+      members: []
+
+## GeneTokenizer
+
+::: diffbio.operators.language_models.foundation_model.GeneTokenizer
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - __call__
+
 ## Usage Examples
 
 ### Basic Usage

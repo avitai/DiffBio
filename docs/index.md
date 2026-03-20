@@ -8,18 +8,18 @@ DiffBio provides differentiable implementations of core bioinformatics algorithm
 
 ## Key Features
 
-<div class="performance-metrics">
-<div class="metric-card">
-  <div class="metric-value">JAX</div>
-  <div class="metric-label">GPU-Accelerated</div>
+<div class="stat-grid">
+<div class="stat-card">
+  <div class="stat-value">JAX</div>
+  <div class="stat-label">GPU-Accelerated</div>
 </div>
-<div class="metric-card">
-  <div class="metric-value">100%</div>
-  <div class="metric-label">Differentiable</div>
+<div class="stat-card">
+  <div class="stat-value">100%</div>
+  <div class="stat-label">Differentiable</div>
 </div>
-<div class="metric-card">
-  <div class="metric-value">Modular</div>
-  <div class="metric-label">Composable Operators</div>
+<div class="stat-card">
+  <div class="stat-value">Modular</div>
+  <div class="stat-label">Composable Operators</div>
 </div>
 </div>
 
@@ -46,53 +46,40 @@ DiffBio provides differentiable implementations of core bioinformatics algorithm
 ### Installation
 
 ```bash
-pip install diffbio
-```
-
-Or install from source:
-
-```bash
 git clone https://github.com/mahdi-shafiei/DiffBio.git
 cd DiffBio
-pip install -e ".[dev]"
+./setup.sh
+source ./activate.sh
 ```
 
 ### Basic Usage
 
 ```python
+import jax
 import jax.numpy as jnp
-from diffbio.operators import DifferentiableSmithWaterman
+from flax import nnx
+from diffbio.operators.singlecell import SoftKMeansClustering, SoftClusteringConfig
 
-# Initialize the Smith-Waterman operator
-sw = DifferentiableSmithWaterman(
-    match_score=2.0,
-    mismatch_penalty=-1.0,
-    gap_open=-2.0,
-    gap_extend=-0.5,
-    temperature=1.0
-)
+# Configure and create an operator
+config = SoftClusteringConfig(n_clusters=5, n_features=20)
+operator = SoftKMeansClustering(config, rngs=nnx.Rngs(42))
 
-# Encode sequences (A=0, C=1, G=2, T=3)
-query = jnp.array([0, 1, 2, 3, 0, 1])  # ACGTAC
-target = jnp.array([0, 1, 0, 3, 0, 1]) # ACATAC
-
-# Compute differentiable alignment
-result = sw.apply_batch(query, target)
-print(f"Alignment score: {result['score']}")
+# Generate synthetic data and run
+data = {"embeddings": jax.random.normal(jax.random.key(0), (100, 20))}
+result, state, metadata = operator.apply(data, {}, None)
+print(f"Cluster assignments: {result['cluster_assignments'].shape}")
 ```
 
 ### Gradient Computation
 
 ```python
-import jax
+# Gradients flow through all operators
+def loss_fn(input_data):
+    result, _, _ = operator.apply(input_data, {}, None)
+    return result["cluster_assignments"].sum()
 
-def alignment_loss(params, query, target):
-    sw = DifferentiableSmithWaterman(**params)
-    result = sw.apply_batch(query, target)
-    return -result['score']  # Maximize alignment score
-
-# Compute gradients
-grads = jax.grad(alignment_loss)(params, query, target)
+grad = jax.grad(loss_fn)(data)
+print(f"Gradient is non-zero: {bool(jnp.any(grad['embeddings'] != 0))}")
 ```
 
 ---
@@ -109,12 +96,12 @@ graph LR
     D --> E[Variant Calling]
     E --> F[Variants]
 
-    style A fill:#0d9488,color:#fff
-    style B fill:#6366f1,color:#fff
-    style C fill:#0891b2,color:#fff
-    style D fill:#7c3aed,color:#fff
-    style E fill:#dc2626,color:#fff
-    style F fill:#059669,color:#fff
+    style A fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style D fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style E fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style F fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 Each operator in the pipeline is fully differentiable, allowing gradients to flow from the final output back through all processing steps.
@@ -123,29 +110,29 @@ Each operator in the pipeline is fully differentiable, allowing gradients to flo
 
 ## Documentation Structure
 
-<div class="performance-metrics">
-<div class="metric-card">
+<div class="nav-grid">
+<div class="nav-card">
   <a href="getting-started/installation/">
-    <div class="metric-value">Getting Started</div>
-    <div class="metric-label">Installation & Quick Start</div>
+    <div class="nav-title">Getting Started</div>
+    <div class="nav-description">Installation & Quick Start</div>
   </a>
 </div>
-<div class="metric-card">
+<div class="nav-card">
   <a href="user-guide/concepts/differentiable-bioinformatics/">
-    <div class="metric-value">User Guide</div>
-    <div class="metric-label">Concepts & Tutorials</div>
+    <div class="nav-title">User Guide</div>
+    <div class="nav-description">Concepts & Tutorials</div>
   </a>
 </div>
-<div class="metric-card">
+<div class="nav-card">
   <a href="api/core/base/">
-    <div class="metric-value">API Reference</div>
-    <div class="metric-label">Complete API Docs</div>
+    <div class="nav-title">API Reference</div>
+    <div class="nav-description">Complete API Docs</div>
   </a>
 </div>
-<div class="metric-card">
+<div class="nav-card">
   <a href="examples/overview/">
-    <div class="metric-value">Examples</div>
-    <div class="metric-label">Code Examples</div>
+    <div class="nav-title">Examples</div>
+    <div class="nav-description">Runnable Code Examples</div>
   </a>
 </div>
 </div>

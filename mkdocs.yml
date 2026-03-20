@@ -83,9 +83,19 @@ nav:
   - User Guide:
       - Concepts:
           - Differentiable Bioinformatics: user-guide/concepts/differentiable-bioinformatics.md
-          - Sequence Alignment: user-guide/concepts/sequence-alignment.md
-          - Variant Calling: user-guide/concepts/variant-calling.md
-          - Pileup Generation: user-guide/concepts/pileup-generation.md
+          - Genomics:
+              - Sequence Alignment: user-guide/concepts/sequence-alignment.md
+              - Pileup Generation: user-guide/concepts/pileup-generation.md
+              - Variant Calling: user-guide/concepts/variant-calling.md
+              - Genomic Processing: user-guide/concepts/genomic-processing.md
+          - Single-Cell & Spatial:
+              - Single-Cell Analysis: user-guide/concepts/single-cell-analysis.md
+              - Omics Integration: user-guide/concepts/omics-integration.md
+          - Molecular & Structural:
+              - Drug Discovery: user-guide/concepts/drug-discovery.md
+              - Structural Biology: user-guide/concepts/structural-biology.md
+          - Methods:
+              - Representation Learning: user-guide/concepts/representation-learning.md
       - Operators:
           - Overview: user-guide/operators/overview.md
           - Core:
@@ -121,6 +131,7 @@ nav:
           - Overview: user-guide/losses/overview.md
           - Single-Cell Losses: user-guide/losses/singlecell.md
           - Statistical Losses: user-guide/losses/statistical.md
+          - Metric Losses: user-guide/losses/metric.md
       - Training:
           - Training Overview: user-guide/training/overview.md
           - Training Utilities: user-guide/training/utilities.md
@@ -167,18 +178,17 @@ nav:
           - Biological Regularization: api/losses/biological-regularization.md
           - Single-Cell Losses: api/losses/singlecell.md
           - Statistical Losses: api/losses/statistical.md
+          - Metric Losses: api/losses/metric.md
       - Utils:
           - Training Utilities: api/utils/training.md
       - Data:
           - Data Sources: api/sources.md
           - Dataset Splitters: api/splitters.md
 
-  - Design Documents:
-      - End-to-End Differentiable Pipelines: design-docs/differentiable-pipelines.md
-
   - Examples:
       - Overview: examples/overview.md
       - Basic:
+          - Operator Pattern: examples/basic/operator-pattern.md
           - MolNet Data Loading: examples/basic/molnet-data-loading.md
           - Molecular Fingerprints: examples/basic/molecular-fingerprints.md
           - Molecular Similarity: examples/basic/molecular-similarity.md
@@ -191,7 +201,18 @@ nav:
           - Protein Structure: examples/basic/protein-structure.md
           - HMM Sequence Model: examples/basic/hmm-sequence-model.md
           - Preprocessing: examples/basic/preprocessing.md
+      - Intermediate:
+          - Imputation: examples/intermediate/imputation.md
+          - Trajectory: examples/intermediate/trajectory.md
+          - Cell Annotation: examples/intermediate/cell-annotation.md
+          - Doublet Detection: examples/intermediate/doublet-detection.md
+          - Batch Correction: examples/intermediate/batch-correction.md
       - Advanced:
+          - Spatial Analysis: examples/advanced/spatial-analysis.md
+          - GRN Inference: examples/advanced/grn-inference.md
+          - Single-Cell Pipeline: examples/advanced/singlecell-pipeline.md
+          - Calibrax Metrics: examples/advanced/calibrax-metrics.md
+          - scVI Benchmark: examples/advanced/scvi-benchmark.md
           - Drug Discovery Workflow: examples/advanced/drug-discovery-workflow.md
           - ADMET Prediction: examples/advanced/admet-prediction.md
           - AttentiveFP: examples/advanced/attentive-fp.md
@@ -205,6 +226,7 @@ nav:
   - Development:
       - Contributing: development/contributing.md
       - Testing: development/testing.md
+      - Example Documentation Design: development/example-documentation-design.md
       - Benchmarks: development/benchmarks.md
 
 # Plugins configuration

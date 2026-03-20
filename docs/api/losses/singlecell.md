@@ -32,6 +32,26 @@ Loss functions for training single-cell analysis models.
         - __init__
         - __call__
 
+## ShannonDiversityLoss
+
+::: diffbio.losses.singlecell_losses.ShannonDiversityLoss
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - __call__
+
+## SimpsonDiversityLoss
+
+::: diffbio.losses.singlecell_losses.SimpsonDiversityLoss
+    options:
+      show_root_heading: true
+      show_source: false
+      members:
+        - __init__
+        - __call__
+
 ## Usage Examples
 
 ### Batch Mixing Loss

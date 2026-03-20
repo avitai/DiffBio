@@ -1,335 +1,300 @@
-# Testing Guide
+# Testing
 
-DiffBio uses pytest for testing. This guide covers how to run tests and write new ones.
+DiffBio uses pytest with a test-first methodology. All operators must have
+tests covering output shapes, differentiability, JIT compatibility, and edge
+cases before implementation.
+
+---
 
 ## Running Tests
 
-### Basic Test Run
+Always activate the environment first:
+
+```bash
+source ./activate.sh
+```
+
+### Common Commands
 
 ```bash
 # Run all tests
-pytest
+uv run pytest tests/ -v
 
-# Verbose output
-pytest -v
+# Run with coverage report
+uv run pytest tests/ -v --cov=src/diffbio --cov-report=term-missing
 
-# Very verbose (show individual test names)
-pytest -vv
-```
+# Run a specific domain
+uv run pytest tests/operators/singlecell/ -xvs
 
-### With Coverage
+# Run a specific test class
+uv run pytest tests/operators/alignment/test_profile_hmm.py::TestProfileHMM -xvs
 
-```bash
-# Basic coverage report
-pytest --cov=src/diffbio
-
-# Detailed report showing missing lines
-pytest --cov=src/diffbio --cov-report=term-missing
-
-# Generate HTML report
-pytest --cov=src/diffbio --cov-report=html
-# Open htmlcov/index.html in browser
-```
-
-### Filtering Tests
-
-```bash
-# Run tests in a specific file
-pytest tests/test_operators.py
-
-# Run tests matching a pattern
-pytest -k "smith_waterman"
-
-# Run tests in a specific class
-pytest tests/test_operators.py::TestSmithWaterman
-
-# Run a specific test
-pytest tests/test_operators.py::TestSmithWaterman::test_basic_alignment
-```
-
-### Test Output
-
-```bash
-# Show print statements
-pytest -s
-
-# Show local variables on failure
-pytest -l
+# Run tests matching a keyword
+uv run pytest tests/ -k "smith_waterman" -v
 
 # Stop on first failure
-pytest -x
+uv run pytest tests/ -x
 
 # Run last failed tests first
-pytest --lf
+uv run pytest tests/ --lf
+
+# Show print output
+uv run pytest tests/ -s
 ```
 
-## Test Structure
+### Full Test + Coverage Command
 
-### Directory Layout
+The complete command used for CI-equivalent local testing:
+
+```bash
+uv run pytest -vv \
+  --json-report --json-report-file=temp/test-results.json \
+  --json-report-indent=2 --json-report-verbosity=2 \
+  --cov=src/ --cov-report=json:temp/coverage.json \
+  --cov-report=term-missing
+```
+
+---
+
+## Test Directory Structure
+
+Tests mirror the source tree:
 
 ```
 tests/
-├── __init__.py
-├── conftest.py          # Shared fixtures
-├── integration/         # Integration tests
-│   ├── __init__.py
-│   └── test_operator_composition.py
-├── operators/           # Operator unit tests
-│   ├── __init__.py
-│   ├── test_alignment.py
-│   ├── test_pileup.py
-│   └── test_quality_filter.py
-├── pipelines/           # Pipeline tests
-│   ├── __init__.py
-│   └── test_variant_calling.py
-└── utils/               # Utility tests
-    ├── __init__.py
-    └── test_training.py
+├── conftest.py                    # Shared fixtures (RNGs, sample data)
+├── core/                          # Core utilities
+├── integration/                   # Cross-operator integration tests
+│   ├── test_operator_composition.py
+│   └── test_singlecell_pipeline.py
+├── losses/                        # Loss function tests
+├── operators/                     # Operator unit tests (by domain)
+│   ├── alignment/
+│   │   ├── test_profile_hmm.py
+│   │   └── test_soft_msa.py
+│   ├── assembly/
+│   ├── drug_discovery/
+│   ├── epigenomics/
+│   ├── language_models/
+│   ├── mapping/
+│   ├── multiomics/
+│   ├── normalization/
+│   ├── preprocessing/
+│   ├── rnaseq/
+│   ├── singlecell/               # Largest domain (~20 test files)
+│   ├── statistical/
+│   └── variant/
+├── pipelines/                     # End-to-end pipeline tests
+├── sequences/                     # DNA/RNA encoding tests
+├── sources/                       # Data source tests
+├── splitters/                     # Dataset splitting tests
+└── utils/                         # Training utility tests
 ```
 
-### Test Naming
+---
 
-- Test files: `test_*.py` or `*_test.py`
-- Test classes: `Test*`
-- Test functions: `test_*`
+## Required Test Patterns
 
-## Writing Tests
+Every operator must have tests for these four properties.
 
-### Basic Test Structure
+### 1. Output Shape and Keys
+
+Verify the operator produces the expected output dictionary:
 
 ```python
-import pytest
-import jax
-import jax.numpy as jnp
+def test_output_shape(self, operator: MyOperator) -> None:
+    data = {"counts": jnp.ones((50, 100))}
+    result, state, metadata = operator.apply(data, {}, None)
 
-class TestMyOperator:
-    """Tests for MyOperator."""
+    # Check expected output keys exist
+    assert "output" in result
+    assert result["output"].shape == (50, 100)
 
-    def test_basic_operation(self):
-        """Test basic functionality."""
-        # Arrange
-        config = MyOperatorConfig()
-        operator = MyOperator(config)
-        data = {"input": jnp.ones((10,))}
-
-        # Act
-        result, state, metadata = operator.apply(data, {}, None)
-
-        # Assert
-        assert "output" in result
-        assert result["output"].shape == (10,)
-
-    def test_with_specific_config(self):
-        """Test with non-default configuration."""
-        config = MyOperatorConfig(my_param=2.0)
-        operator = MyOperator(config)
-        # ...
+    # Check input keys are preserved
+    assert "counts" in result
 ```
 
-### Testing Differentiability
+### 2. Differentiability
+
+Verify gradients flow through the operator:
 
 ```python
-def test_gradient_computation(self):
-    """Verify operator is differentiable."""
-    config = MyOperatorConfig()
-    operator = MyOperator(config)
-
-    def loss_fn(op, data):
-        result, _, _ = op.apply(data, {}, None)
+def test_differentiability(self, operator: MyOperator) -> None:
+    def loss_fn(data):
+        result, _, _ = operator.apply(data, {}, None)
         return result["output"].sum()
 
-    data = {"input": jnp.ones((10,))}
+    data = {"counts": jnp.ones((50, 100))}
+    grad = jax.grad(loss_fn)(data)
 
-    # Should not raise any errors
-    grads = jax.grad(loss_fn)(operator, data)
-
-    # Gradients should be non-zero (generally)
-    assert grads is not None
-    # Check specific gradient properties if needed
+    # Gradients must be non-zero and finite
+    assert jnp.any(grad["counts"] != 0)
+    assert jnp.all(jnp.isfinite(grad["counts"]))
 ```
 
-### Testing JIT Compilation
+### 3. JIT Compatibility
+
+Verify the operator works under `jax.jit`:
 
 ```python
-def test_jit_compatible(self):
-    """Verify operator works with JAX JIT."""
-    config = MyOperatorConfig()
-    operator = MyOperator(config)
+def test_jit_compatible(self, operator: MyOperator) -> None:
+    data = {"counts": jnp.ones((50, 100))}
+    eager_result, _, _ = operator.apply(data, {}, None)
 
-    @jax.jit
-    def apply_op(data):
-        result, _, _ = operator.apply(data, {}, None)
-        return result
+    jit_fn = jax.jit(lambda d: operator.apply(d, {}, None))
+    jit_result, _, _ = jit_fn(data)
 
-    data = {"input": jnp.ones((10,))}
-
-    # First call compiles
-    result1 = apply_op(data)
-
-    # Second call uses compiled version
-    result2 = apply_op(data)
-
-    # Results should match
-    assert jnp.allclose(result1["output"], result2["output"])
+    assert jnp.allclose(eager_result["output"], jit_result["output"], atol=1e-5)
 ```
 
-### Testing Batched Operations
+### 4. Configuration
+
+Verify config parameters affect operator behavior:
 
 ```python
-def test_vmap_compatible(self):
-    """Verify operator works with JAX vmap."""
-    config = MyOperatorConfig()
-    operator = MyOperator(config)
+def test_config_affects_output(self) -> None:
+    data = {"counts": jnp.ones((50, 100))}
 
-    def single_apply(single_data):
-        result, _, _ = operator.apply(single_data, {}, None)
-        return result["output"]
+    config_a = MyOperatorConfig(temperature=0.1)
+    op_a = MyOperator(config_a, rngs=nnx.Rngs(42))
+    result_a, _, _ = op_a.apply(data, {}, None)
 
-    batch_apply = jax.vmap(single_apply)
+    config_b = MyOperatorConfig(temperature=10.0)
+    op_b = MyOperator(config_b, rngs=nnx.Rngs(42))
+    result_b, _, _ = op_b.apply(data, {}, None)
 
-    # Create batch data
-    batch_data = {"input": jnp.ones((5, 10))}
-
-    # Should work without errors
-    batch_result = batch_apply(batch_data)
-    assert batch_result.shape == (5, 10)
+    # Different temperatures should produce different outputs
+    assert not jnp.allclose(result_a["output"], result_b["output"])
 ```
+
+---
 
 ## Fixtures
 
-### Shared Fixtures in conftest.py
+### Shared Fixtures (conftest.py)
+
+The project-level `conftest.py` provides common fixtures:
 
 ```python
-# tests/conftest.py
-import pytest
-import jax
-import jax.numpy as jnp
-from flax import nnx
-
-@pytest.fixture
-def random_key():
-    """Provide a JAX random key."""
-    return jax.random.PRNGKey(42)
-
 @pytest.fixture
 def rngs():
-    """Provide Flax NNX RNGs."""
+    """Flax NNX random number generators."""
     return nnx.Rngs(42)
 
 @pytest.fixture
-def sample_reads(random_key):
-    """Generate sample read data."""
-    num_reads = 10
-    read_length = 30
-    k1, k2, k3 = jax.random.split(random_key, 3)
-
-    return {
-        "reads": jax.nn.one_hot(
-            jax.random.randint(k1, (num_reads, read_length), 0, 4),
-            4
-        ),
-        "positions": jax.random.randint(k2, (num_reads,), 0, 70),
-        "quality": jax.random.uniform(k3, (num_reads, read_length), 10, 40),
-    }
+def random_key():
+    """JAX random key."""
+    return jax.random.key(42)
 ```
 
-### Using Fixtures
+### Domain-Specific Fixtures
+
+Use `@pytest.fixture` within test classes for operator-specific setup:
 
 ```python
-class TestPileup:
-    def test_with_sample_data(self, sample_reads, rngs):
-        """Test using fixtures."""
-        config = PileupConfig(reference_length=100)
-        pileup_op = DifferentiablePileup(config, rngs=rngs)
+class TestSoftKMeansClustering:
+    @pytest.fixture
+    def config(self) -> SoftClusteringConfig:
+        return SoftClusteringConfig(n_clusters=5, n_features=20)
 
-        result, _, _ = pileup_op.apply(sample_reads, {}, None)
-        assert result["pileup"].shape == (100, 4)
+    @pytest.fixture
+    def operator(self, config: SoftClusteringConfig) -> SoftKMeansClustering:
+        return SoftKMeansClustering(config, rngs=nnx.Rngs(42))
+
+    @pytest.fixture
+    def sample_data(self) -> dict[str, jax.Array]:
+        return {"embeddings": jax.random.normal(jax.random.key(0), (100, 20))}
 ```
+
+---
 
 ## Parameterized Tests
 
+Use `@pytest.mark.parametrize` for testing across configurations:
+
 ```python
-import pytest
-
-class TestSmithWaterman:
-    @pytest.mark.parametrize("temperature", [0.1, 1.0, 5.0, 10.0])
-    def test_different_temperatures(self, temperature):
-        """Test alignment with various temperatures."""
-        config = SmithWatermanConfig(temperature=temperature)
-        aligner = SmoothSmithWaterman(config, scoring_matrix=scoring)
-
-        result = aligner.align(seq1, seq2)
-        assert result.score > 0
-
-    @pytest.mark.parametrize("gap_open,gap_extend", [
-        (-5.0, -0.5),
-        (-10.0, -1.0),
-        (-20.0, -2.0),
-    ])
-    def test_gap_penalties(self, gap_open, gap_extend):
-        """Test with different gap penalties."""
-        config = SmithWatermanConfig(gap_open=gap_open, gap_extend=gap_extend)
-        # ...
+@pytest.mark.parametrize("temperature", [0.1, 1.0, 5.0, 10.0])
+def test_temperature_range(self, temperature: float) -> None:
+    config = SmithWatermanConfig(temperature=temperature)
+    aligner = SmoothSmithWaterman(config, scoring_matrix=scoring, rngs=nnx.Rngs(0))
+    data = {"seq1": seq1, "seq2": seq2}
+    result, _, _ = aligner.apply(data, {}, None)
+    assert jnp.isfinite(result["score"])
 ```
 
-## Markers
+---
 
-### Skip Tests
-
-```python
-@pytest.mark.skip(reason="Not implemented yet")
-def test_future_feature(self):
-    pass
-
-@pytest.mark.skipif(not jax.devices("gpu"), reason="Requires GPU")
-def test_gpu_specific(self):
-    pass
-```
-
-### Slow Tests
+## Test Markers
 
 ```python
+@pytest.mark.gpu
+def test_gpu_operation(self):
+    """Requires CUDA GPU."""
+    ...
+
 @pytest.mark.slow
 def test_large_scale(self):
-    """This test takes a long time."""
-    pass
-
-# Run excluding slow tests
-# pytest -m "not slow"
+    """Takes >30 seconds."""
+    ...
 ```
 
-### Expected Failures
+Run subsets:
+
+```bash
+uv run pytest tests/ -m gpu       # GPU tests only
+uv run pytest tests/ -m "not slow" # Skip slow tests
+```
+
+---
+
+## Assertion Best Practices
+
+Use focused assertions that produce clean failure messages:
 
 ```python
-@pytest.mark.xfail(reason="Known issue #123")
-def test_known_issue(self):
-    pass
+# Good: targeted, informative on failure
+assert result["output"].shape == (50, 20)
+assert float(loss) < 1.0
+assert jnp.allclose(result_a, result_b, atol=1e-5)
+
+# Bad: massive diff output, potential timeouts
+assert result == expected_full_dict
+assert config_a == config_b
 ```
 
-## Best Practices
+For floating-point comparisons, always use `jnp.allclose` with an explicit
+tolerance rather than exact equality.
 
-1. **Test one thing per test**: Each test should verify a single behavior
-2. **Use descriptive names**: `test_alignment_with_gaps_returns_lower_score`
-3. **Isolate tests**: Tests should not depend on each other
-4. **Use fixtures**: Share setup code via fixtures
-5. **Test edge cases**: Empty inputs, boundary conditions, etc.
-6. **Check shapes**: Always verify array shapes in numerical tests
-7. **Use approximate comparisons**: `jnp.allclose()` for floating point
+---
 
-## Continuous Integration
+## Integration Tests
 
-Tests run automatically on:
+Integration tests in `tests/integration/` verify operator composition:
 
-- Every push
-- Every pull request
+```python
+def test_pipeline_chain(self) -> None:
+    """Verify operators chain correctly via data dict."""
+    # Step 1: Impute
+    result, _, _ = imputer.apply({"counts": counts}, {}, None)
 
-CI configuration in `.github/workflows/test.yml`:
+    # Step 2: Cluster (uses imputed output)
+    result["embeddings"] = result["imputed_counts"]
+    result, _, _ = clusterer.apply(result, {}, None)
 
-```yaml
-- name: Run tests
-  run: |
-    pytest -v --cov=src/diffbio --cov-report=xml
-
-- name: Upload coverage
-  uses: codecov/codecov-action@v3
+    # Verify both outputs present
+    assert "imputed_counts" in result
+    assert "cluster_assignments" in result
 ```
+
+---
+
+## Coverage Requirements
+
+New code must achieve 80% coverage minimum. Check coverage after adding tests:
+
+```bash
+uv run pytest tests/ --cov=src/diffbio --cov-report=term-missing --cov-fail-under=80
+```
+
+Untested lines appear in the `Missing` column. Focus on testing public API
+methods (`__init__`, `apply`) rather than private helpers.

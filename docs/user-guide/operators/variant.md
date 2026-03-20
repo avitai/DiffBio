@@ -10,6 +10,8 @@ Variant operators enable end-to-end optimization of:
 
 - **CNNVariantClassifier**: CNN-based variant classification
 - **CNVSegmentation**: Copy number variation segmentation
+- **EnhancedCNVSegmentation**: Multi-signal fusion CNV with pyramidal smoothing
+- **CellTypeAwareVariantClassifier**: Per-cell-type variant classification
 - **QualityRecalibration**: Base quality score recalibration
 
 ## CNNVariantClassifier
@@ -192,6 +194,108 @@ predicted_error_rate = recal_network(context_features)
 recalibrated_quality = -10 * jnp.log10(predicted_error_rate + 1e-10)
 ```
 
+## EnhancedCNVSegmentation
+
+Extended CNV segmentation with multi-signal fusion, pyramidal smoothing (infercnvpy-style), dynamic thresholding, and HMM copy-number state mapping. Extends `DifferentiableCNVSegmentation` with additional capabilities for production-quality CNV analysis.
+
+### Quick Start
+
+```python
+from diffbio.operators.variant import EnhancedCNVSegmentation, EnhancedCNVSegmentationConfig
+
+config = EnhancedCNVSegmentationConfig(
+    max_segments=50,
+    use_baf=True,
+    smoothing_window=100,
+    threshold_scale=1.5,
+    n_copy_states=5,
+)
+
+rngs = nnx.Rngs(0)
+enhanced_cnv = EnhancedCNVSegmentation(config, rngs=rngs)
+
+data = {
+    "coverage": log_ratios,      # (n_positions,)
+    "baf_signal": baf,           # (n_positions,) B-allele frequency
+    "snp_density": snp_density,  # (n_positions,)
+}
+result, state, metadata = enhanced_cnv.apply(data, {}, None)
+
+copy_states = result["copy_number_posteriors"]   # (n_positions, n_copy_states)
+smoothed = result["smoothed_signal"]             # (n_positions,)
+```
+
+### Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `max_segments` | int | 100 | Maximum segments to detect |
+| `hidden_dim` | int | 64 | Attention layer hidden dimension |
+| `attention_heads` | int | 4 | Number of attention heads |
+| `temperature` | float | 1.0 | Softmax temperature |
+| `use_baf` | bool | False | Incorporate B-allele frequency |
+| `baf_weight` | float | 0.3 | Initial BAF signal fusion weight |
+| `smoothing_window` | int | 100 | Pyramidal smoothing window size |
+| `threshold_scale` | float | 1.5 | STDDEV-based dynamic threshold multiplier |
+| `n_copy_states` | int | 5 | Discrete copy-number states (0-somy to 4-somy) |
+
+### Enhanced Features
+
+1. **Multi-signal fusion**: Learnable linear combination of log-ratio coverage, BAF, and SNP density
+2. **Pyramidal smoothing**: Triangular convolution kernel for spatial noise reduction
+3. **Dynamic thresholding**: `threshold_scale * std(smoothed)` filters low-amplitude noise
+4. **HMM state mapping**: Soft copy-number posteriors via learned emission model
+
+## CellTypeAwareVariantClassifier
+
+Cell-type-aware variant classifier using separate classification heads per cell type, weighted by soft cell-type assignment probabilities. Enables cell-type-specific variant calling thresholds for heterogeneous populations such as single-cell sequencing data.
+
+### Quick Start
+
+```python
+from diffbio.operators.variant import (
+    CellTypeAwareVariantClassifier,
+    CellTypeAwareVariantClassifierConfig,
+)
+
+config = CellTypeAwareVariantClassifierConfig(
+    n_classes=3,
+    hidden_dim=64,
+    n_cell_types=5,
+    pileup_channels=6,
+    pileup_width=100,
+)
+
+rngs = nnx.Rngs(42)
+classifier = CellTypeAwareVariantClassifier(config, rngs=rngs)
+
+data = {
+    "pileup": pileup_batch,                   # (n, channels, width)
+    "cell_type_assignments": assignments,      # (n, n_cell_types)
+}
+result, state, metadata = classifier.apply(data, {}, None)
+
+probs = result["variant_probabilities"]        # (n, n_classes)
+per_type = result["per_type_probabilities"]    # (n, n_cell_types, n_classes)
+```
+
+### Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `n_classes` | int | 3 | Variant classes (e.g., ref, SNP, indel) |
+| `hidden_dim` | int | 64 | Shared encoder hidden dimension |
+| `n_cell_types` | int | 5 | Number of cell types |
+| `pileup_channels` | int | 6 | Pileup input channels |
+| `pileup_width` | int | 100 | Pileup input width |
+
+### Architecture
+
+1. Shared feature encoder: pileup -> flatten -> Linear -> ReLU
+2. Per-type classification heads: `n_cell_types` separate Linear layers
+3. Each head produces type-specific variant probabilities via softmax
+4. Final aggregation: $\sum_t w_t \cdot \text{head}_t(\text{features})$ weighted by cell-type assignments
+
 ## Training Variant Models
 
 ### CNN Classifier Training
@@ -241,6 +345,8 @@ def cnv_loss(cnv_model, log_ratios, true_segments):
 | Copy number | CNVSegmentation | Detect CNV regions |
 | Tumor purity | CNVSegmentation | Estimate tumor fraction |
 | Quality control | QualityRecalibration | Improve base qualities |
+| Enhanced CNV | EnhancedCNVSegmentation | Multi-signal CNV with pyramidal smoothing |
+| Cell-type variants | CellTypeAwareVariantClassifier | Per-cell-type variant calling |
 
 ## Integration with Pipelines
 

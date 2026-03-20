@@ -13,11 +13,11 @@ graph LR
     C --> D[Variant Classifier]
     D --> E[Predictions]
 
-    style A fill:#0d9488,color:#fff
-    style B fill:#6366f1,color:#fff
-    style C fill:#0891b2,color:#fff
-    style D fill:#7c3aed,color:#fff
-    style E fill:#059669,color:#fff
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style D fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style E fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 1. **Quality Filter**: Soft-masks low-quality bases using learnable threshold

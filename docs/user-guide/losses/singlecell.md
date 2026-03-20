@@ -223,8 +223,73 @@ def combined_scrnaseq_loss(model, features, batch_ids):
 | Clear cell types | 0.3 | 1.0 | Prioritize clustering |
 | Balanced | 0.5 | 0.5 | Equal importance |
 
+## ShannonDiversityLoss
+
+Measures assignment diversity using Shannon entropy of soft cluster assignments. Higher values indicate more uniform (diverse) cluster assignments, lower values indicate concentrated assignments. Delegates to `calibrax.metrics.functional.information.entropy` for per-cell computation.
+
+### Usage
+
+```python
+from diffbio.losses.singlecell_losses import ShannonDiversityLoss
+
+diversity_loss = ShannonDiversityLoss()
+
+# Soft cluster probabilities: (n_cells, n_clusters)
+assignments = jax.nn.softmax(logits, axis=-1)
+diversity = diversity_loss(assignments)  # scalar, range [0, log(K)]
+```
+
+### Parameters
+
+ShannonDiversityLoss has no configuration parameters.
+
+### Algorithm
+
+$$H = -\frac{1}{N}\sum_i \sum_k p_{ik} \log(p_{ik})$$
+
+Where $p_{ik}$ is the soft assignment probability of cell $i$ to cluster $k$. Maximum entropy $\log(K)$ occurs with uniform assignments.
+
+### Use Cases
+
+- Regularize clustering to avoid degenerate solutions (all cells in one cluster)
+- Encourage balanced cluster sizes during training
+- Combine with compactness loss: `loss = compactness - lambda * diversity`
+
+## SimpsonDiversityLoss
+
+Mean Simpson concentration index of soft cluster assignments. Computes the sum of squared assignment probabilities per cell, averaged across all cells. Lower values indicate more diverse (uniform) assignments.
+
+### Usage
+
+```python
+from diffbio.losses.singlecell_losses import SimpsonDiversityLoss
+
+simpson_loss = SimpsonDiversityLoss()
+
+assignments = jax.nn.softmax(logits, axis=-1)
+concentration = simpson_loss(assignments)  # scalar, range [1/K, 1.0]
+```
+
+### Parameters
+
+SimpsonDiversityLoss has no configuration parameters.
+
+### Algorithm
+
+$$D = \frac{1}{N}\sum_i \sum_k p_{ik}^2$$
+
+- Uniform assignments over $K$ clusters yield $1/K$
+- Fully concentrated (one-hot) assignments yield $1.0$
+
+### Use Cases
+
+- Alternative diversity regularizer to Shannon entropy
+- More sensitive to dominant clusters than Shannon entropy
+- Minimize Simpson index to encourage diverse cluster usage
+
 ## Next Steps
 
 - See [Single-Cell Operators](../operators/singlecell.md) for analysis operators
 - Explore [Statistical Losses](statistical.md) for count-based losses
+- Check [Metric Losses](metric.md) for AUROC training surrogates
 - Check [Training Overview](../training/overview.md) for training workflows

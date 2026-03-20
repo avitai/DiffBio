@@ -9,6 +9,8 @@ DiffBio provides differentiable transformer-based sequence encoders following DN
 Language model operators convert nucleotide sequences into dense embeddings using transformer architectures:
 
 - **TransformerSequenceEncoder**: BERT-style transformer for DNA/RNA sequence embedding
+- **DifferentiableFoundationModel**: Geneformer/scGPT-style masked gene expression model
+- **GeneTokenizer**: Geneformer-style rank-value gene tokenization via soft sorting
 
 ## TransformerSequenceEncoder
 
@@ -228,6 +230,76 @@ grads = jax.grad(embedding_loss)(soft_sequence)
 | RNA-FM | 640 | 12 | 20 | 5120 |
 | Small (default) | 256 | 4 | 4 | 1024 |
 
+## DifferentiableFoundationModel
+
+Geneformer/scGPT-inspired masked gene expression model for single-cell genomics. Tokenizes gene expression via rank-value encoding, embeds gene identities and expression values, applies random masking, and predicts masked values through a transformer encoder.
+
+### Quick Start
+
+```python
+from diffbio.operators.language_models import (
+    DifferentiableFoundationModel, FoundationModelConfig,
+)
+
+config = FoundationModelConfig(
+    n_genes=2000,
+    hidden_dim=128,
+    num_layers=2,
+    num_heads=4,
+    mask_ratio=0.15,
+)
+
+model = DifferentiableFoundationModel(
+    config, rngs=nnx.Rngs(params=0, sample=1, dropout=2)
+)
+rp = model.generate_random_params(jax.random.key(0), {"counts": (100, 2000)})
+data = {"counts": counts, "gene_ids": jnp.arange(2000)}
+result, state, metadata = model.apply(data, {}, None, random_params=rp)
+
+cell_embeddings = result["cell_embeddings"]        # (n_cells, hidden_dim)
+gene_embeddings = result["gene_embeddings"]        # (n_genes, hidden_dim)
+predicted = result["predicted_expression"]         # (n_cells, n_genes)
+```
+
+### Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `n_genes` | int | 2000 | Number of genes in vocabulary |
+| `hidden_dim` | int | 128 | Hidden states and embeddings dimension |
+| `num_layers` | int | 2 | Transformer encoder layers |
+| `num_heads` | int | 4 | Attention heads |
+| `mask_ratio` | float | 0.15 | Fraction of genes to mask |
+| `dropout_rate` | float | 0.1 | Dropout rate |
+
+### Algorithm
+
+1. **Tokenize**: Rank genes by expression via soft sort (Geneformer-style)
+2. **Embed gene IDs** via token embedding layer
+3. **Add expression projection**: scalar values projected to hidden_dim (scGPT-style)
+4. **Random mask**: Replace masked gene embeddings with learned mask token
+5. **Transformer encoder**: Contextualize gene representations
+6. **Predict**: Linear output head predicts masked expression
+7. **Cell embedding**: Mean pooling of non-masked gene representations
+
+## GeneTokenizer
+
+Geneformer-style rank-value gene tokenizer using differentiable soft sorting. Converts gene expression vectors into rank-ordered soft permutation matrices.
+
+### Quick Start
+
+```python
+from diffbio.operators.language_models import GeneTokenizer
+
+tokenizer = GeneTokenizer(n_genes=2000, rngs=nnx.Rngs(0))
+
+# Compute soft permutation for one cell
+permutation = tokenizer(expression, temperature=1.0)  # (n_genes, n_genes)
+# permutation[i, j] = probability gene j occupies rank i (descending)
+```
+
+At low temperature the soft permutation approaches the hard argsort. The key insight from Geneformer: token IDs are gene indices sorted by expression magnitude.
+
 ## Use Cases
 
 | Application | Description |
@@ -237,6 +309,9 @@ grads = jax.grad(embedding_loss)(soft_sequence)
 | Motif discovery | Analyze position embeddings for learned sequence features |
 | Transfer learning | Use pre-trained embeddings for downstream tasks |
 | Sequence similarity | Compute similarity between sequence embeddings |
+| Cell embedding | DifferentiableFoundationModel produces per-cell embeddings from expression |
+| Gene program discovery | Foundation model gene embeddings capture co-regulation |
+| Masked expression prediction | Self-supervised pre-training on gene expression |
 
 ## References
 

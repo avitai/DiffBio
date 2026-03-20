@@ -33,12 +33,13 @@ def one_hot_dna(sequence_indices):
 seq1 = one_hot_dna(jnp.array([0, 1, 2, 3, 0, 1]))  # ACGTAC
 seq2 = one_hot_dna(jnp.array([0, 1, 0, 3, 0, 1]))  # ACATAC
 
-# Perform alignment
-result = aligner.align(seq1, seq2)
+# Perform alignment via the Datarax apply() interface
+data = {"seq1": seq1, "seq2": seq2}
+result, _, _ = aligner.apply(data, {}, None)
 
-print(f"Alignment score: {result.score:.4f}")
-print(f"Alignment matrix shape: {result.alignment_matrix.shape}")
-print(f"Soft alignment shape: {result.soft_alignment.shape}")
+print(f"Alignment score: {result['score']:.4f}")
+print(f"Alignment matrix shape: {result['alignment_matrix'].shape}")
+print(f"Soft alignment shape: {result['soft_alignment'].shape}")
 ```
 
 ## Computing Gradients
@@ -52,8 +53,9 @@ import jax
 def alignment_loss(scoring_matrix, seq1, seq2):
     config = SmithWatermanConfig(temperature=1.0)
     aligner = SmoothSmithWaterman(config, scoring_matrix=scoring_matrix)
-    result = aligner.align(seq1, seq2)
-    return -result.score  # Negative because we want to maximize
+    data = {"seq1": seq1, "seq2": seq2}
+    result, _, _ = aligner.apply(data, {}, None)
+    return -result["score"]  # Negative because we want to maximize
 
 # Compute gradients with respect to the scoring matrix
 grad_fn = jax.grad(alignment_loss)
@@ -187,12 +189,13 @@ def pipeline(params, seq1, seq2, quality1, quality2):
     align_config = SmithWatermanConfig(temperature=params['temperature'])
     aligner = SmoothSmithWaterman(align_config, scoring_matrix=params['scoring'])
 
-    result = aligner.align(
-        filtered1['sequence'],
-        filtered2['sequence']
-    )
+    align_data = {
+        "seq1": filtered1['sequence'],
+        "seq2": filtered2['sequence'],
+    }
+    result, _, _ = aligner.apply(align_data, {}, None)
 
-    return result.score
+    return result["score"]
 
 # Initialize parameters
 params = {

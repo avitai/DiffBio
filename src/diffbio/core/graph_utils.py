@@ -68,9 +68,9 @@ def compute_knn_graph(
         A tuple ``(edge_indices, edge_weights)`` where:
 
         - ``edge_indices`` has shape ``(n * k_eff, 2)`` with each row
-          ``[source, target]``.
+            ``[source, target]``.
         - ``edge_weights`` has shape ``(n * k_eff,)`` containing the
-          corresponding distances.
+            corresponding distances.
 
         ``k_eff = min(k, n - 1)``.
     """

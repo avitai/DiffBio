@@ -41,6 +41,7 @@
 # Environment setup
 import jax
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
 from flax import nnx
 
 print(f"JAX version: {jax.__version__}")
@@ -54,13 +55,14 @@ print(f"Devices: {jax.device_count()}")
 
 # %%
 # Configure the operator
-from diffbio.operators.domain.module import OperatorClass, OperatorConfig
+from diffbio.operators.singlecell import SoftKMeansClustering, SoftClusteringConfig
 
-config = OperatorConfig(
-    param1=value1,
-    param2=value2,
+config = SoftClusteringConfig(
+    n_clusters=5,
+    n_features=20,
+    temperature=1.0,
 )
-operator = OperatorClass(config, rngs=nnx.Rngs(42))
+operator = SoftKMeansClustering(config, rngs=nnx.Rngs(42))
 
 print(f"Operator created: {type(operator).__name__}")
 
@@ -72,12 +74,12 @@ print(f"Operator created: {type(operator).__name__}")
 # %%
 # Generate synthetic data
 key = jax.random.key(0)
-n_cells, n_genes = 50, 100
-counts = jax.random.poisson(key, jnp.ones((n_cells, n_genes)) * 3.0)
+n_cells, n_features = 100, 20
+embeddings = jax.random.normal(key, (n_cells, n_features))
 
-data = {"counts": counts}
-print(f"Input shape: {data['counts'].shape}")
-print(f"Mean expression: {data['counts'].mean():.2f}")
+data = {"embeddings": embeddings}
+print(f"Input shape: {data['embeddings'].shape}")
+print(f"Input dtype: {data['embeddings'].dtype}")
 
 # %% [markdown]
 # ## 3. Run the Operator
@@ -86,12 +88,39 @@ print(f"Mean expression: {data['counts'].mean():.2f}")
 
 # %%
 # Apply the operator
-result, state, metadata = operator.apply(data, {}, None, None)
+result, state, metadata = operator.apply(data, {}, None)
 
-# Inspect outputs
-for key_name, value in result.items():
+# Inspect outputs -- print shapes and key values for every result tensor
+for key_name in sorted(result.keys()):
+    value = result[key_name]
     if hasattr(value, "shape"):
         print(f"  {key_name}: shape={value.shape}, dtype={value.dtype}")
+
+# %%
+# --- REQUIRED: Visualize the operator output ---
+#
+# Every example must produce at least one figure. Place plt.savefig()
+# before plt.show() to write the figure to docs/assets/examples/.
+# The path mirrors the example location:
+#   examples/singlecell/clustering.py
+#   -> docs/assets/examples/singlecell/clustering_assignments.png
+
+ASSET_DIR = "docs/assets/examples/domain"  # <-- change to match your example
+
+fig, ax = plt.subplots(figsize=(8, 4))
+im = ax.imshow(
+    result["cluster_assignments"][:30],
+    aspect="auto",
+    cmap="viridis",
+)
+ax.set_xlabel("Cluster")
+ax.set_ylabel("Cell")
+ax.set_title("Soft Cluster Assignments (first 30 cells)")
+plt.colorbar(im, ax=ax, label="Assignment Probability")
+plt.tight_layout()
+# Uncomment after creating the asset directory:
+# plt.savefig(f"{ASSET_DIR}/operator_output.png", dpi=150, bbox_inches="tight")
+plt.show()
 
 # %% [markdown]
 # ## 4. Verify Differentiability
@@ -105,14 +134,14 @@ for key_name, value in result.items():
 
 def loss_fn(input_data):
     """Compute a scalar loss from the operator output."""
-    result, _, _ = operator.apply(input_data, {}, None, None)
-    return result["output_key"].sum()
+    res, _, _ = operator.apply(input_data, {}, None)
+    return res["cluster_assignments"].sum()
 
 
 grad = jax.grad(loss_fn)(data)
-print(f"Gradient shape: {grad['counts'].shape}")
-print(f"Gradient is non-zero: {bool(jnp.any(grad['counts'] != 0))}")
-print(f"Gradient is finite: {bool(jnp.all(jnp.isfinite(grad['counts'])))}")
+print(f"Gradient shape: {grad['embeddings'].shape}")
+print(f"Gradient is non-zero: {bool(jnp.any(grad['embeddings'] != 0))}")
+print(f"Gradient is finite: {bool(jnp.all(jnp.isfinite(grad['embeddings'])))}")
 
 # %% [markdown]
 # ## 5. JIT Compilation
@@ -122,18 +151,42 @@ print(f"Gradient is finite: {bool(jnp.all(jnp.isfinite(grad['counts'])))}")
 
 # %%
 # JIT-compiled forward pass
-jit_apply = jax.jit(lambda d: operator.apply(d, {}, None, None))
+jit_apply = jax.jit(lambda d: operator.apply(d, {}, None))
 result_jit, _, _ = jit_apply(data)
-print(f"JIT output matches: {bool(jnp.allclose(result['output_key'], result_jit['output_key']))}")
+print(
+    "JIT output matches: "
+    f"{bool(jnp.allclose(result['cluster_assignments'], result_jit['cluster_assignments']))}"
+)
 
 # %% [markdown]
 # ## 6. Experiments
 #
-# [Suggest parameter variations and what to observe.]
+# [Sweep a key parameter and visualize how it affects the output.
+# Every experiment section should produce a figure.]
 
 # %%
-# Experiment: vary a key parameter
-# TODO: Show how changing a parameter affects the output
+# Experiment: vary temperature and observe assignment sharpness
+temperatures = [0.1, 0.5, 1.0, 5.0]
+mean_max_probs = []
+
+for temp in temperatures:
+    cfg = SoftClusteringConfig(n_clusters=5, n_features=20, temperature=temp)
+    op = SoftKMeansClustering(cfg, rngs=nnx.Rngs(42))
+    res, _, _ = op.apply(data, {}, None)
+    mean_max_probs.append(float(res["cluster_assignments"].max(axis=1).mean()))
+    print(f"  T={temp}: mean max probability = {mean_max_probs[-1]:.4f}")
+
+# %%
+# --- REQUIRED: Visualize experiment results ---
+fig, ax = plt.subplots(figsize=(6, 4))
+ax.plot(temperatures, mean_max_probs, "o-", linewidth=2, markersize=7, color="tab:blue")
+ax.set_xlabel("Temperature")
+ax.set_ylabel("Mean Max Assignment Probability")
+ax.set_title("Assignment Sharpness vs Temperature")
+plt.tight_layout()
+# Uncomment after creating the asset directory:
+# plt.savefig(f"{ASSET_DIR}/operator_sweep.png", dpi=150, bbox_inches="tight")
+plt.show()
 
 # %% [markdown]
 # ## Summary
@@ -142,6 +195,7 @@ print(f"JIT output matches: {bool(jnp.allclose(result['output_key'], result_jit[
 # - How to configure and run [operator name]
 # - That gradients flow through the computation (differentiability)
 # - That JIT compilation works for accelerated execution
+# - How [parameter] affects [behavior] (experiment)
 #
 # ## Next Steps
 #
