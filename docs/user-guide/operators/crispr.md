@@ -65,22 +65,24 @@ scores = result["efficiency_scores"]  # (n_guides,) in [0, 1]
 
 The scorer uses a 1D CNN architecture inspired by [DeepCRISPR](https://github.com/bm2-lab/DeepCRISPR):
 
-```
-Guides (n, 23, 4) ──→ Conv1D ──→ BN ──→ ReLU ──┐
-                                                │
-                     ┌──────────────────────────┘
-                     │
-                     ↓
-              Conv1D ──→ BN ──→ ReLU ──→ Conv1D ──→ BN ──→ ReLU
-                                                           │
-                     ┌─────────────────────────────────────┘
-                     │
-                     ↓
-               Flatten ──→ FC ──→ ReLU ──→ Dropout ──→ FC ──→ Sigmoid
-                                                                  │
-                                                                  ↓
-                                                        Efficiency Score
-                                                           (n,) [0,1]
+```mermaid
+graph LR
+    A["Guides<br/>(n, 23, 4)"] --> B["Conv1D + BN + ReLU"]
+    B --> C["Conv1D + BN + ReLU"]
+    C --> D["Conv1D + BN + ReLU"]
+    D --> E["Flatten"]
+    E --> F["FC + ReLU + Dropout"]
+    F --> G["FC + Sigmoid"]
+    G --> H["Efficiency Score<br/>(n,) [0,1]"]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style D fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style E fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style F fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style G fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style H fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 The architecture consists of:

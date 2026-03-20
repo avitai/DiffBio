@@ -13,33 +13,24 @@ Molecular dynamics operators enable gradient-based optimization of molecular sim
 
 ## Architecture
 
-```
-Particle Positions (n_particles, dim)
-         │
-         ▼
-┌─────────────────────────────┐
-│     ForceFieldOperator      │
-│  Lennard-Jones / Morse /    │
-│     Soft Sphere Potential   │
-└─────────────────────────────┘
-         │
-         ├─── Energy (scalar)
-         │
-         ├─── Forces (n_particles, dim)
-         │    F = -∇E (auto-differentiation)
-         │
-         ▼
-┌─────────────────────────────┐
-│    MDIntegratorOperator     │
-│   Velocity Verlet (NVE) or  │
-│   Langevin Dynamics (NVT)   │
-└─────────────────────────────┘
-         │
-         ├─── Final Positions
-         │
-         ├─── Final Velocities
-         │
-         └─── Trajectory (n_steps, n_particles, dim)
+```mermaid
+graph TB
+    A["Particle Positions<br/>(n_particles, dim)"] --> B["ForceFieldOperator<br/>Lennard-Jones / Morse /<br/>Soft Sphere Potential"]
+    B --> E1["Energy (scalar)"]
+    B --> F1["Forces (n_particles, dim)<br/>F = -∇E (auto-differentiation)"]
+    B --> C["MDIntegratorOperator<br/>Velocity Verlet (NVE) or<br/>Langevin Dynamics (NVT)"]
+    C --> D1["Final Positions"]
+    C --> D2["Final Velocities"]
+    C --> D3["Trajectory<br/>(n_steps, n_particles, dim)"]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style E1 fill:#d1fae5,stroke:#059669,color:#064e3b
+    style F1 fill:#d1fae5,stroke:#059669,color:#064e3b
+    style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style D1 fill:#d1fae5,stroke:#059669,color:#064e3b
+    style D2 fill:#d1fae5,stroke:#059669,color:#064e3b
+    style D3 fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 ## ForceFieldOperator

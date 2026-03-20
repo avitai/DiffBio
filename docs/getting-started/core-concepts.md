@@ -107,21 +107,19 @@ Every operator across all domains follows the same `apply()` contract.
 The central value proposition of DiffBio: gradients propagate backward through
 an entire pipeline of operators.
 
-```
-Input Data
-      │
-      ▼
-┌─────────────────┐
-│ Operator A      │ ← ∂L/∂params_A
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ Operator B      │ ← ∂L/∂params_B
-└────────┬────────┘
-         │
-         ▼
-     Loss Function
+```mermaid
+graph TB
+    A["Input Data"] --> B["Operator A"]
+    B --> C["Operator B"]
+    C --> D["Loss Function"]
+
+    B -. "∂L/∂params_A" .-> B
+    C -. "∂L/∂params_B" .-> C
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style D fill:#fef3c7,stroke:#d97706,color:#78350f
 ```
 
 In practice this means you can define a loss at the end of a pipeline and

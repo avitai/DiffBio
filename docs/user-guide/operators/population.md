@@ -74,17 +74,24 @@ The neural network learns both Q (via encoder) and P (learnable parameters).
 
 ### Architecture
 
-```
-Genotypes ──→ Encoder ──→ Latent ──→ Softmax ──→ Ancestry (Q)
-    (n, s)    (MLP)       (n, h)     (τ)         (n, K)
-                                                    │
-                                                    ↓
-                                     Population Frequencies (P)
-                                           (K, s)
-                                                    │
-                                                    ↓
-                          Reconstructed ←── Q @ P ──┘
-                             (n, s)
+```mermaid
+graph LR
+    A["Genotypes<br/>(n, s)"] --> B["Encoder<br/>(MLP)"]
+    B --> C["Latent<br/>(n, h)"]
+    C --> D["Softmax (τ)"]
+    D --> Q["Ancestry Q<br/>(n, K)"]
+    Q --> MUL["Q @ P"]
+    P["Population Frequencies P<br/>(K, s)"] --> MUL
+    MUL --> R["Reconstructed<br/>(n, s)"]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style D fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style Q fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style P fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style MUL fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style R fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 The encoder maps genotypes to a latent space, then computes ancestry proportions via temperature-controlled softmax. The decoder reconstructs genotypes using the ADMIXTURE model.

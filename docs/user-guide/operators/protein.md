@@ -18,33 +18,18 @@ Differentiable implementation of the DSSP algorithm for assigning secondary stru
 
 The DSSP algorithm (Kabsch & Sander, 1983) assigns secondary structure based on hydrogen bonding patterns:
 
-```
-Backbone Coordinates (N, CA, C, O)
-              │
-              ▼
-┌─────────────────────────────┐
-│ Compute H-bond Energy       │
-│ E = q₁q₂f(1/rON + 1/rCH     │
-│        - 1/rOH - 1/rCN)     │
-└─────────────────────────────┘
-              │
-              ▼
-┌─────────────────────────────┐
-│ Continuous H-bond Matrix    │
-│ (1+sin((cutoff-E-m)/m·π/2))/2│
-└─────────────────────────────┘
-              │
-              ▼
-┌─────────────────────────────┐
-│ Pattern Detection           │
-│ • Helix: i→i+4 H-bonds      │
-│ • Strand: non-local H-bonds │
-│ • Loop: remaining residues  │
-└─────────────────────────────┘
-              │
-              ▼
-    Soft SS Assignments
-        (H, E, -)
+```mermaid
+graph TB
+    A["Backbone Coordinates<br/>(N, CA, C, O)"] --> B["Compute H-bond Energy<br/>E = q₁q₂f(1/rON + 1/rCH - 1/rOH - 1/rCN)"]
+    B --> C["Continuous H-bond Matrix<br/>(1+sin((cutoff-E-m)/m*π/2))/2"]
+    C --> D["Pattern Detection<br/>Helix: i→i+4 H-bonds<br/>Strand: non-local H-bonds<br/>Loop: remaining residues"]
+    D --> E["Soft SS Assignments<br/>(H, E, -)"]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style D fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style E fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 ### Quick Start

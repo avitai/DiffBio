@@ -56,10 +56,23 @@ reconstructed = result["reconstructed"] # Reconstructed counts
 
 ### VAE Architecture
 
-```
-Counts → Encoder → μ, σ → z ~ N(μ, σ²) → Decoder → Normalized Counts
-   ↓                                          ↓
-   └──────────── Log-library size ───────────┘
+```mermaid
+graph LR
+    A["Counts"] --> ENC["Encoder"]
+    A --> LIB["Log-library size"]
+    ENC --> MS["μ, σ"]
+    MS --> Z["z ~ N(μ, σ²)"]
+    Z --> DEC["Decoder"]
+    LIB --> DEC
+    DEC --> OUT["Normalized Counts"]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style ENC fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style MS fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style Z fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style DEC fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style LIB fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style OUT fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 The VAE learns to:
@@ -227,8 +240,18 @@ embeddings = result["embeddings"]  # (n_seqs, embedding_dim)
 
 ### Embedding Architecture
 
-```
-One-hot Sequence → Position Encoding → Transformer Layers → Global Pool → Embedding
+```mermaid
+graph LR
+    A["One-hot Sequence"] --> B["Position Encoding"]
+    B --> C["Transformer Layers"]
+    C --> D["Global Pool"]
+    D --> E["Embedding"]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style D fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style E fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 ## Training with Normalization

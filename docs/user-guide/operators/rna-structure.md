@@ -18,39 +18,20 @@ Differentiable implementation of the McCaskill partition function algorithm for 
 
 The McCaskill algorithm (1990) computes the partition function Z = Σ_P exp(-E(P)/RT) over all possible secondary structures:
 
-```
-One-Hot RNA Sequence (length, 4)
-         │
-         ▼
-┌─────────────────────────────┐
-│ Compute Base Pair Energies  │
-│ A-U: -2.0 (2 H-bonds)       │
-│ G-C: -3.0 (3 H-bonds)       │
-│ G-U: -1.0 (wobble)          │
-└─────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────┐
-│ Boltzmann Weights           │
-│ w(i,j) = exp(-E(i,j)/T)     │
-└─────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────┐
-│ Partition Function          │
-│ Z = Σ w(i,j) over valid     │
-│     base pairs              │
-└─────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────┐
-│ Base Pair Probabilities     │
-│ P(i,j) = w(i,j) / Z         │
-└─────────────────────────────┘
-         │
-         ▼
-    BP Probability Matrix
-       (length x length)
+```mermaid
+graph TB
+    A["One-Hot RNA Sequence<br/>(length, 4)"] --> B["Compute Base Pair Energies<br/>A-U: -2.0 (2 H-bonds)<br/>G-C: -3.0 (3 H-bonds)<br/>G-U: -1.0 (wobble)"]
+    B --> C["Boltzmann Weights<br/>w(i,j) = exp(-E(i,j)/T)"]
+    C --> D["Partition Function<br/>Z = Σ w(i,j) over valid base pairs"]
+    D --> E["Base Pair Probabilities<br/>P(i,j) = w(i,j) / Z"]
+    E --> F["BP Probability Matrix<br/>(length x length)"]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style D fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style E fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style F fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 ### Quick Start

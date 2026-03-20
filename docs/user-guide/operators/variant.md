@@ -69,10 +69,20 @@ Standard pileup tensor channels:
 
 ### CNN Architecture
 
-```
-Pileup Tensor → [Conv2D → BN → ReLU → Pool] × 3 → Flatten → Dense → Softmax
-     ↓
-(window, channels) → features → logits → probabilities
+```mermaid
+graph LR
+    A["Pileup Tensor<br/>(window, channels)"] --> B["[Conv2D + BN + ReLU + Pool]<br/>× 3"]
+    B --> C["Flatten"]
+    C --> D["Dense"]
+    D --> E["Softmax"]
+    E --> F["Probabilities"]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style D fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style E fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style F fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 ## CNVSegmentation

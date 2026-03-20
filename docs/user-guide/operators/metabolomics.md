@@ -18,30 +18,18 @@ Siamese neural network for predicting molecular structural similarity from tande
 
 The network uses a shared encoder to generate spectral embeddings, then computes cosine similarity between pairs:
 
-```
-Binned Spectrum (n_bins)
-         │
-         ▼
-┌─────────────────────┐
-│ Dense(512) + BN     │
-│ ReLU + Dropout(0.2) │
-└─────────────────────┘
-         │
-         ▼
-┌─────────────────────┐
-│ Dense(256) + BN     │
-│ ReLU + Dropout(0.2) │
-└─────────────────────┘
-         │
-         ▼
-┌─────────────────────┐
-│ Dense(200)          │
-│ (Embedding Layer)   │
-└─────────────────────┘
-         │
-         ▼
-  Spectral Embedding
-      (200-dim)
+```mermaid
+graph TB
+    A["Binned Spectrum<br/>(n_bins)"] --> B["Dense(512) + BN<br/>ReLU + Dropout(0.2)"]
+    B --> C["Dense(256) + BN<br/>ReLU + Dropout(0.2)"]
+    C --> D["Dense(200)<br/>(Embedding Layer)"]
+    D --> E["Spectral Embedding<br/>(200-dim)"]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style D fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style E fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 For paired spectra, cosine similarity is computed between embeddings to predict structural similarity (Tanimoto scores).

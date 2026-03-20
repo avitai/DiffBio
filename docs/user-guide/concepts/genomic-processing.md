@@ -14,23 +14,20 @@ operators for CRISPR guide design and population genetics.
 A typical next-generation sequencing experiment produces millions of short
 reads (100-300 bp) that must be processed through a series of steps:
 
-```
-Raw Reads
-    |
-    v
-Adapter Removal (trim technical sequences)
-    |
-    v
-Error Correction (fix sequencing mistakes)
-    |
-    v
-Duplicate Weighting (handle PCR amplification bias)
-    |
-    v
-Read Mapping (align to reference genome)
-    |
-    v
-Downstream Analysis (variant calling, expression, etc.)
+```mermaid
+graph TB
+    A["Raw Reads"] --> B["Adapter Removal<br/>(trim technical sequences)"]
+    B --> C["Error Correction<br/>(fix sequencing mistakes)"]
+    C --> D["Duplicate Weighting<br/>(handle PCR amplification bias)"]
+    D --> E["Read Mapping<br/>(align to reference genome)"]
+    E --> F["Downstream Analysis<br/>(variant calling, expression, etc.)"]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style D fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style E fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style F fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 Each step traditionally uses hard decisions -- trim or keep, duplicate or

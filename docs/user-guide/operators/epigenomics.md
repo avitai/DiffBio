@@ -58,10 +58,22 @@ The peak caller supports an optional VAE denoising step that preprocesses the co
 
 ### Architecture
 
-```
-Input Signal → [VAE Denoising (optional)] → [Conv1D + ReLU] × 3 scales → Concat → Dense → Sigmoid → Peak Scores
-                                                     ↓
-                                              Multi-scale features capture peaks of different widths
+```mermaid
+graph LR
+    A["Input Signal"] --> B["VAE Denoising<br/>(optional)"]
+    B --> C["[Conv1D + ReLU]<br/>× 3 scales"]
+    C --> D["Concat"]
+    D --> E["Dense"]
+    E --> F["Sigmoid"]
+    F --> G["Peak Scores"]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style D fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style E fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style F fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style G fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 ### Training for Peak Calling

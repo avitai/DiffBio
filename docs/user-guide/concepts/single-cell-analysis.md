@@ -77,26 +77,22 @@ uses a VAE to separate the true cell expression from the ambient profile.
 
 A typical single-cell analysis follows this progression:
 
-```
-Raw Counts
-    │
-    ▼
-Quality Control (ambient removal, doublet detection)
-    │
-    ▼
-Normalization (VAE normalizer, library size correction)
-    │
-    ▼
-Embedding / Dimensionality Reduction (UMAP, PHATE)
-    │
-    ▼
-Clustering (soft k-means, community detection)
-    │
-    ▼
-Annotation (cell type assignment)
-    │
-    ▼
-Downstream Analysis (trajectory, communication, GRN, DE)
+```mermaid
+graph TB
+    A["Raw Counts"] --> B["Quality Control<br/>(ambient removal, doublet detection)"]
+    B --> C["Normalization<br/>(VAE normalizer, library size correction)"]
+    C --> D["Embedding / Dimensionality Reduction<br/>(UMAP, PHATE)"]
+    D --> E["Clustering<br/>(soft k-means, community detection)"]
+    E --> F["Annotation<br/>(cell type assignment)"]
+    F --> G["Downstream Analysis<br/>(trajectory, communication, GRN, DE)"]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style D fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style E fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style F fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style G fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 DiffBio provides differentiable operators for every step. Because each step is

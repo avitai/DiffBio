@@ -18,41 +18,20 @@ Differentiable transformer encoder following DNABERT/RNA-FM patterns. Converts o
 
 ### Architecture
 
-```
-One-Hot Sequence (length, 4)
-         │
-         ▼
-┌─────────────────────────────┐
-│ Linear Projection           │
-│ alphabet_size → hidden_dim  │
-└─────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────┐
-│ [CLS] Token (optional)      │
-│ + Sinusoidal Positional     │
-│   Encoding                  │
-└─────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────┐
-│ Transformer Encoder         │
-│ • Multi-head Self-Attention │
-│ • Feed-Forward Network      │
-│ • LayerNorm + Residuals     │
-│       × num_layers          │
-└─────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────┐
-│ Pooling Strategy            │
-│ • Mean: average all tokens  │
-│ • CLS: use [CLS] token      │
-└─────────────────────────────┘
-         │
-         ▼
-    Dense Embedding
-      (hidden_dim,)
+```mermaid
+graph TB
+    A["One-Hot Sequence<br/>(length, 4)"] --> B["Linear Projection<br/>alphabet_size → hidden_dim"]
+    B --> C["[CLS] Token (optional)<br/>+ Sinusoidal Positional Encoding"]
+    C --> D["Transformer Encoder<br/>Multi-head Self-Attention<br/>Feed-Forward Network<br/>LayerNorm + Residuals<br/>× num_layers"]
+    D --> E["Pooling Strategy<br/>Mean: average all tokens<br/>CLS: use [CLS] token"]
+    E --> F["Dense Embedding<br/>(hidden_dim,)"]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style D fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style E fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style F fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 ### Quick Start

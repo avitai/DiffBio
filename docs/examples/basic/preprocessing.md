@@ -17,11 +17,16 @@ from diffbio.pipelines import PreprocessingPipeline, PreprocessingPipelineConfig
 
 The preprocessing pipeline consists of four differentiable stages:
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  Quality Filter │ -> │ Adapter Removal │ -> │  Duplicate      │ -> │ Error           │
-│  (soft masking) │    │ (soft trimming) │    │  Weighting      │    │ Correction      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
+```mermaid
+graph LR
+    A["Quality Filter<br/>(soft masking)"] --> B["Adapter Removal<br/>(soft trimming)"]
+    B --> C["Duplicate<br/>Weighting"]
+    C --> D["Error<br/>Correction"]
+
+    style A fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style D fill:#e0e7ff,stroke:#4338ca,color:#312e81
 ```
 
 Each stage uses differentiable approximations to traditional hard filtering, enabling end-to-end gradient optimization.

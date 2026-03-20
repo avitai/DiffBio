@@ -60,13 +60,20 @@ path_scores = result["path_scores"]           # Path quality scores
 
 ### GNN Architecture
 
-```
-Node Features ─┬─→ Message Passing → Node Update ──┐
-               │        ↑                          │
-Edge Features ─┴────────┘                          │
-               ↓                                   ↓
-           Attention                         Next Node
-           Weights                           Prediction
+```mermaid
+graph LR
+    NF["Node Features"] --> MP["Message Passing"]
+    EF["Edge Features"] --> MP
+    MP --> NU["Node Update"]
+    NU --> NP["Next Node Prediction"]
+    MP --> AW["Attention Weights"]
+
+    style NF fill:#d1fae5,stroke:#059669,color:#064e3b
+    style EF fill:#d1fae5,stroke:#059669,color:#064e3b
+    style MP fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style NU fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style NP fill:#d1fae5,stroke:#059669,color:#064e3b
+    style AW fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
 ```
 
 The GNN uses graph attention to learn:
@@ -137,10 +144,20 @@ alignment_probs = result["alignment"]    # Soft alignment matrix
 
 ### Neural Mapper Architecture
 
-```
-Read Sequence ──→ Read Encoder ──┐
-                                 ├──→ Cross-Attention ──→ Position Prediction
-Reference ──────→ Ref Encoder ───┘
+```mermaid
+graph LR
+    RS["Read Sequence"] --> RE["Read Encoder"]
+    RF["Reference"] --> RFE["Ref Encoder"]
+    RE --> CA["Cross-Attention"]
+    RFE --> CA
+    CA --> PP["Position Prediction"]
+
+    style RS fill:#d1fae5,stroke:#059669,color:#064e3b
+    style RF fill:#d1fae5,stroke:#059669,color:#064e3b
+    style RE fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style RFE fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style CA fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style PP fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 The mapper uses:
@@ -216,12 +233,28 @@ bins = cluster_assignments.argmax(axis=-1)       # Hard bin assignments
 
 ### VAE Architecture
 
-```
-TNF Features ──┐
-               ├──→ Encoder ──→ μ, σ ──→ Reparameterize ──→ z ──→ Decoder ──→ Reconstructed
-Abundance ─────┘                                              │
-                                                              ↓
-                                                    Soft Clustering ──→ Bin Assignments
+```mermaid
+graph LR
+    TNF["TNF Features"] --> ENC["Encoder"]
+    ABD["Abundance"] --> ENC
+    ENC --> MS["μ, σ"]
+    MS --> RP["Reparameterize"]
+    RP --> Z["z"]
+    Z --> DEC["Decoder"]
+    Z --> SC["Soft Clustering"]
+    DEC --> REC["Reconstructed"]
+    SC --> BA["Bin Assignments"]
+
+    style TNF fill:#d1fae5,stroke:#059669,color:#064e3b
+    style ABD fill:#d1fae5,stroke:#059669,color:#064e3b
+    style ENC fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style MS fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style RP fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style Z fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style DEC fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style SC fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style REC fill:#d1fae5,stroke:#059669,color:#064e3b
+    style BA fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 The binner uses:

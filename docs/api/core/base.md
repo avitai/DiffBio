@@ -80,18 +80,20 @@ class MyOperatorConfig(OperatorConfig):
 
 ## DiffBio Operator Hierarchy
 
-```
-datarax.core.operator.OperatorModule
-    │
-    ├── diffbio.operators.DifferentiableQualityFilter
-    │
-    ├── diffbio.operators.alignment.SmoothSmithWaterman
-    │
-    ├── diffbio.operators.variant.DifferentiablePileup
-    │
-    ├── diffbio.operators.variant.VariantClassifier
-    │
-    └── diffbio.pipelines.VariantCallingPipeline
+```mermaid
+graph TB
+    A["datarax.core.operator.OperatorModule"] --> B["diffbio.operators.DifferentiableQualityFilter"]
+    A --> C["diffbio.operators.alignment.SmoothSmithWaterman"]
+    A --> D["diffbio.operators.variant.DifferentiablePileup"]
+    A --> E["diffbio.operators.variant.VariantClassifier"]
+    A --> F["diffbio.pipelines.VariantCallingPipeline"]
+
+    style A fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style D fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style E fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style F fill:#e0e7ff,stroke:#4338ca,color:#312e81
 ```
 
 ## Learnable Parameters

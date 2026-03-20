@@ -18,44 +18,40 @@ Drug discovery operators enable gradient-based optimization for chemoinformatics
 
 ## Architecture
 
-```
-SMILES String
-      │
-      ▼
-┌─────────────────────────────┐
-│      smiles_to_graph()      │
-│   RDKit: atom/bond features │
-└─────────────────────────────┘
-      │
-      ├─── node_features (n_atoms, 34)
-      │
-      ├─── adjacency (n_atoms, n_atoms)
-      │
-      └─── edge_features (n_atoms, n_atoms, 4)
-      │
-      ▼
-┌─────────────────────────────┐
-│   StackedMessagePassing     │
-│   D-MPNN: message → update  │
-│   h^(t+1) = σ(W·[h^t, m^t]) │
-└─────────────────────────────┘
-      │
-      ▼
-┌─────────────────────────────┐
-│      Sum Pooling            │
-│   g = Σᵢ hᵢ (graph repr)    │
-└─────────────────────────────┘
-      │
-      ├─── MolecularPropertyPredictor → predictions
-      │
-      ├─── DifferentiableMolecularFingerprint → learned fingerprint
-      │
-      └─── CircularFingerprintOperator → ECFP-style fingerprint
-                    │
-                    ▼
-           MolecularSimilarityOperator
-                    │
-                    └─── similarity score
+```mermaid
+graph TB
+    A["SMILES String"] --> B["smiles_to_graph()<br/>RDKit: atom/bond features"]
+    B --> NF["node_features<br/>(n_atoms, 34)"]
+    B --> ADJ["adjacency<br/>(n_atoms, n_atoms)"]
+    B --> EF["edge_features<br/>(n_atoms, n_atoms, 4)"]
+    NF --> C["StackedMessagePassing<br/>D-MPNN: message → update"]
+    ADJ --> C
+    EF --> C
+    C --> D["Sum Pooling<br/>g = Σᵢ hᵢ (graph repr)"]
+    D --> E["MolecularPropertyPredictor"]
+    D --> F["DifferentiableMolecularFingerprint"]
+    D --> G["CircularFingerprintOperator"]
+    E --> E1["predictions"]
+    F --> F1["learned fingerprint"]
+    G --> G1["ECFP-style fingerprint"]
+    G1 --> H["MolecularSimilarityOperator"]
+    H --> H1["similarity score"]
+
+    style A fill:#d1fae5,stroke:#059669,color:#064e3b
+    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style NF fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style ADJ fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style EF fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style D fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style E fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style F fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style G fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    style E1 fill:#d1fae5,stroke:#059669,color:#064e3b
+    style F1 fill:#d1fae5,stroke:#059669,color:#064e3b
+    style G1 fill:#d1fae5,stroke:#059669,color:#064e3b
+    style H fill:#dbeafe,stroke:#2563eb,color:#1e3a5f
+    style H1 fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
 ## Converting SMILES to Graphs
