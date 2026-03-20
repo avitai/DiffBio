@@ -169,11 +169,11 @@ Start from:
 
 ### Sync the Pair
 
-Use:
+Use the project's jupytext converter script:
 
 ```bash
 source ./activate.sh
-uv run jupytext --sync examples/path/to/example.py
+uv run python scripts/jupytext_converter.py sync examples/path/to/example.py
 ```
 
 ### Validate the Pair
@@ -182,6 +182,7 @@ Use:
 
 ```bash
 source ./activate.sh
+uv run python scripts/jupytext_converter.py validate examples/path/to/
 uv run python examples/path/to/example.py
 ```
 
@@ -533,10 +534,11 @@ Before merging an example:
 - [ ] the example runs with `source ./activate.sh`
 - [ ] the example runs with `uv run python examples/path/to/example.py`
 - [ ] device requirements are stated accurately
-- [ ] the `.ipynb` pair was synced from the `.py` source
+- [ ] the `.ipynb` pair was synced via `scripts/jupytext_converter.py sync`
 - [ ] the docs page matches the current source
 - [ ] imports use the supported DiffBio public API surface
 - [ ] commands use `uv`
+- [ ] notebook and docs do not teach hidden backend forcing
 - [ ] the example teaches a concrete bioinformatics concept
 - [ ] differentiability is demonstrated (gradient flow check)
 - [ ] JIT compilation is demonstrated
@@ -552,11 +554,11 @@ source ./activate.sh
 # create or edit the Python source
 $EDITOR examples/path/to/example.py
 
-# run the example to verify
+# run the example to verify it works
 uv run python examples/path/to/example.py
 
-# sync the notebook pair
-uv run jupytext --sync examples/path/to/example.py
+# regenerate the notebook pair from the Python source
+uv run python scripts/jupytext_converter.py sync examples/path/to/example.py
 
 # update the docs page
 $EDITOR docs/examples/path/to/example-name.md
@@ -602,8 +604,8 @@ uv run mkdocs build
 
 ## Related Files
 
-- `docs/examples/templates/example_template.py` (to be created)
-- `docs/examples/templates/example_template.ipynb` (to be created)
-- `examples/README.md` (to be created)
+- `docs/examples/templates/example_template.py` — DiffBio-adapted example template
+- `scripts/jupytext_converter.py` — py/ipynb conversion and sync utility
+- `examples/README.md` (to be created when first example is added)
 - `CONTRIBUTING.md`
 - `docs/community/contributing.md`
