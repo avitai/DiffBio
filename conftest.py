@@ -1,5 +1,6 @@
 # conftest.py - Pytest configuration for DiffBio
 
+import gc
 import logging
 import os
 import warnings
@@ -10,7 +11,7 @@ import pytest
 logger = logging.getLogger(__name__)
 
 
-def setup_jax_environment():
+def setup_jax_environment() -> None:
     """Set up JAX environment variables with safe CPU fallback."""
     cuda_home = os.environ.get("CUDA_HOME", "/usr/local/cuda")
     cuda_lib_path = str(Path(cuda_home) / "lib64")
@@ -23,7 +24,6 @@ def setup_jax_environment():
             new_ld_path = cuda_lib_path
         os.environ["LD_LIBRARY_PATH"] = new_ld_path
 
-    # Set additional CUDA environment variables
     os.environ["CUDA_ROOT"] = cuda_home
     os.environ["CUDA_HOME"] = cuda_home
 
@@ -32,8 +32,8 @@ def setup_jax_environment():
     if "JAX_PLATFORMS" not in os.environ:
         os.environ["JAX_PLATFORMS"] = "cpu"
 
-    os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
-    os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.8"
+    os.environ.setdefault("XLA_PYTHON_CLIENT_PREALLOCATE", "false")
+    os.environ.setdefault("XLA_PYTHON_CLIENT_MEM_FRACTION", "0.75")
 
     # Disable CUDA plugin validation to bypass cuSPARSE check
     os.environ["JAX_CUDA_PLUGIN_VERIFY"] = "false"
@@ -42,24 +42,26 @@ def setup_jax_environment():
 
 def pytest_configure(config):
     """Configure pytest environment with proper JAX/CUDA handling."""
-    # Configure environment before any JAX imports
     setup_jax_environment()
 
-    # Suppress CUDA warnings and errors in test output
     warnings.filterwarnings("ignore", category=UserWarning, module="jax._src.xla_bridge")
     warnings.filterwarnings("ignore", message=".*cuSPARSE.*")
     warnings.filterwarnings("ignore", message=".*CUDA-enabled jaxlib.*")
 
-    # Import JAX and configure after environment setup
     try:
         import jax
 
-        # Force JAX to initialize with current environment
-        # Respect the JAX_PLATFORMS environment variable
         current_platforms = os.environ.get("JAX_PLATFORMS", "cpu")
         jax.config.update("jax_platforms", current_platforms)
 
-        # Check if CUDA is available
+        # Enable persistent compilation cache — cache ALL compilations to disk.
+        # Without this, jax.clear_caches() in teardown forces full recompilation
+        # every test. With persistent cache, only Python-level re-tracing occurs.
+        cache_dir = os.environ.get("JAX_COMPILATION_CACHE_DIR")
+        if cache_dir:
+            jax.config.update("jax_compilation_cache_dir", cache_dir)
+            jax.config.update("jax_persistent_cache_min_compile_time_secs", 0)
+
         try:
             devices = jax.devices()
             gpu_devices = [d for d in devices if d.platform == "gpu"]
@@ -98,7 +100,6 @@ def sample_sequences(random_key):
 
     k1, k2 = jax.random.split(random_key)
 
-    # Create two sample sequences (one-hot encoded, 4 bases: A, C, G, T)
     seq1_indices = jax.random.randint(k1, (50,), 0, 4)
     seq2_indices = jax.random.randint(k2, (60,), 0, 4)
 
@@ -125,25 +126,15 @@ def sample_reads(random_key):
 
 
 def pytest_runtest_setup(item):
-    """Set up for each test run - ensure clean JAX state."""
-    # Clear any JAX compilation cache to avoid issues
+    """Verify GPU availability for GPU-marked tests."""
     try:
         import jax
 
-        jax.clear_caches()
-
-        # If this is a GPU test, ensure GPU memory is available
         if hasattr(item, "get_closest_marker"):
             gpu_marker = item.get_closest_marker("gpu")
             cuda_marker = item.get_closest_marker("cuda")
 
             if gpu_marker or cuda_marker:
-                # Force garbage collection before GPU tests
-                import gc
-
-                gc.collect()
-
-                # Verify GPU is available for GPU-marked tests
                 try:
                     gpu_devices = jax.devices("gpu")
                     if not gpu_devices:
@@ -156,34 +147,41 @@ def pytest_runtest_setup(item):
 
 
 def pytest_runtest_teardown(item, nextitem):  # noqa: ARG001
-    """Teardown after each test run - clean up GPU memory."""
+    """Clean up GPU memory after tests."""
     try:
         import jax
 
-        # Clear JAX caches after each test
-        jax.clear_caches()
-
-        # Force garbage collection to free GPU memory
-        import gc
-
         gc.collect()
 
-        # If this was a GPU test, ensure memory cleanup
         if hasattr(item, "get_closest_marker"):
             gpu_marker = item.get_closest_marker("gpu")
             cuda_marker = item.get_closest_marker("cuda")
 
             if gpu_marker or cuda_marker:
-                try:
-                    # Additional GPU memory cleanup
-                    import jax.numpy as jnp
+                import jax.numpy as jnp
 
-                    # Force any pending operations to complete
+                jax.clear_caches()
+                gc.collect()
+
+                try:
                     dummy = jnp.array([1.0])
                     dummy.block_until_ready()
                     del dummy
                 except RuntimeError:
                     pass
 
+    except ImportError:
+        pass
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_test_session():
+    """Clean up JAX state at the end of the entire test session."""
+    yield
+    try:
+        import jax
+
+        jax.clear_caches()
+        gc.collect()
     except ImportError:
         pass
