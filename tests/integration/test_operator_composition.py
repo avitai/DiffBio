@@ -24,7 +24,7 @@ Note on gradient tests:
 import jax
 import jax.numpy as jnp
 import pytest
-from datarax.core.element_batch import Batch, Element
+from datarax.typing import Batch, Element
 
 from diffbio.operators.alignment import SmoothSmithWaterman, SmithWatermanConfig
 from diffbio.operators.alignment.scoring import create_dna_scoring_matrix

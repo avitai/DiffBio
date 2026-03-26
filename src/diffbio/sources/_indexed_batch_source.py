@@ -1,10 +1,14 @@
 """Mixin for stateful index-based batching in data sources."""
 
+import logging
+
 import jax
 
 from datarax.typing import Element
 
 from diffbio.sources._batch_iteration import next_batch, reset_iteration_state
+
+logger = logging.getLogger(__name__)
 
 
 class IndexedBatchSourceMixin:

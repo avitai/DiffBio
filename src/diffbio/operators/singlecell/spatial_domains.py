@@ -26,6 +26,7 @@ References:
   Nature Methods 2022.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -42,13 +43,15 @@ from diffbio.core.graph_utils import compute_knn_graph, compute_pairwise_distanc
 from diffbio.core.optimal_transport import SinkhornLayer
 from diffbio.utils.nn_utils import ensure_rngs
 
+logger = logging.getLogger(__name__)
+
 
 # =============================================================================
 # STAGATE-inspired spatial domain identification
 # =============================================================================
 
 
-@dataclass
+@dataclass(frozen=True)
 class SpatialDomainConfig(OperatorConfig):
     """Configuration for STAGATE-style spatial domain identification.
 
@@ -440,7 +443,7 @@ class DifferentiableSpatialDomain(GraphOperator):
 # =============================================================================
 
 
-@dataclass
+@dataclass(frozen=True)
 class PASTEAlignmentConfig(OperatorConfig):
     """Configuration for PASTE-style spatial transcriptomics slice alignment.
 

@@ -5,10 +5,13 @@ following the DRY principle by centralizing displacement, energy, and
 force function creation.
 """
 
+import logging
 from enum import StrEnum
 from typing import Callable
 
 from jax_md import energy, quantity, space
+
+logger = logging.getLogger(__name__)
 
 
 class PotentialType(StrEnum):

@@ -23,6 +23,7 @@ References:
     - https://github.com/google/deepvariant
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -34,8 +35,10 @@ from jaxtyping import Array, Float, Int, PyTree
 from diffbio.configs import TemperatureConfig
 from diffbio.core.base_operators import TemperatureOperator
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class DeepVariantPileupConfig(TemperatureConfig):
     """Configuration for DeepVariant-style pileup generation.
 

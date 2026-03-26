@@ -17,6 +17,7 @@ Applications: Developmental trajectory ordering, lineage fate commitment
 analysis, and cell-state transition characterization.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -33,6 +34,8 @@ from diffbio.core.graph_utils import (
     symmetrize_graph,
 )
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
     "PseudotimeConfig",
     "DifferentiablePseudotime",
@@ -46,7 +49,7 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
-@dataclass
+@dataclass(frozen=True)
 class PseudotimeConfig(OperatorConfig):
     """Configuration for pseudotime computation.
 
@@ -63,7 +66,7 @@ class PseudotimeConfig(OperatorConfig):
     metric: str = "euclidean"
 
 
-@dataclass
+@dataclass(frozen=True)
 class FateProbabilityConfig(OperatorConfig):
     """Configuration for fate probability computation.
 

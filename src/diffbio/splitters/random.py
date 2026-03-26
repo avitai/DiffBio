@@ -5,6 +5,7 @@ This module provides random splitting utilities:
 - StratifiedSplitter: Stratified splitting preserving class distribution
 """
 
+import logging
 from dataclasses import dataclass
 
 import jax
@@ -15,8 +16,10 @@ from datarax.core.data_source import DataSourceModule
 
 from diffbio.splitters.base import SplitResult, SplitterConfig, SplitterModule
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class RandomSplitterConfig(SplitterConfig):
     """Configuration for random splitter.
 
@@ -125,7 +128,7 @@ class RandomSplitter(SplitterModule):
         return folds
 
 
-@dataclass
+@dataclass(frozen=True)
 class StratifiedSplitterConfig(SplitterConfig):
     """Configuration for stratified splitter.
 

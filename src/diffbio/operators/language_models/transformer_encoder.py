@@ -18,6 +18,7 @@ References:
     - RNA-FM: Chen et al. (2022) Nature Methods
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -30,8 +31,10 @@ from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.base_operators import SequenceOperator
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class TransformerSequenceEncoderConfig(OperatorConfig):
     """Configuration for TransformerSequenceEncoder.
 

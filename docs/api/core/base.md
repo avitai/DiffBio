@@ -64,18 +64,14 @@ Configuration base class for operators from `datarax.core.config.OperatorConfig`
 from dataclasses import dataclass
 from datarax.core.config import OperatorConfig
 
-@dataclass
+@dataclass(frozen=True)
 class MyOperatorConfig(OperatorConfig):
     """Configuration for MyOperator.
 
     Attributes:
-        my_param: Description of parameter
-        stochastic: Whether operator uses randomness
-        stream_name: RNG stream name for stochastic ops
+        my_param: Description of parameter.
     """
     my_param: float = 1.0
-    stochastic: bool = False
-    stream_name: str | None = None
 ```
 
 ## DiffBio Operator Hierarchy

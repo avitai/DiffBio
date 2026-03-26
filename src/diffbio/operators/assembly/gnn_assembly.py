@@ -16,6 +16,7 @@ Inherits from GraphOperator to get:
 - global_pool() for graph-level pooling
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -28,8 +29,10 @@ from diffbio.configs import TemperatureConfig
 from diffbio.core.base_operators import GraphOperator
 from diffbio.utils.nn_utils import init_learnable_param
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class GNNAssemblyNavigatorConfig(TemperatureConfig):
     """Configuration for GNNAssemblyNavigator.
 

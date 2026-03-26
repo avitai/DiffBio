@@ -3,7 +3,7 @@
 import jax
 import jax.numpy as jnp
 import pytest
-from datarax.core.element_batch import Batch, Element
+from datarax.typing import Batch, Element
 
 from diffbio.constants import ClassifierType
 from diffbio.pipelines import (
@@ -305,8 +305,8 @@ class TestCNNVariantPipeline:
             num_classes=3,
             pileup_window_size=11,  # Larger window for CNN
             classifier_type="cnn",
-            cnn_hidden_channels=[16, 32],
-            cnn_fc_dims=[32, 16],
+            cnn_hidden_channels=(16, 32),
+            cnn_fc_dims=(32, 16),
             apply_pileup_softmax=False,  # Better for variant detection
         )
         pipeline = VariantCallingPipeline(config, rngs=rngs)
@@ -410,8 +410,8 @@ class TestCNNFactoryFunction:
             reference_length=100,
             num_classes=4,
             pileup_window_size=31,
-            cnn_hidden_channels=[64, 128],
-            cnn_fc_dims=[128, 64],
+            cnn_hidden_channels=(64, 128),
+            cnn_fc_dims=(128, 64),
             seed=123,
         )
 

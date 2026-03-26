@@ -31,6 +31,7 @@ References:
     Bioinformatics 41(5), btaf203.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -41,6 +42,8 @@ from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.base_operators import TemperatureOperator
+
+logger = logging.getLogger(__name__)
 
 # RNA nucleotide indices (standard one-hot encoding)
 NUC_A = 0  # Adenine
@@ -59,7 +62,7 @@ BP_ENERGY_GU = -1.0  # G-U wobble pair (weaker)
 DEFAULT_MIN_HAIRPIN = 3
 
 
-@dataclass
+@dataclass(frozen=True)
 class RNAFoldConfig(OperatorConfig):
     """Configuration for DifferentiableRNAFold.
 
@@ -74,8 +77,6 @@ class RNAFoldConfig(OperatorConfig):
         bp_energy_gc: Energy for G-C base pair. Default -3.0.
         bp_energy_gu: Energy for G-U wobble pair. Default -1.0.
         learnable_temperature: Whether temperature is learnable.
-        stochastic: Whether the operator uses stochastic operations.
-        stream_name: RNG stream name for stochastic operations.
     """
 
     temperature: float = 1.0
@@ -85,8 +86,6 @@ class RNAFoldConfig(OperatorConfig):
     bp_energy_gc: float = BP_ENERGY_GC
     bp_energy_gu: float = BP_ENERGY_GU
     learnable_temperature: bool = False
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 def compute_pair_energy_matrix(

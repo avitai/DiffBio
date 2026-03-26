@@ -16,6 +16,7 @@ Key algorithm:
     5. ELBO = sum_m w_m * recon_loss_m + KL(q(z) || N(0,I)).
 """
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -33,11 +34,13 @@ from diffbio.constants import EPSILON
 from diffbio.core.base_operators import EncoderDecoderOperator
 from diffbio.utils.nn_utils import ensure_rngs
 
+logger = logging.getLogger(__name__)
+
 # Canonical key names for the two most common modalities.
 _DEFAULT_MODALITY_KEYS = ("rna", "atac")
 
 
-@dataclass
+@dataclass(frozen=True)
 class MultiOmicsVAEConfig(OperatorConfig):
     """Configuration for DifferentiableMultiOmicsVAE.
 
@@ -48,8 +51,6 @@ class MultiOmicsVAEConfig(OperatorConfig):
         modality_weight_mode: How reconstruction losses are weighted.
             'equal' gives uniform weight; 'learnable' uses softmax over
             a learnable log-weight vector.
-        stochastic: Whether to sample (True) or use the mean (False).
-        stream_name: RNG stream used for reparameterisation.
     """
 
     modality_dims: list[int] = field(default_factory=lambda: [2000, 500])
@@ -57,8 +58,13 @@ class MultiOmicsVAEConfig(OperatorConfig):
     hidden_dim: int = 64
     modality_weight_mode: str = "equal"
     use_gradnorm: bool = False
-    stochastic: bool = True
-    stream_name: str = "sample"
+
+    def __post_init__(self) -> None:
+        """Set stochastic defaults for VAE sampling and validate."""
+        object.__setattr__(self, "stochastic", True)
+        if self.stream_name is None:
+            object.__setattr__(self, "stream_name", "sample")
+        super().__post_init__()
 
 
 # -------------------------------------------------------------------

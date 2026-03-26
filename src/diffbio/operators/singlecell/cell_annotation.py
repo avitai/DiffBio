@@ -15,6 +15,7 @@ All three modes are end-to-end differentiable and JIT-compatible, enabling
 gradient-based optimisation of annotation models within a Datarax pipeline.
 """
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -36,8 +37,10 @@ from diffbio.utils.nn_utils import (
     get_rng_key,
 )
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class CellAnnotatorConfig(OperatorConfig):
     """Configuration for cell type annotation.
 
@@ -51,8 +54,6 @@ class CellAnnotatorConfig(OperatorConfig):
         gene_likelihood: Reconstruction likelihood for scanvi mode.
             ``"poisson"`` for standard Poisson NLL (default),
             ``"zinb"`` for Zero-Inflated Negative Binomial.
-        stochastic: Whether the operator uses randomness.
-        stream_name: RNG stream name for sampling.
     """
 
     annotation_mode: Literal["scanvi", "cellassign", "celltypist"] = "celltypist"
@@ -62,8 +63,13 @@ class CellAnnotatorConfig(OperatorConfig):
     hidden_dims: list[int] = field(default_factory=lambda: [128, 64])
     marker_matrix_shape: tuple[int, int] | None = None
     gene_likelihood: Literal["poisson", "zinb"] = "poisson"
-    stochastic: bool = True
-    stream_name: str = "sample"
+
+    def __post_init__(self) -> None:
+        """Set stochastic defaults and validate."""
+        object.__setattr__(self, "stochastic", True)
+        if self.stream_name is None:
+            object.__setattr__(self, "stream_name", "sample")
+        super().__post_init__()
 
 
 class DifferentiableCellAnnotator(EncoderDecoderOperator):

@@ -5,6 +5,7 @@ from pileup representations, including a cell-type-aware classifier that
 weights variant calls by soft cell-type assignments.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -19,8 +20,10 @@ from diffbio.configs import ClassifierConfig
 from diffbio.constants import DEFAULT_PILEUP_WINDOW_SIZE, DNA_ALPHABET_SIZE
 from diffbio.utils.nn_utils import ensure_rngs
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class VariantClassifierConfig(ClassifierConfig):
     """Configuration for variant classifier.
 
@@ -162,7 +165,7 @@ class VariantClassifier(OperatorModule):
         return transformed_data, state, metadata
 
 
-@dataclass
+@dataclass(frozen=True)
 class CellTypeAwareVariantClassifierConfig(OperatorConfig):
     """Configuration for cell-type-aware variant classifier.
 

@@ -8,6 +8,7 @@ Key technique: Parameterize the NB mean through a log-linear model
 and estimate dispersion parameters per gene.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -18,8 +19,10 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class NBGLMConfig(OperatorConfig):
     """Configuration for DifferentiableNBGLM.
 

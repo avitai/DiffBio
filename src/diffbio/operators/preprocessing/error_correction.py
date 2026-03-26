@@ -15,6 +15,7 @@ Inherits from TemperatureOperator to get:
 - soft_argmax() for soft position selection
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -27,8 +28,10 @@ from jaxtyping import Array, Float, PyTree
 from diffbio.core.base_operators import TemperatureOperator
 from diffbio.utils.nn_utils import build_mlp_layers, ensure_rngs, init_learnable_param
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class ErrorCorrectionConfig(OperatorConfig):
     """Configuration for SoftErrorCorrection.
 

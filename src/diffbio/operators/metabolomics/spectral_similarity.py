@@ -20,6 +20,7 @@ Key features:
 - Monte-Carlo dropout for uncertainty estimation
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -28,8 +29,10 @@ from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class SpectralSimilarityConfig(OperatorConfig):
     """Configuration for DifferentiableSpectralSimilarity.
 
@@ -44,8 +47,6 @@ class SpectralSimilarityConfig(OperatorConfig):
         min_mz: Minimum m/z value for binning. Default 0.0.
         max_mz: Maximum m/z value for binning. Default 1000.0.
         use_batch_norm: Whether to use batch normalization. Default True.
-        stochastic: Whether to use stochastic operations. Default False.
-        stream_name: Optional stream name for data routing.
     """
 
     n_bins: int = 1000
@@ -55,8 +56,6 @@ class SpectralSimilarityConfig(OperatorConfig):
     min_mz: float = 0.0
     max_mz: float = 1000.0
     use_batch_norm: bool = True
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class DifferentiableSpectralSimilarity(OperatorModule):

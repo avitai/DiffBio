@@ -281,7 +281,7 @@ print(f"Variants at positions: {variant_positions}")
 ### Batch Processing
 
 ```python
-from datarax.core.element_batch import Batch, Element
+from datarax.typing import Batch, Element
 
 # Create batch
 elements = [Element(data=d, state={}, metadata={}) for d in samples]

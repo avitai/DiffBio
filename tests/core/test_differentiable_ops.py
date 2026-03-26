@@ -620,7 +620,7 @@ class TestMathematicalVerification:
         from datarax.core.config import OperatorConfig
         from flax import nnx
 
-        @dataclass
+        @dataclass(frozen=True)
         class Config(OperatorConfig):
             latent_dim: int = 10
 
@@ -867,7 +867,7 @@ class TestScalability:
         from dataclasses import dataclass
         from datarax.core.config import OperatorConfig
 
-        @dataclass
+        @dataclass(frozen=True)
         class Config(OperatorConfig):
             num_states: int = 5
             num_emissions: int = 10

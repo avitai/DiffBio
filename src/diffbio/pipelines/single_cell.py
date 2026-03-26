@@ -11,7 +11,8 @@ The pipeline is fully differentiable, enabling gradient-based optimization
 of all analysis components jointly.
 """
 
-from dataclasses import dataclass, field
+import logging
+from dataclasses import dataclass
 from typing import Any
 
 import jax
@@ -36,8 +37,10 @@ from diffbio.operators.singlecell import (
     SoftKMeansClustering,
 )
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class SingleCellPipelineConfig(OperatorConfig):
     # pylint: disable=too-many-instance-attributes
     """Configuration for the single-cell analysis pipeline.
@@ -55,8 +58,6 @@ class SingleCellPipelineConfig(OperatorConfig):
         enable_batch_correction: Whether to enable batch correction.
         enable_dim_reduction: Whether to enable UMAP dimensionality reduction.
         enable_clustering: Whether to enable soft clustering.
-        stochastic: Whether the pipeline uses stochastic operations.
-        stream_name: RNG stream name for stochastic operations.
     """
 
     n_genes: int = 2000
@@ -71,8 +72,13 @@ class SingleCellPipelineConfig(OperatorConfig):
     enable_batch_correction: bool = True
     enable_dim_reduction: bool = True
     enable_clustering: bool = True
-    stochastic: bool = field(default=True, repr=False)
-    stream_name: str | None = field(default="sample", repr=False)
+
+    def __post_init__(self) -> None:
+        """Set non-default stochastic fields."""
+        object.__setattr__(self, "stochastic", True)
+        if self.stream_name is None:
+            object.__setattr__(self, "stream_name", "sample")
+        super().__post_init__()
 
 
 class SingleCellPipeline(OperatorModule):

@@ -26,7 +26,7 @@ from diffbio.constants import (
 DiffBioOperatorConfig = OperatorConfig
 
 
-@dataclass
+@dataclass(frozen=True)
 class TemperatureConfig(OperatorConfig):
     """Configuration for operators with temperature parameter.
 
@@ -45,7 +45,7 @@ class TemperatureConfig(OperatorConfig):
     learnable_temperature: bool = False
 
 
-@dataclass
+@dataclass(frozen=True)
 class ClassifierConfig(OperatorConfig):
     """Base configuration for classifier operators.
 

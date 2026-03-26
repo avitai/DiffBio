@@ -16,6 +16,7 @@ References:
     - https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.nn.models.AttentiveFP.html
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -25,8 +26,10 @@ from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class AttentiveFPConfig(OperatorConfig):
     """Configuration for AttentiveFP operator.
 
@@ -39,8 +42,6 @@ class AttentiveFPConfig(OperatorConfig):
         in_features: Number of input node features (default: 39).
         edge_dim: Edge feature dimension (default: 10).
         negative_slope: LeakyReLU negative slope (default: 0.2).
-        stochastic: Whether operator uses random sampling.
-        stream_name: Optional stream name for data routing.
     """
 
     hidden_dim: int = 200
@@ -51,8 +52,6 @@ class AttentiveFPConfig(OperatorConfig):
     in_features: int = 39
     edge_dim: int = 10
     negative_slope: float = 0.2
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class GATEConv(nnx.Module):

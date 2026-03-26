@@ -11,6 +11,7 @@ suited for single-cell RNA-seq data which exhibits both overdispersion
 and excess zeros (dropout events).
 """
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -25,8 +26,10 @@ from diffbio.core.base_operators import EncoderDecoderOperator
 from diffbio.losses.statistical_losses import zinb_negative_log_likelihood
 from diffbio.utils.nn_utils import build_mlp_decoder, build_mlp_encoder, forward_mlp
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class VAENormalizerConfig(OperatorConfig):
     """Configuration for VAENormalizer.
 
@@ -38,8 +41,6 @@ class VAENormalizerConfig(OperatorConfig):
         likelihood: Likelihood model for reconstruction loss.
             'poisson' for standard Poisson NLL, 'zinb' for
             Zero-Inflated Negative Binomial.
-        stochastic: Whether the operator uses randomness (True for VAE).
-        stream_name: RNG stream name for sampling.
     """
 
     latent_dim: int = 10
@@ -47,8 +48,13 @@ class VAENormalizerConfig(OperatorConfig):
     n_genes: int = 2000
     use_batch_correction: bool = False
     likelihood: Literal["poisson", "zinb"] = "poisson"
-    stochastic: bool = True
-    stream_name: str = "sample"
+
+    def __post_init__(self) -> None:
+        """Set stochastic defaults for VAE sampling and validate."""
+        object.__setattr__(self, "stochastic", True)
+        if self.stream_name is None:
+            object.__setattr__(self, "stream_name", "sample")
+        super().__post_init__()
 
 
 class VAENormalizer(EncoderDecoderOperator):
@@ -108,7 +114,7 @@ class VAENormalizer(EncoderDecoderOperator):
             rngs = nnx.Rngs(0)
 
         self.n_genes = config.n_genes
-        self.stream_name = config.stream_name
+        self.stream_name = nnx.static(config.stream_name)
 
         # Build encoder layers
         self.encoder_layers = build_mlp_encoder(config.n_genes, config.hidden_dims, rngs=rngs)

@@ -18,6 +18,7 @@ Both operators inherit from ``OperatorModule`` and follow the standard
 ``apply(data, state, metadata)`` interface for pipeline composability.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -37,6 +38,8 @@ from jaxtyping import Array, Float, Int, PyTree
 from opifex.core.physics.gradnorm import GradNormBalancer
 
 from diffbio.utils.nn_utils import ensure_rngs
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "DifferentiableMMDBatchCorrection",
@@ -126,7 +129,7 @@ def _forward_mlp(
 # ---------------------------------------------------------------------------
 
 
-@dataclass
+@dataclass(frozen=True)
 class MMDBatchCorrectionConfig(OperatorConfig):
     """Configuration for MMD-based batch correction.
 
@@ -146,7 +149,7 @@ class MMDBatchCorrectionConfig(OperatorConfig):
     use_gradnorm: bool = False
 
 
-@dataclass
+@dataclass(frozen=True)
 class WGANBatchCorrectionConfig(OperatorConfig):
     """Configuration for WGAN-based batch correction.
 

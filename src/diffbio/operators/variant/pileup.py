@@ -10,6 +10,7 @@ Inherits from TemperatureOperator to get:
 - soft_argmax() for soft position selection
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -27,8 +28,10 @@ from diffbio.constants import (
 )
 from diffbio.core.base_operators import TemperatureOperator
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class PileupConfig(TemperatureConfig):
     """Configuration for differentiable pileup.
 

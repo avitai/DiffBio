@@ -24,6 +24,7 @@ Applications: SCENIC/GENIE3-style regulatory network reconstruction,
 transcription factor activity estimation, regulon discovery.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -38,8 +39,10 @@ from diffbio.constants import EPSILON
 from diffbio.core.gnn_components import GATv2Layer
 from diffbio.utils.nn_utils import ensure_rngs
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class GRNInferenceConfig(OperatorConfig):
     """Configuration for differentiable GRN inference.
 

@@ -46,7 +46,7 @@ class TestMetagenomicBinnerBasic:
             n_tnf_features=136,
             n_abundance_features=5,
             latent_dim=16,
-            hidden_dims=[64, 32],
+            hidden_dims=(64, 32),
             n_clusters=10,
         )
         return DifferentiableMetagenomicBinner(config, rngs=nnx.Rngs(42))
@@ -139,7 +139,7 @@ class TestMetagenomicBinnerDifferentiability:
             n_tnf_features=136,
             n_abundance_features=5,
             latent_dim=16,
-            hidden_dims=[32],
+            hidden_dims=(32,),
             n_clusters=10,
         )
         return DifferentiableMetagenomicBinner(config, rngs=nnx.Rngs(42))
@@ -228,7 +228,7 @@ class TestMetagenomicBinnerJIT:
             n_tnf_features=136,
             n_abundance_features=5,
             latent_dim=16,
-            hidden_dims=[32],
+            hidden_dims=(32,),
             n_clusters=10,
         )
         binner = DifferentiableMetagenomicBinner(config, rngs=nnx.Rngs(42))
@@ -262,7 +262,7 @@ class TestMetagenomicBinnerTrainingMode:
             n_tnf_features=136,
             n_abundance_features=5,
             latent_dim=16,
-            hidden_dims=[32],
+            hidden_dims=(32,),
             n_clusters=10,
         )
         return DifferentiableMetagenomicBinner(config, rngs=nnx.Rngs(42))

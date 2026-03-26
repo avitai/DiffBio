@@ -19,6 +19,7 @@ categorical emissions, so it doesn't inherit from HMMOperator which assumes
 categorical emissions. The conditioned mode uses Gaussian emissions.
 """
 
+import logging
 import math
 from dataclasses import dataclass
 from typing import Any
@@ -30,8 +31,10 @@ from datarax.core.config import OperatorConfig
 
 from diffbio.core.base_operators import TemperatureOperator
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class ChromatinStateConfig(OperatorConfig):
     """Configuration for differentiable chromatin state annotator.
 

@@ -10,7 +10,8 @@ The pipeline is fully differentiable, enabling gradient-based optimization
 of all components jointly.
 """
 
-from dataclasses import dataclass, field
+import logging
+from dataclasses import dataclass
 from typing import Any
 
 import jax.numpy as jnp
@@ -33,8 +34,10 @@ from diffbio.operators.variant import (
 )
 from diffbio.utils.nn_utils import extract_windows_1d
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class EnhancedVariantCallingPipelineConfig(OperatorConfig):
     # pylint: disable=too-many-instance-attributes
     """Configuration for the enhanced variant calling pipeline.
@@ -53,8 +56,6 @@ class EnhancedVariantCallingPipelineConfig(OperatorConfig):
         quality_recal_threshold: Threshold for quality filtering.
         enable_preprocessing: Whether to enable quality filtering preprocessing.
         enable_quality_recalibration: Whether to enable quality recalibration.
-        stochastic: Whether the pipeline uses stochastic operations.
-        stream_name: RNG stream name for stochastic operations.
     """
 
     reference_length: int = 1000
@@ -62,16 +63,21 @@ class EnhancedVariantCallingPipelineConfig(OperatorConfig):
     quality_threshold: float = 20.0
     pileup_window_size: int = 11
     cnn_input_height: int = 100
-    cnn_hidden_channels: list[int] = field(default_factory=lambda: [64, 128, 256])
-    cnn_fc_dims: list[int] = field(default_factory=lambda: [256, 128])
+    cnn_hidden_channels: tuple[int, ...] = (64, 128, 256)
+    cnn_fc_dims: tuple[int, ...] = (256, 128)
     cnn_dropout_rate: float = 0.1
     quality_recal_n_components: int = 3
     quality_recal_n_features: int = 4
     quality_recal_threshold: float = 0.5
     enable_preprocessing: bool = True
     enable_quality_recalibration: bool = True
-    stochastic: bool = field(default=True, repr=False)
-    stream_name: str | None = field(default="sample", repr=False)
+
+    def __post_init__(self) -> None:
+        """Set non-default stochastic fields."""
+        object.__setattr__(self, "stochastic", True)
+        if self.stream_name is None:
+            object.__setattr__(self, "stream_name", "sample")
+        super().__post_init__()
 
 
 class EnhancedVariantCallingPipeline(OperatorModule):
@@ -282,8 +288,8 @@ def create_enhanced_variant_calling_pipeline(
     reference_length: int = 1000,
     num_classes: int = 3,
     pileup_window_size: int = 11,
-    cnn_hidden_channels: list[int] | None = None,
-    cnn_fc_dims: list[int] | None = None,
+    cnn_hidden_channels: tuple[int, ...] | None = None,
+    cnn_fc_dims: tuple[int, ...] | None = None,
     enable_preprocessing: bool = True,
     enable_quality_recalibration: bool = True,
     seed: int = 42,
@@ -304,9 +310,9 @@ def create_enhanced_variant_calling_pipeline(
         Configured EnhancedVariantCallingPipeline instance.
     """
     if cnn_hidden_channels is None:
-        cnn_hidden_channels = [64, 128, 256]
+        cnn_hidden_channels = (64, 128, 256)
     if cnn_fc_dims is None:
-        cnn_fc_dims = [256, 128]
+        cnn_fc_dims = (256, 128)
 
     config = EnhancedVariantCallingPipelineConfig(
         reference_length=reference_length,

@@ -7,7 +7,8 @@ The approach encodes tetranucleotide frequencies (TNF) and abundance
 profiles into a latent space where contigs from the same genome cluster together.
 """
 
-from dataclasses import dataclass, field
+import logging
+from dataclasses import dataclass
 from typing import Any
 
 import jax
@@ -18,8 +19,10 @@ from jaxtyping import Array, Float
 
 from diffbio.core.base_operators import EncoderDecoderOperator
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class MetagenomicBinnerConfig(OperatorConfig):
     """Configuration for metagenomic binning VAE.
 
@@ -27,25 +30,28 @@ class MetagenomicBinnerConfig(OperatorConfig):
         n_tnf_features: Number of tetranucleotide frequency features (default 136).
         n_abundance_features: Number of sample abundance features.
         latent_dim: Dimension of the latent space.
-        hidden_dims: Hidden layer dimensions for encoder/decoder.
+        hidden_dims: tuple of hidden layer dimensions for encoder/decoder.
         dropout_rate: Dropout rate for regularization.
         beta: KL divergence weight (beta-VAE).
         temperature: Temperature for soft clustering.
         n_clusters: Number of clusters for soft binning.
-        stochastic: Whether the operator uses stochastic operations.
-        stream_name: RNG stream name for stochastic operations.
     """
 
     n_tnf_features: int = 136  # 4^4 / 2 for canonical k-mers
     n_abundance_features: int = 10
     latent_dim: int = 32
-    hidden_dims: list[int] = field(default_factory=lambda: [512, 256])
+    hidden_dims: tuple[int, ...] = (512, 256)
     dropout_rate: float = 0.2
     beta: float = 1.0
     temperature: float = 1.0
     n_clusters: int = 100
-    stochastic: bool = True
-    stream_name: str | None = field(default="sample", repr=False)
+
+    def __post_init__(self) -> None:
+        """Set stochastic config and validate."""
+        object.__setattr__(self, "stochastic", True)
+        if self.stream_name is None:
+            object.__setattr__(self, "stream_name", "sample")
+        super().__post_init__()
 
 
 class DifferentiableMetagenomicBinner(EncoderDecoderOperator):
@@ -273,7 +279,7 @@ def create_metagenomic_binner(
     n_abundance_features: int = 10,
     n_clusters: int = 100,
     latent_dim: int = 32,
-    hidden_dims: list[int] | None = None,
+    hidden_dims: tuple[int, ...] | None = None,
     seed: int = 42,
 ) -> DifferentiableMetagenomicBinner:
     """Factory function to create a metagenomic binner.
@@ -289,7 +295,7 @@ def create_metagenomic_binner(
         Configured DifferentiableMetagenomicBinner instance.
     """
     if hidden_dims is None:
-        hidden_dims = [512, 256]
+        hidden_dims = (512, 256)
 
     config = MetagenomicBinnerConfig(
         n_abundance_features=n_abundance_features,

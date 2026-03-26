@@ -10,6 +10,7 @@ Inherits from TemperatureOperator to get:
 - soft_argmax() for soft position selection
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -20,8 +21,10 @@ from datarax.core.config import OperatorConfig
 
 from diffbio.core.base_operators import TemperatureOperator
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class MotifDiscoveryConfig(OperatorConfig):
     """Configuration for differentiable motif discovery.
 

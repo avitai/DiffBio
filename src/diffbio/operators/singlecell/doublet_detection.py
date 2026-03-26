@@ -19,6 +19,7 @@ Applications: Identifying doublet artifacts in scRNA-seq data as a
 preprocessing step before downstream analysis (clustering, trajectory, DE).
 """
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -34,6 +35,8 @@ from diffbio.constants import DISTANCE_MASK_SENTINEL
 from diffbio.core.base_operators import EncoderDecoderOperator
 from diffbio.core.graph_utils import compute_pairwise_distances
 from diffbio.utils.nn_utils import build_mlp_decoder, build_mlp_encoder, ensure_rngs, forward_mlp
+
+logger = logging.getLogger(__name__)
 
 
 def generate_synthetic_doublets(
@@ -63,7 +66,7 @@ def generate_synthetic_doublets(
     return counts[idx_a] + counts[idx_b]
 
 
-@dataclass
+@dataclass(frozen=True)
 class DoubletScorerConfig(OperatorConfig):
     """Configuration for Scrublet-style doublet detection.
 
@@ -77,8 +80,6 @@ class DoubletScorerConfig(OperatorConfig):
         n_pca_components: Number of PCA components for embedding.
         n_genes: Number of genes in expression profiles.
         threshold_temperature: Temperature for sigmoid doublet thresholding.
-        stochastic: Whether the operator uses randomness (always True).
-        stream_name: RNG stream name for doublet pair selection.
     """
 
     n_neighbors: int = 30
@@ -87,8 +88,13 @@ class DoubletScorerConfig(OperatorConfig):
     n_pca_components: int = 30
     n_genes: int = 2000
     threshold_temperature: float = 10.0
-    stochastic: bool = True
-    stream_name: str | None = "sample"
+
+    def __post_init__(self) -> None:
+        """Set stochastic defaults and validate."""
+        object.__setattr__(self, "stochastic", True)
+        if self.stream_name is None:
+            object.__setattr__(self, "stream_name", "sample")
+        super().__post_init__()
 
 
 class DifferentiableDoubletScorer(OperatorModule):
@@ -347,7 +353,7 @@ class DifferentiableDoubletScorer(OperatorModule):
 # =============================================================================
 
 
-@dataclass
+@dataclass(frozen=True)
 class SoloDetectorConfig(OperatorConfig):
     """Configuration for Solo-style VAE doublet detection.
 
@@ -361,8 +367,6 @@ class SoloDetectorConfig(OperatorConfig):
         hidden_dims: Hidden layer dimensions for encoder/decoder.
         classifier_hidden_dim: Hidden dimension for the latent-space classifier.
         sim_doublet_ratio: Ratio of synthetic doublets to real cells.
-        stochastic: Whether the operator uses randomness (always True for VAE).
-        stream_name: RNG stream name for sampling.
     """
 
     n_genes: int = 2000
@@ -370,8 +374,13 @@ class SoloDetectorConfig(OperatorConfig):
     hidden_dims: list[int] = field(default_factory=lambda: [128, 64])
     classifier_hidden_dim: int = 64
     sim_doublet_ratio: float = 2.0
-    stochastic: bool = True
-    stream_name: str = "sample"
+
+    def __post_init__(self) -> None:
+        """Set stochastic defaults and validate."""
+        object.__setattr__(self, "stochastic", True)
+        if self.stream_name is None:
+            object.__setattr__(self, "stream_name", "sample")
+        super().__post_init__()
 
 
 class DifferentiableSoloDetector(EncoderDecoderOperator):
@@ -428,7 +437,7 @@ class DifferentiableSoloDetector(EncoderDecoderOperator):
         safe_rngs = ensure_rngs(rngs)
 
         self.n_genes = config.n_genes
-        self.stream_name = config.stream_name
+        self.stream_name = nnx.static(config.stream_name)
 
         # --- VAE Encoder ---
         self.encoder_layers = build_mlp_encoder(config.n_genes, config.hidden_dims, rngs=safe_rngs)

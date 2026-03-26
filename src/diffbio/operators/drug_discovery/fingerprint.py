@@ -8,6 +8,7 @@ Operators:
     CircularFingerprintOperator: Differentiable ECFP/Morgan fingerprints
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -28,8 +29,10 @@ from diffbio.operators.drug_discovery._graph_utils import (
     unpack_graph_inputs,
 )
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class MolecularFingerprintConfig(OperatorConfig):
     """Configuration for molecular fingerprint operator.
 
@@ -39,8 +42,6 @@ class MolecularFingerprintConfig(OperatorConfig):
         num_layers: Number of graph convolution layers.
         in_features: Number of input node features (default: DEFAULT_ATOM_FEATURES=34).
         normalize: Whether to L2-normalize the fingerprint.
-        stochastic: Whether operator uses random sampling.
-        stream_name: Optional stream name for data routing.
     """
 
     fingerprint_dim: int = 256
@@ -48,8 +49,6 @@ class MolecularFingerprintConfig(OperatorConfig):
     num_layers: int = 3
     in_features: int = 4  # Default for tests; use DEFAULT_ATOM_FEATURES for real molecules
     normalize: bool = False
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class DifferentiableMolecularFingerprint(OperatorModule):
@@ -75,14 +74,21 @@ class DifferentiableMolecularFingerprint(OperatorModule):
         ```
     """
 
-    def __init__(self, config: MolecularFingerprintConfig, *, rngs: nnx.Rngs | None = None):
+    def __init__(
+        self,
+        config: MolecularFingerprintConfig,
+        *,
+        rngs: nnx.Rngs | None = None,
+        name: str | None = None,
+    ):
         """Initialize fingerprint operator.
 
         Args:
             config: Fingerprint configuration.
             rngs: Flax NNX random number generators.
+            name: Optional name for the operator.
         """
-        super().__init__(config, rngs=rngs)
+        super().__init__(config, rngs=rngs, name=name)
 
         rngs = initialize_graph_encoder(
             self,
@@ -167,7 +173,7 @@ def create_fingerprint_operator(
 # =============================================================================
 
 
-@dataclass
+@dataclass(frozen=True)
 class CircularFingerprintConfig(OperatorConfig):
     # pylint: disable=too-many-instance-attributes
     """Configuration for circular fingerprint operator (ECFP/Morgan).
@@ -182,8 +188,6 @@ class CircularFingerprintConfig(OperatorConfig):
         hash_hidden_dim: Hidden dimension for hash network (default: 128).
         temperature: Temperature for soft bit assignment (default: 1.0).
         in_features: Number of input node features (default: 4).
-        stochastic: Whether operator uses random sampling.
-        stream_name: Optional stream name for data routing.
     """
 
     radius: int = 2  # ECFP4 = radius 2, ECFP6 = radius 3
@@ -195,8 +199,6 @@ class CircularFingerprintConfig(OperatorConfig):
     hash_hidden_dim: int = 128
     temperature: float = 1.0  # For soft bit assignment
     in_features: int = 4  # Number of input node features
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class CircularFingerprintOperator(OperatorModule):

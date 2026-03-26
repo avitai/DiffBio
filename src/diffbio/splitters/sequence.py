@@ -7,6 +7,7 @@ For genomics/proteomics applications where similar sequences
 should not appear in both train and test sets.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -16,8 +17,10 @@ from datarax.core.data_source import DataSourceModule
 
 from diffbio.splitters.base import SplitResult, SplitterConfig, SplitterModule
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class SequenceIdentitySplitterConfig(SplitterConfig):
     """Configuration for sequence identity splitter.
 

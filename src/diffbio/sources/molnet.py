@@ -15,6 +15,7 @@ Reference:
 
 import csv
 import gzip
+import logging
 import shutil
 import urllib.error
 import urllib.request
@@ -29,6 +30,8 @@ from flax import nnx
 from datarax.core.config import StructuralConfig
 from datarax.core.data_source import DataSourceModule
 from datarax.typing import Element
+
+logger = logging.getLogger(__name__)
 
 # MolNet dataset catalog with download URLs and metadata
 # URLs point to DeepChem's hosted data files
@@ -142,7 +145,7 @@ _FALLBACK_MOLNET_SMILES: tuple[str, ...] = (
 )
 
 
-@dataclass
+@dataclass(frozen=True)
 class MolNetSourceConfig(StructuralConfig):
     """Configuration for MolNet benchmark data source.
 

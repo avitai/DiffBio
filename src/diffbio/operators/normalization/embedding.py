@@ -7,6 +7,7 @@ Key technique: Use 1D convolutions to extract local sequence features,
 then aggregate into a fixed-size representation.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -17,8 +18,10 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class SequenceEmbeddingConfig(OperatorConfig):
     """Configuration for SequenceEmbedding.
 

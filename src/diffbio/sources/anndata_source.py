@@ -21,6 +21,7 @@ References:
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -34,6 +35,8 @@ from flax import nnx
 from datarax.core.config import StructuralConfig
 from datarax.core.data_source import DataSourceModule
 from datarax.sources._eager_source_ops import eager_get_batch, eager_iter, eager_reset
+
+logger = logging.getLogger(__name__)
 
 
 def _require_anndata() -> Any:
@@ -71,7 +74,7 @@ def _to_dense_array(matrix: Any) -> np.ndarray:
     return np.asarray(matrix, dtype=np.float32)
 
 
-@dataclass
+@dataclass(frozen=True)
 class AnnDataSourceConfig(StructuralConfig):
     """Configuration for AnnDataSource.
 

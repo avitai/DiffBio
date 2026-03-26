@@ -9,13 +9,14 @@ The pipeline is fully differentiable, enabling gradient-based optimization
 of all components jointly.
 """
 
-from dataclasses import dataclass, field
+import logging
+from dataclasses import dataclass
 from typing import Any
 
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.element_batch import Batch
+from datarax.typing import Batch
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float
@@ -36,8 +37,10 @@ from diffbio.operators.variant import (
     VariantClassifierConfig,
 )
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class VariantCallingPipelineConfig(OperatorConfig):
     # pylint: disable=too-many-instance-attributes
     """Configuration for the variant calling pipeline.
@@ -62,10 +65,9 @@ class VariantCallingPipelineConfig(OperatorConfig):
     classifier_hidden_dim: int = 64
     use_quality_weights: bool = True
     classifier_type: str = ClassifierType.MLP  # ClassifierType.MLP or ClassifierType.CNN
-    cnn_hidden_channels: list[int] = field(default_factory=lambda: [32, 64])
-    cnn_fc_dims: list[int] = field(default_factory=lambda: [64, 32])
+    cnn_hidden_channels: tuple[int, ...] = (32, 64)
+    cnn_fc_dims: tuple[int, ...] = (64, 32)
     apply_pileup_softmax: bool = True  # False is better for variant detection
-    stochastic: bool = field(default=False, repr=False)
 
 
 class VariantCallingPipeline(OperatorModule):
@@ -439,8 +441,8 @@ def create_cnn_variant_pipeline(
     num_classes: int = 3,
     quality_threshold: float = 20.0,
     pileup_window_size: int = 21,
-    cnn_hidden_channels: list[int] | None = None,
-    cnn_fc_dims: list[int] | None = None,
+    cnn_hidden_channels: tuple[int, ...] | None = None,
+    cnn_fc_dims: tuple[int, ...] | None = None,
     seed: int = 42,
 ) -> VariantCallingPipeline:
     """Factory function to create a CNN-based variant calling pipeline.
@@ -456,17 +458,17 @@ def create_cnn_variant_pipeline(
         num_classes: Number of variant classes
         quality_threshold: Quality score threshold
         pileup_window_size: Window size for pileup context (recommend 21+ for CNN)
-        cnn_hidden_channels: Hidden channels for CNN layers (default: [32, 64])
-        cnn_fc_dims: FC layer dimensions (default: [64, 32])
+        cnn_hidden_channels: Hidden channels for CNN layers (default: (32, 64))
+        cnn_fc_dims: FC layer dimensions (default: (64, 32))
         seed: Random seed
 
     Returns:
         Configured VariantCallingPipeline instance with CNN classifier
     """
     if cnn_hidden_channels is None:
-        cnn_hidden_channels = [32, 64]
+        cnn_hidden_channels = (32, 64)
     if cnn_fc_dims is None:
-        cnn_fc_dims = [64, 32]
+        cnn_fc_dims = (64, 32)
 
     config = VariantCallingPipelineConfig(
         reference_length=reference_length,

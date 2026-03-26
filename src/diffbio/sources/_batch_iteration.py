@@ -1,10 +1,13 @@
 """Utilities for simple stateful batch iteration in data sources."""
 
+import logging
 from collections.abc import Callable
 
 import jax
 
 from datarax.typing import Element
+
+logger = logging.getLogger(__name__)
 
 
 def reset_iteration_state(source: object, seed: int | None = None) -> None:

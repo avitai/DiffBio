@@ -12,6 +12,7 @@ Applications: Identifying switch-like gene regulation events in
 single-cell pseudotime trajectories.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -23,8 +24,10 @@ from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.base_operators import TemperatureOperator
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class SwitchDEConfig(OperatorConfig):
     """Configuration for sigmoidal switch differential expression.
 

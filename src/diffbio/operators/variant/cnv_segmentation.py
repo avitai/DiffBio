@@ -18,6 +18,7 @@ Key techniques:
 Applications: CNV analysis, coverage depth segmentation, breakpoint detection.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -29,8 +30,10 @@ from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.base_operators import TemperatureOperator
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class CNVSegmentationConfig(OperatorConfig):
     """Configuration for DifferentiableCNVSegmentation.
 
@@ -327,7 +330,7 @@ class DifferentiableCNVSegmentation(TemperatureOperator):
 # =========================================================================
 
 
-@dataclass
+@dataclass(frozen=True)
 class EnhancedCNVSegmentationConfig(OperatorConfig):
     """Configuration for EnhancedCNVSegmentation.
 

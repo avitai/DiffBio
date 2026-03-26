@@ -11,6 +11,7 @@ Applications: Inferring cell state transitions and developmental trajectories
 from single-cell RNA-seq data with spliced/unspliced counts.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -21,8 +22,10 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class VelocityConfig(OperatorConfig):
     """Configuration for DifferentiableVelocity.
 

@@ -17,6 +17,7 @@ Applications: Denoising dropout events in scRNA-seq count matrices, recovering
 gene-gene relationships masked by technical noise.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -37,8 +38,10 @@ from diffbio.operators.language_models.transformer_encoder import (
     TransformerSequenceEncoderConfig,
 )
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class DiffusionImputerConfig(OperatorConfig):
     """Configuration for MAGIC-style diffusion imputation.
 
@@ -271,7 +274,7 @@ class DifferentiableDiffusionImputer(OperatorModule):
         return transformed_data, state, metadata
 
 
-@dataclass
+@dataclass(frozen=True)
 class TransformerDenoiserConfig(OperatorConfig):
     """Configuration for transformer-based gene denoising.
 
@@ -286,8 +289,6 @@ class TransformerDenoiserConfig(OperatorConfig):
         num_heads: Number of attention heads.
         mask_ratio: Fraction of genes to mask during training.
         dropout_rate: Dropout rate for regularisation.
-        stochastic: Whether the operator uses randomness (always ``True``).
-        stream_name: RNG stream name for mask generation.
     """
 
     n_genes: int = 2000
@@ -296,8 +297,13 @@ class TransformerDenoiserConfig(OperatorConfig):
     num_heads: int = 4
     mask_ratio: float = 0.15
     dropout_rate: float = 0.1
-    stochastic: bool = True
-    stream_name: str | None = "sample"
+
+    def __post_init__(self) -> None:
+        """Set stochastic defaults and validate."""
+        object.__setattr__(self, "stochastic", True)
+        if self.stream_name is None:
+            object.__setattr__(self, "stream_name", "sample")
+        super().__post_init__()
 
 
 class DifferentiableTransformerDenoiser(OperatorModule):

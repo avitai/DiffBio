@@ -1,11 +1,14 @@
 """Shared helpers for graph-based drug-discovery operators."""
 
+import logging
 from typing import Any, Mapping
 
 import jax.numpy as jnp
 from flax import nnx
 
 from diffbio.operators.drug_discovery.message_passing import StackedMessagePassing
+
+logger = logging.getLogger(__name__)
 
 
 def stabilize_operator_id(module: Any) -> None:

@@ -13,6 +13,7 @@ References:
     - https://pythonhosted.org/pyfaidx/
 """
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -26,8 +27,10 @@ from datarax.typing import Element
 from diffbio.sequences.dna import encode_dna_string
 from diffbio.sources._indexed_batch_source import IndexedBatchSourceMixin
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class FastaSourceConfig(StructuralConfig):
     """Configuration for FASTA data source.
 

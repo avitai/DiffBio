@@ -43,13 +43,9 @@ All operator configs inherit from `OperatorConfig`:
 from dataclasses import dataclass
 from datarax.core.config import OperatorConfig
 
-@dataclass
+@dataclass(frozen=True)
 class MyOperatorConfig(OperatorConfig):
-    # Required base fields
-    stochastic: bool = False
-    stream_name: str | None = None
-
-    # Custom fields
+    """Configuration for MyOperator."""
     my_param: float = 1.0
 ```
 
@@ -58,7 +54,7 @@ class MyOperatorConfig(OperatorConfig):
 Pipelines can contain nested configs:
 
 ```python
-@dataclass
+@dataclass(frozen=True)
 class PipelineConfig:
     preprocessing: PreprocessingPipelineConfig
     alignment: AlignmentConfig
@@ -70,24 +66,27 @@ class PipelineConfig:
 Add validation in `__post_init__`:
 
 ```python
-@dataclass
+@dataclass(frozen=True)
 class ValidatedConfig(OperatorConfig):
     temperature: float = 1.0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.temperature <= 0:
             raise ValueError("temperature must be positive")
 ```
 
-### Frozen Configurations
+### Stochastic Operators
 
-Use frozen dataclasses for immutability:
+If an operator needs stochastic behavior, set `stochastic` and `stream_name` in
+`__post_init__` using `object.__setattr__()` (required because the dataclass is frozen):
 
 ```python
-from dataclasses import dataclass
-
 @dataclass(frozen=True)
-class ImmutableConfig(OperatorConfig):
-    """Configuration that cannot be modified after creation."""
-    param: float = 1.0
+class StochasticOpConfig(OperatorConfig):
+    """Configuration for a stochastic operator."""
+    dropout_rate: float = 0.1
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "stochastic", True)
+        object.__setattr__(self, "stream_name", "dropout")
 ```

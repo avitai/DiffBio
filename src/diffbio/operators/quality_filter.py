@@ -4,6 +4,7 @@ This module provides a soft quality filtering operator that down-weights
 low-quality positions in sequences using a differentiable sigmoid function.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -16,8 +17,10 @@ from diffbio.configs import DiffBioOperatorConfig
 from diffbio.constants import PHRED_QUALITY_THRESHOLD
 from diffbio.utils.nn_utils import init_learnable_param
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class QualityFilterConfig(DiffBioOperatorConfig):
     """Configuration for DifferentiableQualityFilter.
 

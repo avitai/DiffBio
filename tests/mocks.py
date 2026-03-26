@@ -7,7 +7,7 @@ from datarax.core.data_source import DataSourceModule
 from flax import nnx
 
 
-@dataclass
+@dataclass(frozen=True)
 class MockSourceConfig(StructuralConfig):
     """Configuration for MockDataSource used across tests."""
 

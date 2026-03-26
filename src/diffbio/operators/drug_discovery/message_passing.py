@@ -4,8 +4,12 @@ This module implements directed message passing neural network (D-MPNN)
 layers following the ChemProp architecture for molecular property prediction.
 """
 
+import logging
+
 import jax.numpy as jnp
 from flax import nnx
+
+logger = logging.getLogger(__name__)
 
 
 class MessagePassingLayer(nnx.Module):

@@ -17,6 +17,7 @@ Inherits from EncoderDecoderOperator to get:
 - elbo_loss() for combining reconstruction and KL losses
 """
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -28,8 +29,10 @@ from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.base_operators import EncoderDecoderOperator
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class AmbientRemovalConfig(OperatorConfig):
     """Configuration for DifferentiableAmbientRemoval.
 
@@ -39,8 +42,6 @@ class AmbientRemovalConfig(OperatorConfig):
         hidden_dims: Hidden layer dimensions for encoder/decoder.
         ambient_prior: Prior probability of ambient contamination.
         temperature: Temperature for softmax operations.
-        stochastic: Whether the operator uses randomness.
-        stream_name: RNG stream name.
     """
 
     n_genes: int = 2000
@@ -48,8 +49,13 @@ class AmbientRemovalConfig(OperatorConfig):
     hidden_dims: list[int] = field(default_factory=lambda: [256, 128])
     ambient_prior: float = 0.01
     temperature: float = 1.0
-    stochastic: bool = True
-    stream_name: str | None = "sample"
+
+    def __post_init__(self) -> None:
+        """Set stochastic defaults and validate."""
+        object.__setattr__(self, "stochastic", True)
+        if self.stream_name is None:
+            object.__setattr__(self, "stream_name", "sample")
+        super().__post_init__()
 
 
 class AmbientEncoder(nnx.Module):
@@ -236,7 +242,7 @@ class DifferentiableAmbientRemoval(EncoderDecoderOperator):
             rngs = nnx.Rngs(0)
 
         self.ambient_prior = config.ambient_prior
-        self.stochastic = config.stochastic
+        self.stochastic = nnx.static(config.stochastic)
 
         # Encoder
         self.encoder = AmbientEncoder(

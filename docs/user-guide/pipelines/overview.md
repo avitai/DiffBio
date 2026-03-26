@@ -141,7 +141,7 @@ probabilities = result_data["probabilities"]  # (reference_length, num_classes)
 ### Batch Processing
 
 ```python
-from datarax.core.element_batch import Batch, Element
+from datarax.typing import Batch, Element
 
 # Create batch
 elements = [

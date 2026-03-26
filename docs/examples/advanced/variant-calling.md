@@ -86,8 +86,8 @@ cnn_pipeline = create_cnn_variant_pipeline(
     reference_length=100,
     num_classes=3,
     pileup_window_size=21,  # Larger window for CNN
-    cnn_hidden_channels=[32, 64],
-    cnn_fc_dims=[64, 32],
+    cnn_hidden_channels=(32, 64),
+    cnn_fc_dims=(64, 32),
     seed=42,
 )
 print(f"CNN Pipeline: {type(cnn_pipeline).__name__}")
@@ -110,8 +110,8 @@ config = VariantCallingPipelineConfig(
     pileup_window_size=21,
     classifier_type="cnn",  # "mlp" or "cnn"
     classifier_hidden_dim=128,  # For MLP
-    cnn_hidden_channels=[32, 64],  # For CNN
-    cnn_fc_dims=[64, 32],  # For CNN
+    cnn_hidden_channels=(32, 64),  # For CNN
+    cnn_fc_dims=(64, 32),  # For CNN
     use_quality_weights=True,
     apply_pileup_softmax=False,  # Better for variant detection
 )

@@ -4,6 +4,7 @@ This module provides differentiable MD integration operators that evolve
 particle positions and velocities over time using JAX-MD's simulators.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -20,8 +21,10 @@ from diffbio.operators.molecular_dynamics.primitives import (
     create_energy_fn,
 )
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class MDIntegratorConfig(OperatorConfig):
     # pylint: disable=too-many-instance-attributes
     """Configuration for MD integrator operator.
@@ -37,8 +40,6 @@ class MDIntegratorConfig(OperatorConfig):
         mass: Particle mass (uniform for all particles).
         kT: Thermal energy for Langevin thermostat.
         gamma: Friction coefficient for Langevin dynamics.
-        stochastic: Whether operator uses random sampling.
-        stream_name: Optional stream name for data routing.
     """
 
     integrator_type: str = "velocity_verlet"
@@ -51,8 +52,6 @@ class MDIntegratorConfig(OperatorConfig):
     mass: float = 1.0
     kT: float = 1.0
     gamma: float = 1.0
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -87,14 +86,21 @@ class MDIntegratorOperator(OperatorModule):
         ```
     """
 
-    def __init__(self, config: MDIntegratorConfig, *, rngs: nnx.Rngs | None = None):
+    def __init__(
+        self,
+        config: MDIntegratorConfig,
+        *,
+        rngs: nnx.Rngs | None = None,
+        name: str | None = None,
+    ):
         """Initialize MD integrator operator.
 
         Args:
             config: Integrator configuration.
             rngs: Flax NNX random number generators.
+            name: Optional name for the operator.
         """
-        super().__init__(config, rngs=rngs)
+        super().__init__(config, rngs=rngs, name=name)
         # Pre-create displacement, energy, and force functions (efficiency: only created once)
         displacement_fn, shift_fn = create_displacement_fn(config.box_size)
         energy_fn = create_energy_fn(

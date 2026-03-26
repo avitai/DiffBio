@@ -13,6 +13,7 @@ References:
     https://www.nature.com/articles/nmeth.4636
 """
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -23,8 +24,10 @@ from jaxtyping import Array, Float
 
 from diffbio.core.base_operators import TemperatureOperator
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class SpatialGeneDetectorConfig(OperatorConfig):
     # pylint: disable=too-many-instance-attributes
     """Configuration for spatial gene detection.
@@ -39,8 +42,6 @@ class SpatialGeneDetectorConfig(OperatorConfig):
         temperature: Temperature for soft thresholding.
         pvalue_threshold: Threshold for spatial gene classification.
         learnable_kernel: Whether kernel parameters are learnable.
-        stochastic: Whether the operator uses stochastic operations.
-        stream_name: RNG stream name for stochastic operations.
     """
 
     n_genes: int = 2000
@@ -52,8 +53,6 @@ class SpatialGeneDetectorConfig(OperatorConfig):
     temperature: float = 1.0
     pvalue_threshold: float = 0.05
     learnable_kernel: bool = True
-    stochastic: bool = False
-    stream_name: str | None = field(default=None, repr=False)
 
 
 class DifferentiableSpatialGeneDetector(TemperatureOperator):

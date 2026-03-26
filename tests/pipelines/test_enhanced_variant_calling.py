@@ -60,8 +60,8 @@ class TestEnhancedVariantCallingPipeline:
             reference_length=100,
             num_classes=3,
             pileup_window_size=11,
-            cnn_hidden_channels=[16, 32],
-            cnn_fc_dims=[32, 16],
+            cnn_hidden_channels=(16, 32),
+            cnn_fc_dims=(32, 16),
         )
 
     @pytest.fixture
@@ -173,8 +173,8 @@ class TestEnhancedVariantCallingPipeline:
         config = EnhancedVariantCallingPipelineConfig(
             reference_length=100,
             enable_quality_recalibration=False,
-            cnn_hidden_channels=[16, 32],
-            cnn_fc_dims=[32, 16],
+            cnn_hidden_channels=(16, 32),
+            cnn_fc_dims=(32, 16),
         )
         pipeline = EnhancedVariantCallingPipeline(config, rngs=rngs)
 
@@ -229,8 +229,8 @@ class TestEnhancedVariantCallingDifferentiability:
             reference_length=50,
             num_classes=3,
             pileup_window_size=5,
-            cnn_hidden_channels=[8, 16],
-            cnn_fc_dims=[16, 8],
+            cnn_hidden_channels=(8, 16),
+            cnn_fc_dims=(16, 8),
             enable_preprocessing=False,  # Simpler for gradient test
         )
 
@@ -316,8 +316,8 @@ class TestEnhancedVariantCallingJITCompatibility:
             reference_length=50,
             num_classes=3,
             pileup_window_size=5,
-            cnn_hidden_channels=[8, 16],
-            cnn_fc_dims=[16, 8],
+            cnn_hidden_channels=(8, 16),
+            cnn_fc_dims=(16, 8),
         )
 
     def test_jit_apply(self, config, rngs):

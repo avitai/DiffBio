@@ -4,6 +4,7 @@ This module provides differentiable force field operators that compute
 molecular energies and forces using JAX-MD's efficient implementations.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -20,8 +21,10 @@ from diffbio.operators.molecular_dynamics.primitives import (
     create_force_fn,
 )
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class ForceFieldConfig(OperatorConfig):
     """Configuration for force field operator.
 
@@ -32,8 +35,6 @@ class ForceFieldConfig(OperatorConfig):
         cutoff: Cutoff distance for interactions (in units of sigma). None for no cutoff.
         box_size: Size of periodic box. None for non-periodic.
         alpha: Morse potential width parameter (only for morse).
-        stochastic: Whether operator uses random sampling.
-        stream_name: Optional stream name for data routing.
     """
 
     potential_type: str = "lennard_jones"
@@ -42,8 +43,6 @@ class ForceFieldConfig(OperatorConfig):
     cutoff: float | None = 2.5
     box_size: float | None = None
     alpha: float = 5.0  # Morse potential parameter
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class ForceFieldOperator(OperatorModule):

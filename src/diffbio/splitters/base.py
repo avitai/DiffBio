@@ -6,6 +6,7 @@ This module provides the base classes for dataset splitting:
 - SplitterModule: Base class for all splitters
 """
 
+import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import NamedTuple
@@ -17,6 +18,8 @@ from flax import nnx
 from datarax.core.config import StructuralConfig
 from datarax.core.data_source import DataSourceModule
 from datarax.core.structural import StructuralModule
+
+logger = logging.getLogger(__name__)
 
 
 class SplitResult(NamedTuple):
@@ -48,7 +51,7 @@ class SplitResult(NamedTuple):
         return len(self.test_indices)
 
 
-@dataclass
+@dataclass(frozen=True)
 class SplitterConfig(StructuralConfig):
     """Base configuration for splitters.
 

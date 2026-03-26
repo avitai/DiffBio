@@ -198,12 +198,10 @@ Each operator has a corresponding configuration dataclass:
 from dataclasses import dataclass
 from datarax.core.config import OperatorConfig
 
-@dataclass
+@dataclass(frozen=True)
 class MyOperatorConfig(OperatorConfig):
-    # Configuration fields with defaults
+    """Configuration for MyOperator."""
     temperature: float = 1.0
-    stochastic: bool = False
-    stream_name: str | None = None
 ```
 
 ### Example Usage

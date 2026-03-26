@@ -9,7 +9,8 @@ spatial patterns in read alignments for accurate variant detection.
 Applications: Germline/somatic variant calling, variant quality scoring.
 """
 
-from dataclasses import dataclass, field
+import logging
+from dataclasses import dataclass
 from typing import Any
 
 import jax
@@ -22,8 +23,10 @@ from diffbio.configs import DiffBioOperatorConfig
 from diffbio.constants import DEFAULT_DROPOUT_RATE, DEFAULT_NUM_CLASSES
 from diffbio.utils.nn_utils import ensure_rngs
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class CNNVariantClassifierConfig(DiffBioOperatorConfig):
     """Configuration for CNNVariantClassifier.
 
@@ -41,11 +44,17 @@ class CNNVariantClassifierConfig(DiffBioOperatorConfig):
     input_height: int = 100  # coverage depth
     input_width: int = 221  # context window
     num_channels: int = 6  # A, C, G, T, quality, strand
-    hidden_channels: list[int] = field(default_factory=lambda: [64, 128, 256])
-    fc_dims: list[int] = field(default_factory=lambda: [256, 128])
+    hidden_channels: tuple[int, ...] = (64, 128, 256)
+    fc_dims: tuple[int, ...] = (256, 128)
     dropout_rate: float = DEFAULT_DROPOUT_RATE
-    stochastic: bool = True  # Uses dropout
-    stream_name: str | None = "dropout"  # Required for stochastic operators
+
+    def __post_init__(self) -> None:
+        """Set stochastic config based on dropout usage."""
+        if self.dropout_rate > 0:
+            object.__setattr__(self, "stochastic", True)
+            if self.stream_name is None:
+                object.__setattr__(self, "stream_name", "dropout")
+        super().__post_init__()
 
 
 class CNNVariantClassifier(OperatorModule):

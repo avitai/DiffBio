@@ -14,6 +14,7 @@ Inherits from TemperatureOperator to get:
 - soft_argmax() for soft position selection
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -26,8 +27,10 @@ from datarax.core.config import OperatorConfig
 from diffbio.core.base_operators import TemperatureOperator
 from diffbio.utils.nn_utils import ensure_rngs, get_rng_key
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class PeakCallerConfig(OperatorConfig):
     """Configuration for differentiable peak caller.
 

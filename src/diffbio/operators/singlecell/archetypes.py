@@ -13,6 +13,7 @@ Algorithm:
 Inherits from ``TemperatureOperator`` to get temperature-controlled smoothing.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -24,13 +25,15 @@ from jaxtyping import Array, Float, PyTree
 from diffbio.core.base_operators import TemperatureOperator
 from diffbio.utils.nn_utils import build_mlp_encoder, ensure_rngs, forward_mlp, get_rng_key
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
     "ArchetypalAnalysisConfig",
     "DifferentiableArchetypalAnalysis",
 ]
 
 
-@dataclass
+@dataclass(frozen=True)
 class ArchetypalAnalysisConfig(OperatorConfig):
     """Configuration for DifferentiableArchetypalAnalysis.
 

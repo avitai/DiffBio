@@ -17,6 +17,7 @@ Reference:
     for PyTorch and NumPy. https://github.com/ShintaroMinami/PyDSSP
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -25,6 +26,8 @@ from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float
+
+logger = logging.getLogger(__name__)
 
 # DSSP constants from Kabsch & Sander (1983)
 CONST_Q1Q2 = 0.084  # Partial charges (e units)
@@ -44,7 +47,7 @@ SS_HELIX = 1  # 'H' (alpha-helix)
 SS_STRAND = 2  # 'E' (beta-strand)
 
 
-@dataclass
+@dataclass(frozen=True)
 class SecondaryStructureConfig(OperatorConfig):
     """Configuration for DifferentiableSecondaryStructure.
 
@@ -58,16 +61,12 @@ class SecondaryStructureConfig(OperatorConfig):
             Default 4 (standard for alpha-helix i→i+4 pattern).
         temperature: Temperature for soft secondary structure assignment.
             Default 1.0. Lower = sharper assignments.
-        stochastic: Whether the operator uses stochastic operations.
-        stream_name: RNG stream name for stochastic operations.
     """
 
     margin: float = DEFAULT_MARGIN
     cutoff: float = DEFAULT_CUTOFF
     min_helix_length: int = 4
     temperature: float = 1.0
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 def compute_hydrogen_position(

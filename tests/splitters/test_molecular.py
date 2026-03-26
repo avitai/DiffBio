@@ -215,7 +215,7 @@ class TestScaffoldSplitter:
         from diffbio.splitters import ScaffoldSplitter, ScaffoldSplitterConfig
 
         # Create source with different key name
-        @dataclass
+        @dataclass(frozen=True)
         class MockConfig(StructuralConfig):
             pass
 
@@ -272,7 +272,7 @@ class TestScaffoldSplitterEdgeCases:
 
         from diffbio.splitters import ScaffoldSplitter, ScaffoldSplitterConfig
 
-        @dataclass
+        @dataclass(frozen=True)
         class MockConfig(StructuralConfig):
             pass
 
@@ -329,7 +329,7 @@ class TestScaffoldSplitterEdgeCases:
 
         from diffbio.splitters import ScaffoldSplitter, ScaffoldSplitterConfig
 
-        @dataclass
+        @dataclass(frozen=True)
         class MockConfig(StructuralConfig):
             pass
 
@@ -499,7 +499,7 @@ class TestTanimotoClusterSplitterEdgeCases:
 
         from diffbio.splitters import TanimotoClusterSplitter, TanimotoClusterSplitterConfig
 
-        @dataclass
+        @dataclass(frozen=True)
         class MockConfig(StructuralConfig):
             pass
 

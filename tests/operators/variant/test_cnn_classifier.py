@@ -59,11 +59,9 @@ class TestCNNVariantClassifier:
             input_height=32,
             input_width=64,
             num_channels=6,
-            hidden_channels=[16, 32],
-            fc_dims=[32],
+            hidden_channels=(16, 32),
+            fc_dims=(32,),
             dropout_rate=0.0,  # Disable for deterministic tests
-            stochastic=False,
-            stream_name=None,  # No stream when deterministic
         )
 
     def test_initialization(self, rngs, small_config):
@@ -143,11 +141,9 @@ class TestGradientFlow:
             input_height=32,
             input_width=64,
             num_channels=6,
-            hidden_channels=[16, 32],
-            fc_dims=[32],
+            hidden_channels=(16, 32),
+            fc_dims=(32,),
             dropout_rate=0.0,
-            stochastic=False,
-            stream_name=None,
         )
 
     def test_gradient_flows_through_classifier(self, rngs, small_config):
@@ -200,11 +196,9 @@ class TestJITCompatibility:
             input_height=32,
             input_width=64,
             num_channels=6,
-            hidden_channels=[16, 32],
-            fc_dims=[32],
+            hidden_channels=(16, 32),
+            fc_dims=(32,),
             dropout_rate=0.0,
-            stochastic=False,
-            stream_name=None,
         )
 
     def test_apply_is_jit_compatible(self, rngs, small_config):
@@ -234,11 +228,9 @@ class TestClassifySingleMethod:
         config = CNNVariantClassifierConfig(
             input_height=32,
             input_width=64,
-            hidden_channels=[16],
-            fc_dims=[16],
+            hidden_channels=(16,),
+            fc_dims=(16,),
             dropout_rate=0.0,
-            stochastic=False,
-            stream_name=None,
         )
         op = CNNVariantClassifier(config, rngs=rngs)
 
@@ -255,8 +247,8 @@ class TestClassifySingleMethod:
         config = CNNVariantClassifierConfig(
             input_height=32,
             input_width=64,
-            hidden_channels=[16],
-            fc_dims=[16],
+            hidden_channels=(16,),
+            fc_dims=(16,),
             dropout_rate=0.5,
             stochastic=True,
             stream_name="dropout",
@@ -275,17 +267,15 @@ class TestInitializationVariants:
     """Tests for different initialization scenarios."""
 
     def test_initialization_without_rngs(self):
-        """Test that operator can be initialized without rngs (uses ensure_rngs)."""
+        """Test that operator can be initialized without rngs when dropout_rate=0."""
         config = CNNVariantClassifierConfig(
             input_height=32,
             input_width=64,
-            hidden_channels=[16],
-            fc_dims=[16],
+            hidden_channels=(16,),
+            fc_dims=(16,),
             dropout_rate=0.0,
-            stochastic=False,
-            stream_name=None,
         )
-        # Initialize without rngs - should use ensure_rngs fallback
+        # Initialize without rngs - no dropout means deterministic
         op = CNNVariantClassifier(config, rngs=None)
         assert op is not None
         assert op.num_classes == config.num_classes
@@ -295,8 +285,8 @@ class TestInitializationVariants:
         config = CNNVariantClassifierConfig(
             input_height=32,
             input_width=64,
-            hidden_channels=[16],
-            fc_dims=[16],
+            hidden_channels=(16,),
+            fc_dims=(16,),
             dropout_rate=0.5,
             stochastic=True,
             stream_name="dropout",
@@ -310,11 +300,9 @@ class TestInitializationVariants:
         config = CNNVariantClassifierConfig(
             input_height=32,
             input_width=64,
-            hidden_channels=[16],
-            fc_dims=[16],
+            hidden_channels=(16,),
+            fc_dims=(16,),
             dropout_rate=0.0,
-            stochastic=False,
-            stream_name=None,
         )
         op = CNNVariantClassifier(config, rngs=rngs)
         assert op.dropout is None
@@ -328,11 +316,9 @@ class TestEdgeCases:
         config = CNNVariantClassifierConfig(
             input_height=32,
             input_width=64,
-            hidden_channels=[16],
-            fc_dims=[32],
+            hidden_channels=(16,),
+            fc_dims=(32,),
             dropout_rate=0.0,
-            stochastic=False,
-            stream_name=None,
         )
         op = CNNVariantClassifier(config, rngs=rngs)
 
@@ -348,11 +334,9 @@ class TestEdgeCases:
         config = CNNVariantClassifierConfig(
             input_height=64,
             input_width=128,
-            hidden_channels=[16, 32, 64, 128],
-            fc_dims=[128, 64, 32],
+            hidden_channels=(16, 32, 64, 128),
+            fc_dims=(128, 64, 32),
             dropout_rate=0.0,
-            stochastic=False,
-            stream_name=None,
         )
         op = CNNVariantClassifier(config, rngs=rngs)
 
@@ -369,11 +353,9 @@ class TestEdgeCases:
             num_classes=2,
             input_height=32,
             input_width=64,
-            hidden_channels=[16],
-            fc_dims=[16],
+            hidden_channels=(16,),
+            fc_dims=(16,),
             dropout_rate=0.0,
-            stochastic=False,
-            stream_name=None,
         )
         op = CNNVariantClassifier(config, rngs=rngs)
 

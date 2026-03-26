@@ -18,6 +18,7 @@ References:
     - scGPT: Cui et al. (2024) Nature Methods
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -33,8 +34,10 @@ from diffbio.operators.language_models.transformer_encoder import (
     TransformerSequenceEncoderConfig,
 )
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class FoundationModelConfig(OperatorConfig):
     """Configuration for DifferentiableFoundationModel.
 
@@ -45,8 +48,6 @@ class FoundationModelConfig(OperatorConfig):
         num_heads: Number of attention heads.
         mask_ratio: Fraction of genes to mask during training (scGPT default 0.15).
         dropout_rate: Dropout rate for regularization.
-        stochastic: Whether the operator uses randomness (always True for masking).
-        stream_name: RNG stream name for mask generation.
     """
 
     n_genes: int = 2000
@@ -55,8 +56,13 @@ class FoundationModelConfig(OperatorConfig):
     num_heads: int = 4
     mask_ratio: float = 0.15
     dropout_rate: float = 0.1
-    stochastic: bool = True
-    stream_name: str | None = "sample"
+
+    def __post_init__(self) -> None:
+        """Set stochastic defaults for masking and validate."""
+        object.__setattr__(self, "stochastic", True)
+        if self.stream_name is None:
+            object.__setattr__(self, "stream_name", "sample")
+        super().__post_init__()
 
 
 class GeneTokenizer(nnx.Module):

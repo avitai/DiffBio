@@ -24,6 +24,7 @@ References:
     by data integration and deep learning." Nature Communications.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -32,8 +33,10 @@ from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class CRISPRScorerConfig(OperatorConfig):
     """Configuration for DifferentiableCRISPRScorer.
 
@@ -43,8 +46,6 @@ class CRISPRScorerConfig(OperatorConfig):
         hidden_channels: CNN hidden channel dimensions.
         fc_dims: Fully connected layer dimensions.
         dropout_rate: Dropout rate for regularization.
-        stochastic: Whether the operator uses stochastic computations.
-        stream_name: Optional stream name for data routing.
     """
 
     guide_length: int = 23
@@ -52,8 +53,6 @@ class CRISPRScorerConfig(OperatorConfig):
     hidden_channels: tuple[int, ...] = (64, 128, 256)
     fc_dims: tuple[int, ...] = (256, 128)
     dropout_rate: float = 0.2
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class DifferentiableCRISPRScorer(OperatorModule):

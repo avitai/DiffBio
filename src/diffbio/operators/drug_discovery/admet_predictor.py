@@ -12,6 +12,7 @@ References:
     - Swanson et al. "ADMET-AI" Bioinformatics 2024
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -24,6 +25,8 @@ from diffbio.operators.drug_discovery._graph_utils import (
     graph_sum_readout,
     initialize_graph_encoder,
 )
+
+logger = logging.getLogger(__name__)
 
 # Standard TDC ADMET benchmark task names (22 tasks)
 ADMET_TASK_NAMES: list[str] = [
@@ -88,7 +91,7 @@ ADMET_TASK_TYPES: dict[str, str] = {
 }
 
 
-@dataclass
+@dataclass(frozen=True)
 class ADMETConfig(OperatorConfig):
     # pylint: disable=too-many-instance-attributes
     """Configuration for ADMET property predictor.
@@ -103,8 +106,6 @@ class ADMETConfig(OperatorConfig):
         ffn_hidden_dim: FFN hidden dimension (default: same as hidden_dim).
         ffn_num_layers: Number of FFN layers (default: 2).
         apply_task_activations: Apply sigmoid for classification tasks (default: False).
-        stochastic: Whether operator uses random sampling.
-        stream_name: Optional stream name for data routing.
     """
 
     hidden_dim: int = 300
@@ -116,8 +117,6 @@ class ADMETConfig(OperatorConfig):
     ffn_hidden_dim: int | None = None
     ffn_num_layers: int = 2
     apply_task_activations: bool = False
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class ADMETPredictor(OperatorModule):
@@ -159,14 +158,16 @@ class ADMETPredictor(OperatorModule):
         config: ADMETConfig,
         *,
         rngs: nnx.Rngs | None = None,
+        name: str | None = None,
     ):
         """Initialize ADMET predictor.
 
         Args:
             config: ADMET configuration.
             rngs: Flax NNX random number generators.
+            name: Optional name for the operator.
         """
-        super().__init__(config, rngs=rngs)
+        super().__init__(config, rngs=rngs, name=name)
 
         rngs = initialize_graph_encoder(
             self,

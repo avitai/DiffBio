@@ -4,8 +4,10 @@ This module implements a ChemProp-style molecular property predictor
 using message passing neural networks.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
+
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
@@ -15,8 +17,10 @@ from diffbio.operators.drug_discovery._graph_utils import (
     initialize_graph_encoder,
 )
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class MolecularPropertyConfig(OperatorConfig):
     """Configuration for molecular property predictor.
 
@@ -27,8 +31,6 @@ class MolecularPropertyConfig(OperatorConfig):
         dropout_rate: Dropout rate for regularization.
         in_features: Number of input node features (default: DEFAULT_ATOM_FEATURES=34).
         num_edge_features: Number of edge/bond features.
-        stochastic: Whether operator uses random sampling.
-        stream_name: Optional stream name for data routing.
     """
 
     hidden_dim: int = 300
@@ -37,8 +39,6 @@ class MolecularPropertyConfig(OperatorConfig):
     dropout_rate: float = 0.0
     in_features: int = 4  # Default for tests; use DEFAULT_ATOM_FEATURES for real molecules
     num_edge_features: int = 4
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class MolecularPropertyPredictor(OperatorModule):

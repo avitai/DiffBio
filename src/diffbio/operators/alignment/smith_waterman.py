@@ -11,6 +11,7 @@ Reference:
     differentiable Smith-Waterman." Bioinformatics 39(1):btac724, 2023.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any, NamedTuple
 
@@ -24,8 +25,10 @@ from diffbio.constants import DEFAULT_GAP_EXTEND, DEFAULT_GAP_OPEN
 from diffbio.core.base_operators import TemperatureOperator
 from diffbio.utils.nn_utils import init_learnable_param
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class SmithWatermanConfig(TemperatureConfig):
     """Configuration for SmoothSmithWaterman.
 

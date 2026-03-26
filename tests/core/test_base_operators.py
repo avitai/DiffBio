@@ -27,11 +27,11 @@ from diffbio.constants import (
 
 
 # =============================================================================
-# Mock Configs for Testing (inherit from OperatorConfig which is not frozen)
+# Mock Configs for Testing
 # =============================================================================
 
 
-@dataclass
+@dataclass(frozen=True)
 class MockTemperatureConfig(OperatorConfig):
     """Mock config for TemperatureOperator tests."""
 
@@ -39,7 +39,7 @@ class MockTemperatureConfig(OperatorConfig):
     learnable_temperature: bool = False
 
 
-@dataclass
+@dataclass(frozen=True)
 class MockSequenceConfig(OperatorConfig):
     """Mock config for SequenceOperator tests."""
 
@@ -47,7 +47,7 @@ class MockSequenceConfig(OperatorConfig):
     max_length: int = DEFAULT_MAX_SEQ_LENGTH
 
 
-@dataclass
+@dataclass(frozen=True)
 class MockEncoderDecoderConfig(OperatorConfig):
     """Mock config for EncoderDecoderOperator tests."""
 
@@ -55,7 +55,7 @@ class MockEncoderDecoderConfig(OperatorConfig):
     hidden_dim: int = DEFAULT_HIDDEN_DIM
 
 
-@dataclass
+@dataclass(frozen=True)
 class MockGraphConfig(OperatorConfig):
     """Mock config for GraphOperator tests."""
 
@@ -64,7 +64,7 @@ class MockGraphConfig(OperatorConfig):
     num_heads: int = DEFAULT_NUM_HEADS
 
 
-@dataclass
+@dataclass(frozen=True)
 class MockHMMConfig(OperatorConfig):
     """Mock config for HMMOperator tests."""
 
@@ -106,7 +106,7 @@ class TestTemperatureOperator:
         """Test temperature parameter is learnable."""
         from diffbio.core.base_operators import TemperatureOperator
 
-        @dataclass
+        @dataclass(frozen=True)
         class LearnableConfig(OperatorConfig):
             temperature: float = DEFAULT_TEMPERATURE
             learnable_temperature: bool = True
@@ -239,7 +239,7 @@ class TestGraphOperator:
         """Test scatter aggregation methods."""
         from diffbio.core.base_operators import GraphOperator
 
-        @dataclass
+        @dataclass(frozen=True)
         class SmallGraphConfig(OperatorConfig):
             node_features: int = 4
             edge_features: int = 2
@@ -318,7 +318,7 @@ class TestOperatorComposition:
         """Test combining Temperature and Sequence operators."""
         from diffbio.core.base_operators import SequenceOperator, TemperatureOperator
 
-        @dataclass
+        @dataclass(frozen=True)
         class AlignmentConfig(OperatorConfig):
             temperature: float = DEFAULT_TEMPERATURE
             alphabet_size: int = DNA_ALPHABET_SIZE
@@ -351,7 +351,7 @@ class TestEdgeCases:
 
         low_temp = 0.001
 
-        @dataclass
+        @dataclass(frozen=True)
         class LowTempConfig(OperatorConfig):
             temperature: float = low_temp
 
@@ -401,7 +401,7 @@ class TestMathematicalVerification:
 
         temperature = 0.5
 
-        @dataclass
+        @dataclass(frozen=True)
         class Config(OperatorConfig):
             temperature: float = 0.5  # Use literal, not variable reference
 
@@ -418,7 +418,7 @@ class TestMathematicalVerification:
         """Verify soft_max approaches hard max as temperature -> 0."""
         from diffbio.core.base_operators import TemperatureOperator
 
-        @dataclass
+        @dataclass(frozen=True)
         class LowTempConfig(OperatorConfig):
             temperature: float = 0.0001
 
@@ -436,7 +436,7 @@ class TestMathematicalVerification:
 
         temperature = 1.0
 
-        @dataclass
+        @dataclass(frozen=True)
         class Config(OperatorConfig):
             temperature: float = 1.0  # Use literal, not variable reference
 
@@ -581,7 +581,7 @@ class TestFlaxNNXCompatibility:
         """Test nnx.grad works with learnable temperature parameter."""
         from diffbio.core.base_operators import TemperatureOperator
 
-        @dataclass
+        @dataclass(frozen=True)
         class LearnableConfig(OperatorConfig):
             temperature: float = DEFAULT_TEMPERATURE
             learnable_temperature: bool = True

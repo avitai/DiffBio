@@ -5,6 +5,7 @@ pipeline inspired by DESeq2, with negative binomial modeling and size factor
 normalization.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -16,8 +17,10 @@ from datarax.core.operator import OperatorModule
 
 from diffbio.operators.statistical.nb_glm import DifferentiableNBGLM, NBGLMConfig
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class DEPipelineConfig(OperatorConfig):
     """Configuration for differential expression pipeline.
 
@@ -26,16 +29,12 @@ class DEPipelineConfig(OperatorConfig):
         n_conditions: Number of conditions (covariates) in design matrix.
         alpha: Significance threshold for differential expression.
         use_size_factors: Whether to compute and use size factors.
-        stochastic: Whether to use stochastic operations.
-        stream_name: Name of the data stream to process.
     """
 
     n_genes: int = 1000
     n_conditions: int = 2
     alpha: float = 0.05
     use_size_factors: bool = True
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class DifferentialExpressionPipeline(OperatorModule):

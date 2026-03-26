@@ -5,10 +5,13 @@ creating custom scoring matrices for DNA, RNA, and protein alignment.
 """
 
 import functools
+import logging
 from typing import NamedTuple
 
 import jax.numpy as jnp
 from jaxtyping import Array, Float
+
+logger = logging.getLogger(__name__)
 
 
 class ScoringMatrix(NamedTuple):

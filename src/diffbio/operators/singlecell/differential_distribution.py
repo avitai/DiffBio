@@ -13,6 +13,7 @@ Applications: Identifying genes with differential distributions (shift,
 scale, both, or none) between conditions in scRNA-seq experiments.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -26,8 +27,10 @@ from diffbio.constants import EPSILON
 from diffbio.core.base_operators import TemperatureOperator
 from diffbio.utils.nn_utils import ensure_rngs
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class DifferentialDistributionConfig(OperatorConfig):
     """Configuration for differentiable differential distribution testing.
 

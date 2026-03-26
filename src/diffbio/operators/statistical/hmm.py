@@ -16,6 +16,7 @@ Inherits from HMMOperator to get:
   get_log_initial_distribution() for parameter access
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -27,8 +28,10 @@ from jaxtyping import Array, Float, Int, PyTree
 
 from diffbio.core.base_operators import HMMOperator
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class HMMConfig(OperatorConfig):
     """Configuration for DifferentiableHMM.
 

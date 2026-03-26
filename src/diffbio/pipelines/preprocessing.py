@@ -10,7 +10,8 @@ The pipeline is fully differentiable, enabling gradient-based optimization
 of all preprocessing components jointly.
 """
 
-from dataclasses import dataclass, field
+import logging
+from dataclasses import dataclass
 from typing import Any
 
 import jax
@@ -34,8 +35,10 @@ from diffbio.operators.quality_filter import (
 )
 from diffbio.utils.quality import apply_quality_filter
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class PreprocessingPipelineConfig(OperatorConfig):
     # pylint: disable=too-many-instance-attributes
     """Configuration for the preprocessing pipeline.
@@ -52,8 +55,6 @@ class PreprocessingPipelineConfig(OperatorConfig):
         enable_adapter_removal: Whether to enable adapter removal step.
         enable_duplicate_weighting: Whether to enable duplicate weighting step.
         enable_error_correction: Whether to enable error correction step.
-        stochastic: Whether the pipeline uses stochastic operations.
-        stream_name: RNG stream name for stochastic operations.
     """
 
     read_length: int = 150
@@ -67,8 +68,6 @@ class PreprocessingPipelineConfig(OperatorConfig):
     enable_adapter_removal: bool = True
     enable_duplicate_weighting: bool = True
     enable_error_correction: bool = True
-    stochastic: bool = field(default=False, repr=False)
-    stream_name: str | None = field(default=None, repr=False)
 
 
 class PreprocessingPipeline(OperatorModule):

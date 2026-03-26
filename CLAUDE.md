@@ -32,20 +32,17 @@ from datarax.core.operator import OperatorModule
 from datarax.core.config import OperatorConfig
 from dataclasses import dataclass
 
-@dataclass
+@dataclass(frozen=True)
 class MyOperatorConfig(OperatorConfig):
     """Configuration for MyOperator."""
     my_param: float = 1.0
-    stochastic: bool = False
-    stream_name: str | None = None
 
 class MyOperator(OperatorModule):
-    def __init__(self, config: MyOperatorConfig, *, rngs: nnx.Rngs = None):
-        super().__init__(config, rngs=rngs)
+    def __init__(self, config: MyOperatorConfig, *, rngs: nnx.Rngs = None, name: str | None = None):
+        super().__init__(config, rngs=rngs, name=name)
         self.param = nnx.Param(jnp.array(config.my_param))
 
     def apply(self, data, state, metadata, random_params=None, stats=None):
-        # Implementation here
         result = self._process(data)
         return {**data, "output": result}, state, metadata
 ```
@@ -351,6 +348,8 @@ def test_differentiability(self):
 7. **Not inheriting from OperatorModule for new operators**
 8. **Using integer sequence encoding instead of one-hot encoding**
 9. **Forgetting to handle temperature parameter in smooth approximations**
+10. **Using `@dataclass` instead of `@dataclass(frozen=True)` for configs inheriting from OperatorConfig/StructuralConfig**
+11. **Redefining `stochastic` and `stream_name` fields that are already defined in OperatorConfig**
 
 ## Critical Files to Know
 

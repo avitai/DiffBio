@@ -17,6 +17,7 @@ Reference:
     exploration*, Nature Biotechnology, 2019.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -29,12 +30,14 @@ from flax import nnx
 from diffbio.constants import DISTANCE_MASK_SENTINEL, EPSILON
 from diffbio.core.graph_utils import compute_pairwise_distances, symmetrize_graph
 
+logger = logging.getLogger(__name__)
+
 # Regularization added to eigenvalues to prevent NaN gradients from
 # repeated or near-zero eigenvalues in ``jnp.linalg.eigh``.
 _EIGENVALUE_REGULARIZATION = 1e-6
 
 
-@dataclass
+@dataclass(frozen=True)
 class PHATEConfig(OperatorConfig):
     """Configuration for differentiable PHATE.
 

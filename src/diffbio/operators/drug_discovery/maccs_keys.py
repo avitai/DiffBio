@@ -13,6 +13,7 @@ References:
     - Durant et al. "Reoptimization of MDL Keys for Use in Drug Discovery" JCIM 2002
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -30,8 +31,10 @@ from diffbio.operators.drug_discovery._graph_utils import (
     unpack_graph_inputs,
 )
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class MACCSKeysConfig(OperatorConfig):
     """Configuration for MACCS keys fingerprint operator.
 
@@ -42,8 +45,6 @@ class MACCSKeysConfig(OperatorConfig):
         hidden_dim: Hidden dimension for pattern networks (default: 64).
         num_layers: Number of message passing layers (default: 2).
         in_features: Number of input node features (default: 4).
-        stochastic: Whether operator uses random sampling.
-        stream_name: Optional stream name for data routing.
     """
 
     n_bits: int = 166
@@ -52,8 +53,6 @@ class MACCSKeysConfig(OperatorConfig):
     hidden_dim: int = 64
     num_layers: int = 2
     in_features: int = 4
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class MACCSKeysOperator(OperatorModule):

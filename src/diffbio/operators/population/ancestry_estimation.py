@@ -10,6 +10,7 @@ Reference:
     https://github.com/AI-sandbox/neural-admixture
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -18,8 +19,10 @@ from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class AncestryEstimatorConfig(OperatorConfig):
     """Configuration for DifferentiableAncestryEstimator.
 
@@ -30,8 +33,6 @@ class AncestryEstimatorConfig(OperatorConfig):
         temperature: Temperature for softmax ancestry proportions.
             Lower values produce sharper (more confident) estimates.
         dropout_rate: Dropout rate for regularization.
-        stochastic: Whether the operator uses stochastic computations.
-        stream_name: Optional stream name for data routing.
     """
 
     n_snps: int = 10000
@@ -39,8 +40,6 @@ class AncestryEstimatorConfig(OperatorConfig):
     hidden_dims: tuple[int, ...] = (128, 64)
     temperature: float = 1.0
     dropout_rate: float = 0.1
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 class DifferentiableAncestryEstimator(OperatorModule):

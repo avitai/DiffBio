@@ -17,6 +17,7 @@ Inherits from TemperatureOperator to get:
 - soft_argmax() for soft position selection
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -28,8 +29,10 @@ from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.base_operators import TemperatureOperator
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class HiCContactAnalysisConfig(OperatorConfig):
     """Configuration for HiCContactAnalysis.
 

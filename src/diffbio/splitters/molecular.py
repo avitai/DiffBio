@@ -5,6 +5,7 @@ This module provides molecular-aware splitting utilities:
 - TanimotoClusterSplitter: Split by fingerprint similarity clustering
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Sequence
 
@@ -15,8 +16,10 @@ from datarax.core.data_source import DataSourceModule
 
 from diffbio.splitters.base import SplitResult, SplitterConfig, SplitterModule
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class ScaffoldSplitterConfig(SplitterConfig):
     """Configuration for scaffold splitter.
 
@@ -128,7 +131,7 @@ class ScaffoldSplitter(SplitterModule):
         return self.assign_groups_to_splits(scaffold_sets, len(data_source))
 
 
-@dataclass
+@dataclass(frozen=True)
 class TanimotoClusterSplitterConfig(SplitterConfig):
     """Configuration for Tanimoto cluster splitter.
 

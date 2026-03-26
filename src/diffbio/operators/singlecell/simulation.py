@@ -17,6 +17,7 @@ Applications: Benchmarking single-cell methods, data augmentation for
 downstream analysis, parameter estimation via gradient-based optimization.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -29,8 +30,10 @@ from jaxtyping import Array, Float, Int, PyTree
 
 from diffbio.constants import EPSILON
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class SimulationConfig(OperatorConfig):
     """Configuration for DifferentiableSimulator.
 
@@ -48,8 +51,6 @@ class SimulationConfig(OperatorConfig):
         de_fac_scale: Scale for LogNormal DE fold-change.
         dropout_mid: Logistic dropout midpoint on log-expression scale.
         dropout_shape: Logistic dropout shape (negative = more dropout at low expression).
-        stochastic: Whether the operator uses randomness (always True).
-        stream_name: RNG stream name for stochastic sampling.
     """
 
     n_cells: int = 500
@@ -65,8 +66,13 @@ class SimulationConfig(OperatorConfig):
     de_fac_scale: float = 0.4
     dropout_mid: float = -1.0
     dropout_shape: float = -0.5
-    stochastic: bool = True
-    stream_name: str = "sample"
+
+    def __post_init__(self) -> None:
+        """Set stochastic defaults and validate."""
+        object.__setattr__(self, "stochastic", True)
+        if self.stream_name is None:
+            object.__setattr__(self, "stream_name", "sample")
+        super().__post_init__()
 
 
 class DifferentiableSimulator(OperatorModule):

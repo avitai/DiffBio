@@ -101,8 +101,8 @@ def main() -> None:
         num_classes=3,
         quality_threshold=20.0,
         pileup_window_size=21,
-        cnn_hidden_channels=[32, 64],
-        cnn_fc_dims=[64, 32],
+        cnn_hidden_channels=(32, 64),
+        cnn_fc_dims=(64, 32),
         seed=42,
     )
 

@@ -18,6 +18,7 @@ Applications: CellChat/CellPhoneDB-style communication analysis, spatial
 transcriptomics niche identification, pathway-level signaling inference.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -37,8 +38,10 @@ from diffbio.core.graph_utils import (
 )
 from diffbio.utils.nn_utils import ensure_rngs
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class LRScoringConfig(OperatorConfig):
     """Configuration for ligand-receptor co-expression scoring.
 
@@ -300,7 +303,7 @@ class DifferentiableLigandReceptor(TemperatureOperator):
 # =============================================================================
 
 
-@dataclass
+@dataclass(frozen=True)
 class CellCommunicationConfig(OperatorConfig):
     """Configuration for GNN-based cell-cell communication analysis.
 

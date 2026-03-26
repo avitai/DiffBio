@@ -10,6 +10,7 @@ Applications: Differentiable read mapping for joint optimization with
 downstream variant calling or assembly pipelines.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -21,8 +22,10 @@ from jaxtyping import Array, Float, PyTree
 from diffbio.configs import TemperatureConfig
 from diffbio.core.base_operators import TemperatureOperator
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class NeuralReadMapperConfig(TemperatureConfig):
     """Configuration for NeuralReadMapper.
 

@@ -4,6 +4,7 @@ This module implements differentiable similarity metrics for comparing
 molecular fingerprints, enabling gradient-based optimization of similarity.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -12,22 +13,20 @@ from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class MolecularSimilarityConfig(OperatorConfig):
     """Configuration for molecular similarity operator.
 
     Attributes:
         similarity_type: Type of similarity metric ("tanimoto", "cosine", "dice").
         temperature: Temperature for soft similarity (higher = sharper).
-        stochastic: Whether operator uses random sampling.
-        stream_name: Optional stream name for data routing.
     """
 
     similarity_type: str = "tanimoto"
     temperature: float = 1.0
-    stochastic: bool = False
-    stream_name: str | None = None
 
 
 def tanimoto_similarity(a: jnp.ndarray, b: jnp.ndarray, eps: float = 1e-8) -> jnp.ndarray:

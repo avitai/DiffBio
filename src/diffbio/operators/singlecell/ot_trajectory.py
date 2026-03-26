@@ -21,6 +21,7 @@ References:
     Cell 2019.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -34,6 +35,8 @@ from diffbio.constants import EPSILON
 from diffbio.core.optimal_transport import SinkhornLayer
 from diffbio.utils.nn_utils import ensure_rngs
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
     "OTTrajectoryConfig",
     "DifferentiableOTTrajectory",
@@ -45,7 +48,7 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
-@dataclass
+@dataclass(frozen=True)
 class OTTrajectoryConfig(OperatorConfig):
     """Configuration for OT-based trajectory inference.
 

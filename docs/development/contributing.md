@@ -73,19 +73,15 @@ uv run pre-commit install
 from dataclasses import dataclass
 from datarax.core.config import OperatorConfig
 
-@dataclass
+@dataclass(frozen=True)
 class MyOperatorConfig(OperatorConfig):
     """Configuration for MyOperator.
 
     Attributes:
         my_param: Controls the smoothing intensity.
-        stochastic: Whether the operator uses random sampling.
-        stream_name: RNG stream name for stochastic operations.
     """
 
     my_param: float = 1.0
-    stochastic: bool = False
-    stream_name: str | None = None
 ```
 
 ### 2. Implement the Operator

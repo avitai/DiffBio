@@ -14,6 +14,7 @@ Inherits from TemperatureOperator to get:
 - soft_argmax() for soft position selection
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -26,8 +27,10 @@ from jaxtyping import Array, Float, PyTree
 from diffbio.core.base_operators import TemperatureOperator
 from diffbio.sequences.dna import encode_dna_string
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class AdapterRemovalConfig(OperatorConfig):
     """Configuration for SoftAdapterRemoval.
 

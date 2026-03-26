@@ -5,6 +5,7 @@ and provides access only to elements at specified indices. Elements are loaded
 on-demand from the underlying source, enabling lazy loading for large datasets.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Iterator
 
@@ -16,8 +17,10 @@ from datarax.core.config import StructuralConfig
 from datarax.core.data_source import DataSourceModule
 from datarax.typing import Element
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class IndexedViewSourceConfig(StructuralConfig):
     """Configuration for IndexedViewSource.
 

@@ -10,7 +10,7 @@ from datarax.core.data_source import DataSourceModule
 from datarax.typing import Element
 
 
-@dataclass
+@dataclass(frozen=True)
 class MockSourceConfig(StructuralConfig):
     """Mock config for test data source."""
 

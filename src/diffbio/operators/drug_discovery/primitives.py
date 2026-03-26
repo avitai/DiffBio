@@ -5,11 +5,14 @@ molecular graphs suitable for differentiable neural network processing.
 RDKit is used for parsing only; all graph operations use JAX arrays.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
 import jax.numpy as jnp
 from rdkit import Chem
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass

@@ -5,6 +5,7 @@ Approximation and Projection) for dimensionality reduction with end-to-end
 gradient flow.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -21,8 +22,10 @@ from diffbio.core.graph_utils import (
     symmetrize_graph,
 )
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class UMAPConfig(OperatorConfig):
     """Configuration for differentiable UMAP.
 
