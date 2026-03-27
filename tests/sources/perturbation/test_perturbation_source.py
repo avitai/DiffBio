@@ -222,3 +222,47 @@ class TestPerturbationAnnDataSource:
         assert element["counts"].shape == (0,)
         # But obsm embedding should be available
         assert "obsm" in element
+
+    def test_should_yield_controls_false_skips_controls(
+        self, synthetic_h5ad_path: Path
+    ) -> None:
+        config = PerturbationSourceConfig(
+            file_path=str(synthetic_h5ad_path),
+            output_space="all",
+            should_yield_controls=False,
+        )
+        source = PerturbationAnnDataSource(config)
+
+        # __len__ should reflect only non-control cells
+        n_controls = source.get_control_mask().sum()
+        assert len(source) == N_TOTAL_CELLS - n_controls
+
+        # Iteration should never yield a control cell
+        for elem in source:
+            assert elem["is_control"] is False
+            break  # just check the first one
+
+    def test_should_yield_controls_true_includes_controls(
+        self, synthetic_h5ad_path: Path
+    ) -> None:
+        config = PerturbationSourceConfig(
+            file_path=str(synthetic_h5ad_path),
+            output_space="all",
+            should_yield_controls=True,
+        )
+        source = PerturbationAnnDataSource(config)
+        assert len(source) == N_TOTAL_CELLS
+
+    def test_should_yield_controls_false_getitem_remaps(
+        self, synthetic_h5ad_path: Path
+    ) -> None:
+        config = PerturbationSourceConfig(
+            file_path=str(synthetic_h5ad_path),
+            output_space="all",
+            should_yield_controls=False,
+        )
+        source = PerturbationAnnDataSource(config)
+
+        # Every index in [0, len(source)) should return a non-control
+        for i in range(min(20, len(source))):
+            assert source[i]["is_control"] is False

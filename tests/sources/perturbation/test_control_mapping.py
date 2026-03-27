@@ -126,3 +126,99 @@ class TestBatchControlMapping:
 
         # Most controls should be from the same batch
         assert same_batch_count > len(pert_indices) * 0.3
+
+
+class TestMapControlsFlag:
+    """Tests for the map_controls flag."""
+
+    def test_map_controls_includes_control_rows(
+        self, source: PerturbationAnnDataSource
+    ) -> None:
+        config = ControlMappingConfig(
+            n_basal_samples=1, seed=42, map_controls=True
+        )
+        mapper = RandomControlMapping(config)
+        mapping = mapper.build_mapping(source)
+
+        # With map_controls=True, mapping should cover ALL cells
+        assert mapping.shape[0] == len(source)
+
+    def test_map_controls_false_excludes_controls(
+        self, source: PerturbationAnnDataSource
+    ) -> None:
+        config = ControlMappingConfig(
+            n_basal_samples=1, seed=42, map_controls=False
+        )
+        mapper = RandomControlMapping(config)
+        mapping = mapper.build_mapping(source)
+
+        # Without map_controls, only perturbed cells are mapped
+        n_pert = (~source.get_control_mask()).sum()
+        assert mapping.shape[0] == n_pert
+
+    def test_map_controls_control_mapped_to_other_control(
+        self, source: PerturbationAnnDataSource
+    ) -> None:
+        config = ControlMappingConfig(
+            n_basal_samples=1, seed=42, map_controls=True
+        )
+        mapper = RandomControlMapping(config)
+        mapping = mapper.build_mapping(source)
+
+        ctrl_mask = source.get_control_mask()
+        ctrl_indices = np.where(ctrl_mask)[0]
+        # Controls should be mapped to other controls
+        for ctrl_idx in ctrl_indices[:10]:
+            mapped = mapping[ctrl_idx, 0]
+            assert ctrl_mask[mapped]
+
+    def test_map_controls_batch_strategy(
+        self, source: PerturbationAnnDataSource
+    ) -> None:
+        config = ControlMappingConfig(
+            strategy="batch", n_basal_samples=1, seed=42, map_controls=True
+        )
+        mapper = BatchControlMapping(config)
+        mapping = mapper.build_mapping(source)
+        assert mapping.shape[0] == len(source)
+
+
+class TestCachePairsFlag:
+    """Tests for the cache_pairs flag."""
+
+    def test_cached_mapping_is_deterministic(
+        self, source: PerturbationAnnDataSource
+    ) -> None:
+        config = ControlMappingConfig(
+            n_basal_samples=1, seed=42, cache_pairs=True
+        )
+        mapper = RandomControlMapping(config)
+        m1 = mapper.build_mapping(source)
+        m2 = mapper.build_mapping(source)
+        # Cached: exact same object returned
+        assert m1 is m2
+
+    def test_uncached_returns_fresh(
+        self, source: PerturbationAnnDataSource
+    ) -> None:
+        config = ControlMappingConfig(
+            n_basal_samples=1, seed=42, cache_pairs=False
+        )
+        mapper = RandomControlMapping(config)
+        m1 = mapper.build_mapping(source)
+        m2 = mapper.build_mapping(source)
+        # Uncached: same values (same seed) but different objects
+        np.testing.assert_array_equal(m1, m2)
+        # They should be separate arrays
+        assert m1 is not m2
+
+    def test_cache_batch_strategy(
+        self, source: PerturbationAnnDataSource
+    ) -> None:
+        config = ControlMappingConfig(
+            strategy="batch", n_basal_samples=1, seed=42, cache_pairs=True
+        )
+        mapper = BatchControlMapping(config)
+        m1 = mapper.build_mapping(source)
+        m2 = mapper.build_mapping(source)
+        assert m1 is m2

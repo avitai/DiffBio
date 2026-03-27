@@ -214,6 +214,12 @@ class PerturbationAnnDataSource(AnnDataSource):
         if config.include_barcodes and "barcode" in adata.obs.columns:
             barcodes = np.asarray(adata.obs["barcode"])
 
+        # -- Visible index mapping for should_yield_controls --
+        if config.should_yield_controls:
+            visible_indices = np.arange(adata.n_obs, dtype=np.int64)
+        else:
+            visible_indices = np.where(~control_mask)[0].astype(np.int64)
+
         # -- Store all data --
         self.data = {
             "counts": counts,
@@ -221,7 +227,9 @@ class PerturbationAnnDataSource(AnnDataSource):
             "var": var,
             "obsm": obsm,
         }
-        self.length: int = adata.n_obs
+        self.length: int = len(visible_indices)
+        self._full_length: int = adata.n_obs
+        self._visible_indices = visible_indices
         self.index = nnx.Variable(0)
         self.epoch = nnx.Variable(0)
         self._seed: int = config.seed
@@ -263,6 +271,9 @@ class PerturbationAnnDataSource(AnnDataSource):
     def __getitem__(self, idx: int) -> dict[str, Any]:
         """Get data for a single cell by index, including perturbation metadata.
 
+        When ``should_yield_controls=False``, indices are remapped to skip
+        control cells transparently.
+
         Args:
             idx: Cell index (supports negative indexing).
 
@@ -276,10 +287,11 @@ class PerturbationAnnDataSource(AnnDataSource):
                 f"Cell index {idx} out of range for dataset "
                 f"with {self.length} cells"
             )
-        return self._build_pert_element(idx)
+        internal_idx = int(self._visible_indices[idx])
+        return self._build_pert_element(internal_idx)
 
     def __iter__(self) -> Iterator[dict[str, Any]]:
-        """Iterate over cells with optional shuffling."""
+        """Iterate over visible cells with optional shuffling."""
         return eager_iter(
             self.data,
             self.length,
@@ -287,7 +299,7 @@ class PerturbationAnnDataSource(AnnDataSource):
             self.epoch,
             self.shuffle,
             self._seed,
-            self._build_pert_element_from_data,
+            self._build_visible_element,
         )
 
     def get_batch(
@@ -446,6 +458,13 @@ class PerturbationAnnDataSource(AnnDataSource):
     ) -> dict[str, Any]:
         """Build element from data dict (used by eager_iter callback)."""
         return self._build_pert_element(idx)
+
+    def _build_visible_element(
+        self, data: dict[str, Any], idx: int
+    ) -> dict[str, Any]:
+        """Build element with visible index remapping (used by __iter__)."""
+        internal_idx = int(self._visible_indices[idx])
+        return self._build_pert_element(internal_idx)
 
     def _build_batch_element(self, indices: np.ndarray) -> dict[str, Any]:
         """Build a batched dictionary for multiple cells."""
