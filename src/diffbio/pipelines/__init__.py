@@ -24,6 +24,11 @@ from diffbio.pipelines.single_cell import (
     SingleCellPipelineConfig,
     create_single_cell_pipeline,
 )
+from diffbio.pipelines.perturbation import (
+    PerturbationPipeline,
+    PerturbationPipelineConfig,
+    PerturbationPipelineResult,
+)
 from diffbio.pipelines.variant_calling import (
     VariantCallingPipeline,
     VariantCallingPipelineConfig,
@@ -48,6 +53,10 @@ __all__ = [
     "SingleCellPipeline",
     "SingleCellPipelineConfig",
     "create_single_cell_pipeline",
+    # Perturbation
+    "PerturbationPipeline",
+    "PerturbationPipelineConfig",
+    "PerturbationPipelineResult",
     # Variant calling
     "VariantCallingPipeline",
     "VariantCallingPipelineConfig",

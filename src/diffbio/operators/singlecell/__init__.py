@@ -104,6 +104,14 @@ from diffbio.operators.singlecell.velocity import (
     DifferentiableVelocity,
     VelocityConfig,
 )
+from diffbio.operators.singlecell.downsampling import (
+    DownsamplingConfig,
+    ReadDownsampler,
+)
+from diffbio.operators.singlecell.knockdown_filter import (
+    KnockdownFilterConfig,
+    OnTargetKnockdownFilter,
+)
 
 __all__ = [
     # Archetypal Analysis
@@ -169,4 +177,10 @@ __all__ = [
     # Velocity
     "DifferentiableVelocity",
     "VelocityConfig",
+    # Downsampling
+    "DownsamplingConfig",
+    "ReadDownsampler",
+    # Knockdown Filter
+    "KnockdownFilterConfig",
+    "OnTargetKnockdownFilter",
 ]

@@ -26,6 +26,12 @@ from diffbio.splitters.random import (
     StratifiedSplitter,
     StratifiedSplitterConfig,
 )
+from diffbio.splitters.perturbation import (
+    FewShotSplitter,
+    FewShotSplitterConfig,
+    ZeroShotSplitter,
+    ZeroShotSplitterConfig,
+)
 from diffbio.splitters.sequence import (
     SequenceIdentitySplitter,
     SequenceIdentitySplitterConfig,
@@ -49,4 +55,9 @@ __all__ = [
     # Sequence splitters
     "SequenceIdentitySplitter",
     "SequenceIdentitySplitterConfig",
+    # Perturbation splitters
+    "FewShotSplitter",
+    "FewShotSplitterConfig",
+    "ZeroShotSplitter",
+    "ZeroShotSplitterConfig",
 ]

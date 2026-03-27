@@ -21,6 +21,18 @@ from diffbio.sources.bam import BAMSource, BAMSourceConfig
 from diffbio.sources.fasta import FastaSource, FastaSourceConfig
 from diffbio.sources.indexed_view import IndexedViewSource, IndexedViewSourceConfig
 from diffbio.sources.molnet import MolNetSource, MolNetSourceConfig
+from diffbio.sources.perturbation import (
+    BatchControlMapping,
+    ControlMappingConfig,
+    ExperimentConfig,
+    GlobalH5MetadataCache,
+    H5MetadataCache,
+    PerturbationAnnDataSource,
+    PerturbationConcatSource,
+    PerturbationSourceConfig,
+    RandomControlMapping,
+    load_experiment_config,
+)
 
 __all__ = [
     "AnnDataSource",
@@ -35,4 +47,15 @@ __all__ = [
     "MolNetSourceConfig",
     "from_anndata",
     "to_anndata",
+    # Perturbation
+    "BatchControlMapping",
+    "ControlMappingConfig",
+    "ExperimentConfig",
+    "GlobalH5MetadataCache",
+    "H5MetadataCache",
+    "PerturbationAnnDataSource",
+    "PerturbationConcatSource",
+    "PerturbationSourceConfig",
+    "RandomControlMapping",
+    "load_experiment_config",
 ]

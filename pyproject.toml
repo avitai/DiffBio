@@ -52,6 +52,8 @@ dependencies = [
   "scipy>=1.10",
   # Bioinformatics
   "biopython>=1.81",
+  "anndata>=0.9.1",
+  "h5py>=3.7",
   # Development essentials
   "pre-commit>=4.3.0",
   "ruff>=0.1.5",
@@ -67,7 +69,8 @@ requires-python = ">=3.11"
 version = "0.1.0"
 
 [project.optional-dependencies]
-all = ["diffbio[dev,docs,genomics,gpu,test]"]
+all = ["diffbio[dev,docs,genomics,gpu,test,torch-io]"]
+torch-io = ["torch>=1.13.0"]
 benchmark = ["deepchem>=2.8.0", "pandas>=2.0", "matplotlib>=3.7", "tabulate>=0.9"]
 cuda-dev = ["diffbio[dev,gpu]"]
 dev = [
@@ -195,12 +198,19 @@ source_modules = ["diffbio.splitters"]
 type = "forbidden"
 
 [[tool.importlinter.contracts]]
+forbidden_modules = ["diffbio.operators", "diffbio.pipelines"]
+name = "Samplers must not import operators or pipelines"
+source_modules = ["diffbio.samplers"]
+type = "forbidden"
+
+[[tool.importlinter.contracts]]
 forbidden_modules = ["diffbio.pipelines"]
 name = "Lower layers must not import pipelines"
 source_modules = [
   "diffbio.core",
   "diffbio.losses",
   "diffbio.operators",
+  "diffbio.samplers",
   "diffbio.sequences",
   "diffbio.sources",
   "diffbio.splitters",
