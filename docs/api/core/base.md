@@ -78,19 +78,26 @@ class MyOperatorConfig(OperatorConfig):
 
 ```mermaid
 graph TB
-    A["datarax.core.operator.OperatorModule"] --> B["diffbio.operators.DifferentiableQualityFilter"]
-    A --> C["diffbio.operators.alignment.SmoothSmithWaterman"]
-    A --> D["diffbio.operators.variant.DifferentiablePileup"]
-    A --> E["diffbio.operators.variant.VariantClassifier"]
-    A --> F["diffbio.pipelines.VariantCallingPipeline"]
+    A["datarax.core.operator.OperatorModule"] --> T["TemperatureOperator"]
+    T --> C["SmoothSmithWaterman"]
+    T --> D["DifferentiablePileup"]
+    T --> Q["DifferentiableQualityFilter"]
+    A --> E["VariantClassifier"]
+    A --> F["VariantCallingPipeline"]
+
+    S["diffbio.core.soft_ops"] -.->|"used by"| T
 
     style A fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
-    style B fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style T fill:#fef3c7,stroke:#d97706,color:#92400e
+    style S fill:#d1fae5,stroke:#059669,color:#065f46
     style C fill:#e0e7ff,stroke:#4338ca,color:#312e81
     style D fill:#e0e7ff,stroke:#4338ca,color:#312e81
+    style Q fill:#e0e7ff,stroke:#4338ca,color:#312e81
     style E fill:#e0e7ff,stroke:#4338ca,color:#312e81
     style F fill:#e0e7ff,stroke:#4338ca,color:#312e81
 ```
+
+The `soft_ops` module provides the differentiable primitives (sorting, comparisons, selection) used by `TemperatureOperator` and its subclasses. See the [Soft Operations API reference](soft-ops.md) for the full list.
 
 ## Learnable Parameters
 

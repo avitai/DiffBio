@@ -430,26 +430,22 @@ class TestMathematicalVerification:
 
         assert jnp.abs(result - hard_max) < 0.001
 
-    def test_soft_argmax_formula(self, rngs):
-        """Verify soft_argmax is weighted sum of positions."""
+    def test_soft_argmax_returns_softindex(self, rngs):
+        """Verify soft_argmax returns a SoftIndex probability distribution."""
         from diffbio.core.base_operators import TemperatureOperator
-
-        temperature = 1.0
 
         @dataclass(frozen=True)
         class Config(OperatorConfig):
-            temperature: float = 1.0  # Use literal, not variable reference
+            temperature: float = 0.1
 
         op = TemperatureOperator(Config(), rngs=rngs)
         logits = jnp.array([1.0, 2.0, 3.0, 4.0])
 
-        # Manual: sum(softmax(x/T) * positions)
-        weights = jax.nn.softmax(logits / temperature)
-        positions = jnp.arange(len(logits), dtype=logits.dtype)
-        expected = jnp.sum(weights * positions)
-
         result = op.soft_argmax(logits)
-        assert jnp.allclose(result, expected, atol=1e-5)
+        # Should be a probability distribution summing to ~1
+        assert jnp.allclose(jnp.sum(result), 1.0, atol=1e-3)
+        # Should concentrate on the maximum element (index 3)
+        assert jnp.argmax(result) == 3
 
     def test_kl_divergence_formula(self, rngs):
         """Verify KL divergence follows the closed-form formula for Gaussians."""

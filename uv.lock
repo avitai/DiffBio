@@ -1512,11 +1512,13 @@ all = [
     { name = "ipykernel" },
     { name = "jax", extra = ["cuda12"] },
     { name = "jaxlib" },
+    { name = "lineax" },
     { name = "mkdocs" },
     { name = "mkdocs-include-exclude-files" },
     { name = "mkdocs-material" },
     { name = "mkdocstrings" },
     { name = "mkdocstrings-python" },
+    { name = "optimistix" },
     { name = "pyfaidx" },
     { name = "pymdown-extensions" },
     { name = "pyright" },
@@ -1603,6 +1605,15 @@ gpu = [
     { name = "jax", extra = ["cuda12"] },
     { name = "jaxlib" },
 ]
+soft-ops-advanced = [
+    { name = "lineax" },
+    { name = "optimistix" },
+]
+soft-ops-ot = [
+    { name = "lineax" },
+    { name = "optimistix" },
+    { name = "ott-jax" },
+]
 test = [
     { name = "beartype" },
     { name = "coverage" },
@@ -1633,8 +1644,9 @@ requires-dist = [
     { name = "coverage", marker = "extra == 'test'", specifier = ">=7" },
     { name = "datarax", git = "https://github.com/avitai/datarax.git" },
     { name = "deepchem", marker = "extra == 'benchmark'", specifier = ">=2.8.0" },
-    { name = "diffbio", extras = ["dev", "docs", "genomics", "gpu", "test", "torch-io"], marker = "extra == 'all'" },
+    { name = "diffbio", extras = ["dev", "docs", "genomics", "gpu", "soft-ops-advanced", "test", "torch-io"], marker = "extra == 'all'" },
     { name = "diffbio", extras = ["dev", "gpu"], marker = "extra == 'cuda-dev'" },
+    { name = "diffbio", extras = ["soft-ops-advanced"], marker = "extra == 'soft-ops-ot'" },
     { name = "flax", specifier = ">=0.12.0" },
     { name = "griffe", marker = "extra == 'docs'", specifier = ">=1.7.3" },
     { name = "h5py", specifier = ">=3.7" },
@@ -1646,6 +1658,7 @@ requires-dist = [
     { name = "jax-md", specifier = ">=0.2.27" },
     { name = "jaxlib", marker = "extra == 'gpu'", specifier = ">=0.6.1" },
     { name = "jaxtyping", specifier = ">=0.2.20" },
+    { name = "lineax", marker = "extra == 'soft-ops-advanced'", specifier = ">=0.0.8" },
     { name = "matplotlib", marker = "extra == 'benchmark'", specifier = ">=3.7" },
     { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.6.1" },
     { name = "mkdocs-include-exclude-files", marker = "extra == 'docs'", specifier = ">=0.1" },
@@ -1655,7 +1668,9 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.24" },
     { name = "opifex", git = "https://github.com/avitai/Opifex.git" },
     { name = "optax", specifier = ">=0.1.4" },
+    { name = "optimistix", marker = "extra == 'soft-ops-advanced'", specifier = ">=0.0.9" },
     { name = "orbax-checkpoint", specifier = ">=0.11.10" },
+    { name = "ott-jax", marker = "extra == 'soft-ops-ot'", specifier = ">=0.5.0" },
     { name = "pandas", marker = "extra == 'benchmark'", specifier = ">=2.0" },
     { name = "pre-commit", specifier = ">=4.3.0" },
     { name = "pyfaidx", marker = "extra == 'genomics'", specifier = ">=0.8.0" },
@@ -5456,6 +5471,23 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/1d/d3/f19b47ce16820cc2c480f7f1723e17f6d411b3a295c60c8ad3aa9ff1c96a/orjson-3.11.7-cp314-cp314-win32.whl", hash = "sha256:89e13dd3f89f1c38a9c9eba5fbf7cdc2d1feca82f5f290864b4b7a6aac704576", size = 127997 },
     { url = "https://files.pythonhosted.org/packages/12/df/172771902943af54bf661a8d102bdf2e7f932127968080632bda6054b62c/orjson-3.11.7-cp314-cp314-win_amd64.whl", hash = "sha256:845c3e0d8ded9c9271cd79596b9b552448b885b97110f628fb687aee2eed11c1", size = 124985 },
     { url = "https://files.pythonhosted.org/packages/6f/1c/f2a8d8a1b17514660a614ce5f7aac74b934e69f5abc2700cc7ced882a009/orjson-3.11.7-cp314-cp314-win_arm64.whl", hash = "sha256:4a2e9c5be347b937a2e0203866f12bba36082e89b402ddb9e927d5822e43088d", size = 126038 },
+]
+
+[[package]]
+name = "ott-jax"
+version = "0.6.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "jax" },
+    { name = "jaxopt" },
+    { name = "lineax" },
+    { name = "numpy" },
+    { name = "optax", version = "0.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "optax", version = "0.2.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8a/46/a45f351fcfaa456a42bc318d7ee8641ff4cef758aace295ae4a27459ac3a/ott_jax-0.6.0.tar.gz", hash = "sha256:86fda8aea68a6c29c989b1be2fc8bc7e5344e6353d3e486a3edbc36364b07483", size = 233876 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/46/78/0f66915250058498915b3944ac7eccb0da5ce1f5984664fbb6a448cf73db/ott_jax-0.6.0-py3-none-any.whl", hash = "sha256:89d7ee73ae105a56385b66a43e9acd5ae070e66d991efc56047ab47cc756f3e6", size = 309666 },
 ]
 
 [[package]]

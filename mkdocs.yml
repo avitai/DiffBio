@@ -83,6 +83,7 @@ nav:
   - User Guide:
       - Concepts:
           - Differentiable Bioinformatics: user-guide/concepts/differentiable-bioinformatics.md
+          - Soft Operations: user-guide/concepts/soft-operations.md
           - Genomics:
               - Sequence Alignment: user-guide/concepts/sequence-alignment.md
               - Pileup Generation: user-guide/concepts/pileup-generation.md
@@ -142,6 +143,7 @@ nav:
   - API Reference:
       - Core:
           - Base Classes: api/core/base.md
+          - Soft Operations: api/core/soft-ops.md
           - Configuration: api/core/configuration.md
       - Operators:
           - Core:
@@ -207,6 +209,7 @@ nav:
           - Cell Annotation: examples/intermediate/cell-annotation.md
           - Doublet Detection: examples/intermediate/doublet-detection.md
           - Batch Correction: examples/intermediate/batch-correction.md
+          - Perturbation Data Loading: examples/intermediate/perturbation-data-loading.md
       - Advanced:
           - Spatial Analysis: examples/advanced/spatial-analysis.md
           - GRN Inference: examples/advanced/grn-inference.md

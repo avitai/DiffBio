@@ -2,6 +2,29 @@
 
 DiffBio provides a collection of differentiable operators for bioinformatics analysis. Each operator inherits from Datarax's `OperatorModule` for consistent interfaces and composability.
 
+## Foundation: Soft Operations
+
+All DiffBio operators are built on a shared layer of **differentiable primitives** in `diffbio.core.soft_ops`. This module provides 79 smooth relaxations of discrete operations (sorting, comparisons, logical gates, selection) with 5 smoothness modes and multiple algorithmic backends.
+
+Operators do not call JAX's hard `jnp.max`, `jnp.argmax`, or `jnp.sort` directly. Instead, they use `soft_ops` equivalents that produce well-defined gradients:
+
+```python
+from diffbio.core import soft_ops
+
+# Soft quality threshold (returns probability, not boolean)
+is_good = soft_ops.greater(quality, 20.0, softness=1.0)
+
+# Soft sorting for gene ranking
+ranked = soft_ops.sort(expression, axis=0, softness=0.1)
+
+# Soft top-k variant selection
+values, indices = soft_ops.top_k(scores, k=10, softness=0.1)
+```
+
+See the [Soft Operations concept guide](../concepts/soft-operations.md) for a detailed walkthrough, or the [API reference](../../api/core/soft-ops.md) for the full function list.
+
+---
+
 ## Available Operators
 
 <div class="stat-grid">
@@ -395,6 +418,7 @@ def process_batch(operator, batch_data):
 
 ## Next Steps
 
+- Understand the [Soft Operations](../concepts/soft-operations.md) that power all operators
 - Learn about the [Smith-Waterman](smith-waterman.md) alignment operator
 - Explore the [Pileup](pileup.md) operator for variant calling
 - See the [Quality Filter](quality-filter.md) for preprocessing

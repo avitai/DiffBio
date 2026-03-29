@@ -21,7 +21,6 @@ Probability = float
 LogProbability = float
 """Log probability value in range (-inf, 0]."""
 
-
 # =============================================================================
 # Type Aliases for Arrays
 # =============================================================================

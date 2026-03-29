@@ -30,7 +30,6 @@ from flax import nnx
 from jaxtyping import Array, Float, Int
 
 from diffbio.constants import DEFAULT_TEMPERATURE, EPSILON
-from diffbio.core.differentiable_ops import gumbel_softmax
 from diffbio.utils.nn_utils import get_rng_key
 
 # =============================================================================
@@ -115,7 +114,16 @@ class GumbelSoftmaxModule(nnx.Module):
             Samples of same shape as logits.
         """
         key = get_rng_key(self.rngs, "dropout", fallback_seed=0)
-        return gumbel_softmax(logits, key, self.temperature, self.hard)
+        gumbel_noise = jax.random.gumbel(key, logits.shape)
+        perturbed = (logits + gumbel_noise) / self.temperature
+        soft_sample = jax.nn.softmax(perturbed, axis=-1)
+        if self.hard:
+            hard_sample = jax.nn.one_hot(
+                jnp.argmax(soft_sample, axis=-1),
+                logits.shape[-1],
+            )
+            return hard_sample - jax.lax.stop_gradient(soft_sample) + soft_sample
+        return soft_sample
 
 
 class GraphMessagePassing(nnx.Module):

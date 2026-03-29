@@ -13,11 +13,17 @@ approximation:
 
 | Discrete Operation | DiffBio Approximation | Where Used |
 |---|---|---|
-| `max(a, b)` | `logsumexp(a/τ, b/τ) · τ` | Smith-Waterman recurrence |
-| `argmax(x)` | `softmax(x / τ)` | Soft k-means clustering |
-| `threshold(x > t)` | `sigmoid((x - t) / τ)` | Quality filtering, doublet scoring |
+| `max(a, b)` | `soft_ops.max(x, softness=τ)` | Smith-Waterman recurrence |
+| `argmax(x)` | `soft_ops.argmax(x, softness=τ)` | Soft k-means clustering |
+| `x > threshold` | `soft_ops.greater(x, t, softness=τ)` | Quality filtering, doublet scoring |
+| `sort(x)` | `soft_ops.sort(x, softness=τ)` | Gene ranking, quantile normalization |
+| `top_k(x, k)` | `soft_ops.top_k(x, k, softness=τ)` | Feature selection |
 | Hard counting | Weighted accumulation | Pileup generation |
 | Hard assignment | Soft assignment probabilities | Batch correction, cell annotation |
+
+DiffBio's `soft_ops` module provides 79 differentiable primitives with
+5 smoothness modes (hard, smooth, c0, c1, c2). See the
+[Soft Operations guide](../user-guide/concepts/soft-operations.md) for details.
 
 The **temperature** parameter `τ` controls the trade-off:
 

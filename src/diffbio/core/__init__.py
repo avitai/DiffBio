@@ -3,10 +3,10 @@
 This module provides foundational components for building differentiable
 bioinformatics operators:
 
+- **soft_ops**: Differentiable soft operations (soft sorting, argmax,
+  comparisons, logical ops, selection, quantile, straight-through estimators)
 - **base_operators**: Domain-specific base classes (TemperatureOperator,
   SequenceOperator, EncoderDecoderOperator, GraphOperator, HMMOperator)
-- **differentiable_ops**: Soft approximations of discrete operations
-  (soft_argmax, soft_sort, gumbel_softmax, etc.)
 - **neural_components**: DiffBio-specific neural network modules
   (GumbelSoftmaxModule, GraphMessagePassing)
 - **gnn_components**: Graph attention modules
@@ -14,37 +14,35 @@ bioinformatics operators:
 - **optimal_transport**: Optimal transport solvers (SinkhornLayer)
 - **data_types**: Type aliases and protocols for type safety
 
-Usage:
-    from diffbio.core import TemperatureOperator, logsumexp_smooth_max
+Usage::
+
+    from diffbio.core import soft_ops
+    from diffbio.core import TemperatureOperator
     from diffbio.core import GraphAttentionLayer, GATv2Layer
     from diffbio.core import SinkhornLayer
     from diffbio.core.data_types import SequenceData
+    from diffbio.core.soft_ops import SoftBool, SoftIndex
 """
 
 import diffbio.core.base_operators as _base_operators
-import diffbio.core.differentiable_ops as _differentiable_ops
 import diffbio.core.gnn_components as _gnn_components
 import diffbio.core.graph_utils as _graph_utils
 import diffbio.core.neural_components as _neural_components
 import diffbio.core.optimal_transport as _optimal_transport
+import diffbio.core.soft_ops as soft_ops  # noqa: F401 -- public submodule
 
+# Soft operation types (re-exported for convenience)
+SoftBool = soft_ops.SoftBool
+SoftIndex = soft_ops.SoftIndex
+
+# Base operators
 TemperatureOperator = _base_operators.TemperatureOperator
 SequenceOperator = _base_operators.SequenceOperator
 EncoderDecoderOperator = _base_operators.EncoderDecoderOperator
 GraphOperator = _base_operators.GraphOperator
 HMMOperator = _base_operators.HMMOperator
 
-soft_argmax = _differentiable_ops.soft_argmax
-soft_sort = _differentiable_ops.soft_sort
-soft_threshold = _differentiable_ops.soft_threshold
-logsumexp_smooth_max = _differentiable_ops.logsumexp_smooth_max
-segment_softmax = _differentiable_ops.segment_softmax
-gumbel_softmax = _differentiable_ops.gumbel_softmax
-differentiable_scan = _differentiable_ops.differentiable_scan
-soft_one_hot = _differentiable_ops.soft_one_hot
-soft_attention_weights = _differentiable_ops.soft_attention_weights
-differentiable_topk = _differentiable_ops.differentiable_topk
-
+# Neural components
 GumbelSoftmaxModule = _neural_components.GumbelSoftmaxModule
 GraphMessagePassing = _neural_components.GraphMessagePassing
 PositionalEncoding = _neural_components.PositionalEncoding
@@ -53,20 +51,23 @@ RoPE = _neural_components.RoPE
 ResidualBlock1D = _neural_components.ResidualBlock1D
 ResidualBlock2D = _neural_components.ResidualBlock2D
 
+# GNN components
 GraphAttentionLayer = _gnn_components.GraphAttentionLayer
 GraphAttentionBlock = _gnn_components.GraphAttentionBlock
 GATv2Layer = _gnn_components.GATv2Layer
 GATv2Block = _gnn_components.GATv2Block
 
+# Optimal transport
 SinkhornLayer = _optimal_transport.SinkhornLayer
 
+# Graph utilities
 compute_pairwise_distances = _graph_utils.compute_pairwise_distances
 compute_knn_graph = _graph_utils.compute_knn_graph
 compute_fuzzy_membership = _graph_utils.compute_fuzzy_membership
 symmetrize_graph = _graph_utils.symmetrize_graph
 
-# Data types
-from diffbio.core.data_types import (
+# Data types (including SoftBool and SoftIndex from soft_ops)
+from diffbio.core.data_types import (  # noqa: E402
     AlignmentResultData,
     BatchArray,
     DifferentiableOperator,
@@ -89,15 +90,20 @@ from diffbio.core.data_types import (
 )
 
 __all__ = [  # pyright: ignore[reportUnsupportedDunderAll]
+    # Soft operations (full module)
+    "soft_ops",
+    "SoftBool",
+    "SoftIndex",
+    # Base operators
     *_base_operators.__all__,
-    *_differentiable_ops.__all__,
+    # GNN components
     *_gnn_components.__all__,
+    # Graph utilities
     *_graph_utils.__all__,
+    # Neural components
     *_neural_components.__all__,
+    # Optimal transport
     *_optimal_transport.__all__,
-    "soft_one_hot",
-    "soft_attention_weights",
-    "differentiable_topk",
     # Data types
     "SequenceData",
     "AlignmentResultData",

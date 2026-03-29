@@ -27,7 +27,7 @@ from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
 from diffbio.constants import DEFAULT_TEMPERATURE, EPSILON
-from diffbio.core.differentiable_ops import soft_argmax as differentiable_soft_argmax
+from diffbio.core.soft_ops import sorting as soft_sorting
 from diffbio.utils.nn_utils import ensure_rngs, get_rng_key, init_learnable_param
 
 __all__ = [
@@ -95,12 +95,16 @@ class TemperatureOperator(OperatorModule):
     ) -> Float[Array, "..."]:
         """Compute smooth maximum using logsumexp.
 
+        Uses ``temperature * logsumexp(values / temperature)`` which
+        is an upper bound on the true max. This property is essential
+        for dynamic programming algorithms (Smith-Waterman, Viterbi).
+
         Args:
             values: Input array.
             axis: Axis along which to compute max.
 
         Returns:
-            Smooth maximum value(s).
+            Smooth maximum value(s), always >= hard max.
         """
         temp = self._temperature
         return temp * jax.scipy.special.logsumexp(values / temp, axis=axis)
@@ -110,16 +114,24 @@ class TemperatureOperator(OperatorModule):
         logits: Float[Array, "..."],
         axis: int = -1,
     ) -> Float[Array, "..."]:
-        """Compute soft argmax using weighted position sum.
+        """Compute soft argmax returning SoftIndex.
+
+        Delegates to :func:`diffbio.core.soft_ops.sorting.argmax`.
 
         Args:
             logits: Input logits.
             axis: Axis along which to compute argmax.
 
         Returns:
-            Soft argmax positions.
+            SoftIndex probability distribution.
         """
-        return differentiable_soft_argmax(logits, temperature=self._temperature, axis=axis)
+        return soft_sorting.argmax(
+            logits,
+            axis=axis,
+            softness=self._temperature,
+            mode="smooth",
+            standardize=False,
+        )
 
     def apply(
         self,

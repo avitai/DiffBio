@@ -103,8 +103,8 @@ Finds and softly trims adapter sequences:
 # For each read, compute adapter match scores
 match_scores = soft_align(read, adapter_sequence)
 
-# Soft trim position
-trim_pos = soft_argmax(match_scores)
+# Soft trim position (returns probability distribution over positions)
+trim_pos = soft_ops.argmax(match_scores, axis=-1, softness=0.1)
 
 # Apply soft mask
 trimmed = read * soft_mask(positions, trim_pos)
