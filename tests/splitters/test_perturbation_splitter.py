@@ -40,18 +40,14 @@ def synthetic_h5ad_path(tmp_path: Path) -> Path:
 def source(synthetic_h5ad_path: Path) -> PerturbationAnnDataSource:
     """Create a perturbation source."""
     return PerturbationAnnDataSource(
-        PerturbationSourceConfig(
-            file_path=str(synthetic_h5ad_path), output_space="all"
-        )
+        PerturbationSourceConfig(file_path=str(synthetic_h5ad_path), output_space="all")
     )
 
 
 class TestZeroShotSplitter:
     """Tests for ZeroShotSplitter."""
 
-    def test_held_out_types_in_test(
-        self, source: PerturbationAnnDataSource
-    ) -> None:
+    def test_held_out_types_in_test(self, source: PerturbationAnnDataSource) -> None:
         config = ZeroShotSplitterConfig(
             held_out_cell_types=("TypeA",),
             pert_col="perturbation",
@@ -65,9 +61,7 @@ class TestZeroShotSplitter:
             elem = source[int(idx)]
             assert elem["cell_type_name"] == "TypeA"
 
-    def test_remaining_in_train_val(
-        self, source: PerturbationAnnDataSource
-    ) -> None:
+    def test_remaining_in_train_val(self, source: PerturbationAnnDataSource) -> None:
         config = ZeroShotSplitterConfig(
             held_out_cell_types=("TypeA",),
             pert_col="perturbation",
@@ -81,9 +75,7 @@ class TestZeroShotSplitter:
             elem = source[int(idx)]
             assert elem["cell_type_name"] in {"TypeB", "TypeC"}
 
-    def test_all_indices_covered(
-        self, source: PerturbationAnnDataSource
-    ) -> None:
+    def test_all_indices_covered(self, source: PerturbationAnnDataSource) -> None:
         config = ZeroShotSplitterConfig(
             held_out_cell_types=("TypeA",),
             pert_col="perturbation",
@@ -115,9 +107,7 @@ class TestZeroShotSplitter:
 class TestFewShotSplitter:
     """Tests for FewShotSplitter."""
 
-    def test_held_out_perts_in_test(
-        self, source: PerturbationAnnDataSource
-    ) -> None:
+    def test_held_out_perts_in_test(self, source: PerturbationAnnDataSource) -> None:
         config = FewShotSplitterConfig(
             held_out_perturbations=("GeneX",),
             pert_col="perturbation",
@@ -132,9 +122,7 @@ class TestFewShotSplitter:
             elem = source[int(idx)]
             assert elem["pert_name"] == "GeneX"
 
-    def test_controls_in_train(
-        self, source: PerturbationAnnDataSource
-    ) -> None:
+    def test_controls_in_train(self, source: PerturbationAnnDataSource) -> None:
         config = FewShotSplitterConfig(
             held_out_perturbations=("GeneX", "GeneY"),
             pert_col="perturbation",
@@ -150,9 +138,7 @@ class TestFewShotSplitter:
         ctrl_indices = set(np.where(ctrl_mask)[0])
         assert ctrl_indices.issubset(train_set)
 
-    def test_all_indices_covered(
-        self, source: PerturbationAnnDataSource
-    ) -> None:
+    def test_all_indices_covered(self, source: PerturbationAnnDataSource) -> None:
         config = FewShotSplitterConfig(
             held_out_perturbations=("GeneX",),
             pert_col="perturbation",

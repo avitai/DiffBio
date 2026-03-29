@@ -30,9 +30,7 @@ class TestPerturbationConcatSource:
         concat = PerturbationConcatSource(sources=[s1, s2])
         assert len(concat) == N_TOTAL_CELLS * 2
 
-    def test_getitem_first_source(
-        self, synthetic_h5ad_pair: tuple[Path, Path]
-    ) -> None:
+    def test_getitem_first_source(self, synthetic_h5ad_pair: tuple[Path, Path]) -> None:
         path1, path2 = synthetic_h5ad_pair
         s1 = PerturbationAnnDataSource(
             PerturbationSourceConfig(file_path=str(path1), output_space="all")
@@ -45,9 +43,7 @@ class TestPerturbationConcatSource:
         elem_concat = concat[0]
         assert elem_direct["pert_name"] == elem_concat["pert_name"]
 
-    def test_getitem_second_source(
-        self, synthetic_h5ad_pair: tuple[Path, Path]
-    ) -> None:
+    def test_getitem_second_source(self, synthetic_h5ad_pair: tuple[Path, Path]) -> None:
         path1, path2 = synthetic_h5ad_pair
         s1 = PerturbationAnnDataSource(
             PerturbationSourceConfig(file_path=str(path1), output_space="all")
@@ -61,9 +57,7 @@ class TestPerturbationConcatSource:
         elem_concat = concat[offset]
         assert elem_direct["pert_name"] == elem_concat["pert_name"]
 
-    def test_get_control_mask_concatenated(
-        self, synthetic_h5ad_pair: tuple[Path, Path]
-    ) -> None:
+    def test_get_control_mask_concatenated(self, synthetic_h5ad_pair: tuple[Path, Path]) -> None:
         path1, path2 = synthetic_h5ad_pair
         s1 = PerturbationAnnDataSource(
             PerturbationSourceConfig(file_path=str(path1), output_space="all")
@@ -77,9 +71,7 @@ class TestPerturbationConcatSource:
         expected = s1.get_control_mask().sum() + s2.get_control_mask().sum()
         assert mask.sum() == expected
 
-    def test_get_group_codes_concatenated(
-        self, synthetic_h5ad_pair: tuple[Path, Path]
-    ) -> None:
+    def test_get_group_codes_concatenated(self, synthetic_h5ad_pair: tuple[Path, Path]) -> None:
         path1, path2 = synthetic_h5ad_pair
         s1 = PerturbationAnnDataSource(
             PerturbationSourceConfig(file_path=str(path1), output_space="all")
@@ -91,9 +83,7 @@ class TestPerturbationConcatSource:
         codes = concat.get_group_codes()
         assert codes.shape == (N_TOTAL_CELLS * 2,)
 
-    def test_index_out_of_range_raises(
-        self, synthetic_h5ad_pair: tuple[Path, Path]
-    ) -> None:
+    def test_index_out_of_range_raises(self, synthetic_h5ad_pair: tuple[Path, Path]) -> None:
         path1, path2 = synthetic_h5ad_pair
         s1 = PerturbationAnnDataSource(
             PerturbationSourceConfig(file_path=str(path1), output_space="all")

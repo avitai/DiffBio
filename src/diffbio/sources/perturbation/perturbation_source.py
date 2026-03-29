@@ -130,9 +130,7 @@ class PerturbationAnnDataSource(AnnDataSource):
         if not file_path.exists():
             raise FileNotFoundError(f"AnnData file not found: {file_path}")
 
-        adata = anndata_mod.read_h5ad(
-            file_path, backed="r" if config.backed else None
-        )
+        adata = anndata_mod.read_h5ad(file_path, backed="r" if config.backed else None)
 
         # -- Count matrix --
         full_counts = jnp.array(_to_dense_array(adata.X))
@@ -148,14 +146,10 @@ class PerturbationAnnDataSource(AnnDataSource):
         )
 
         # -- Obs metadata --
-        obs: dict[str, Any] = {
-            col: np.asarray(adata.obs[col]) for col in adata.obs.columns
-        }
+        obs: dict[str, Any] = {col: np.asarray(adata.obs[col]) for col in adata.obs.columns}
 
         # -- Var metadata --
-        var: dict[str, Any] = {
-            col: np.asarray(adata.var[col]) for col in adata.var.columns
-        }
+        var: dict[str, Any] = {col: np.asarray(adata.var[col]) for col in adata.var.columns}
 
         # -- Obsm embeddings --
         obsm = _load_obsm(adata)
@@ -174,15 +168,9 @@ class PerturbationAnnDataSource(AnnDataSource):
         ct_to_code = {c: i for i, c in enumerate(ct_cats)}
         batch_to_code = {b: i for i, b in enumerate(batch_cats)}
 
-        pert_codes = np.array(
-            [pert_to_code[p] for p in pert_labels], dtype=np.int32
-        )
-        ct_codes = np.array(
-            [ct_to_code[c] for c in cell_type_labels], dtype=np.int32
-        )
-        batch_codes = np.array(
-            [batch_to_code[b] for b in batch_labels], dtype=np.int32
-        )
+        pert_codes = np.array([pert_to_code[p] for p in pert_labels], dtype=np.int32)
+        ct_codes = np.array([ct_to_code[c] for c in cell_type_labels], dtype=np.int32)
+        batch_codes = np.array([batch_to_code[b] for b in batch_labels], dtype=np.int32)
 
         # Control mask
         control_mask = pert_labels == config.control_pert
@@ -204,9 +192,7 @@ class PerturbationAnnDataSource(AnnDataSource):
                 load_external_embeddings,
             )
 
-            ext_emb = load_external_embeddings(
-                Path(config.perturbation_features_file)
-            )
+            ext_emb = load_external_embeddings(Path(config.perturbation_features_file))
             pert_embeddings_matrix = np.asarray(ext_emb)
 
         # Barcodes
@@ -283,10 +269,7 @@ class PerturbationAnnDataSource(AnnDataSource):
         if idx < 0:
             idx = self.length + idx
         if idx < 0 or idx >= self.length:
-            raise IndexError(
-                f"Cell index {idx} out of range for dataset "
-                f"with {self.length} cells"
-            )
+            raise IndexError(f"Cell index {idx} out of range for dataset with {self.length} cells")
         internal_idx = int(self._visible_indices[idx])
         return self._build_pert_element(internal_idx)
 
@@ -302,9 +285,7 @@ class PerturbationAnnDataSource(AnnDataSource):
             self._build_visible_element,
         )
 
-    def get_batch(
-        self, batch_size: int, key: jax.Array | None = None
-    ) -> dict[str, Any]:
+    def get_batch(self, batch_size: int, key: jax.Array | None = None) -> dict[str, Any]:
         """Get a batch of cells with perturbation metadata.
 
         Args:
@@ -369,10 +350,7 @@ class PerturbationAnnDataSource(AnnDataSource):
 
     def get_onehot_map(self) -> dict[str, jnp.ndarray]:
         """Return perturbation one-hot encoding map (JAX arrays)."""
-        return {
-            p: jnp.array(self._pert_onehot_matrix[i])
-            for i, p in enumerate(self._pert_cats)
-        }
+        return {p: jnp.array(self._pert_onehot_matrix[i]) for i, p in enumerate(self._pert_cats)}
 
     def get_gene_names(self, output_space: str = "all") -> list[str]:
         """Return gene names, optionally filtered by output space.
@@ -453,15 +431,11 @@ class PerturbationAnnDataSource(AnnDataSource):
 
         return element
 
-    def _build_pert_element_from_data(
-        self, data: dict[str, Any], idx: int
-    ) -> dict[str, Any]:
+    def _build_pert_element_from_data(self, data: dict[str, Any], idx: int) -> dict[str, Any]:
         """Build element from data dict (used by eager_iter callback)."""
         return self._build_pert_element(idx)
 
-    def _build_visible_element(
-        self, data: dict[str, Any], idx: int
-    ) -> dict[str, Any]:
+    def _build_visible_element(self, data: dict[str, Any], idx: int) -> dict[str, Any]:
         """Build element with visible index remapping (used by __iter__)."""
         internal_idx = int(self._visible_indices[idx])
         return self._build_pert_element(internal_idx)
@@ -469,10 +443,7 @@ class PerturbationAnnDataSource(AnnDataSource):
     def _build_batch_element(self, indices: np.ndarray) -> dict[str, Any]:
         """Build a batched dictionary for multiple cells."""
         counts = self.data["counts"][indices]
-        obs = {
-            col: np.asarray(arr)[indices]
-            for col, arr in self.data["obs"].items()
-        }
+        obs = {col: np.asarray(arr)[indices] for col, arr in self.data["obs"].items()}
         obsm: dict[str, jnp.ndarray] = {}
         for emb_name, emb_arr in self.data["obsm"].items():
             obsm[emb_name] = emb_arr[indices]

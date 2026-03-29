@@ -82,12 +82,8 @@ class H5MetadataCache:
             self.pert_codes: np.ndarray = obs[pert_col]["codes"][:].astype(np.int32)
 
             # -- Cell type categories and codes --
-            self.cell_type_categories = safe_decode_array(
-                obs[cell_type_key]["categories"][:]
-            )
-            self.cell_type_codes: np.ndarray = obs[cell_type_key]["codes"][:].astype(
-                np.int32
-            )
+            self.cell_type_categories = safe_decode_array(obs[cell_type_key]["categories"][:])
+            self.cell_type_codes: np.ndarray = obs[cell_type_key]["codes"][:].astype(np.int32)
 
             # -- Batch: handle both categorical and non-categorical storage --
             batch_ds = obs[batch_col]

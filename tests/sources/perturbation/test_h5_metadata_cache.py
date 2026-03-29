@@ -124,9 +124,7 @@ class TestGlobalH5MetadataCache:
         cache2 = GlobalH5MetadataCache()
         assert cache1 is cache2
 
-    def test_get_cache_returns_cached_instance(
-        self, synthetic_h5ad_path: Path
-    ) -> None:
+    def test_get_cache_returns_cached_instance(self, synthetic_h5ad_path: Path) -> None:
         global_cache = GlobalH5MetadataCache()
         c1 = global_cache.get_cache(
             str(synthetic_h5ad_path),

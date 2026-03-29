@@ -104,15 +104,13 @@ def _build_synthetic_adata(
     var = pd.DataFrame({"gene_name": gene_names}, index=gene_names)
     if include_hvg:
         is_hvg = np.zeros(n_genes, dtype=bool)
-        is_hvg[:n_genes // 5] = True  # first 20 genes are HVG
+        is_hvg[: n_genes // 5] = True  # first 20 genes are HVG
         var["is_hvg"] = is_hvg
 
     adata = ad.AnnData(X=counts, obs=obs, var=var)
 
     if include_embedding:
-        adata.obsm["X_hvg"] = rng.standard_normal((n_cells, EMBED_DIM)).astype(
-            np.float32
-        )
+        adata.obsm["X_hvg"] = rng.standard_normal((n_cells, EMBED_DIM)).astype(np.float32)
 
     return adata
 

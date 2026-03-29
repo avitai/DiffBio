@@ -20,14 +20,11 @@ from diffbio.sources.perturbation.perturbation_source import (
 )
 
 
-
 @pytest.fixture()
 def source(synthetic_h5ad_path: Path) -> PerturbationAnnDataSource:
     """Create a perturbation source."""
     return PerturbationAnnDataSource(
-        PerturbationSourceConfig(
-            file_path=str(synthetic_h5ad_path), output_space="all"
-        )
+        PerturbationSourceConfig(file_path=str(synthetic_h5ad_path), output_space="all")
     )
 
 
@@ -41,9 +38,7 @@ class TestRandomControlMapping:
         n_pert = (~source.get_control_mask()).sum()
         assert mapping.shape == (n_pert, 1)
 
-    def test_controls_are_valid_indices(
-        self, source: PerturbationAnnDataSource
-    ) -> None:
+    def test_controls_are_valid_indices(self, source: PerturbationAnnDataSource) -> None:
         config = ControlMappingConfig(n_basal_samples=1, seed=42)
         mapper = RandomControlMapping(config)
         mapping = mapper.build_mapping(source)
@@ -52,9 +47,7 @@ class TestRandomControlMapping:
         for ctrl_idx in mapping.flat:
             assert ctrl_mask[ctrl_idx], f"Index {ctrl_idx} is not a control"
 
-    def test_controls_same_cell_type(
-        self, source: PerturbationAnnDataSource
-    ) -> None:
+    def test_controls_same_cell_type(self, source: PerturbationAnnDataSource) -> None:
         config = ControlMappingConfig(n_basal_samples=1, seed=42)
         mapper = RandomControlMapping(config)
         mapping = mapper.build_mapping(source)
@@ -97,9 +90,7 @@ class TestBatchControlMapping:
         for ctrl_idx in mapping.flat:
             assert ctrl_mask[ctrl_idx]
 
-    def test_controls_same_cell_type(
-        self, source: PerturbationAnnDataSource
-    ) -> None:
+    def test_controls_same_cell_type(self, source: PerturbationAnnDataSource) -> None:
         config = ControlMappingConfig(strategy="batch", n_basal_samples=1, seed=42)
         mapper = BatchControlMapping(config)
         mapping = mapper.build_mapping(source)
@@ -131,24 +122,16 @@ class TestBatchControlMapping:
 class TestMapControlsFlag:
     """Tests for the map_controls flag."""
 
-    def test_map_controls_includes_control_rows(
-        self, source: PerturbationAnnDataSource
-    ) -> None:
-        config = ControlMappingConfig(
-            n_basal_samples=1, seed=42, map_controls=True
-        )
+    def test_map_controls_includes_control_rows(self, source: PerturbationAnnDataSource) -> None:
+        config = ControlMappingConfig(n_basal_samples=1, seed=42, map_controls=True)
         mapper = RandomControlMapping(config)
         mapping = mapper.build_mapping(source)
 
         # With map_controls=True, mapping should cover ALL cells
         assert mapping.shape[0] == len(source)
 
-    def test_map_controls_false_excludes_controls(
-        self, source: PerturbationAnnDataSource
-    ) -> None:
-        config = ControlMappingConfig(
-            n_basal_samples=1, seed=42, map_controls=False
-        )
+    def test_map_controls_false_excludes_controls(self, source: PerturbationAnnDataSource) -> None:
+        config = ControlMappingConfig(n_basal_samples=1, seed=42, map_controls=False)
         mapper = RandomControlMapping(config)
         mapping = mapper.build_mapping(source)
 
@@ -159,9 +142,7 @@ class TestMapControlsFlag:
     def test_map_controls_control_mapped_to_other_control(
         self, source: PerturbationAnnDataSource
     ) -> None:
-        config = ControlMappingConfig(
-            n_basal_samples=1, seed=42, map_controls=True
-        )
+        config = ControlMappingConfig(n_basal_samples=1, seed=42, map_controls=True)
         mapper = RandomControlMapping(config)
         mapping = mapper.build_mapping(source)
 
@@ -172,9 +153,7 @@ class TestMapControlsFlag:
             mapped = mapping[ctrl_idx, 0]
             assert ctrl_mask[mapped]
 
-    def test_map_controls_batch_strategy(
-        self, source: PerturbationAnnDataSource
-    ) -> None:
+    def test_map_controls_batch_strategy(self, source: PerturbationAnnDataSource) -> None:
         config = ControlMappingConfig(
             strategy="batch", n_basal_samples=1, seed=42, map_controls=True
         )
@@ -186,24 +165,16 @@ class TestMapControlsFlag:
 class TestCachePairsFlag:
     """Tests for the cache_pairs flag."""
 
-    def test_cached_mapping_is_deterministic(
-        self, source: PerturbationAnnDataSource
-    ) -> None:
-        config = ControlMappingConfig(
-            n_basal_samples=1, seed=42, cache_pairs=True
-        )
+    def test_cached_mapping_is_deterministic(self, source: PerturbationAnnDataSource) -> None:
+        config = ControlMappingConfig(n_basal_samples=1, seed=42, cache_pairs=True)
         mapper = RandomControlMapping(config)
         m1 = mapper.build_mapping(source)
         m2 = mapper.build_mapping(source)
         # Cached: exact same object returned
         assert m1 is m2
 
-    def test_uncached_returns_fresh(
-        self, source: PerturbationAnnDataSource
-    ) -> None:
-        config = ControlMappingConfig(
-            n_basal_samples=1, seed=42, cache_pairs=False
-        )
+    def test_uncached_returns_fresh(self, source: PerturbationAnnDataSource) -> None:
+        config = ControlMappingConfig(n_basal_samples=1, seed=42, cache_pairs=False)
         mapper = RandomControlMapping(config)
         m1 = mapper.build_mapping(source)
         m2 = mapper.build_mapping(source)
@@ -212,9 +183,7 @@ class TestCachePairsFlag:
         # They should be separate arrays
         assert m1 is not m2
 
-    def test_cache_batch_strategy(
-        self, source: PerturbationAnnDataSource
-    ) -> None:
+    def test_cache_batch_strategy(self, source: PerturbationAnnDataSource) -> None:
         config = ControlMappingConfig(
             strategy="batch", n_basal_samples=1, seed=42, cache_pairs=True
         )

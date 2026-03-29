@@ -188,10 +188,7 @@ class FewShotSplitter(SplitterModule):
 
         # Apply validation subsample
         valid = valid_from_remaining
-        if (
-            self.config.val_subsample_fraction is not None
-            and len(valid) > 0
-        ):
+        if self.config.val_subsample_fraction is not None and len(valid) > 0:
             n_keep = max(1, int(len(valid) * self.config.val_subsample_fraction))
             valid = valid[:n_keep]
 

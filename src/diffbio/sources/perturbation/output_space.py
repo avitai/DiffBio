@@ -113,6 +113,5 @@ def load_external_embeddings(path: Path) -> jnp.ndarray:
         return jnp.array(tensor.numpy(), dtype=jnp.float32)
 
     raise ValueError(
-        f"Unsupported embedding file extension '{suffix}'. "
-        f"Use .npy, .npz, or .pt format."
+        f"Unsupported embedding file extension '{suffix}'. Use .npy, .npz, or .pt format."
     )

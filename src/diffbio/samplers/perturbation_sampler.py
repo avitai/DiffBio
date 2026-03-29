@@ -103,10 +103,7 @@ class PerturbationBatchSampler:
         """Return the number of batches per epoch."""
         spb = self._config.sentences_per_batch
         n_full = len(self._sentences) // spb
-        has_remainder = (
-            not self._config.drop_last
-            and len(self._sentences) % spb > 0
-        )
+        has_remainder = not self._config.drop_last and len(self._sentences) % spb > 0
         return n_full + int(has_remainder)
 
     def set_epoch(self, epoch: int) -> None:
@@ -135,9 +132,7 @@ class PerturbationBatchSampler:
 
             # Apply cell downsampling
             if downsample is not None and len(cell_indices) > downsample:
-                cell_indices = rng.choice(
-                    cell_indices, size=downsample, replace=False
-                )
+                cell_indices = rng.choice(cell_indices, size=downsample, replace=False)
 
             # Split into sentences
             for start in range(0, len(cell_indices), sentence_size):

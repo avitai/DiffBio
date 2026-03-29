@@ -40,9 +40,7 @@ class ControlMappingConfig(StructuralConfig):
     cache_pairs: bool = False
 
 
-def _build_ctrl_pools_by_ct(
-    ctrl_mask: np.ndarray, ct_codes: np.ndarray
-) -> dict[int, np.ndarray]:
+def _build_ctrl_pools_by_ct(ctrl_mask: np.ndarray, ct_codes: np.ndarray) -> dict[int, np.ndarray]:
     """Build control index pools grouped by cell type."""
     pools: dict[int, list[int]] = {}
     for idx in np.where(ctrl_mask)[0]:
@@ -118,15 +116,11 @@ class RandomControlMapping:
         if self._config.map_controls:
             # Map ALL cells (perturbed + controls) to controls
             all_indices = np.arange(len(ctrl_mask))
-            mapping = _map_cells_to_controls(
-                all_indices, ct_codes, ctrl_by_ct, n_basal, rng
-            )
+            mapping = _map_cells_to_controls(all_indices, ct_codes, ctrl_by_ct, n_basal, rng)
         else:
             # Map only perturbed cells
             pert_indices = np.where(~ctrl_mask)[0]
-            mapping = _map_cells_to_controls(
-                pert_indices, ct_codes, ctrl_by_ct, n_basal, rng
-            )
+            mapping = _map_cells_to_controls(pert_indices, ct_codes, ctrl_by_ct, n_basal, rng)
 
         if self._config.cache_pairs:
             self._cached_mapping = mapping
@@ -188,9 +182,7 @@ class BatchControlMapping:
                 ctrl_by_ct[ct] = []
             ctrl_by_ct[ct].append(idx)
 
-        ctrl_by_batch_ct_arr = {
-            k: np.array(v) for k, v in ctrl_by_batch_ct.items()
-        }
+        ctrl_by_batch_ct_arr = {k: np.array(v) for k, v in ctrl_by_batch_ct.items()}
         ctrl_by_ct_arr = {k: np.array(v) for k, v in ctrl_by_ct.items()}
 
         # Determine which cells to map
@@ -214,9 +206,7 @@ class BatchControlMapping:
                 mapping[i] = -1
                 continue
 
-            chosen = rng.choice(
-                pool, size=n_basal, replace=len(pool) < n_basal
-            )
+            chosen = rng.choice(pool, size=n_basal, replace=len(pool) < n_basal)
             mapping[i] = chosen
 
         if self._config.cache_pairs:

@@ -48,16 +48,10 @@ class TestPerturbationPipelineRandomSplit:
             output_space="all",
         )
         result = PerturbationPipeline(config).setup([synthetic_h5ad_path])
-        total = (
-            len(result.train_indices)
-            + len(result.valid_indices)
-            + len(result.test_indices)
-        )
+        total = len(result.train_indices) + len(result.valid_indices) + len(result.test_indices)
         assert total == N_TOTAL_CELLS
 
-    def test_train_sampler_yields_batches(
-        self, synthetic_h5ad_path: Path
-    ) -> None:
+    def test_train_sampler_yields_batches(self, synthetic_h5ad_path: Path) -> None:
         config = PerturbationPipelineConfig(
             split_mode="random",
             output_space="all",
@@ -104,9 +98,7 @@ class TestPerturbationPipelineRandomSplit:
 class TestPerturbationPipelineZeroshotSplit:
     """Tests for PerturbationPipeline with zero-shot split."""
 
-    def test_held_out_types_in_test(
-        self, synthetic_h5ad_path: Path
-    ) -> None:
+    def test_held_out_types_in_test(self, synthetic_h5ad_path: Path) -> None:
         config = PerturbationPipelineConfig(
             split_mode="zeroshot",
             held_out_cell_types=("TypeA",),
@@ -122,9 +114,7 @@ class TestPerturbationPipelineZeroshotSplit:
 class TestPerturbationPipelineFewshotSplit:
     """Tests for PerturbationPipeline with few-shot split."""
 
-    def test_held_out_perts_in_test(
-        self, synthetic_h5ad_path: Path
-    ) -> None:
+    def test_held_out_perts_in_test(self, synthetic_h5ad_path: Path) -> None:
         config = PerturbationPipelineConfig(
             split_mode="fewshot",
             held_out_perturbations=("GeneX",),
@@ -140,9 +130,7 @@ class TestPerturbationPipelineFewshotSplit:
 class TestPerturbationPipelineWithFilter:
     """Tests for PerturbationPipeline with knockdown filtering."""
 
-    def test_filter_reduces_cell_count(
-        self, synthetic_h5ad_path: Path
-    ) -> None:
+    def test_filter_reduces_cell_count(self, synthetic_h5ad_path: Path) -> None:
         config = PerturbationPipelineConfig(
             split_mode="random",
             output_space="all",
@@ -153,18 +141,12 @@ class TestPerturbationPipelineWithFilter:
             var_gene_col="gene_name",
         )
         result = PerturbationPipeline(config).setup([synthetic_h5ad_path])
-        total = (
-            len(result.train_indices)
-            + len(result.valid_indices)
-            + len(result.test_indices)
-        )
+        total = len(result.train_indices) + len(result.valid_indices) + len(result.test_indices)
         # Filter should remove some cells
         assert total <= N_TOTAL_CELLS
         assert result.filter_mask is not None
 
-    def test_filter_mask_stored(
-        self, synthetic_h5ad_path: Path
-    ) -> None:
+    def test_filter_mask_stored(self, synthetic_h5ad_path: Path) -> None:
         config = PerturbationPipelineConfig(
             split_mode="random",
             output_space="all",

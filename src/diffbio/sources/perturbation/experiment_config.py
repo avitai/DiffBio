@@ -120,11 +120,7 @@ class ExperimentConfig(StructuralConfig):
         Returns:
             Dict mapping cell type names to split names.
         """
-        return {
-            z.cell_type: z.split
-            for z in self.zeroshot
-            if z.dataset == dataset
-        }
+        return {z.cell_type: z.split for z in self.zeroshot if z.dataset == dataset}
 
     def get_fewshot_celltypes(self, dataset: str) -> dict[str, FewshotEntry]:
         """Get few-shot cell type entries for a dataset.
@@ -135,11 +131,7 @@ class ExperimentConfig(StructuralConfig):
         Returns:
             Dict mapping cell type names to FewshotEntry objects.
         """
-        return {
-            f.cell_type: f
-            for f in self.fewshot
-            if f.dataset == dataset
-        }
+        return {f.cell_type: f for f in self.fewshot if f.dataset == dataset}
 
     def validate(self) -> None:
         """Validate configuration consistency.
@@ -239,9 +231,7 @@ def load_experiment_config(path: Path) -> ExperimentConfig:
 
     # Parse [datasets]
     datasets_raw: dict[str, str] = raw.get("datasets", {})
-    datasets = tuple(
-        DatasetEntry(name=name, path=p) for name, p in datasets_raw.items()
-    )
+    datasets = tuple(DatasetEntry(name=name, path=p) for name, p in datasets_raw.items())
 
     # Parse [training]
     training_raw: dict[str, str] = raw.get("training", {})
@@ -252,9 +242,7 @@ def load_experiment_config(path: Path) -> ExperimentConfig:
     zeroshot_entries: list[ZeroshotEntry] = []
     for key, split in zeroshot_raw.items():
         dataset, cell_type = key.split(".", 1)
-        zeroshot_entries.append(
-            ZeroshotEntry(dataset=dataset, cell_type=cell_type, split=split)
-        )
+        zeroshot_entries.append(ZeroshotEntry(dataset=dataset, cell_type=cell_type, split=split))
 
     # Parse [fewshot] -- keys are "dataset.celltype", values are {split: [perts]}
     fewshot_raw: dict[str, dict[str, list[str]]] = raw.get("fewshot", {})

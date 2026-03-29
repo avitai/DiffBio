@@ -38,9 +38,7 @@ def synthetic_h5ad_path(tmp_path: Path) -> Path:
 def source(synthetic_h5ad_path: Path) -> PerturbationAnnDataSource:
     """Create a source with synthetic knockdown data."""
     return PerturbationAnnDataSource(
-        PerturbationSourceConfig(
-            file_path=str(synthetic_h5ad_path), output_space="all"
-        )
+        PerturbationSourceConfig(file_path=str(synthetic_h5ad_path), output_space="all")
     )
 
 
@@ -83,9 +81,7 @@ class TestOnTargetKnockdownFilter:
         assert mask.dtype == bool
         assert mask.shape == (N_TOTAL_CELLS,)
 
-    def test_controls_always_preserved(
-        self, source: PerturbationAnnDataSource
-    ) -> None:
+    def test_controls_always_preserved(self, source: PerturbationAnnDataSource) -> None:
         config = KnockdownFilterConfig(
             residual_expression=0.30,
             cell_residual_expression=0.50,
@@ -98,9 +94,7 @@ class TestOnTargetKnockdownFilter:
         # All control cells should pass
         assert np.all(mask[ctrl_mask])
 
-    def test_strict_filter_removes_more(
-        self, source: PerturbationAnnDataSource
-    ) -> None:
+    def test_strict_filter_removes_more(self, source: PerturbationAnnDataSource) -> None:
         lenient = KnockdownFilterConfig(
             residual_expression=0.90,
             cell_residual_expression=0.90,

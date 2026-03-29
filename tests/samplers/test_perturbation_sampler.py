@@ -64,17 +64,13 @@ class TestPerturbationBatchSampler:
         assert flat0 != flat1
 
     def test_len(self, group_codes: np.ndarray) -> None:
-        config = PerturbationSamplerConfig(
-            sentence_size=50, sentences_per_batch=2, seed=42
-        )
+        config = PerturbationSamplerConfig(sentence_size=50, sentences_per_batch=2, seed=42)
         sampler = PerturbationBatchSampler(config, group_codes)
         batches = list(sampler)
         assert len(sampler) == len(batches)
 
     def test_downsample_cells(self, group_codes: np.ndarray) -> None:
-        config = PerturbationSamplerConfig(
-            sentence_size=10, downsample_cells=20, seed=42
-        )
+        config = PerturbationSamplerConfig(sentence_size=10, downsample_cells=20, seed=42)
         sampler = PerturbationBatchSampler(config, group_codes)
         all_indices: list[int] = []
         for batch in sampler:

@@ -71,8 +71,7 @@ class PerturbationConcatSource:
             idx = self._total_length + idx
         if idx < 0 or idx >= self._total_length:
             raise IndexError(
-                f"Index {idx} out of range for concat source "
-                f"with {self._total_length} cells"
+                f"Index {idx} out of range for concat source with {self._total_length} cells"
             )
 
         source_idx, local_idx = self._global_to_local(idx)
@@ -85,33 +84,23 @@ class PerturbationConcatSource:
 
     def get_control_mask(self) -> np.ndarray:
         """Return concatenated boolean control mask."""
-        return np.concatenate(
-            [s.get_control_mask() for s in self._sources]
-        )
+        return np.concatenate([s.get_control_mask() for s in self._sources])
 
     def get_group_codes(self) -> np.ndarray:
         """Return concatenated group codes."""
-        return np.concatenate(
-            [s.get_group_codes() for s in self._sources]
-        )
+        return np.concatenate([s.get_group_codes() for s in self._sources])
 
     def get_pert_codes(self) -> np.ndarray:
         """Return concatenated perturbation codes."""
-        return np.concatenate(
-            [s.get_pert_codes() for s in self._sources]
-        )
+        return np.concatenate([s.get_pert_codes() for s in self._sources])
 
     def get_cell_type_codes(self) -> np.ndarray:
         """Return concatenated cell type codes."""
-        return np.concatenate(
-            [s.get_cell_type_codes() for s in self._sources]
-        )
+        return np.concatenate([s.get_cell_type_codes() for s in self._sources])
 
     def get_batch_codes(self) -> np.ndarray:
         """Return concatenated batch codes."""
-        return np.concatenate(
-            [s.get_batch_codes() for s in self._sources]
-        )
+        return np.concatenate([s.get_batch_codes() for s in self._sources])
 
     @property
     def sources(self) -> list[Any]:

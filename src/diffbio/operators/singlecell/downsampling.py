@@ -113,9 +113,7 @@ class ReadDownsampler(OperatorModule):
         if config.mode == "target_depth" and config.target_depth is not None:
             cell_totals = jnp.sum(counts, axis=-1, keepdims=True)
             cell_totals = jnp.maximum(cell_totals, 1.0)  # avoid div by zero
-            fraction = jnp.minimum(
-                config.target_depth / cell_totals, 1.0
-            )
+            fraction = jnp.minimum(config.target_depth / cell_totals, 1.0)
         else:
             fraction = config.fraction
 

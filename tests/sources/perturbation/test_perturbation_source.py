@@ -223,9 +223,7 @@ class TestPerturbationAnnDataSource:
         # But obsm embedding should be available
         assert "obsm" in element
 
-    def test_should_yield_controls_false_skips_controls(
-        self, synthetic_h5ad_path: Path
-    ) -> None:
+    def test_should_yield_controls_false_skips_controls(self, synthetic_h5ad_path: Path) -> None:
         config = PerturbationSourceConfig(
             file_path=str(synthetic_h5ad_path),
             output_space="all",
@@ -242,9 +240,7 @@ class TestPerturbationAnnDataSource:
             assert elem["is_control"] is False
             break  # just check the first one
 
-    def test_should_yield_controls_true_includes_controls(
-        self, synthetic_h5ad_path: Path
-    ) -> None:
+    def test_should_yield_controls_true_includes_controls(self, synthetic_h5ad_path: Path) -> None:
         config = PerturbationSourceConfig(
             file_path=str(synthetic_h5ad_path),
             output_space="all",
@@ -253,9 +249,7 @@ class TestPerturbationAnnDataSource:
         source = PerturbationAnnDataSource(config)
         assert len(source) == N_TOTAL_CELLS
 
-    def test_should_yield_controls_false_getitem_remaps(
-        self, synthetic_h5ad_path: Path
-    ) -> None:
+    def test_should_yield_controls_false_getitem_remaps(self, synthetic_h5ad_path: Path) -> None:
         config = PerturbationSourceConfig(
             file_path=str(synthetic_h5ad_path),
             output_space="all",

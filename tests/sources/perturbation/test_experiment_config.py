@@ -26,8 +26,8 @@ def basic_toml(tmp_path: Path) -> Path:
 
     config.write_text(f"""\
 [datasets]
-dataset_a = "{data_dir / 'dataset_a'}"
-dataset_b = "{data_dir / 'dataset_b'}"
+dataset_a = "{data_dir / "dataset_a"}"
+dataset_b = "{data_dir / "dataset_b"}"
 
 [training]
 dataset_a = "train"
@@ -53,7 +53,7 @@ def minimal_toml(tmp_path: Path) -> Path:
 
     config.write_text(f"""\
 [datasets]
-ds1 = "{data_dir / 'ds1'}"
+ds1 = "{data_dir / "ds1"}"
 
 [training]
 ds1 = "train"
@@ -167,9 +167,7 @@ class TestExperimentConfig:
         config = ExperimentConfig(
             datasets=(DatasetEntry(name="ds", path="/tmp"),),
             training_datasets=("ds",),
-            zeroshot=(
-                ZeroshotEntry(dataset="ds", cell_type="T", split="invalid"),
-            ),
+            zeroshot=(ZeroshotEntry(dataset="ds", cell_type="T", split="invalid"),),
             fewshot=(),
         )
         with pytest.raises(ValueError, match="Invalid split"):

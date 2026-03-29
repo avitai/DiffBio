@@ -88,9 +88,7 @@ class TestFullZeroShotWorkflow:
             assert source[int(idx)]["cell_type_name"] == "TypeA"
 
         # 4. Control mapping on train set
-        mapper = RandomControlMapping(
-            ControlMappingConfig(n_basal_samples=1, seed=42)
-        )
+        mapper = RandomControlMapping(ControlMappingConfig(n_basal_samples=1, seed=42))
         mapping = mapper.build_mapping(source)
 
         # Verify mapping produces valid control indices
@@ -99,9 +97,7 @@ class TestFullZeroShotWorkflow:
             assert ctrl_mask[ctrl_idx]
 
         # 5. Batch sampler on train split
-        train_group_codes = source.get_group_codes()[
-            np.array(split.train_indices)
-        ]
+        train_group_codes = source.get_group_codes()[np.array(split.train_indices)]
         sampler = PerturbationBatchSampler(
             PerturbationSamplerConfig(sentence_size=25, seed=42),
             train_group_codes,
@@ -144,9 +140,7 @@ class TestFullFewShotWorkflow:
         split = splitter.split(source)
 
         # Verify held-out perts in test
-        test_perts = {
-            source[int(idx)]["pert_name"] for idx in split.test_indices
-        }
+        test_perts = {source[int(idx)]["pert_name"] for idx in split.test_indices}
         assert test_perts == {"GeneX", "GeneY"}
 
         # Verify controls in train
@@ -164,11 +158,7 @@ class TestFullFewShotWorkflow:
         assert len(list(sampler)) > 0
 
         # Total coverage
-        total = (
-            len(split.train_indices)
-            + len(split.valid_indices)
-            + len(split.test_indices)
-        )
+        total = len(split.train_indices) + len(split.valid_indices) + len(split.test_indices)
         assert total == len(source)
 
 
@@ -191,14 +181,10 @@ class TestMultiDatasetWorkflow:
         adata2.write_h5ad(path2)
 
         s1 = PerturbationAnnDataSource(
-            PerturbationSourceConfig(
-                file_path=str(path1), output_space="all"
-            )
+            PerturbationSourceConfig(file_path=str(path1), output_space="all")
         )
         s2 = PerturbationAnnDataSource(
-            PerturbationSourceConfig(
-                file_path=str(path2), output_space="all"
-            )
+            PerturbationSourceConfig(file_path=str(path2), output_space="all")
         )
         concat = PerturbationConcatSource(sources=[s1, s2])
 

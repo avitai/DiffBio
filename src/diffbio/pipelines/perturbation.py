@@ -140,9 +140,7 @@ class PerturbationPipeline:
     def __init__(self, config: PerturbationPipelineConfig) -> None:
         self._config = config
 
-    def setup(
-        self, file_paths: list[str | Path]
-    ) -> PerturbationPipelineResult:
+    def setup(self, file_paths: list[str | Path]) -> PerturbationPipelineResult:
         """Execute the full data setup workflow.
 
         Args:
@@ -195,7 +193,8 @@ class PerturbationPipeline:
             n_kept = int(filter_mask.sum())
             logger.info(
                 "Knockdown filter: %d / %d cells pass",
-                n_kept, len(filter_mask),
+                n_kept,
+                len(filter_mask),
             )
 
         # 3. Split
@@ -248,15 +247,9 @@ class PerturbationPipeline:
         # Apply filter mask to split indices if knockdown filter was used
         if filter_mask is not None:
             passing = set(np.where(filter_mask)[0])
-            train_idx = np.array(
-                [i for i in split_result.train_indices if int(i) in passing]
-            )
-            valid_idx = np.array(
-                [i for i in split_result.valid_indices if int(i) in passing]
-            )
-            test_idx = np.array(
-                [i for i in split_result.test_indices if int(i) in passing]
-            )
+            train_idx = np.array([i for i in split_result.train_indices if int(i) in passing])
+            valid_idx = np.array([i for i in split_result.valid_indices if int(i) in passing])
+            test_idx = np.array([i for i in split_result.test_indices if int(i) in passing])
         else:
             train_idx = np.array(split_result.train_indices)
             valid_idx = np.array(split_result.valid_indices)
@@ -264,7 +257,9 @@ class PerturbationPipeline:
 
         logger.info(
             "Split sizes: train=%d, val=%d, test=%d",
-            len(train_idx), len(valid_idx), len(test_idx),
+            len(train_idx),
+            len(valid_idx),
+            len(test_idx),
         )
 
         # 4. Control mapping
@@ -292,9 +287,7 @@ class PerturbationPipeline:
             sentences_per_batch=config.sentences_per_batch,
             seed=config.seed,
         )
-        train_sampler = PerturbationBatchSampler(
-            sampler_config, train_group_codes
-        )
+        train_sampler = PerturbationBatchSampler(sampler_config, train_group_codes)
 
         return PerturbationPipelineResult(
             source=source,
