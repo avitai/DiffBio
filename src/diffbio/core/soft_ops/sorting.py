@@ -813,13 +813,14 @@ def rank(
 def top_k(
     x: Array,
     k: int,
-    axis: int | None = None,
+    axis: int = -1,
     softness: float | Array = 0.1,
     mode: Mode = "smooth",
-    method: SortMethod = "softsort",
+    method: SortMethod = "neuralsort",
     standardize: bool = True,
+    ot_kwargs: dict | None = None,
     gated_grad: bool = True,
-) -> tuple[Array, SoftIndex]:
+) -> tuple[Array, SoftIndex | None]:
     """Soft top-k selection.
 
     Returns the k largest values and their soft indices.
@@ -827,31 +828,43 @@ def top_k(
     Args:
         x: Input array.
         k: Number of top elements.
-        axis: Axis along which to select.
+        axis: Axis along which to select. Default -1 (last axis).
         softness: Controls sharpness (> 0).
         mode: Smoothness mode.
-        method: Sorting algorithm.
+        method: Sorting algorithm. Default ``"neuralsort"``.
         standardize: If True, standardize input.
+        ot_kwargs: Extra keyword arguments for OT-based methods.
         gated_grad: If False, stop gradient through soft index.
 
     Returns:
         Tuple of (values, soft_indices) where values has shape
         ``(..., k, ...)`` and soft_indices has shape
-        ``(..., k, ..., [n])``.
+        ``(..., k, ..., [n])``. soft_indices may be None for
+        methods that only return values (fast_soft_sort, sorting_network).
     """
     if mode == "hard":
-        if axis is None:
-            x_flat = jnp.ravel(x)
-            indices = jnp.argsort(x_flat, descending=True)[:k]
-            values = x_flat[indices]
-            soft_indices = jax.nn.one_hot(indices, x_flat.shape[0])
-            return values, soft_indices
         indices = jnp.argsort(x, axis=axis, descending=True)
         indices_k = jnp.take(indices, jnp.arange(k), axis=axis)
         values = jnp.take_along_axis(x, indices_k, axis=axis)
         soft_indices = jax.nn.one_hot(indices_k, x.shape[axis], axis=-1)
         return values, soft_indices
 
+    # Methods that only return sorted values (no indices)
+    if method in ("fast_soft_sort", "sorting_network"):
+        sorted_vals = sort(
+            x,
+            axis=axis,
+            descending=True,
+            softness=softness,
+            mode=mode,
+            method=method,
+            standardize=standardize,
+            ot_kwargs=ot_kwargs,
+        )
+        values = jnp.take(sorted_vals, jnp.arange(k), axis=axis)
+        return values, None
+
+    # Methods that produce soft indices
     arg_method: ArgMethod = method  # type: ignore[assignment]
     soft_index = argsort(
         x,
@@ -861,14 +874,11 @@ def top_k(
         mode=mode,
         method=arg_method,
         standardize=standardize,
+        ot_kwargs=ot_kwargs,
     )
     if not gated_grad:
         soft_index = jax.lax.stop_gradient(soft_index)
 
-    if axis is None:
-        soft_index_k = soft_index[:k]
-    else:
-        soft_index_k = jnp.take(soft_index, jnp.arange(k), axis=axis)
-
+    soft_index_k = jnp.take(soft_index, jnp.arange(k), axis=axis)
     values = take_along_axis(x, soft_index_k, axis=axis)
     return values, soft_index_k
