@@ -128,7 +128,8 @@ class TestDiv:
         x = jnp.array(1.0)
         y = jnp.array(0.0)
         grad_x, grad_y = jax.grad(
-            lambda x, y: jnp.sum(div(x, y)), argnums=(0, 1),
+            lambda x, y: jnp.sum(div(x, y)),
+            argnums=(0, 1),
         )(x, y)
         assert jnp.isfinite(grad_x)
         assert jnp.isfinite(grad_y)

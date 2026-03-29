@@ -93,7 +93,8 @@ class TestProjPermutahedronSmooth:
     """Test smooth (entropic) permutahedron projection via LBFGS."""
 
     @pytest.mark.skipif(
-        not HAS_OPTIMISTIX, reason="optimistix not installed",
+        not HAS_OPTIMISTIX,
+        reason="optimistix not installed",
     )
     def test_smooth_mode_output_shape(self) -> None:
         from diffbio.core.soft_ops._projections_permutahedron import (
@@ -107,7 +108,8 @@ class TestProjPermutahedronSmooth:
         assert jnp.allclose(jnp.sum(result), jnp.sum(w), atol=0.5)
 
     @pytest.mark.skipif(
-        not HAS_OPTIMISTIX, reason="optimistix not installed",
+        not HAS_OPTIMISTIX,
+        reason="optimistix not installed",
     )
     def test_smooth_mode_differentiable(self) -> None:
         from diffbio.core.soft_ops._projections_permutahedron import (
@@ -122,7 +124,8 @@ class TestProjPermutahedronSmooth:
         )
 
     @pytest.mark.skipif(
-        not HAS_OPTIMISTIX, reason="optimistix not installed",
+        not HAS_OPTIMISTIX,
+        reason="optimistix not installed",
     )
     def test_raises_without_optimistix(self) -> None:
         """This test is a no-op when optimistix IS installed."""
@@ -133,7 +136,8 @@ class TestProjPermutahedronSmoothSort:
     """Test smooth_sort factory function."""
 
     @pytest.mark.skipif(
-        not HAS_OPTIMISTIX, reason="optimistix not installed",
+        not HAS_OPTIMISTIX,
+        reason="optimistix not installed",
     )
     def test_smooth_sort_output_shape(self) -> None:
         from diffbio.core.soft_ops._projections_permutahedron import (
@@ -146,7 +150,8 @@ class TestProjPermutahedronSmoothSort:
         assert result.shape == z.shape
 
     @pytest.mark.skipif(
-        not HAS_OPTIMISTIX, reason="optimistix not installed",
+        not HAS_OPTIMISTIX,
+        reason="optimistix not installed",
     )
     def test_smooth_sort_differentiable(self) -> None:
         from diffbio.core.soft_ops._projections_permutahedron import (

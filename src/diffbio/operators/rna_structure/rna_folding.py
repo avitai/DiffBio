@@ -79,6 +79,7 @@ class RNAFoldConfig(OperatorConfig):
         learnable_temperature: Whether temperature is learnable.
     """
 
+    cacheable: bool = True
     temperature: float = 1.0
     min_hairpin_loop: int = DEFAULT_MIN_HAIRPIN
     alphabet_size: int = 4

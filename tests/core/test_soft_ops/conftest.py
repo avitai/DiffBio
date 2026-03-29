@@ -25,17 +25,13 @@ def assert_simplex(
     """Assert array forms a valid probability simplex along axis."""
     assert jnp.all(x >= -atol), f"Simplex has negative values: min={float(x.min())}"
     sums = jnp.sum(x, axis=axis)
-    assert jnp.allclose(sums, 1.0, atol=atol), (
-        f"Simplex doesn't sum to 1: {sums}"
-    )
+    assert jnp.allclose(sums, 1.0, atol=atol), f"Simplex doesn't sum to 1: {sums}"
 
 
 def assert_softbool(x: Float[Array, "..."], atol: float = 1e-5) -> None:
     """Assert all values are in [0, 1] (valid SoftBool)."""
     assert jnp.all(x >= -atol), f"SoftBool has values < 0: min={float(x.min())}"
-    assert jnp.all(x <= 1.0 + atol), (
-        f"SoftBool has values > 1: max={float(x.max())}"
-    )
+    assert jnp.all(x <= 1.0 + atol), f"SoftBool has values > 1: max={float(x.max())}"
 
 
 def assert_finite_grads(
@@ -48,8 +44,6 @@ def assert_finite_grads(
     grads = grad_fn(*args)
     if isinstance(grads, tuple):
         for i, g in enumerate(grads):
-            assert jnp.all(jnp.isfinite(g)), (
-                f"Gradient {i} has non-finite values"
-            )
+            assert jnp.all(jnp.isfinite(g)), f"Gradient {i} has non-finite values"
     else:
         assert jnp.all(jnp.isfinite(grads)), "Gradient has non-finite values"

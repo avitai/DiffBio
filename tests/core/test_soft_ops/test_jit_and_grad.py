@@ -56,7 +56,8 @@ class TestElementwiseJIT:
     """JIT compatibility for elementwise functions."""
 
     @pytest.mark.parametrize(
-        "fn_name", ["sigmoidal", "softrelu", "heaviside", "sign", "relu"],
+        "fn_name",
+        ["sigmoidal", "softrelu", "heaviside", "sign", "relu"],
     )
     @pytest.mark.parametrize("mode", ["smooth", "c0", "c1", "c2"])
     def test_jit(self, fn_name: str, mode: str) -> None:
@@ -103,7 +104,8 @@ class TestElementwiseJIT:
         assert jnp.all(jnp.isfinite(f(jnp.array([-1.0, 0.5, 2.0]))))
 
     @pytest.mark.parametrize(
-        "fn_name", ["sigmoidal", "softrelu", "heaviside", "sign", "relu"],
+        "fn_name",
+        ["sigmoidal", "softrelu", "heaviside", "sign", "relu"],
     )
     def test_grad(self, fn_name: str) -> None:
         from diffbio.core.soft_ops import elementwise
@@ -149,7 +151,8 @@ class TestComparisonJIT:
         x = jnp.array([1.0, 3.0])
         y = jnp.array([2.0, 2.0])
         assert_finite_grads(
-            lambda x: fn(x, y, softness=0.1), (x,),
+            lambda x: fn(x, y, softness=0.1),
+            (x,),
         )
 
 

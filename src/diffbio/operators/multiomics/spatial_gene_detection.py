@@ -42,6 +42,8 @@ class SpatialGeneDetectorConfig(OperatorConfig):
         temperature: Temperature for soft thresholding.
         pvalue_threshold: Threshold for spatial gene classification.
         learnable_kernel: Whether kernel parameters are learnable.
+        compute_field_ops: Whether to compute spatial expression gradients
+            and Laplacians using opifex field operations.
     """
 
     n_genes: int = 2000
@@ -53,6 +55,7 @@ class SpatialGeneDetectorConfig(OperatorConfig):
     temperature: float = 1.0
     pvalue_threshold: float = 0.05
     learnable_kernel: bool = True
+    compute_field_ops: bool = False
 
 
 class DifferentiableSpatialGeneDetector(TemperatureOperator):
@@ -339,7 +342,62 @@ class DifferentiableSpatialGeneDetector(TemperatureOperator):
             "smoothed_expression": smoothed,
         }
 
+        # Optionally compute spatial field operations (gradient, laplacian)
+        if self.config.compute_field_ops:
+            field_ops = _compute_spatial_field_ops(coords, smoothed)
+            output_data.update(field_ops)
+
         return output_data, state, metadata
+
+
+def _compute_spatial_field_ops(
+    coords: Float[Array, "n_spots 2"],
+    smoothed: Float[Array, "n_spots n_genes"],
+) -> dict[str, Array]:
+    """Compute spatial gradient and Laplacian of smoothed expression.
+
+    Uses opifex's autodiff-based field operations to compute per-gene
+    spatial gradients and Laplacians at each spot location.
+
+    Args:
+        coords: Spatial coordinates (n_spots, 2).
+        smoothed: Smoothed expression (n_spots, n_genes).
+
+    Returns:
+        Dict with:
+            - ``expression_gradient``: Per-gene spatial gradient magnitude (n_genes,).
+            - ``expression_laplacian``: Per-gene mean Laplacian (n_genes,).
+    """
+    from opifex.core.physics import compute_gradient, compute_laplacian  # noqa: PLC0415
+
+    n_genes = smoothed.shape[1]
+    gradient_magnitudes = []
+    laplacian_means = []
+
+    for gene_idx in range(n_genes):
+        gene_expr = smoothed[:, gene_idx]
+
+        # Build a scalar function f(x) -> expression at nearest point
+        # Use RBF interpolation as a differentiable field
+        def _gene_field(x: Array, _expr: Array = gene_expr, _coords: Array = coords) -> Array:
+            dists = jnp.sum((x - _coords) ** 2, axis=-1)
+            weights = jnp.exp(-dists / 2.0)
+            weights = weights / (jnp.sum(weights, axis=-1, keepdims=True) + 1e-8)
+            return jnp.sum(weights * _expr, axis=-1)
+
+        # Compute gradient magnitude at each spot
+        grads = compute_gradient(_gene_field, coords)  # (n_spots, 2)
+        grad_mag = jnp.mean(jnp.sqrt(jnp.sum(grads**2, axis=-1) + 1e-8))
+        gradient_magnitudes.append(grad_mag)
+
+        # Compute Laplacian at each spot
+        lap = compute_laplacian(_gene_field, coords)  # (n_spots,)
+        laplacian_means.append(jnp.mean(jnp.abs(lap)))
+
+    return {
+        "expression_gradient": jnp.stack(gradient_magnitudes),
+        "expression_laplacian": jnp.stack(laplacian_means),
+    }
 
 
 def create_spatial_gene_detector(

@@ -247,6 +247,25 @@ class VariantCallingPipeline(OperatorModule):
 
         return output_data, state, metadata
 
+    def to_dag(self) -> Any:
+        """Build a datarax DAG representation of this pipeline.
+
+        Returns a ``Sequential`` node graph suitable for execution via
+        ``datarax.dag.DAGExecutor``.
+
+        Returns:
+            A datarax ``Sequential`` node containing the pipeline stages.
+        """
+        from datarax.dag import OperatorNode, Sequential  # noqa: PLC0415
+
+        return Sequential(
+            [
+                OperatorNode(self.quality_filter),
+                OperatorNode(self.pileup),
+                OperatorNode(self.classifier),
+            ]
+        )
+
     def _classify_positions(
         self,
         pileup: Float[Array, "reference_length 4"],

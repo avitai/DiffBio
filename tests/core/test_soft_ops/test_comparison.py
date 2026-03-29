@@ -37,7 +37,8 @@ class TestGreater:
         x = jnp.array([1.0, 3.0])
         y = jnp.array([2.0, 2.0])
         assert_finite_grads(
-            lambda x: greater(x, y, softness=0.1, mode=mode), (x,),
+            lambda x: greater(x, y, softness=0.1, mode=mode),
+            (x,),
         )
 
     def test_clear_greater_approaches_one(self) -> None:

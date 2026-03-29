@@ -100,7 +100,9 @@ class TestStandardizeAndSquash:
 
         x = jax.random.normal(jax.random.key(0), (10,))
         result, mean, std = standardize_and_squash(
-            x, axis=-1, return_mean_std=True,
+            x,
+            axis=-1,
+            return_mean_std=True,
         )
         assert result.shape == x.shape
         assert mean.shape == (1,)
@@ -127,7 +129,9 @@ class TestUnsquashAndDestandardize:
 
         x = jax.random.normal(jax.random.key(0), (10,))
         squashed, mean, std = standardize_and_squash(
-            x, axis=-1, return_mean_std=True,
+            x,
+            axis=-1,
+            return_mean_std=True,
         )
         recovered = unsquash_and_destandardize(squashed, mean, std)
         assert jnp.allclose(recovered, x, atol=1e-4)
@@ -140,7 +144,9 @@ class TestQuantileInterpolationParams:
         from diffbio.core.soft_ops._utils import quantile_interpolation_params
 
         k, a, take_next = quantile_interpolation_params(
-            jnp.array(0.5), n=5, method="linear",
+            jnp.array(0.5),
+            n=5,
+            method="linear",
         )
         assert int(k) == 2
         assert float(a) == 0.0
@@ -150,7 +156,9 @@ class TestQuantileInterpolationParams:
         from diffbio.core.soft_ops._utils import quantile_interpolation_params
 
         k, a, take_next = quantile_interpolation_params(
-            jnp.array(0.3), n=5, method="lower",
+            jnp.array(0.3),
+            n=5,
+            method="lower",
         )
         assert int(k) == 1
         assert float(a) == 0.0
@@ -160,7 +168,9 @@ class TestQuantileInterpolationParams:
         from diffbio.core.soft_ops._utils import quantile_interpolation_params
 
         k, a, take_next = quantile_interpolation_params(
-            jnp.array(0.3), n=5, method="higher",
+            jnp.array(0.3),
+            n=5,
+            method="higher",
         )
         assert int(k) == 2
         assert float(a) == 0.0
@@ -171,7 +181,9 @@ class TestQuantileInterpolationParams:
 
         with pytest.raises(ValueError, match="Unknown"):
             quantile_interpolation_params(
-                jnp.array(0.5), n=5, method="bogus",
+                jnp.array(0.5),
+                n=5,
+                method="bogus",
             )
 
 
@@ -198,17 +210,15 @@ class TestMapInChunks:
 
         # 7 elements, chunk_size=3 -> 2 full chunks + 1 partial
         x = jnp.arange(7, dtype=jnp.float32).reshape(7, 1)
-        result = map_in_chunks(lambda c: c ** 2, x, chunk_size=3)
-        expected = x ** 2
+        result = map_in_chunks(lambda c: c**2, x, chunk_size=3)
+        expected = x**2
         assert jnp.allclose(result, expected)
 
     def test_differentiable(self) -> None:
         from diffbio.core.soft_ops._utils import map_in_chunks
 
         x = jnp.arange(6, dtype=jnp.float32).reshape(6, 1)
-        grad = jax.grad(
-            lambda x: jnp.sum(map_in_chunks(lambda c: c ** 2, x, chunk_size=2))
-        )(x)
+        grad = jax.grad(lambda x: jnp.sum(map_in_chunks(lambda c: c**2, x, chunk_size=2)))(x)
         assert jnp.allclose(grad, 2 * x)
 
 
@@ -220,7 +230,9 @@ class TestReduceInChunks:
 
         x = jnp.arange(10, dtype=jnp.float32).reshape(10, 1)
         result = reduce_in_chunks(
-            lambda c: jnp.sum(c, axis=0), x, chunk_size=3,
+            lambda c: jnp.sum(c, axis=0),
+            x,
+            chunk_size=3,
         )
         expected = jnp.sum(x, axis=0)
         assert jnp.allclose(result, expected)
@@ -230,7 +242,9 @@ class TestReduceInChunks:
 
         x = jnp.arange(5, dtype=jnp.float32).reshape(5, 1)
         result = reduce_in_chunks(
-            lambda c: jnp.sum(c, axis=0), x, chunk_size=100,
+            lambda c: jnp.sum(c, axis=0),
+            x,
+            chunk_size=100,
         )
         assert jnp.allclose(result, jnp.sum(x, axis=0))
 
@@ -239,9 +253,7 @@ class TestReduceInChunks:
 
         x = jnp.ones((6, 1), dtype=jnp.float32)
         grad = jax.grad(
-            lambda x: jnp.sum(
-                reduce_in_chunks(lambda c: jnp.sum(c ** 2, axis=0), x, chunk_size=2)
-            )
+            lambda x: jnp.sum(reduce_in_chunks(lambda c: jnp.sum(c**2, axis=0), x, chunk_size=2))
         )(x)
         assert jnp.allclose(grad, 2 * x)
 

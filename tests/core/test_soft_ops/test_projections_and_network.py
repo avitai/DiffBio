@@ -79,7 +79,10 @@ class TestSortViaSortingNetwork:
 
         x = jnp.array([3.0, 1.0, 4.0, 1.0, 5.0, 9.0, 2.0, 6.0])
         result = sort_via_sorting_network(
-            x, softness=0.01, mode="smooth", descending=False,
+            x,
+            softness=0.01,
+            mode="smooth",
+            descending=False,
         )
         expected = jnp.sort(x)
         assert jnp.allclose(result, expected, atol=0.1)
@@ -89,7 +92,10 @@ class TestSortViaSortingNetwork:
 
         x = jnp.array([3.0, 1.0, 4.0, 1.0, 5.0, 9.0, 2.0, 6.0])
         result = sort_via_sorting_network(
-            x, softness=0.01, mode="smooth", descending=True,
+            x,
+            softness=0.01,
+            mode="smooth",
+            descending=True,
         )
         expected = jnp.sort(x)[::-1]
         assert jnp.allclose(result, expected, atol=0.1)
@@ -100,7 +106,10 @@ class TestSortViaSortingNetwork:
 
         x = jnp.array([5.0, 2.0, 8.0, 1.0, 3.0])  # length 5
         result = sort_via_sorting_network(
-            x, softness=0.01, mode="smooth", descending=False,
+            x,
+            softness=0.01,
+            mode="smooth",
+            descending=False,
         )
         assert result.shape == (5,)
         expected = jnp.sort(x)
@@ -111,7 +120,10 @@ class TestSortViaSortingNetwork:
 
         x = jax.random.normal(jax.random.key(0), (3, 4))
         result = sort_via_sorting_network(
-            x, softness=0.01, mode="smooth", descending=False,
+            x,
+            softness=0.01,
+            mode="smooth",
+            descending=False,
         )
         assert result.shape == (3, 4)
 
@@ -121,7 +133,10 @@ class TestSortViaSortingNetwork:
         x = jnp.array([3.0, 1.0, 4.0, 2.0])
         assert_finite_grads(
             lambda x: sort_via_sorting_network(
-                x, softness=0.1, mode="smooth", descending=False,
+                x,
+                softness=0.1,
+                mode="smooth",
+                descending=False,
             ),
             (x,),
         )
@@ -137,7 +152,10 @@ class TestArgsortViaSortingNetwork:
 
         x = jnp.array([3.0, 1.0, 4.0, 2.0])
         P = argsort_via_sorting_network(
-            x, softness=0.01, mode="smooth", descending=False,
+            x,
+            softness=0.01,
+            mode="smooth",
+            descending=False,
         )
         assert P.shape == (4, 4)
         # Rows should sum to ~1 (doubly stochastic)
@@ -152,7 +170,10 @@ class TestArgsortViaSortingNetwork:
         x = jnp.array([3.0, 1.0, 4.0, 2.0])
         assert_finite_grads(
             lambda x: argsort_via_sorting_network(
-                x, softness=0.1, mode="smooth", descending=False,
+                x,
+                softness=0.1,
+                mode="smooth",
+                descending=False,
             ),
             (x,),
         )

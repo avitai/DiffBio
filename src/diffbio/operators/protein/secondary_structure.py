@@ -61,12 +61,22 @@ class SecondaryStructureConfig(OperatorConfig):
             Default 4 (standard for alpha-helix i→i+4 pattern).
         temperature: Temperature for soft secondary structure assignment.
             Default 1.0. Lower = sharper assignments.
+        use_bond_length_constraint: Whether to add artifex bond length
+            regularisation to the output. Default False.
+        use_bond_angle_constraint: Whether to add artifex bond angle
+            regularisation to the output. Default False.
+        bond_length_weight: Weight for bond length constraint loss.
+        bond_angle_weight: Weight for bond angle constraint loss.
     """
 
     margin: float = DEFAULT_MARGIN
     cutoff: float = DEFAULT_CUTOFF
     min_helix_length: int = 4
     temperature: float = 1.0
+    use_bond_length_constraint: bool = False
+    use_bond_angle_constraint: bool = False
+    bond_length_weight: float = 0.1
+    bond_angle_weight: float = 0.1
 
 
 def compute_hydrogen_position(
@@ -402,7 +412,58 @@ class DifferentiableSecondaryStructure(OperatorModule):
             "ss_indices": ss_indices,
         }
 
+        # Optionally compute artifex backbone constraint losses
+        constraint_loss = _compute_backbone_constraints(coords, self.config)
+        if constraint_loss is not None:
+            output_data["backbone_constraint_loss"] = constraint_loss
+
         return output_data, state, metadata
+
+
+def _compute_backbone_constraints(
+    coords: Float[Array, "batch length 4 3"],
+    config: SecondaryStructureConfig,
+) -> Array | None:
+    """Compute artifex backbone constraint losses if enabled.
+
+    Uses artifex BondLengthExtension and BondAngleExtension to compute
+    regularisation losses that penalise deviation from ideal protein
+    backbone geometry.
+
+    Args:
+        coords: Backbone coordinates (batch, length, 4, 3).
+        config: Config with constraint flags and weights.
+
+    Returns:
+        Scalar constraint loss, or None if constraints are disabled.
+    """
+    if not config.use_bond_length_constraint and not config.use_bond_angle_constraint:
+        return None
+
+    from artifex.generative_models.extensions.protein.backbone import (  # noqa: PLC0415
+        BondAngleExtension,
+        BondLengthExtension,
+    )
+    from artifex.generative_models.extensions.protein.backbone import (  # noqa: PLC0415
+        ProteinExtensionConfig,
+    )
+
+    batch_data = {"coordinates": coords}
+    total_loss = jnp.float32(0.0)
+
+    if config.use_bond_length_constraint:
+        ext_config = ProteinExtensionConfig()
+        ext = BondLengthExtension(ext_config, rngs=nnx.Rngs(0))
+        bl_loss = ext.loss_fn(batch_data, None)
+        total_loss = total_loss + config.bond_length_weight * bl_loss
+
+    if config.use_bond_angle_constraint:
+        ext_config = ProteinExtensionConfig()
+        ext = BondAngleExtension(ext_config, rngs=nnx.Rngs(0))
+        ba_loss = ext.loss_fn(batch_data, None)
+        total_loss = total_loss + config.bond_angle_weight * ba_loss
+
+    return total_loss
 
 
 def create_secondary_structure_predictor(

@@ -34,7 +34,8 @@ class TestWhere:
         x = jnp.array([10.0])
         y = jnp.array([0.0])
         assert_finite_grads(
-            lambda c: where(c, x, y), (jnp.array([0.5]),),
+            lambda c: where(c, x, y),
+            (jnp.array([0.5]),),
         )
 
 
@@ -74,7 +75,8 @@ class TestTakeAlongAxis:
         x = jnp.array([1.0, 2.0, 3.0])
         soft_idx = jnp.array([[0.3, 0.5, 0.2]])
         assert_finite_grads(
-            lambda x: take_along_axis(x, soft_idx, axis=0), (x,),
+            lambda x: take_along_axis(x, soft_idx, axis=0),
+            (x,),
         )
 
 

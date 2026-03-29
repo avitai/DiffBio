@@ -13,7 +13,16 @@ Key components:
 - constants: Centralized constants for the library
 """
 
-from diffbio import configs, constants, losses, operators, pipelines, sequences, utils
+from diffbio import (
+    configs,
+    constants,
+    evaluation,
+    losses,
+    operators,
+    pipelines,
+    sequences,
+    utils,
+)
 
 __version__ = "0.1.0"
 
@@ -21,6 +30,7 @@ __all__ = [
     "__version__",
     "configs",
     "constants",
+    "evaluation",
     "losses",
     "operators",
     "pipelines",

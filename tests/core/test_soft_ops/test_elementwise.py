@@ -49,7 +49,8 @@ class TestSigmoidal:
 
         x = jnp.array([-1.0, 0.0, 1.0])
         assert_finite_grads(
-            lambda x: sigmoidal(x, softness=0.1, mode=mode), (x,),
+            lambda x: sigmoidal(x, softness=0.1, mode=mode),
+            (x,),
         )
 
 
@@ -133,7 +134,8 @@ class TestRound:
 
         x = jnp.array([1.3, 2.7])
         assert_finite_grads(
-            lambda x: round(x, softness=0.1, mode=mode), (x,),
+            lambda x: round(x, softness=0.1, mode=mode),
+            (x,),
         )
 
 
@@ -182,7 +184,8 @@ class TestAbs:
 
         x = jnp.array(0.0)
         assert_finite_grads(
-            lambda x: abs(x, softness=0.1, mode=mode), (x,),
+            lambda x: abs(x, softness=0.1, mode=mode),
+            (x,),
         )
 
 
@@ -202,7 +205,8 @@ class TestReLU:
 
         x = jnp.array([-1.0, 0.0, 1.0])
         assert_finite_grads(
-            lambda x: relu(x, softness=0.1, mode=mode), (x,),
+            lambda x: relu(x, softness=0.1, mode=mode),
+            (x,),
         )
 
 
@@ -222,8 +226,11 @@ class TestClip:
 
         x = jnp.array([0.3, 0.5, 0.7])
         result = clip(
-            x, a=jnp.array(0.0), b=jnp.array(1.0),
-            softness=0.01, mode=mode,
+            x,
+            a=jnp.array(0.0),
+            b=jnp.array(1.0),
+            softness=0.01,
+            mode=mode,
         )
         assert jnp.allclose(result, x, atol=0.1)
 
@@ -234,8 +241,11 @@ class TestClip:
         x = jnp.array([-1.0, 0.5, 2.0])
         assert_finite_grads(
             lambda x: clip(
-                x, a=jnp.array(0.0), b=jnp.array(1.0),
-                softness=0.1, mode=mode,
+                x,
+                a=jnp.array(0.0),
+                b=jnp.array(1.0),
+                softness=0.1,
+                mode=mode,
             ),
             (x,),
         )

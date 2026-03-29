@@ -39,6 +39,7 @@ class SmithWatermanConfig(TemperatureConfig):
         gap_extend: Penalty for extending a gap.
     """
 
+    cacheable: bool = True
     gap_open: float = DEFAULT_GAP_OPEN
     gap_extend: float = DEFAULT_GAP_EXTEND
 

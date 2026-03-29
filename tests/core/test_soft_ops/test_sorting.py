@@ -51,7 +51,8 @@ class TestArgmax:
 
         x = jnp.array([1.0, 3.0, 2.0])
         assert_finite_grads(
-            lambda x: argmax(x, axis=0, softness=0.1, method=method), (x,),
+            lambda x: argmax(x, axis=0, softness=0.1, method=method),
+            (x,),
         )
 
 
@@ -78,7 +79,8 @@ class TestMax:
 
         x = jnp.array([1.0, 5.0, 3.0])
         assert_finite_grads(
-            lambda x: max(x, axis=0, softness=0.1, method=method), (x,),
+            lambda x: max(x, axis=0, softness=0.1, method=method),
+            (x,),
         )
 
 
@@ -123,7 +125,11 @@ class TestArgsort:
 
         x = jnp.array([3.0, 1.0, 2.0])
         result = argsort(
-            x, axis=0, softness=0.1, mode="smooth", method=method,
+            x,
+            axis=0,
+            softness=0.1,
+            mode="smooth",
+            method=method,
         )
         for i in range(3):
             assert_simplex(result[i], axis=-1, atol=0.05)
@@ -162,7 +168,11 @@ class TestSort:
 
         x = jnp.array([5.0, 1.0, 3.0])
         result = sort(
-            x, axis=0, softness=0.01, mode="smooth", method=method,
+            x,
+            axis=0,
+            softness=0.01,
+            mode="smooth",
+            method=method,
         )
         expected = jnp.array([1.0, 3.0, 5.0])
         assert jnp.allclose(result, expected, atol=1.0)
@@ -173,7 +183,8 @@ class TestSort:
 
         x = jnp.array([3.0, 1.0, 2.0])
         assert_finite_grads(
-            lambda x: sort(x, axis=0, softness=0.1, method=method), (x,),
+            lambda x: sort(x, axis=0, softness=0.1, method=method),
+            (x,),
         )
 
     def test_batch_sort(self) -> None:
@@ -193,7 +204,11 @@ class TestRank:
 
         x = jnp.array([30.0, 10.0, 20.0])
         result = rank(
-            x, axis=0, softness=0.01, mode="smooth", method=method,
+            x,
+            axis=0,
+            softness=0.01,
+            mode="smooth",
+            method=method,
         )
         # Expected ranks: 3, 1, 2 (ascending)
         assert jnp.allclose(result, jnp.array([3.0, 1.0, 2.0]), atol=0.5)
@@ -204,7 +219,8 @@ class TestRank:
 
         x = jnp.array([3.0, 1.0, 2.0])
         assert_finite_grads(
-            lambda x: rank(x, axis=0, softness=0.1, method=method), (x,),
+            lambda x: rank(x, axis=0, softness=0.1, method=method),
+            (x,),
         )
 
 

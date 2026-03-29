@@ -41,6 +41,7 @@ class ProfileHMMConfig(OperatorConfig):
         learnable_profile: Whether profile parameters are learnable.
     """
 
+    cacheable: bool = True
     profile_length: int = 100
     alphabet_size: int = 20  # Amino acids by default
     temperature: float = 1.0

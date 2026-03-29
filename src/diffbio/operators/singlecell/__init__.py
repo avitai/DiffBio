@@ -112,6 +112,10 @@ from diffbio.operators.singlecell.knockdown_filter import (
     KnockdownFilterConfig,
     OnTargetKnockdownFilter,
 )
+from diffbio.operators.singlecell.sindy_grn import (
+    SINDyGRNConfig,
+    SINDyGRNOperator,
+)
 
 __all__ = [
     # Archetypal Analysis
@@ -183,4 +187,7 @@ __all__ = [
     # Knockdown Filter
     "KnockdownFilterConfig",
     "OnTargetKnockdownFilter",
+    # SINDy GRN
+    "SINDyGRNConfig",
+    "SINDyGRNOperator",
 ]

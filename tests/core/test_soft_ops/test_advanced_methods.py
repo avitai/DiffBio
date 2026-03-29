@@ -17,7 +17,8 @@ except ImportError:
     HAS_OPTIMISTIX = False
 
 requires_optimistix = pytest.mark.skipif(
-    not HAS_OPTIMISTIX, reason="optimistix not installed",
+    not HAS_OPTIMISTIX,
+    reason="optimistix not installed",
 )
 
 
@@ -31,7 +32,11 @@ class TestFastSoftSort:
 
         x = jnp.array([3.0, 1.0, 4.0, 1.0, 5.0])
         result = sort(
-            x, axis=0, softness=0.1, mode=mode, method="fast_soft_sort",
+            x,
+            axis=0,
+            softness=0.1,
+            mode=mode,
+            method="fast_soft_sort",
         )
         assert result.shape == x.shape
 
@@ -41,7 +46,10 @@ class TestFastSoftSort:
 
         x = jnp.array([5.0, 1.0, 3.0])
         result = sort(
-            x, axis=0, softness=0.01, mode="c0",
+            x,
+            axis=0,
+            softness=0.01,
+            mode="c0",
             method="fast_soft_sort",
         )
         expected = jnp.sort(x)
@@ -53,8 +61,12 @@ class TestFastSoftSort:
 
         x = jnp.array([5.0, 1.0, 3.0])
         result = sort(
-            x, axis=0, softness=0.01, mode="c0",
-            method="fast_soft_sort", descending=True,
+            x,
+            axis=0,
+            softness=0.01,
+            mode="c0",
+            method="fast_soft_sort",
+            descending=True,
         )
         expected = jnp.sort(x)[::-1]
         assert jnp.allclose(result, expected, atol=1.0)
@@ -66,7 +78,10 @@ class TestFastSoftSort:
         x = jnp.array([3.0, 1.0, 2.0])
         assert_finite_grads(
             lambda x: sort(
-                x, axis=0, softness=0.1, mode="c0",
+                x,
+                axis=0,
+                softness=0.1,
+                mode="c0",
                 method="fast_soft_sort",
             ),
             (x,),
@@ -82,7 +97,10 @@ class TestSmoothSort:
 
         x = jnp.array([3.0, 1.0, 4.0, 1.0, 5.0])
         result = sort(
-            x, axis=0, softness=0.1, mode="smooth",
+            x,
+            axis=0,
+            softness=0.1,
+            mode="smooth",
             method="smooth_sort",
         )
         assert result.shape == x.shape
@@ -102,7 +120,10 @@ class TestSmoothSort:
         x = jnp.array([3.0, 1.0, 2.0])
         assert_finite_grads(
             lambda x: sort(
-                x, axis=0, softness=0.5, mode="smooth",
+                x,
+                axis=0,
+                softness=0.5,
+                mode="smooth",
                 method="smooth_sort",
             ),
             (x,),
@@ -118,7 +139,11 @@ class TestOTMethod:
 
         x = jnp.array([1.0, 5.0, 3.0])
         result = argmax(
-            x, axis=0, softness=0.1, mode="smooth", method="ot",
+            x,
+            axis=0,
+            softness=0.1,
+            mode="smooth",
+            method="ot",
             ot_kwargs={"use_entropic_ot_sinkhorn_on_entropic": False},
         )
         assert result.shape == (3,)
@@ -130,7 +155,11 @@ class TestOTMethod:
 
         x = jnp.array([3.0, 1.0, 2.0])
         result = argsort(
-            x, axis=0, softness=0.1, mode="smooth", method="ot",
+            x,
+            axis=0,
+            softness=0.1,
+            mode="smooth",
+            method="ot",
             ot_kwargs={"use_entropic_ot_sinkhorn_on_entropic": False},
         )
         assert result.shape == (3, 3)
@@ -144,7 +173,11 @@ class TestOTMethod:
         x = jnp.array([1.0, 5.0, 3.0])
         assert_finite_grads(
             lambda x: argmax(
-                x, axis=0, softness=0.1, mode="smooth", method="ot",
+                x,
+                axis=0,
+                softness=0.1,
+                mode="smooth",
+                method="ot",
                 ot_kwargs={"use_entropic_ot_sinkhorn_on_entropic": False},
             ),
             (x,),

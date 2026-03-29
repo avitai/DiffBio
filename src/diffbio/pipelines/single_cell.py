@@ -295,6 +295,35 @@ class SingleCellPipeline(OperatorModule):
 
         return output_data, state, metadata
 
+    def to_dag(self) -> Any:
+        """Build a datarax DAG representation of this pipeline.
+
+        Returns a ``Sequential`` node graph suitable for execution via
+        ``datarax.dag.DAGExecutor``. Only enabled stages are included.
+
+        Returns:
+            A datarax ``Sequential`` node containing the pipeline stages.
+        """
+        from datarax.dag import Node, OperatorNode, Sequential  # noqa: PLC0415
+
+        stages: list[Node] = []
+
+        if self.ambient_removal is not None:
+            stages.append(OperatorNode(self.ambient_removal))
+
+        stages.append(OperatorNode(self.vae_normalizer))
+
+        if self.batch_correction is not None:
+            stages.append(OperatorNode(self.batch_correction))
+
+        if self.dim_reduction is not None:
+            stages.append(OperatorNode(self.dim_reduction))
+
+        if self.clustering is not None:
+            stages.append(OperatorNode(self.clustering))
+
+        return Sequential(stages)
+
 
 def create_single_cell_pipeline(
     n_genes: int = 2000,

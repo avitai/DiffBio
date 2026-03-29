@@ -22,7 +22,11 @@ class TestArgquantile:
 
         x = jnp.array([1.0, 5.0, 3.0, 2.0, 4.0])
         result = argquantile(
-            x, q=jnp.array(0.5), axis=0, softness=0.1, mode="smooth",
+            x,
+            q=jnp.array(0.5),
+            axis=0,
+            softness=0.1,
+            mode="smooth",
         )
         assert_simplex(result, axis=-1, atol=0.05)
 
@@ -51,7 +55,11 @@ class TestQuantile:
 
         x = jnp.array([1.0, 5.0, 3.0, 2.0, 4.0])
         result = quantile(
-            x, q=jnp.array(0.5), axis=0, softness=0.01, mode="smooth",
+            x,
+            q=jnp.array(0.5),
+            axis=0,
+            softness=0.01,
+            mode="smooth",
         )
         assert jnp.allclose(result, 3.0, atol=1.0)
 

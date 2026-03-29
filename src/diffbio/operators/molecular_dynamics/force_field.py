@@ -35,6 +35,11 @@ class ForceFieldConfig(OperatorConfig):
         cutoff: Cutoff distance for interactions (in units of sigma). None for no cutoff.
         box_size: Size of periodic box. None for non-periodic.
         alpha: Morse potential width parameter (only for morse).
+        reference_positions: Optional reference positions for computing
+            geometric losses (chamfer/EMD) via artifex. If provided,
+            ``chamfer_distance`` and ``earth_mover_distance`` are added
+            to the output dict. Shape must match particle positions.
+        geometric_loss_weight: Weight for geometric loss terms.
     """
 
     potential_type: str = "lennard_jones"
@@ -43,6 +48,7 @@ class ForceFieldConfig(OperatorConfig):
     cutoff: float | None = 2.5
     box_size: float | None = None
     alpha: float = 5.0  # Morse potential parameter
+    geometric_loss_weight: float = 0.0
 
 
 class ForceFieldOperator(OperatorModule):
@@ -132,6 +138,14 @@ class ForceFieldOperator(OperatorModule):
             "forces": forces,
         }
 
+        # Optionally compute geometric losses against reference positions
+        if self.config.geometric_loss_weight > 0 and "reference_positions" in data:
+            result.update(
+                _compute_geometric_losses(
+                    positions, data["reference_positions"], self.config.geometric_loss_weight
+                )
+            )
+
         return result, state, metadata
 
     def _compute_single(self, positions: Array) -> tuple[Array, Array]:
@@ -148,6 +162,36 @@ class ForceFieldOperator(OperatorModule):
         forces = self._force_fn(positions)
 
         return total_energy, forces
+
+
+def _compute_geometric_losses(
+    predicted: Array,
+    reference: Array,
+    weight: float,
+) -> dict[str, Array]:
+    """Compute artifex geometric losses between predicted and reference positions.
+
+    Args:
+        predicted: Predicted positions (batch, n_particles, dim) or (n_particles, dim).
+        reference: Reference positions with same shape.
+        weight: Scaling weight for the losses.
+
+    Returns:
+        Dict with ``chamfer_distance`` and ``earth_mover_distance`` keys.
+    """
+    from artifex.generative_models.core.losses.geometric import (  # noqa: PLC0415
+        chamfer_distance,
+        earth_mover_distance,
+    )
+
+    # Ensure batch dimension
+    if predicted.ndim == 2:
+        predicted = predicted[None, ...]
+        reference = reference[None, ...]
+
+    cd = chamfer_distance(predicted, reference) * weight
+    emd = earth_mover_distance(predicted, reference) * weight
+    return {"chamfer_distance": cd, "earth_mover_distance": emd}
 
 
 def create_force_field(
