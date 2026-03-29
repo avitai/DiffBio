@@ -17,6 +17,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 from flax import nnx
@@ -357,7 +358,8 @@ def _compute_spatial_field_ops(
     """Compute spatial gradient and Laplacian of smoothed expression.
 
     Uses opifex's autodiff-based field operations to compute per-gene
-    spatial gradients and Laplacians at each spot location.
+    spatial gradients and Laplacians at each spot location. Vectorized
+    over genes via ``jax.vmap`` — no Python for-loops.
 
     Args:
         coords: Spatial coordinates (n_spots, 2).
@@ -370,33 +372,30 @@ def _compute_spatial_field_ops(
     """
     from opifex.core.physics import compute_gradient, compute_laplacian  # noqa: PLC0415
 
-    n_genes = smoothed.shape[1]
-    gradient_magnitudes = []
-    laplacian_means = []
+    def _gene_field(x: Array, gene_expr: Array) -> Array:
+        """RBF-interpolated scalar field for a single gene."""
+        dists = jnp.sum((x - coords) ** 2, axis=-1)
+        weights = jnp.exp(-dists / 2.0)
+        weights = weights / (jnp.sum(weights, axis=-1, keepdims=True) + 1e-8)
+        return jnp.sum(weights * gene_expr, axis=-1)
 
-    for gene_idx in range(n_genes):
-        gene_expr = smoothed[:, gene_idx]
-
-        # Build a scalar function f(x) -> expression at nearest point
-        # Use RBF interpolation as a differentiable field
-        def _gene_field(x: Array, _expr: Array = gene_expr, _coords: Array = coords) -> Array:
-            dists = jnp.sum((x - _coords) ** 2, axis=-1)
-            weights = jnp.exp(-dists / 2.0)
-            weights = weights / (jnp.sum(weights, axis=-1, keepdims=True) + 1e-8)
-            return jnp.sum(weights * _expr, axis=-1)
-
-        # Compute gradient magnitude at each spot
-        grads = compute_gradient(_gene_field, coords)  # (n_spots, 2)
+    def _per_gene_metrics(gene_expr: Array) -> tuple[Array, Array]:
+        """Compute gradient magnitude and Laplacian for one gene."""
+        field_fn = lambda x: _gene_field(x, gene_expr)  # noqa: E731
+        grads = compute_gradient(field_fn, coords)
         grad_mag = jnp.mean(jnp.sqrt(jnp.sum(grads**2, axis=-1) + 1e-8))
-        gradient_magnitudes.append(grad_mag)
+        lap = compute_laplacian(field_fn, coords)
+        lap_mean = jnp.mean(jnp.abs(lap))
+        return grad_mag, lap_mean
 
-        # Compute Laplacian at each spot
-        lap = compute_laplacian(_gene_field, coords)  # (n_spots,)
-        laplacian_means.append(jnp.mean(jnp.abs(lap)))
+    # Vectorize over genes (columns of smoothed)
+    gradient_mags, laplacian_means = jax.vmap(_per_gene_metrics)(
+        smoothed.T
+    )  # smoothed.T is (n_genes, n_spots)
 
     return {
-        "expression_gradient": jnp.stack(gradient_magnitudes),
-        "expression_laplacian": jnp.stack(laplacian_means),
+        "expression_gradient": gradient_mags,
+        "expression_laplacian": laplacian_means,
     }
 
 

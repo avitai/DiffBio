@@ -335,10 +335,17 @@ class DifferentiableVelocity(OperatorModule):
         # Compute velocity
         velocity = self._compute_velocity(spliced, unspliced, beta, gamma)
 
-        # Project forward using learned dynamics
-        s_proj, u_proj = spliced, unspliced
-        for _ in range(self.n_steps):
-            s_proj, u_proj = self._euler_step(s_proj, u_proj, alpha, beta, gamma, self.dt)
+        # Project forward using learned dynamics via jax.lax.scan
+        def _euler_body(
+            carry: tuple[jax.Array, jax.Array], _: None
+        ) -> tuple[tuple[jax.Array, jax.Array], None]:
+            s, u = carry
+            s_new, u_new = self._euler_step(s, u, alpha, beta, gamma, self.dt)
+            return (s_new, u_new), None
+
+        (s_proj, u_proj), _ = jax.lax.scan(
+            _euler_body, (spliced, unspliced), None, length=self.n_steps
+        )
 
         transformed_data = {
             "spliced": spliced,

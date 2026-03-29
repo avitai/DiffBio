@@ -8,14 +8,20 @@ from diffbio.operators.epigenomics.chromatin_state import (
     ChromatinStateAnnotator,
     ChromatinStateConfig,
 )
+from diffbio.operators.epigenomics.fno_peak_calling import (
+    FNOPeakCaller,
+    FNOPeakCallerConfig,
+)
 from diffbio.operators.epigenomics.peak_calling import (
     DifferentiablePeakCaller,
     PeakCallerConfig,
 )
 
 __all__ = [
-    "DifferentiablePeakCaller",
-    "PeakCallerConfig",
     "ChromatinStateAnnotator",
     "ChromatinStateConfig",
+    "DifferentiablePeakCaller",
+    "FNOPeakCaller",
+    "FNOPeakCallerConfig",
+    "PeakCallerConfig",
 ]

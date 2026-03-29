@@ -77,12 +77,10 @@ def build_polynomial_library(
 
     if degree >= 2:
         n_features = x.shape[1]
-        quadratic_terms = []
-        for i in range(n_features):
-            for j in range(i, n_features):
-                quadratic_terms.append(x[:, i] * x[:, j])
-        if quadratic_terms:
-            terms.append(jnp.stack(quadratic_terms, axis=1))
+        # Upper-triangular indices for pairwise products (i <= j)
+        i_idx, j_idx = jnp.triu_indices(n_features)
+        quadratic = x[:, i_idx] * x[:, j_idx]  # (n_samples, n_pairs)
+        terms.append(quadratic)
 
     return jnp.concatenate(terms, axis=1)
 
