@@ -24,6 +24,7 @@ from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.constants import EPSILON
+
 from diffbio.core.base_operators import TemperatureOperator
 from diffbio.utils.nn_utils import ensure_rngs
 

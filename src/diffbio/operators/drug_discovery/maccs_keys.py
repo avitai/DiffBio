@@ -17,12 +17,12 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 
+from diffbio.core import soft_ops
 from diffbio.operators.drug_discovery._graph_utils import (
     attach_fingerprint,
     ensure_rngs,
@@ -171,11 +171,11 @@ class MACCSKeysOperator(OperatorModule):
         pattern_logits = self.pattern_detectors(node_hidden)
 
         # Apply temperature-scaled sigmoid for soft pattern matching
-        soft_patterns = jax.nn.sigmoid(pattern_logits / self.config.temperature)
+        soft_patterns = soft_ops.greater(pattern_logits, 0.0, softness=self.config.temperature)
 
         # Aggregate across atoms using max (OR-like)
         # If any atom matches a pattern, the bit is set
-        fingerprint = jnp.max(soft_patterns, axis=0)
+        fingerprint = soft_ops.max(soft_patterns, axis=0, softness=self.config.temperature)
 
         return fingerprint
 

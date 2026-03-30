@@ -8,13 +8,13 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-import jax
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import PyTree
 
 from diffbio.configs import DiffBioOperatorConfig
 from diffbio.constants import PHRED_QUALITY_THRESHOLD
+from diffbio.core import soft_ops
 from diffbio.utils.nn_utils import init_learnable_param
 
 logger = logging.getLogger(__name__)
@@ -113,9 +113,8 @@ class DifferentiableQualityFilter(OperatorModule):
         sequence = data["sequence"]
         quality_scores = data["quality_scores"]
 
-        # Compute retention weights using sigmoid
-        # sigmoid(q - threshold): high quality -> weight ~1, low quality -> weight ~0
-        retention_weights = jax.nn.sigmoid(quality_scores - self.threshold[...])
+        # Soft comparison: high quality -> weight ~1, low quality -> weight ~0
+        retention_weights = soft_ops.greater(quality_scores, self.threshold[...], softness=1.0)
 
         # Apply weights to sequence (broadcast over alphabet dimension)
         weighted_sequence = sequence * retention_weights[:, None]

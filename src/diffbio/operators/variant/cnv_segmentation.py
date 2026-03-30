@@ -28,6 +28,7 @@ from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.core import soft_ops
 from diffbio.core.base_operators import TemperatureOperator
 
 logger = logging.getLogger(__name__)
@@ -539,7 +540,11 @@ class EnhancedCNVSegmentation(DifferentiableCNVSegmentation):
         noise_threshold = self.threshold_scale * jnp.std(signal)
         # Soft gate: sigmoid((|x| - threshold) / temperature)
         # Outputs near 0 when |x| < threshold, near 1 when |x| > threshold
-        gate = jax.nn.sigmoid((jnp.abs(signal) - noise_threshold) / self._temperature)
+        gate = soft_ops.greater(
+            soft_ops.abs(signal, softness=self._temperature),
+            noise_threshold,
+            softness=self._temperature,
+        )
         filtered = signal * gate
         return filtered, noise_threshold
 

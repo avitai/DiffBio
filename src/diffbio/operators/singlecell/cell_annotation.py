@@ -27,6 +27,7 @@ from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
 from diffbio.constants import EPSILON
+
 from diffbio.core.base_operators import EncoderDecoderOperator
 from diffbio.losses.statistical_losses import zinb_negative_log_likelihood
 from diffbio.utils.nn_utils import (

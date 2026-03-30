@@ -129,7 +129,10 @@ for key_name, value in result.items():
 # %%
 # Verify soft assignments sum to 1 per cell (valid probability distributions)
 assignment_sums = result["cluster_assignments"].sum(axis=-1)
-print(f"Assignment row sums (should be ~1.0): min={assignment_sums.min():.6f}, max={assignment_sums.max():.6f}")
+print(
+    f"Assignment row sums (should be ~1.0):"
+    f" min={assignment_sums.min():.6f}, max={assignment_sums.max():.6f}"
+)
 
 # Check cluster label distribution
 labels = result["cluster_labels"]
@@ -144,7 +147,10 @@ ax.set_ylabel("Cell")
 ax.set_title("Soft Cluster Assignments")
 fig.colorbar(im, ax=ax, label="Assignment Probability")
 plt.tight_layout()
-plt.savefig("docs/assets/examples/basic/operator_pattern_assignments.png", dpi=150, bbox_inches="tight")
+plt.savefig(
+    "docs/assets/examples/basic/operator_pattern_assignments.png",
+    dpi=150, bbox_inches="tight",
+)
 plt.show()
 
 # %% [markdown]

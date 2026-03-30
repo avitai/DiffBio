@@ -88,7 +88,7 @@ counts = counts + jax.random.uniform(k2, counts.shape) * 0.1
 
 print(f"Expression matrix shape: {counts.shape}")
 print(f"True label distribution: {jnp.bincount(type_labels_true, length=n_types)}")
-print(f"Mean expression per type (first 3 genes):")
+print("Mean expression per type (first 3 genes):")
 for t in range(n_types):
     mask = type_labels_true == t
     mean_expr = jnp.where(mask[:, None], counts, 0.0).sum(axis=0) / mask.sum()
@@ -268,7 +268,10 @@ for bar, val in zip(bars, mean_confidences):
         fontsize=10,
     )
 plt.tight_layout()
-plt.savefig("docs/assets/examples/singlecell/annotation_confidence.png", dpi=150, bbox_inches="tight")
+plt.savefig(
+    "docs/assets/examples/singlecell/annotation_confidence.png",
+    dpi=150, bbox_inches="tight",
+)
 plt.show()
 
 # %% [markdown]
@@ -418,7 +421,10 @@ ax.set_ylabel("Mean Max Probability")
 ax.set_title("Scanvi Confidence vs Labelled Cells")
 ax.set_xticks(labelled_counts)
 plt.tight_layout()
-plt.savefig("docs/assets/examples/singlecell/annotation_labelled_fraction.png", dpi=150, bbox_inches="tight")
+plt.savefig(
+    "docs/assets/examples/singlecell/annotation_labelled_fraction.png",
+    dpi=150, bbox_inches="tight",
+)
 plt.show()
 
 # %% [markdown]

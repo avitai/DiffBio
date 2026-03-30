@@ -16,6 +16,7 @@ from flax import nnx
 from jaxtyping import Array, Float, Int
 
 from diffbio.constants import EPSILON
+from diffbio.core import soft_ops
 
 
 def zinb_negative_log_likelihood(
@@ -72,7 +73,7 @@ def zinb_negative_log_likelihood(
         - jax.scipy.special.gammaln(counts + 1.0)
     )
 
-    is_zero = (counts < eps).astype(jnp.float32)
+    is_zero = soft_ops.less(counts, jnp.array(eps), softness=0.01)
     log_prob = is_zero * case_zero + (1.0 - is_zero) * case_nonzero
 
     return -jnp.sum(log_prob)

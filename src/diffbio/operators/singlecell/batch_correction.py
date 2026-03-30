@@ -25,6 +25,7 @@ from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
+
 from diffbio.core.base_operators import TemperatureOperator
 
 logger = logging.getLogger(__name__)
@@ -208,7 +209,7 @@ class DifferentiableHarmony(TemperatureOperator):
         # Cells from over-represented batches get larger corrections
         batch_idx = batch_labels  # (n_cells,)
         # Get batch proportion at each cell's most likely cluster
-        top_cluster = jnp.argmax(assignments, axis=-1)  # (n_cells,)
+        top_cluster = jnp.argmax(assignments, axis=-1)
         cell_batch_prop = batch_props[top_cluster, batch_idx]  # (n_cells,)
         cell_global_prop = global_batch_props[batch_idx]  # (n_cells,)
 

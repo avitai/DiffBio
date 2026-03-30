@@ -8,14 +8,17 @@ import jax
 import jax.numpy as jnp
 import pytest
 
+from diffbio.core.soft_ops._projections_simplex import SimplexMode
 from tests.core.test_soft_ops.conftest import assert_finite_grads, assert_simplex
+
+SIMPLEX_MODES: list[SimplexMode] = ["smooth", "c0", "c1", "c2"]
 
 
 class TestProjSimplex:
     """Test simplex projection across all modes."""
 
-    @pytest.mark.parametrize("mode", ["smooth", "c0", "c1", "c2"])
-    def test_output_is_simplex(self, mode: str) -> None:
+    @pytest.mark.parametrize("mode", SIMPLEX_MODES)
+    def test_output_is_simplex(self, mode: SimplexMode) -> None:
         """Projection output must be non-negative and sum to 1."""
         from diffbio.core.soft_ops._projections_simplex import proj_simplex
 
@@ -23,8 +26,8 @@ class TestProjSimplex:
         result = proj_simplex(x, axis=0, softness=0.1, mode=mode)
         assert_simplex(result, axis=0, atol=1e-4)
 
-    @pytest.mark.parametrize("mode", ["smooth", "c0", "c1", "c2"])
-    def test_batch_dimensions(self, mode: str) -> None:
+    @pytest.mark.parametrize("mode", SIMPLEX_MODES)
+    def test_batch_dimensions(self, mode: SimplexMode) -> None:
         """Projection works with batch dimensions."""
         from diffbio.core.soft_ops._projections_simplex import proj_simplex
 
@@ -44,8 +47,8 @@ class TestProjSimplex:
         expected = jax.nn.softmax(x / softness, axis=0)
         assert jnp.allclose(result, expected, atol=1e-6)
 
-    @pytest.mark.parametrize("mode", ["smooth", "c0", "c1", "c2"])
-    def test_differentiable(self, mode: str) -> None:
+    @pytest.mark.parametrize("mode", SIMPLEX_MODES)
+    def test_differentiable(self, mode: SimplexMode) -> None:
         """Gradient through projection must be finite."""
         from diffbio.core.soft_ops._projections_simplex import proj_simplex
 
@@ -60,7 +63,7 @@ class TestProjSimplex:
 
         x = jnp.ones(3)
         with pytest.raises(ValueError, match="Invalid mode"):
-            proj_simplex(x, axis=0, softness=0.1, mode="bogus")
+            proj_simplex(x, axis=0, softness=0.1, mode="bogus")  # type: ignore[arg-type]
 
     def test_low_softness_approaches_hard_argmax(self) -> None:
         """With very low softness, smooth mode should approach one-hot."""

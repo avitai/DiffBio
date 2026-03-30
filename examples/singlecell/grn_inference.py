@@ -254,7 +254,10 @@ for bar, val in zip(bars, recall_values):
     ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.02,
             f"{val:.2f}", ha="center", va="bottom", fontsize=9)
 plt.tight_layout()
-plt.savefig("docs/assets/examples/singlecell/grn_threshold_recall.png", dpi=150, bbox_inches="tight")
+plt.savefig(
+    "docs/assets/examples/singlecell/grn_threshold_recall.png",
+    dpi=150, bbox_inches="tight",
+)
 plt.show()
 
 # %%

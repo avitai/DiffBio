@@ -320,7 +320,7 @@ def _make_proj_permutahedron_entropic_lp(
     max_iter: int = 200,
     softness: float = 1.0,
     softness_mono: float | None = None,
-    bounds_softness: float = 1.0,
+    bounds_softness: float | Array = 1.0,
     checkpointed: bool = True,
 ) -> callable:
     """Return a ``(z, w) -> result`` function with C-inf smooth grads.
@@ -1591,21 +1591,24 @@ def _pav_isotonic_decreasing_entropic(
             (starts, logS, logW, m),
         )
 
-    starts, logS, logW, m = lax.fori_loop(
+    starts_out, logS_out, logW_out, m = lax.fori_loop(
         0,
         n,
         for_body,
         (starts0, logS0, logW0, m0),
     )
+    starts: Array = jnp.asarray(starts_out)
+    logS: Array = jnp.asarray(logS_out)
+    logW: Array = jnp.asarray(logW_out)
 
     idx = jnp.arange(n, dtype=jnp.int32)
     starts = jnp.where(idx < m, starts, jnp.int32(n))
     logS = jnp.where(idx < m, logS, neg_inf)
     logW = jnp.where(idx < m, logW, neg_inf)
 
-    block_idx = jnp.searchsorted(starts, idx, side="right") - jnp.int32(1)
+    block_idx: Array = jnp.searchsorted(starts, idx, side="right") - jnp.int32(1)
     gammas = logS - logW
-    v = gammas[block_idx]
+    v: Array = gammas[block_idx]
     return v, block_idx, starts, logS, logW
 
 

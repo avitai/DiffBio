@@ -361,7 +361,10 @@ for ax, (title, emb) in zip(axes.flat, panels):
 
 fig.suptitle("PCA Projections Colored by Batch", fontsize=13)
 plt.tight_layout()
-plt.savefig("docs/assets/examples/singlecell/batch_pca_comparison.png", dpi=150, bbox_inches="tight")
+plt.savefig(
+    "docs/assets/examples/singlecell/batch_pca_comparison.png",
+    dpi=150, bbox_inches="tight",
+)
 plt.show()
 
 # %% [markdown]

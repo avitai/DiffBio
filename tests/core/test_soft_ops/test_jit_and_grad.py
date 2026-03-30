@@ -10,6 +10,8 @@ import jax
 import jax.numpy as jnp
 import pytest
 
+from diffbio.core.soft_ops.elementwise import Mode
+from diffbio.core.soft_ops.sorting import ArgMethod, RankMethod, SortMethod
 from tests.core.test_soft_ops.conftest import assert_finite_grads
 
 
@@ -74,7 +76,7 @@ class TestElementwiseJIT:
         assert jnp.all(jnp.isfinite(result))
 
     @pytest.mark.parametrize("mode", ["smooth", "c0", "c1", "c2"])
-    def test_abs_jit(self, mode: str) -> None:
+    def test_abs_jit(self, mode: Mode) -> None:
         from diffbio.core.soft_ops.elementwise import abs
 
         @jax.jit
@@ -84,7 +86,7 @@ class TestElementwiseJIT:
         assert jnp.all(jnp.isfinite(f(jnp.array([-1.0, 0.0, 1.0]))))
 
     @pytest.mark.parametrize("mode", ["smooth", "c0", "c1", "c2"])
-    def test_round_jit(self, mode: str) -> None:
+    def test_round_jit(self, mode: Mode) -> None:
         from diffbio.core.soft_ops.elementwise import round
 
         @jax.jit
@@ -94,7 +96,7 @@ class TestElementwiseJIT:
         assert jnp.all(jnp.isfinite(f(jnp.array([1.3, 2.7]))))
 
     @pytest.mark.parametrize("mode", ["smooth", "c0", "c1", "c2"])
-    def test_clip_jit(self, mode: str) -> None:
+    def test_clip_jit(self, mode: Mode) -> None:
         from diffbio.core.soft_ops.elementwise import clip
 
         @jax.jit
@@ -200,8 +202,12 @@ class TestSelectionJIT:
 class TestSortingJIT:
     """JIT compatibility for sorting functions."""
 
-    @pytest.mark.parametrize("method", ["softsort", "neuralsort"])
-    def test_argmax_jit(self, method: str) -> None:
+    ARGMAX_METHODS: list[ArgMethod] = ["softsort", "neuralsort"]
+    SORT_METHODS: list[SortMethod] = ["softsort", "neuralsort"]
+    RANK_METHODS: list[RankMethod] = ["softsort", "neuralsort"]
+
+    @pytest.mark.parametrize("method", ARGMAX_METHODS)
+    def test_argmax_jit(self, method: ArgMethod) -> None:
         from diffbio.core.soft_ops.sorting import argmax
 
         @jax.jit
@@ -211,8 +217,8 @@ class TestSortingJIT:
         result = f(jnp.array([1.0, 3.0, 2.0]))
         assert jnp.all(jnp.isfinite(result))
 
-    @pytest.mark.parametrize("method", ["softsort", "neuralsort"])
-    def test_sort_jit(self, method: str) -> None:
+    @pytest.mark.parametrize("method", SORT_METHODS)
+    def test_sort_jit(self, method: SortMethod) -> None:
         from diffbio.core.soft_ops.sorting import sort
 
         @jax.jit
@@ -222,8 +228,8 @@ class TestSortingJIT:
         result = f(jnp.array([3.0, 1.0, 2.0]))
         assert jnp.all(jnp.isfinite(result))
 
-    @pytest.mark.parametrize("method", ["softsort", "neuralsort"])
-    def test_argmax_grad(self, method: str) -> None:
+    @pytest.mark.parametrize("method", ARGMAX_METHODS)
+    def test_argmax_grad(self, method: ArgMethod) -> None:
         from diffbio.core.soft_ops.sorting import argmax
 
         x = jnp.array([1.0, 3.0, 2.0])
@@ -232,8 +238,8 @@ class TestSortingJIT:
             (x,),
         )
 
-    @pytest.mark.parametrize("method", ["softsort", "neuralsort"])
-    def test_sort_grad(self, method: str) -> None:
+    @pytest.mark.parametrize("method", SORT_METHODS)
+    def test_sort_grad(self, method: SortMethod) -> None:
         from diffbio.core.soft_ops.sorting import sort
 
         x = jnp.array([3.0, 1.0, 2.0])
@@ -242,8 +248,8 @@ class TestSortingJIT:
             (x,),
         )
 
-    @pytest.mark.parametrize("method", ["softsort", "neuralsort"])
-    def test_rank_jit(self, method: str) -> None:
+    @pytest.mark.parametrize("method", RANK_METHODS)
+    def test_rank_jit(self, method: RankMethod) -> None:
         from diffbio.core.soft_ops.sorting import rank
 
         @jax.jit

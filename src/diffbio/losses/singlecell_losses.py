@@ -18,6 +18,7 @@ from flax import nnx
 from jaxtyping import Array, Float, Int
 
 from diffbio.constants import DISTANCE_MASK_SENTINEL
+from diffbio.core import soft_ops
 
 
 class BatchMixingLoss(nnx.Module):
@@ -97,12 +98,9 @@ class BatchMixingLoss(nnx.Module):
 
         # Keep only top k neighbors (soft selection)
         # Sort to get top-k, then create soft mask
-        sorted_indices = jnp.argsort(distances, axis=-1)
-        k_mask = jnp.zeros((n_cells, n_cells))
-        k_mask = k_mask.at[
-            jnp.arange(n_cells)[:, None],
-            sorted_indices[:, : self.n_neighbors],
-        ].set(1.0)
+        sorted_dists = soft_ops.sort(distances, axis=-1, softness=self.temperature)
+        kth_dist = sorted_dists[:, self.n_neighbors - 1 : self.n_neighbors]
+        k_mask = soft_ops.less(distances, kth_dist, softness=self.temperature)
 
         # Apply mask
         neighbor_weights = neighbor_weights * k_mask
@@ -214,7 +212,9 @@ class ClusteringCompactnessLoss(nnx.Module):
         # Hinge loss: penalize if distance < min_separation
         # Exclude diagonal (self-distance)
         mask = 1.0 - jnp.eye(n_clusters)
-        separation_violations = jax.nn.relu(self.min_separation - centroid_dists) * mask
+        separation_violations = (
+            soft_ops.relu(self.min_separation - centroid_dists, softness=0.1) * mask
+        )
 
         # Mean separation loss (excluding diagonal)
         n_pairs = n_clusters * (n_clusters - 1)

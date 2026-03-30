@@ -15,6 +15,7 @@ import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 
+from diffbio.core import soft_ops
 from diffbio.operators.statistical.nb_glm import DifferentiableNBGLM, NBGLMConfig
 
 logger = logging.getLogger(__name__)
@@ -107,7 +108,7 @@ class DifferentialExpressionPipeline(OperatorModule):
         log_ratios = log_counts - geo_mean_log[None, :]
 
         # Size factor = median of ratios for each sample
-        size_factors = jnp.exp(jnp.median(log_ratios, axis=1))
+        size_factors = jnp.exp(soft_ops.median(log_ratios, axis=1, softness=0.1))
 
         # Normalize to have geometric mean of 1
         size_factors = size_factors / jnp.exp(jnp.mean(jnp.log(size_factors + 1e-8)))
@@ -180,7 +181,7 @@ class DifferentialExpressionPipeline(OperatorModule):
         p_values = 2.0 * p_one_sided
 
         # Clamp to [0, 1]
-        p_values = jnp.clip(p_values, 0.0, 1.0)
+        p_values = soft_ops.clip(p_values, 0.0, 1.0, softness=0.1)
 
         return p_values
 
@@ -198,7 +199,7 @@ class DifferentialExpressionPipeline(OperatorModule):
             Soft significance indicators of shape (n_genes,).
         """
         # Soft thresholding: significant if p < alpha
-        return jax.nn.sigmoid((alpha - p_values) / temperature)
+        return soft_ops.less(p_values, alpha, softness=temperature)
 
     def apply(
         self,

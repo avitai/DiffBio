@@ -24,6 +24,7 @@ from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.core import soft_ops
 from diffbio.core.base_operators import TemperatureOperator
 
 logger = logging.getLogger(__name__)
@@ -189,7 +190,7 @@ class DifferentiableDuplicateWeighting(TemperatureOperator):
         threshold = self.similarity_threshold[...]
 
         # Soft thresholding: sigmoid((similarity - threshold) / temperature)
-        soft_membership = jax.nn.sigmoid((similarity - threshold) / temp)
+        soft_membership = soft_ops.greater(similarity, threshold, softness=temp)
 
         # Sum memberships for each sequence (including self)
         cluster_sizes = jnp.sum(soft_membership, axis=1)

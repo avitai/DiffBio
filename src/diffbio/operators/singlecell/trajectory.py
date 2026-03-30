@@ -28,6 +28,7 @@ from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
 from diffbio.constants import DISTANCE_MASK_SENTINEL
+
 from diffbio.core.graph_utils import (
     compute_fuzzy_membership,
     compute_pairwise_distances,

@@ -24,6 +24,8 @@ from jax import Array
 
 from diffbio.core.soft_ops._utils import canonicalize_axis, validate_softness
 
+SimplexMode = Literal["smooth", "c0", "c1", "c2"]
+
 
 # --------------------------------------------------------------------------- #
 # C0 projection: Euclidean regularizer (threshold method)
@@ -189,7 +191,7 @@ def proj_simplex(
     x: Array,
     axis: int,
     softness: float | Array = 0.1,
-    mode: Literal["smooth", "c0", "c1", "c2"] = "smooth",
+    mode: SimplexMode = "smooth",
 ) -> Array:
     """Project ``x`` onto the unit simplex along ``axis``.
 

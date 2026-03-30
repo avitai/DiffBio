@@ -24,6 +24,7 @@ import jax.numpy as jnp
 from artifex.generative_models.core.losses.divergence import gaussian_kl_divergence
 from datarax.core.config import OperatorConfig
 
+from diffbio.core import soft_ops
 from diffbio.core.base_operators import TemperatureOperator
 from diffbio.utils.nn_utils import ensure_rngs, get_rng_key
 
@@ -435,10 +436,10 @@ class DifferentiablePeakCaller(TemperatureOperator):
         grad = jnp.diff(peak_probs, axis=-1, prepend=peak_probs[:, :1])
 
         # Soft peak starts (positive gradient)
-        peak_starts = jax.nn.sigmoid(grad * 10.0)  # Sharp transition
+        peak_starts = soft_ops.greater(grad, 0.0, softness=0.1)
 
         # Soft peak ends (negative gradient)
-        peak_ends = jax.nn.sigmoid(-grad * 10.0)
+        peak_ends = soft_ops.less(grad, 0.0, softness=0.1)
 
         return peak_starts, peak_ends
 
@@ -500,7 +501,7 @@ class DifferentiablePeakCaller(TemperatureOperator):
 
         # Apply soft threshold
         temperature = jnp.abs(self._temperature) + 1e-6
-        peak_probs = jax.nn.sigmoid((peak_scores - self.threshold[...]) / temperature)
+        peak_probs = soft_ops.greater(peak_scores, self.threshold[...], softness=temperature)
 
         # Find soft summits (local maxima)
         summit_probs = self._soft_local_max(

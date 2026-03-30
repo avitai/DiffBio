@@ -92,7 +92,10 @@ true_labels = jnp.concatenate([
 
 print(f"Total cells: {n_total} ({n_singlets} singlets + {n_doublets} doublets)")
 print(f"Counts shape: {counts.shape}")
-print(f"Mean expression - singlets: {singlet_counts.mean():.2f}, doublets: {doublet_counts.mean():.2f}")
+print(
+    f"Mean expression - singlets: {singlet_counts.mean():.2f},"
+    f" doublets: {doublet_counts.mean():.2f}"
+)
 
 # %% [markdown]
 # ## 2. DoubletScorer (Scrublet-Style Bayesian k-NN)
@@ -141,7 +144,7 @@ print(f"Predicted doublets shape: {preds_scrub.shape}")
 singlet_scores = scores_scrub[:n_singlets]
 doublet_scores_known = scores_scrub[n_singlets:]
 
-print(f"\nDoublet score statistics:")
+print("\nDoublet score statistics:")
 print(f"  Singlets - mean: {float(singlet_scores.mean()):.4f}, "
       f"std: {float(singlet_scores.std()):.4f}")
 print(f"  Doublets - mean: {float(doublet_scores_known.mean()):.4f}, "
@@ -161,7 +164,10 @@ ax.set_ylabel("Count")
 ax.set_title("DoubletScorer: Singlet vs Doublet Score Distribution")
 ax.legend()
 plt.tight_layout()
-plt.savefig("docs/assets/examples/singlecell/doublet_scorer_histogram.png", dpi=150, bbox_inches="tight")
+plt.savefig(
+    "docs/assets/examples/singlecell/doublet_scorer_histogram.png",
+    dpi=150, bbox_inches="tight",
+)
 plt.show()
 
 # %% [markdown]
@@ -211,7 +217,7 @@ print(f"Latent shape: {latent_solo.shape}")
 singlet_probs = probs_solo[:n_singlets]
 doublet_probs_known = probs_solo[n_singlets:]
 
-print(f"\nSolo doublet probability statistics:")
+print("\nSolo doublet probability statistics:")
 print(f"  Singlets - mean: {float(singlet_probs.mean()):.4f}, "
       f"std: {float(singlet_probs.std()):.4f}")
 print(f"  Doublets - mean: {float(doublet_probs_known.mean()):.4f}, "
@@ -231,7 +237,10 @@ ax.set_ylabel("Count")
 ax.set_title("SoloDetector: Singlet vs Doublet Score Distribution")
 ax.legend()
 plt.tight_layout()
-plt.savefig("docs/assets/examples/singlecell/doublet_solo_histogram.png", dpi=150, bbox_inches="tight")
+plt.savefig(
+    "docs/assets/examples/singlecell/doublet_solo_histogram.png",
+    dpi=150, bbox_inches="tight",
+)
 plt.show()
 
 # %% [markdown]

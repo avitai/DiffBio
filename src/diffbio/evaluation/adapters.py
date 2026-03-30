@@ -19,6 +19,7 @@ import jax.numpy as jnp
 import numpy as np
 from flax import nnx
 
+from diffbio.core import soft_ops
 from diffbio.evaluation.problem import BenchmarkProblem
 from diffbio.sources.anndata_interop import to_grader_answer
 
@@ -138,7 +139,7 @@ class TaskAdapter:
         # Propagate retention info
         if "retention_weights" not in result and "quality_scores" in adapted:
             quality = adapted["quality_scores"]
-            result["retention_weights"] = jax.nn.sigmoid(quality - threshold)
+            result["retention_weights"] = soft_ops.greater(quality, threshold, softness=1.0)
         return result
 
     def _run_clustering(self, data_dict: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:

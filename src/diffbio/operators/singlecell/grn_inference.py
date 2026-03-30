@@ -28,7 +28,6 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
@@ -36,6 +35,7 @@ from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
 from diffbio.constants import EPSILON
+from diffbio.core import soft_ops
 from diffbio.core.gnn_components import GATv2Layer
 from diffbio.utils.nn_utils import ensure_rngs
 
@@ -252,7 +252,7 @@ class DifferentiableGRN(OperatorModule):
         Returns:
             Sparsified GRN matrix.
         """
-        gate = jax.nn.sigmoid(grn_matrix / (self.sparsity_temperature + EPSILON))
+        gate = soft_ops.greater(grn_matrix, 0.0, softness=self.sparsity_temperature + EPSILON)
         return grn_matrix * gate
 
     def apply(

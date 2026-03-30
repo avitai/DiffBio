@@ -23,6 +23,7 @@ from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float
 
+from diffbio.core import soft_ops
 from diffbio.core.base_operators import TemperatureOperator
 
 logger = logging.getLogger(__name__)
@@ -315,7 +316,7 @@ class DifferentiableSpatialGeneDetector(TemperatureOperator):
         if "total_counts" in data:
             total_counts = data["total_counts"]
             expression_norm = expression / (total_counts[:, None] + 1e-6)
-            expression_norm = expression_norm * jnp.median(total_counts)
+            expression_norm = expression_norm * soft_ops.median(total_counts, softness=0.1)
         else:
             expression_norm = expression
 
@@ -331,7 +332,7 @@ class DifferentiableSpatialGeneDetector(TemperatureOperator):
         # Soft spatial classification using temperature-controlled sigmoid
         threshold = self.config.pvalue_threshold
         temp = self._temperature
-        is_spatial = nnx.sigmoid((threshold - pvalues) / temp)
+        is_spatial = soft_ops.less(pvalues, threshold, softness=temp)
 
         # Build output
         output_data = {

@@ -183,7 +183,7 @@ class TestQuantileInterpolationParams:
             quantile_interpolation_params(
                 jnp.array(0.5),
                 n=5,
-                method="bogus",
+                method="bogus",  # type: ignore[arg-type]
             )
 
 

@@ -19,6 +19,7 @@ import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 
+from diffbio.core import soft_ops
 from diffbio.core.base_operators import TemperatureOperator
 
 logger = logging.getLogger(__name__)
@@ -178,7 +179,7 @@ class DifferentiableMotifDiscovery(TemperatureOperator):
             Soft position indicators of shape (num_positions, num_motifs).
         """
         temperature = jnp.abs(self._temperature) + 1e-6
-        return jax.nn.sigmoid((scores - threshold) / temperature)
+        return soft_ops.greater(scores, threshold, softness=temperature)
 
     def _apply_single(self, sequence: jax.Array) -> dict:
         """Apply motif discovery to a single sequence.

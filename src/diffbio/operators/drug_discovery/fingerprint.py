@@ -12,13 +12,13 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-import jax
 import jax.numpy as jnp
 import numpy as np
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 
+from diffbio.core import soft_ops
 from diffbio.operators.drug_discovery._graph_utils import (
     attach_fingerprint,
     build_encoder,
@@ -314,11 +314,11 @@ class CircularFingerprintOperator(OperatorModule):
 
         # Apply temperature-scaled softmax for soft bit assignment
         # Higher temperature = softer bits, lower = sharper (more binary-like)
-        soft_bits = jax.nn.sigmoid(hash_logits / self.config.temperature)
+        soft_bits = soft_ops.greater(hash_logits, 0.0, softness=self.config.temperature)
 
         # Aggregate across atoms using max (OR-like) operation
         # This mimics how ECFP sets bits based on any substructure match
-        fingerprint = jnp.max(soft_bits, axis=0)
+        fingerprint = soft_ops.max(soft_bits, axis=0, softness=self.config.temperature)
 
         return fingerprint
 

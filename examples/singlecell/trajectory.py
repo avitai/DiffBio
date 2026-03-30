@@ -178,7 +178,10 @@ ax.set_ylabel("PC 2")
 ax.set_title("Cells Colored by Pseudotime")
 fig.colorbar(sc, ax=ax, label="Pseudotime")
 plt.tight_layout()
-plt.savefig("docs/assets/examples/singlecell/trajectory_pseudotime.png", dpi=150, bbox_inches="tight")
+plt.savefig(
+    "docs/assets/examples/singlecell/trajectory_pseudotime.png",
+    dpi=150, bbox_inches="tight",
+)
 plt.show()
 
 # %% [markdown]
@@ -225,7 +228,10 @@ print(f"Macrostates shape: {macrostates.shape}")
 # %%
 # Row sums should be ~1
 fate_sums = fate_probs.sum(axis=-1)
-print(f"Fate probability row sums: min={float(fate_sums.min()):.4f}, max={float(fate_sums.max()):.4f}")
+print(
+    f"Fate probability row sums:"
+    f" min={float(fate_sums.min()):.4f}, max={float(fate_sums.max()):.4f}"
+)
 
 # Branch A cells should favor terminal A (column 0)
 branch_a_fate = fate_probs[n_stem:n_stem + n_branch, 0]

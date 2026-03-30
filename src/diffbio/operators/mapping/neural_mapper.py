@@ -20,6 +20,7 @@ from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.configs import TemperatureConfig
+
 from diffbio.core.base_operators import TemperatureOperator
 
 logger = logging.getLogger(__name__)

@@ -61,7 +61,7 @@ def select_output_counts(
 def _require_torch() -> Any:
     """Import torch, raising a clear error if not installed."""
     try:
-        import torch  # noqa: PLC0415
+        import torch  # noqa: PLC0415  # pyright: ignore[reportMissingImports]
 
         return torch
     except ImportError as err:

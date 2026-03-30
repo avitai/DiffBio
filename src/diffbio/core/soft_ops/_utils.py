@@ -4,13 +4,14 @@ These are shared helpers used across the soft_ops submodules.
 Not part of the public API.
 """
 
-from typing import Literal
+from typing import Literal, overload
 
 import jax
 import jax.numpy as jnp
+from jax import Array
 
 
-def validate_softness(softness: jnp.ndarray) -> None:
+def validate_softness(softness: float | Array) -> None:
     """Raise ``ValueError`` if softness is not positive.
 
     Validation is skipped inside JAX-traced contexts (jit, grad, vmap)
@@ -26,7 +27,7 @@ def validate_softness(softness: jnp.ndarray) -> None:
         raise ValueError(msg)
 
 
-def ensure_float(x: jnp.ndarray) -> jnp.ndarray:
+def ensure_float(x: float | Array | jnp.ndarray) -> jnp.ndarray:
     """Cast to default float dtype if not already floating point.
 
     Args:
@@ -39,6 +40,27 @@ def ensure_float(x: jnp.ndarray) -> jnp.ndarray:
     if jnp.issubdtype(x.dtype, jnp.floating):
         return x
     return x.astype(jnp.result_type(float))
+
+
+@overload
+def standardize_and_squash(
+    x: jnp.ndarray,
+    axis: int = ...,
+    eps: float = ...,
+    temperature: float = ...,
+    return_mean_std: Literal[False] = ...,
+) -> jnp.ndarray: ...
+
+
+@overload
+def standardize_and_squash(
+    x: jnp.ndarray,
+    axis: int = ...,
+    eps: float = ...,
+    temperature: float = ...,
+    *,
+    return_mean_std: Literal[True],
+) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]: ...
 
 
 def standardize_and_squash(

@@ -4,9 +4,10 @@ import jax
 import jax.numpy as jnp
 import pytest
 
+from diffbio.core.soft_ops.elementwise import Mode
 from tests.core.test_soft_ops.conftest import assert_finite_grads, assert_softbool
 
-MODES = ["smooth", "c0", "c1", "c2"]
+MODES: list[Mode] = ["smooth", "c0", "c1", "c2"]
 
 
 class TestGreater:
@@ -22,7 +23,7 @@ class TestGreater:
         assert jnp.allclose(result, expected)
 
     @pytest.mark.parametrize("mode", MODES)
-    def test_output_is_softbool(self, mode: str) -> None:
+    def test_output_is_softbool(self, mode: Mode) -> None:
         from diffbio.core.soft_ops.comparison import greater
 
         x = jax.random.normal(jax.random.key(0), (10,))
@@ -31,7 +32,7 @@ class TestGreater:
         assert_softbool(result)
 
     @pytest.mark.parametrize("mode", MODES)
-    def test_differentiable(self, mode: str) -> None:
+    def test_differentiable(self, mode: Mode) -> None:
         from diffbio.core.soft_ops.comparison import greater
 
         x = jnp.array([1.0, 3.0])
@@ -67,7 +68,7 @@ class TestGreaterEqual:
         assert jnp.allclose(result, expected)
 
     @pytest.mark.parametrize("mode", MODES)
-    def test_output_is_softbool(self, mode: str) -> None:
+    def test_output_is_softbool(self, mode: Mode) -> None:
         from diffbio.core.soft_ops.comparison import greater_equal
 
         x = jax.random.normal(jax.random.key(0), (10,))
@@ -88,7 +89,7 @@ class TestLess:
         assert jnp.allclose(result, expected)
 
     @pytest.mark.parametrize("mode", MODES)
-    def test_complement_of_greater_equal(self, mode: str) -> None:
+    def test_complement_of_greater_equal(self, mode: Mode) -> None:
         from diffbio.core.soft_ops.comparison import greater_equal, less
 
         x = jax.random.normal(jax.random.key(0), (5,))
@@ -124,7 +125,7 @@ class TestEqual:
         assert jnp.allclose(result, expected)
 
     @pytest.mark.parametrize("mode", MODES)
-    def test_equal_values_high_probability(self, mode: str) -> None:
+    def test_equal_values_high_probability(self, mode: Mode) -> None:
         from diffbio.core.soft_ops.comparison import equal
 
         x = jnp.array([5.0, 5.0])
@@ -159,7 +160,7 @@ class TestIsclose:
         assert jnp.allclose(result, expected)
 
     @pytest.mark.parametrize("mode", MODES)
-    def test_close_values_high_probability(self, mode: str) -> None:
+    def test_close_values_high_probability(self, mode: Mode) -> None:
         from diffbio.core.soft_ops.comparison import isclose
 
         x = jnp.array([1.0, 1.0])

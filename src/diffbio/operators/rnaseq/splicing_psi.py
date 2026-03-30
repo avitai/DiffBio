@@ -19,6 +19,7 @@ import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 
+from diffbio.core import soft_ops
 from diffbio.core.base_operators import TemperatureOperator
 
 logger = logging.getLogger(__name__)
@@ -130,7 +131,9 @@ class SplicingPSI(TemperatureOperator):
 
         # Sigmoid-based confidence: approaches 1 as reads increase
         # Centered around min_total_reads
-        confidence = jax.nn.sigmoid((total_reads - min_reads) / (temperature * min_reads + 1e-6))
+        confidence = soft_ops.greater(
+            total_reads, min_reads, softness=temperature * min_reads + 1e-6
+        )
 
         return confidence
 

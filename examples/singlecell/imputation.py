@@ -216,7 +216,10 @@ hi = max(float(imputed[:, gene_idx].max()), float(ground_truth[:, gene_idx].max(
 ax.plot([lo, hi], [lo, hi], "k--", linewidth=0.8, alpha=0.5)
 
 plt.tight_layout()
-plt.savefig("docs/assets/examples/singlecell/imputation_correlation.png", dpi=150, bbox_inches="tight")
+plt.savefig(
+    "docs/assets/examples/singlecell/imputation_correlation.png",
+    dpi=150, bbox_inches="tight",
+)
 plt.show()
 
 # %% [markdown]

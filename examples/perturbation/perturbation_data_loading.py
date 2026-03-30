@@ -113,7 +113,10 @@ for ct in cell_types:
 
 n_cells = len(obs_records)
 print(f"Total cells: {n_cells}")
-print(f"  {len(cell_types)} cell types x {len(all_perts)} perturbations x {n_cells_per_group} cells")
+print(
+    f"  {len(cell_types)} cell types x {len(all_perts)}"
+    f" perturbations x {n_cells_per_group} cells"
+)
 
 # Count matrix with knockdown signal
 counts = rng.poisson(lam=5, size=(n_cells, n_genes)).astype(np.float32)
@@ -527,7 +530,10 @@ config = load_experiment_config(toml_path)
 print(f"Datasets: {[d.name for d in config.datasets]}")
 print(f"Training: {config.training_datasets}")
 print(f"Zeroshot: {[(z.cell_type, z.split) for z in config.zeroshot]}")
-print(f"Fewshot: {[(f.cell_type, f.val_perturbations, f.test_perturbations) for f in config.fewshot]}")
+print(
+    "Fewshot:"
+    f" {[(f.cell_type, f.val_perturbations, f.test_perturbations) for f in config.fewshot]}"
+)
 
 # %% [markdown]
 # ## Differentiable Downsampling
@@ -560,6 +566,7 @@ print(f"Downsampled total: {float(result_ds['counts'].sum()):.0f}")
 
 # Verify differentiability
 def ds_loss(counts):
+    """Compute sum of downsampled counts for gradient verification."""
     res, _, _ = downsampler.apply({"counts": counts}, {}, None)
     return res["counts"].sum()
 

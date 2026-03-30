@@ -29,6 +29,8 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.core import soft_ops
+
 from diffbio.operators.language_models.transformer_encoder import (
     TransformerSequenceEncoder,
     TransformerSequenceEncoderConfig,
@@ -138,31 +140,7 @@ def _soft_sort_permutation(
         approximates the probability that element *j* is at position *i*
         in the descending sort.
     """
-    n = values.shape[0]
-
-    # Pairwise differences: diff[i, j] = values[j] - values[i]
-    # Positive diff means j > i in value
-    diff = values[None, :] - values[:, None]
-
-    # Soft rank of each gene: sum of sigmoid(diff / temp) along columns
-    # soft_ranks[j] counts how many elements gene j beats (including 0.5 for self)
-    soft_ranks = jnp.sum(jax.nn.sigmoid(diff / temperature), axis=0)
-
-    # Remove self-comparison bias: sigmoid(0) = 0.5 always
-    soft_ranks_corrected = soft_ranks - 0.5
-
-    # Descending rank: highest-valued gene gets position 0
-    # soft_ranks_corrected[j] = number of genes strictly less than j (approx.)
-    # So descending position = (n - 1) - soft_ranks_corrected
-    positions = jnp.arange(n, dtype=jnp.float32)
-    descending_ranks = (n - 1) - soft_ranks_corrected
-
-    # Permutation matrix: P[i, j] = softmax(-|position_i - rank_j|^2 / temp)
-    # Each row selects which gene occupies that rank position
-    sq_dist = (positions[:, None] - descending_ranks[None, :]) ** 2
-    permutation = jax.nn.softmax(-sq_dist / temperature, axis=-1)
-
-    return permutation
+    return soft_ops.argsort(values, axis=0, descending=True, softness=temperature)
 
 
 class DifferentiableFoundationModel(OperatorModule):

@@ -4,10 +4,12 @@ import jax
 import jax.numpy as jnp
 import pytest
 
+from diffbio.core.soft_ops.sorting import ArgMethod, RankMethod, SortMethod
 from tests.core.test_soft_ops.conftest import assert_finite_grads, assert_simplex
 
-CORE_METHODS = ["softsort", "neuralsort", "sorting_network"]
-MODES = ["smooth", "c0", "c1", "c2"]
+CORE_ARG_METHODS: list[ArgMethod] = ["softsort", "neuralsort", "sorting_network"]
+CORE_SORT_METHODS: list[SortMethod] = ["softsort", "neuralsort", "sorting_network"]
+CORE_RANK_METHODS: list[RankMethod] = ["softsort", "neuralsort"]
 
 
 class TestArgmax:
@@ -21,16 +23,16 @@ class TestArgmax:
         expected = jnp.array([0.0, 1.0, 0.0])
         assert jnp.allclose(result, expected)
 
-    @pytest.mark.parametrize("method", CORE_METHODS)
-    def test_output_is_simplex(self, method: str) -> None:
+    @pytest.mark.parametrize("method", CORE_ARG_METHODS)
+    def test_output_is_simplex(self, method: ArgMethod) -> None:
         from diffbio.core.soft_ops.sorting import argmax
 
         x = jax.random.normal(jax.random.key(0), (5,))
         result = argmax(x, axis=0, softness=0.1, mode="smooth", method=method)
         assert_simplex(result, axis=-1, atol=1e-3)
 
-    @pytest.mark.parametrize("method", CORE_METHODS)
-    def test_low_softness_concentrates_on_max(self, method: str) -> None:
+    @pytest.mark.parametrize("method", CORE_ARG_METHODS)
+    def test_low_softness_concentrates_on_max(self, method: ArgMethod) -> None:
         from diffbio.core.soft_ops.sorting import argmax
 
         x = jnp.array([1.0, 5.0, 2.0])
@@ -45,8 +47,8 @@ class TestArgmax:
         # Shape should be (2, 1, 3) -- keepdims adds singleton
         assert result.shape == (2, 1, 3)
 
-    @pytest.mark.parametrize("method", CORE_METHODS)
-    def test_differentiable(self, method: str) -> None:
+    @pytest.mark.parametrize("method", CORE_ARG_METHODS)
+    def test_differentiable(self, method: ArgMethod) -> None:
         from diffbio.core.soft_ops.sorting import argmax
 
         x = jnp.array([1.0, 3.0, 2.0])
@@ -65,16 +67,16 @@ class TestMax:
         x = jnp.array([1.0, 5.0, 3.0])
         assert jnp.allclose(max(x, axis=0, mode="hard"), 5.0)
 
-    @pytest.mark.parametrize("method", CORE_METHODS)
-    def test_soft_max_approaches_hard(self, method: str) -> None:
+    @pytest.mark.parametrize("method", CORE_SORT_METHODS)
+    def test_soft_max_approaches_hard(self, method: SortMethod) -> None:
         from diffbio.core.soft_ops.sorting import max
 
         x = jnp.array([1.0, 5.0, 3.0])
         result = max(x, axis=0, softness=0.01, mode="smooth", method=method)
         assert jnp.allclose(result, 5.0, atol=0.5)
 
-    @pytest.mark.parametrize("method", CORE_METHODS)
-    def test_differentiable(self, method: str) -> None:
+    @pytest.mark.parametrize("method", CORE_SORT_METHODS)
+    def test_differentiable(self, method: SortMethod) -> None:
         from diffbio.core.soft_ops.sorting import max
 
         x = jnp.array([1.0, 5.0, 3.0])
@@ -119,8 +121,8 @@ class TestArgsort:
         # Row sums should be 1
         assert jnp.allclose(jnp.sum(result, axis=-1), 1.0)
 
-    @pytest.mark.parametrize("method", CORE_METHODS)
-    def test_rows_are_simplex(self, method: str) -> None:
+    @pytest.mark.parametrize("method", CORE_ARG_METHODS)
+    def test_rows_are_simplex(self, method: ArgMethod) -> None:
         from diffbio.core.soft_ops.sorting import argsort
 
         x = jnp.array([3.0, 1.0, 2.0])
@@ -134,8 +136,8 @@ class TestArgsort:
         for i in range(3):
             assert_simplex(result[i], axis=-1, atol=0.05)
 
-    @pytest.mark.parametrize("method", CORE_METHODS)
-    def test_differentiable(self, method: str) -> None:
+    @pytest.mark.parametrize("method", CORE_ARG_METHODS)
+    def test_differentiable(self, method: ArgMethod) -> None:
         from diffbio.core.soft_ops.sorting import argsort
 
         x = jnp.array([3.0, 1.0, 2.0])
@@ -162,8 +164,8 @@ class TestSort:
         result = sort(x, axis=0, descending=True, mode="hard")
         assert jnp.allclose(result, jnp.array([3.0, 2.0, 1.0]))
 
-    @pytest.mark.parametrize("method", CORE_METHODS)
-    def test_soft_sort_approaches_hard(self, method: str) -> None:
+    @pytest.mark.parametrize("method", CORE_SORT_METHODS)
+    def test_soft_sort_approaches_hard(self, method: SortMethod) -> None:
         from diffbio.core.soft_ops.sorting import sort
 
         x = jnp.array([5.0, 1.0, 3.0])
@@ -177,8 +179,8 @@ class TestSort:
         expected = jnp.array([1.0, 3.0, 5.0])
         assert jnp.allclose(result, expected, atol=1.0)
 
-    @pytest.mark.parametrize("method", CORE_METHODS)
-    def test_differentiable(self, method: str) -> None:
+    @pytest.mark.parametrize("method", CORE_SORT_METHODS)
+    def test_differentiable(self, method: SortMethod) -> None:
         from diffbio.core.soft_ops.sorting import sort
 
         x = jnp.array([3.0, 1.0, 2.0])
@@ -198,8 +200,8 @@ class TestSort:
 class TestRank:
     """Soft rank: fractional ranking via soft argsort."""
 
-    @pytest.mark.parametrize("method", ["softsort", "neuralsort"])
-    def test_basic_ranking(self, method: str) -> None:
+    @pytest.mark.parametrize("method", CORE_RANK_METHODS)
+    def test_basic_ranking(self, method: RankMethod) -> None:
         from diffbio.core.soft_ops.sorting import rank
 
         x = jnp.array([30.0, 10.0, 20.0])
@@ -213,8 +215,8 @@ class TestRank:
         # Expected ranks: 3, 1, 2 (ascending)
         assert jnp.allclose(result, jnp.array([3.0, 1.0, 2.0]), atol=0.5)
 
-    @pytest.mark.parametrize("method", ["softsort", "neuralsort"])
-    def test_differentiable(self, method: str) -> None:
+    @pytest.mark.parametrize("method", CORE_RANK_METHODS)
+    def test_differentiable(self, method: RankMethod) -> None:
         from diffbio.core.soft_ops.sorting import rank
 
         x = jnp.array([3.0, 1.0, 2.0])

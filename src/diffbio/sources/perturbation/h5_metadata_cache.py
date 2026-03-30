@@ -130,13 +130,14 @@ class GlobalH5MetadataCache:
 
     _instance: GlobalH5MetadataCache | None = None
     _lock = threading.Lock()
+    _cache: dict[str, H5MetadataCache]
 
     def __new__(cls) -> GlobalH5MetadataCache:
         """Return the singleton instance, creating it if necessary."""
         with cls._lock:
             if cls._instance is None:
                 cls._instance = super().__new__(cls)
-                cls._instance._cache: dict[str, H5MetadataCache] = {}
+                cls._instance._cache = {}
             return cls._instance
 
     def get_cache(

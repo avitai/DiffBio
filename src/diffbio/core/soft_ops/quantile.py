@@ -195,7 +195,7 @@ def quantile(
     keepdims: bool = False,
     softness: float | Array = 0.1,
     mode: Mode = "smooth",
-    method: str = "neuralsort",
+    method: ArgMethod = "neuralsort",
     quantile_method: Literal[
         "linear",
         "lower",
@@ -287,7 +287,7 @@ def median(
     keepdims: bool = False,
     softness: float | Array = 0.1,
     mode: Mode = "smooth",
-    method: str = "neuralsort",
+    method: ArgMethod = "neuralsort",
     standardize: bool = True,
     gated_grad: bool = True,
 ) -> Array:
@@ -335,7 +335,7 @@ def percentile(
     keepdims: bool = False,
     softness: float | Array = 0.1,
     mode: Mode = "smooth",
-    method: str = "neuralsort",
+    method: ArgMethod = "neuralsort",
     standardize: bool = True,
     gated_grad: bool = True,
 ) -> Array:

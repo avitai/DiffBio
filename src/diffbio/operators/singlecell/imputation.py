@@ -29,6 +29,7 @@ from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.constants import DISTANCE_MASK_SENTINEL
+from diffbio.core import soft_ops
 from diffbio.core.graph_utils import (
     compute_pairwise_distances,
     symmetrize_graph,
@@ -128,7 +129,7 @@ class DifferentiableDiffusionImputer(OperatorModule):
         k_eff = min(k, n - 2)
 
         # Local bandwidth: k-th nearest neighbor distance
-        sorted_dists = jnp.sort(distances, axis=-1)
+        sorted_dists = soft_ops.sort(distances, axis=-1, softness=0.1)
         sigma = jnp.maximum(sorted_dists[:, k_eff], 1e-8)
 
         # Alpha-decay kernel

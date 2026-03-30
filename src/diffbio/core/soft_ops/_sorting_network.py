@@ -13,12 +13,14 @@ import jax
 import jax.numpy as jnp
 from jax import Array
 
+from diffbio.core.soft_ops.elementwise import SigmoidalMode
+
 
 def _soft_compare_and_swap(
     a: Array,
     b: Array,
     softness: float | Array,
-    mode: str,
+    mode: SigmoidalMode,
 ) -> tuple[Array, Array, Array]:
     """Soft compare-and-swap via sigmoidal mixing.
 
@@ -36,7 +38,7 @@ def _soft_compare_and_swap(
 def _bitonic_sort_ascending(
     x: Array,
     softness: float | Array,
-    mode: str,
+    mode: SigmoidalMode,
 ) -> Array:
     """1-D ascending bitonic sort. ``x`` must have power-of-2 length."""
     n = x.shape[0]
@@ -67,7 +69,7 @@ def _bitonic_sort_ascending(
 def sort_via_sorting_network(
     x: Array,
     softness: float | Array,
-    mode: str,
+    mode: SigmoidalMode,
     descending: bool,
     standardized: bool = False,
 ) -> Array:
@@ -110,7 +112,7 @@ def sort_via_sorting_network(
 def _bitonic_argsort_ascending(
     x: Array,
     softness: float | Array,
-    mode: str,
+    mode: SigmoidalMode,
 ) -> tuple[Array, Array]:
     """1-D ascending bitonic sort with permutation tracking.
 
@@ -156,7 +158,7 @@ def _bitonic_argsort_ascending(
 def argsort_via_sorting_network(
     x: Array,
     softness: float | Array,
-    mode: str,
+    mode: SigmoidalMode,
     descending: bool,
     standardized: bool = False,
 ) -> Array:

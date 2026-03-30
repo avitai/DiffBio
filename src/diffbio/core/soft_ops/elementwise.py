@@ -280,8 +280,8 @@ def relu(
 
 def clip(
     x: Array,
-    a: Array,
-    b: Array,
+    a: float | Array,
+    b: float | Array,
     softness: float | Array = 0.1,
     mode: Mode = "smooth",
     gated: bool = False,

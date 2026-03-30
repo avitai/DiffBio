@@ -26,6 +26,7 @@ from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
 from diffbio.configs import TemperatureConfig
+from diffbio.core import soft_ops
 from diffbio.core.base_operators import GraphOperator
 from diffbio.utils.nn_utils import init_learnable_param
 
@@ -457,7 +458,7 @@ class GNNAssemblyNavigator(GraphOperator):
 
         # Traversal probabilities via sigmoid
         # Use inherited _temperature property for temperature-controlled sigmoid
-        traversal_probs = jax.nn.sigmoid(edge_scores / self._temperature)
+        traversal_probs = soft_ops.greater(edge_scores, 0.0, softness=self._temperature)
 
         # Path confidence: mean probability weighted by score magnitude
         path_confidence = jnp.mean(traversal_probs * jnp.abs(edge_scores))

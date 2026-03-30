@@ -14,11 +14,6 @@ from diffbio.utils.nn_utils import (
     forward_mlp,
     get_rng_key,
     init_learnable_param,
-    safe_divide,
-    safe_log,
-    sigmoid_blend,
-    soft_threshold,
-    temperature_scaled_softmax,
 )
 from diffbio.utils.training import (
     Trainer,
@@ -50,9 +45,4 @@ __all__ = [
     "forward_mlp",
     "get_rng_key",
     "init_learnable_param",
-    "safe_divide",
-    "safe_log",
-    "sigmoid_blend",
-    "soft_threshold",
-    "temperature_scaled_softmax",
 ]

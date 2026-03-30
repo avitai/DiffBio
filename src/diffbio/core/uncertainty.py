@@ -23,6 +23,8 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import PyTree
 
+from diffbio.core import soft_ops
+
 logger = logging.getLogger(__name__)
 
 
@@ -116,8 +118,8 @@ def _compute_uq_stats(
     mean = jnp.mean(stacked, axis=0)
     std = jnp.std(stacked, axis=0)
     alpha = 1.0 - confidence_level
-    lower = jnp.quantile(stacked, alpha / 2, axis=0)
-    upper = jnp.quantile(stacked, 1 - alpha / 2, axis=0)
+    lower = soft_ops.quantile(stacked, jnp.array(alpha / 2), axis=0, softness=0.1)
+    upper = soft_ops.quantile(stacked, jnp.array(1 - alpha / 2), axis=0, softness=0.1)
     return mean, std, lower, upper
 
 

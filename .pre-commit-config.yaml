@@ -119,7 +119,7 @@ repos:
     rev: 6.3.0
     hooks:
       - id: pydocstyle
-        exclude: ^(memory-bank|tests|.deprecated)/
+        exclude: ^(memory-bank|tests|.deprecated|examples)/
         additional_dependencies: ["pydocstyle[toml]"]
         args: ["--config=pyproject.toml"]
 

@@ -32,6 +32,7 @@ from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.constants import DISTANCE_MASK_SENTINEL
+from diffbio.core import soft_ops
 from diffbio.core.base_operators import EncoderDecoderOperator
 from diffbio.core.graph_utils import compute_pairwise_distances
 from diffbio.utils.nn_utils import build_mlp_decoder, build_mlp_encoder, ensure_rngs, forward_mlp
@@ -247,7 +248,7 @@ class DifferentiableDoubletScorer(OperatorModule):
         kth_dist = sorted_dists[:, k_eff - 1 : k_eff]  # (n_real, 1)
         # Soft indicator for being within k-NN (sigmoid approximation)
         temperature = 10.0
-        knn_mask = jax.nn.sigmoid(temperature * (kth_dist - masked_distances))
+        knn_mask = soft_ops.greater(kth_dist, masked_distances, softness=1.0 / temperature)
 
         # Weighted synthetic count (not fraction -- the Bayesian formula needs count)
         masked_weights = weights * knn_mask
@@ -337,7 +338,9 @@ class DifferentiableDoubletScorer(OperatorModule):
         doublet_scores = q * rho / r / denominator
 
         # Step 8: Soft threshold for predicted doublets (sigmoid on score)
-        predicted_doublets = jax.nn.sigmoid(config.threshold_temperature * (doublet_scores - 0.5))
+        predicted_doublets = soft_ops.greater(
+            doublet_scores, 0.5, softness=1.0 / config.threshold_temperature
+        )
 
         transformed_data = {
             **data,

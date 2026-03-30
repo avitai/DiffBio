@@ -29,6 +29,7 @@ from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
 from diffbio.constants import DISTANCE_MASK_SENTINEL, EPSILON
+from diffbio.core import soft_ops
 from diffbio.core.base_operators import GraphOperator, TemperatureOperator
 from diffbio.core.gnn_components import GATv2Layer
 from diffbio.core.graph_utils import (
@@ -236,7 +237,7 @@ class DifferentiableLigandReceptor(TemperatureOperator):
             z_score = (observed - expected) / (std_approx + EPSILON)
 
             # Soft p-value: high z-score -> low p-value
-            return 1.0 - jax.nn.sigmoid(z_score / temperature)
+            return soft_ops.less(z_score, 0.0, softness=temperature)
 
         n_pairs = lr_pairs.shape[0]
         pair_indices = jnp.arange(n_pairs)

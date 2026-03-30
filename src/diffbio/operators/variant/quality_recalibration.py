@@ -25,6 +25,7 @@ from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.core import soft_ops
 from diffbio.core.base_operators import TemperatureOperator
 
 logger = logging.getLogger(__name__)
@@ -255,7 +256,9 @@ class SoftVariantQualityFilter(TemperatureOperator):
         quality_scores = self.compute_quality_scores(features)
 
         # Soft filter weights using sigmoid threshold
-        filter_weights = jax.nn.sigmoid((quality_scores - self.threshold) / self._temperature)
+        filter_weights = soft_ops.greater(
+            quality_scores, self.threshold, softness=self._temperature
+        )
 
         # Component responsibilities
         component_probs = self.compute_responsibilities(features)

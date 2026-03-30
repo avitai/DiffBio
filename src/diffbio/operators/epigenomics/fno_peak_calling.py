@@ -20,11 +20,12 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
+
+from diffbio.core import soft_ops
 from jaxtyping import PyTree
 from opifex.neural.operators import FourierNeuralOperator
 
@@ -135,7 +136,7 @@ class FNOPeakCaller(OperatorModule):
 
         # Soft peak classification
         temp = self.config.temperature
-        probs = jax.nn.sigmoid((scores - self.threshold[...]) / temp)
+        probs = soft_ops.greater(scores, self.threshold[...], softness=temp)
 
         if unbatched:
             scores = scores.squeeze(0)

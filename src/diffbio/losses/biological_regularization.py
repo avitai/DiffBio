@@ -15,6 +15,8 @@ import jax.numpy as jnp
 from flax import nnx
 from jaxtyping import Array, Float
 
+from diffbio.core import soft_ops
+
 
 @dataclass
 class BiologicalRegularizationConfig:
@@ -88,7 +90,7 @@ class GCContentRegularization(nnx.Module):
 
         # Soft penalty: quadratic beyond tolerance
         deviation = jnp.abs(gc_content - target)
-        excess = jnp.maximum(deviation - tolerance, 0.0)
+        excess = soft_ops.relu(deviation - tolerance, softness=0.1)
 
         return excess**2
 
@@ -134,8 +136,8 @@ class GapPatternRegularization(nnx.Module):
             Scalar loss penalizing unrealistic gap patterns.
         """
         # Compute row-wise and column-wise alignment strengths
-        row_aligned = jnp.max(alignment_weights, axis=1)
-        col_aligned = jnp.max(alignment_weights, axis=0)
+        row_aligned = soft_ops.max(alignment_weights, axis=1, softness=0.1)
+        col_aligned = soft_ops.max(alignment_weights, axis=0, softness=0.1)
 
         # Penalize positions with very low alignment probability (gaps)
         # Using smooth measure of "gappiness"

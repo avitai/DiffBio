@@ -27,6 +27,8 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float
 
+from diffbio.core import soft_ops
+
 logger = logging.getLogger(__name__)
 
 # DSSP constants from Kabsch & Sander (1983)
@@ -304,7 +306,7 @@ class DifferentiableSecondaryStructure(OperatorModule):
 
         # Normalize and apply temperature
         helix_score = helix_score / 2.0  # Average of two patterns
-        helix_score = jnp.clip(helix_score, 0.0, 1.0)
+        helix_score = soft_ops.clip(helix_score, 0.0, 1.0, softness=0.1)
 
         return helix_score
 
@@ -335,8 +337,8 @@ class DifferentiableSecondaryStructure(OperatorModule):
         masked_hbond = hbond_map * distance_mask[None, :, :]
 
         # Score for each residue: max of incoming and outgoing non-local H-bonds
-        incoming = jnp.max(masked_hbond, axis=1)  # Max over donors
-        outgoing = jnp.max(masked_hbond, axis=2)  # Max over acceptors
+        incoming = soft_ops.max(masked_hbond, axis=1, softness=0.1)
+        outgoing = soft_ops.max(masked_hbond, axis=2, softness=0.1)
 
         strand_score = jnp.maximum(incoming, outgoing)
 

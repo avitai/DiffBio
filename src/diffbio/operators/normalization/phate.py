@@ -28,6 +28,7 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 
 from diffbio.constants import DISTANCE_MASK_SENTINEL, EPSILON
+from diffbio.core import soft_ops
 from diffbio.core.graph_utils import compute_pairwise_distances, symmetrize_graph
 
 logger = logging.getLogger(__name__)
@@ -137,7 +138,7 @@ class DifferentiablePHATE(OperatorModule):
         k_eff = min(k, n - 1)
 
         # Local bandwidth: distance to the k-th nearest neighbor
-        sorted_dists = jnp.sort(distances, axis=-1)
+        sorted_dists = soft_ops.sort(distances, axis=-1, softness=0.1)
         sigma = jnp.maximum(sorted_dists[:, k_eff - 1], EPSILON)
 
         # Gaussian kernel with adaptive bandwidth:

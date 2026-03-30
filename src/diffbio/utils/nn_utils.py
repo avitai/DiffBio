@@ -9,8 +9,6 @@ import jax.numpy as jnp
 from flax import nnx
 from jaxtyping import Array
 
-from diffbio.constants import DEFAULT_TEMPERATURE, EPSILON
-
 
 def init_learnable_param(value: float) -> nnx.Param:
     """Initialize a learnable parameter from a scalar value.
@@ -205,106 +203,6 @@ def build_mlp_layers(
         nnx.List(dropout_layers) if dropout_layers is not None else None,
         current_dim,
     )
-
-
-def soft_threshold(
-    values: Array,
-    threshold: Array | float,
-    temperature: float = DEFAULT_TEMPERATURE,
-) -> Array:
-    """Apply soft sigmoid-based thresholding.
-
-    Returns values close to 1 where values > threshold, and close to 0 otherwise.
-    The transition is smooth, controlled by temperature.
-
-    Args:
-        values: Input values to threshold.
-        threshold: Threshold value(s).
-        temperature: Controls sharpness of transition (lower = sharper).
-
-    Returns:
-        Soft thresholded values in [0, 1].
-
-    Example:
-        ```python
-        weights = soft_threshold(quality_scores, threshold=20.0, temperature=1.0)
-        filtered = sequence * weights[:, None]
-        ```
-    """
-    return jax.nn.sigmoid((values - threshold) / temperature)
-
-
-def temperature_scaled_softmax(
-    logits: Array,
-    temperature: float = DEFAULT_TEMPERATURE,
-    axis: int = -1,
-) -> Array:
-    """Apply softmax with temperature scaling.
-
-    Args:
-        logits: Input logits.
-        temperature: Temperature for scaling (higher = softer distribution).
-        axis: Axis along which to compute softmax.
-
-    Returns:
-        Probability distribution from temperature-scaled softmax.
-    """
-    return jax.nn.softmax(logits / temperature, axis=axis)
-
-
-def sigmoid_blend(
-    value_a: Array,
-    value_b: Array,
-    blend_weight: Array | float,
-) -> Array:
-    """Blend two values with sigmoid-weighted combination.
-
-    Computes: sigmoid(blend_weight) * value_a + (1 - sigmoid(blend_weight)) * value_b
-
-    Args:
-        value_a: First value (selected when blend_weight is high).
-        value_b: Second value (selected when blend_weight is low).
-        blend_weight: Raw weight (passed through sigmoid).
-
-    Returns:
-        Blended result.
-    """
-    weight = jax.nn.sigmoid(blend_weight)
-    return weight * value_a + (1 - weight) * value_b
-
-
-def safe_divide(
-    numerator: Array,
-    denominator: Array,
-    epsilon: float = EPSILON,
-) -> Array:
-    """Safely divide two arrays, avoiding division by zero.
-
-    Args:
-        numerator: Numerator array.
-        denominator: Denominator array.
-        epsilon: Small value to add to denominator.
-
-    Returns:
-        numerator / (denominator + epsilon)
-    """
-    return numerator / (denominator + epsilon)
-
-
-def safe_log(
-    x: Array,
-    epsilon: float = EPSILON,
-) -> Array:
-    """Safely compute log, avoiding log(0).
-
-    Args:
-        x: Input array (should be non-negative).
-        epsilon: Small value to add to input.
-
-    Returns:
-        log(x + epsilon)
-    """
-    return jnp.log(x + epsilon)
 
 
 def extract_windows_1d(

@@ -24,6 +24,7 @@ from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.core import soft_ops
 from diffbio.core.base_operators import TemperatureOperator
 from diffbio.sequences.dna import encode_dna_string
 
@@ -243,7 +244,7 @@ class SoftAdapterRemoval(TemperatureOperator):
         # Create position-based retention weights
         # retention = sigmoid((trim_pos - position) / temperature)
         positions = jnp.arange(seq_len, dtype=jnp.float32)
-        retention_weights = jax.nn.sigmoid((soft_trim_pos - positions) / temp)
+        retention_weights = soft_ops.greater(soft_trim_pos, positions, softness=temp)
 
         # Apply weights
         weighted_sequence = sequence * retention_weights[:, None]

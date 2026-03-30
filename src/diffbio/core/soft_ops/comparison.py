@@ -19,7 +19,7 @@ from diffbio.core.soft_ops.logical import logical_not
 
 def greater(
     x: Array,
-    y: Array,
+    y: float | Array,
     softness: float | Array = 0.1,
     mode: Mode = "smooth",
     epsilon: float = 1e-10,
@@ -47,7 +47,7 @@ def greater(
 
 def greater_equal(
     x: Array,
-    y: Array,
+    y: float | Array,
     softness: float | Array = 0.1,
     mode: Mode = "smooth",
     epsilon: float = 1e-10,
@@ -75,7 +75,7 @@ def greater_equal(
 
 def less(
     x: Array,
-    y: Array,
+    y: float | Array,
     softness: float | Array = 0.1,
     mode: Mode = "smooth",
     epsilon: float = 1e-10,
@@ -102,7 +102,7 @@ def less(
 
 def less_equal(
     x: Array,
-    y: Array,
+    y: float | Array,
     softness: float | Array = 0.1,
     mode: Mode = "smooth",
     epsilon: float = 1e-10,

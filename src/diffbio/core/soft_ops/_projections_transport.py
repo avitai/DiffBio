@@ -68,7 +68,7 @@ def _proj_transport_polytope_entropic_sinkhorn(
     nu: jax.Array,
     tol: float = 1e-6,
     max_iter: int = 1000,
-    epsilon: float = 1.0,
+    epsilon: float | Array = 1.0,
 ) -> jax.Array:
     """Solve entropic OT via Sinkhorn with implicit differentiation.
 
@@ -104,7 +104,7 @@ def _proj_transport_polytope_entropic_sinkhorn(
     nu = jnp.clip(nu, tiny)
     nu = nu / jnp.sum(nu)
 
-    geom = geometry.Geometry(cost_matrix=C, epsilon=epsilon)
+    geom = geometry.Geometry(cost_matrix=C, epsilon=epsilon)  # pyright: ignore[reportArgumentType]
     prob = linear_problem.LinearProblem(geom, a=mu, b=nu)
 
     implicit = idiff.ImplicitDiff(
@@ -131,7 +131,7 @@ def _proj_transport_polytope_entropic_lbfgs(
     C: jnp.ndarray,  # (n, m)
     mu: jnp.ndarray,  # (n,)
     nu: jnp.ndarray,  # (m,)
-    epsilon: jnp.ndarray,  # scalar
+    epsilon: float | Array,  # scalar
     tol: float,
     max_steps: int,
     gauge_fix: bool = True,
@@ -256,7 +256,7 @@ def _proj_transport_polytope_pnorm_lbfgs(
     C: jnp.ndarray,  # (n, m)
     mu: jnp.ndarray,  # (n,)
     nu: jnp.ndarray,  # (m,)
-    lam: jnp.ndarray,  # scalar
+    lam: float | Array,  # scalar
     tol: float,
     max_steps: int,
     gauge_fix: bool = True,

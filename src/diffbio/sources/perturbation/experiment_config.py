@@ -21,15 +21,10 @@ logger = logging.getLogger(__name__)
 
 
 def _require_toml() -> Any:
-    """Import tomllib (stdlib, Python 3.11+) or tomli fallback."""
-    try:
-        import tomllib  # noqa: PLC0415
+    """Import tomllib from the standard library (Python 3.11+)."""
+    import tomllib  # noqa: PLC0415
 
-        return tomllib
-    except ImportError:
-        import tomli  # noqa: PLC0415
-
-        return tomli
+    return tomllib
 
 
 # ---------------------------------------------------------------------------

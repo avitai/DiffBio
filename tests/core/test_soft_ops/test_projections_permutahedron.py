@@ -9,7 +9,10 @@ import jax
 import jax.numpy as jnp
 import pytest
 
+from diffbio.core.soft_ops._projections_simplex import SimplexMode
 from tests.core.test_soft_ops.conftest import assert_finite_grads
+
+PAV_MODES: list[SimplexMode] = ["c0", "c1", "c2"]
 
 try:
     import optimistix  # noqa: F401
@@ -22,8 +25,8 @@ except ImportError:
 class TestProjPermutahedronPAV:
     """Test permutahedron projection with PAV modes (no optional deps)."""
 
-    @pytest.mark.parametrize("mode", ["c0", "c1", "c2"])
-    def test_output_is_permutation_of_sorted_w(self, mode: str) -> None:
+    @pytest.mark.parametrize("mode", PAV_MODES)
+    def test_output_is_permutation_of_sorted_w(self, mode: SimplexMode) -> None:
         """Result should be a 'soft' permutation of w, lying in the
         permutahedron defined by w."""
         from diffbio.core.soft_ops._projections_permutahedron import (
@@ -37,8 +40,8 @@ class TestProjPermutahedronPAV:
         # Sum should be preserved (sum of result == sum of w)
         assert jnp.allclose(jnp.sum(result), jnp.sum(w), atol=0.5)
 
-    @pytest.mark.parametrize("mode", ["c0", "c1", "c2"])
-    def test_differentiable_wrt_z(self, mode: str) -> None:
+    @pytest.mark.parametrize("mode", PAV_MODES)
+    def test_differentiable_wrt_z(self, mode: SimplexMode) -> None:
         from diffbio.core.soft_ops._projections_permutahedron import (
             proj_permutahedron,
         )
@@ -50,8 +53,8 @@ class TestProjPermutahedronPAV:
             (z,),
         )
 
-    @pytest.mark.parametrize("mode", ["c0", "c1", "c2"])
-    def test_differentiable_wrt_w(self, mode: str) -> None:
+    @pytest.mark.parametrize("mode", PAV_MODES)
+    def test_differentiable_wrt_w(self, mode: SimplexMode) -> None:
         from diffbio.core.soft_ops._projections_permutahedron import (
             proj_permutahedron,
         )
@@ -63,8 +66,8 @@ class TestProjPermutahedronPAV:
             (w,),
         )
 
-    @pytest.mark.parametrize("mode", ["c0", "c1", "c2"])
-    def test_batch_via_vmap(self, mode: str) -> None:
+    @pytest.mark.parametrize("mode", PAV_MODES)
+    def test_batch_via_vmap(self, mode: SimplexMode) -> None:
         from diffbio.core.soft_ops._projections_permutahedron import (
             proj_permutahedron,
         )

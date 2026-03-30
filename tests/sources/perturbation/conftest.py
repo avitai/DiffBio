@@ -101,7 +101,7 @@ def _build_synthetic_adata(
     if include_barcodes:
         obs["barcode"] = [f"ACGT{i:04d}" for i in range(n_cells)]
 
-    var = pd.DataFrame({"gene_name": gene_names}, index=gene_names)
+    var = pd.DataFrame({"gene_name": gene_names}, index=pd.Index(gene_names))
     if include_hvg:
         is_hvg = np.zeros(n_genes, dtype=bool)
         is_hvg[: n_genes // 5] = True  # first 20 genes are HVG

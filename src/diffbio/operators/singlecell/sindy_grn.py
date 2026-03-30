@@ -34,6 +34,8 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.core import soft_ops
+
 logger = logging.getLogger(__name__)
 
 
@@ -98,7 +100,9 @@ def _soft_threshold(
     Returns:
         Soft-thresholded array: sign(x) * max(|x| - threshold, 0).
     """
-    return jnp.sign(x) * jax.nn.relu(jnp.abs(x) - threshold)
+    return soft_ops.sign(x, softness=0.1) * soft_ops.relu(
+        soft_ops.abs(x, softness=0.1) - threshold, softness=0.1
+    )
 
 
 def _stridge_solve(

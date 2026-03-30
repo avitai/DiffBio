@@ -7,7 +7,10 @@ Tests are skipped if dependencies are not installed.
 import jax.numpy as jnp
 import pytest
 
+from diffbio.core.soft_ops.elementwise import SigmoidalMode
 from tests.core.test_soft_ops.conftest import assert_finite_grads, assert_simplex
+
+_SOFT_MODES: list[SigmoidalMode] = ["smooth", "c0", "c1", "c2"]
 
 try:
     import optimistix  # noqa: F401
@@ -26,8 +29,8 @@ class TestFastSoftSort:
     """Test fast_soft_sort method (permutahedron PAV projection)."""
 
     @requires_optimistix
-    @pytest.mark.parametrize("mode", ["smooth", "c0", "c1", "c2"])
-    def test_sort_output_shape(self, mode: str) -> None:
+    @pytest.mark.parametrize("mode", _SOFT_MODES)
+    def test_sort_output_shape(self, mode: SigmoidalMode) -> None:
         from diffbio.core.soft_ops.sorting import sort
 
         x = jnp.array([3.0, 1.0, 4.0, 1.0, 5.0])

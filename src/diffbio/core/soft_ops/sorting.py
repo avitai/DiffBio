@@ -22,7 +22,7 @@ import jax
 import jax.numpy as jnp
 from jax import Array
 
-from diffbio.core.soft_ops._projections_simplex import proj_simplex
+from diffbio.core.soft_ops._projections_simplex import SimplexMode, proj_simplex
 from diffbio.core.soft_ops._sorting_network import (
     argsort_via_sorting_network,
     sort_via_sorting_network,
@@ -73,6 +73,7 @@ def _get_proj_transport_polytope():
 
 Mode = Literal["hard", "smooth", "c0", "c1", "c2"]
 ArgMethod = Literal["softsort", "neuralsort", "sorting_network", "ot"]
+RankMethod = Literal["softsort", "neuralsort"]
 SortMethod = Literal[
     "softsort",
     "neuralsort",
@@ -90,7 +91,7 @@ SortMethod = Literal[
 
 def _neuralsort_a_sum(
     x_last: Array,
-    mode: str,
+    mode: SimplexMode,
     softness: float | Array,
 ) -> Array:
     """``a_sum[..., j] = sum_i soft_abs(x[..., i] - x[..., j])``."""
@@ -114,7 +115,7 @@ def _softsort_fused_sort(
     x_last: Array,
     batch_dims: list[int],
     softness: float | Array,
-    mode: str,
+    mode: SimplexMode,
     descending: bool,
     standardize: bool,
     gated_grad: bool,
@@ -145,7 +146,7 @@ def _neuralsort_fused_sort(
     x_last: Array,
     batch_dims: list[int],
     softness: float | Array,
-    mode: str,
+    mode: SimplexMode,
     descending: bool,
     standardize: bool,
     gated_grad: bool,
@@ -194,7 +195,7 @@ def _softsort_fused_rank(
     x_last: Array,
     batch_dims: list[int],
     softness: float | Array,
-    mode: str,
+    mode: SimplexMode,
     descending: bool,
 ) -> Array:
     """Ranks via SoftSort, O(n) memory. x_last should be standardized."""
@@ -220,7 +221,7 @@ def _neuralsort_fused_rank(
     x_last: Array,
     batch_dims: list[int],
     softness: float | Array,
-    mode: str,
+    mode: SimplexMode,
     descending: bool,
 ) -> Array:
     """Ranks via NeuralSort, O(n) memory. x_last should be standardized."""
@@ -735,7 +736,7 @@ def rank(
     descending: bool = False,
     softness: float | Array = 0.1,
     mode: Mode = "smooth",
-    method: Literal["softsort", "neuralsort"] = "softsort",
+    method: RankMethod = "softsort",
     standardize: bool = True,
 ) -> Array:
     """Soft fractional ranking.

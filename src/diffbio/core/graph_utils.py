@@ -9,6 +9,8 @@ imputation, and other graph-based operators.
 import jax
 import jax.numpy as jnp
 
+from diffbio.core import soft_ops
+
 __all__ = [
     "compute_pairwise_distances",
     "compute_knn_graph",
@@ -94,6 +96,7 @@ def compute_knn_graph(
 def compute_fuzzy_membership(
     distances: jax.Array,
     k: int,
+    softness: float = 0.1,
 ) -> jax.Array:
     """Compute fuzzy set membership using a Gaussian kernel with local bandwidth.
 
@@ -115,7 +118,7 @@ def compute_fuzzy_membership(
     k_eff = min(k, n - 1)
 
     # Local bandwidth: distance to the k-th nearest neighbour
-    sorted_dists = jnp.sort(distances, axis=-1)
+    sorted_dists = soft_ops.sort(distances, axis=-1, softness=softness)
     sigma = sorted_dists[:, k_eff - 1 : k_eff].squeeze(-1)
     sigma = jnp.maximum(sigma, 1e-8)
 

@@ -108,7 +108,7 @@ counts = (base_expression + domain_signal).astype(jnp.float32)
 counts = counts + jax.random.uniform(k2, counts.shape) * 0.1
 
 print(f"Expression shape: {counts.shape}")
-print(f"Mean expression per domain (first 5 genes):")
+print("Mean expression per domain (first 5 genes):")
 for d in range(n_domains_true):
     d_mask = domain_labels == d
     mean_expr = jnp.where(d_mask[:, None], counts, 0.0).sum(axis=0) / d_mask.sum()
