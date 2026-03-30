@@ -41,14 +41,16 @@ import jax.numpy as jnp
 import optax
 from flax import nnx
 
+from benchmarks._common import save_benchmark_result
+
 # DiffBio imports
-from diffbio.sources import MolNetSource, MolNetSourceConfig
 from diffbio.operators.drug_discovery import (
-    CircularFingerprintOperator,
     CircularFingerprintConfig,
-    MACCSKeysOperator,
+    CircularFingerprintOperator,
     MACCSKeysConfig,
+    MACCSKeysOperator,
 )
+from diffbio.sources import MolNetSource, MolNetSourceConfig
 from diffbio.splitters import (
     RandomSplitter,
     RandomSplitterConfig,
@@ -57,9 +59,9 @@ from diffbio.splitters import (
 )
 
 
-@dataclass
-class BenchmarkConfig:
-    """Configuration for a benchmark run."""
+@dataclass(kw_only=True)
+class MolNetBenchmarkConfig:
+    """Configuration for a MolNet benchmark run."""
 
     dataset: str = "bbbp"
     featurizer: str = "ecfp"
@@ -71,11 +73,11 @@ class BenchmarkConfig:
     seed: int = 42
 
 
-@dataclass
-class BenchmarkResult:
-    """Results from a single benchmark run."""
+@dataclass(frozen=True, kw_only=True)
+class MolNetBenchmarkResult:
+    """Results from a single MolNet benchmark run."""
 
-    config: BenchmarkConfig
+    config: MolNetBenchmarkConfig
     n_train: int = 0
     n_valid: int = 0
     n_test: int = 0
@@ -99,7 +101,10 @@ class BenchmarkResult:
     test_r2: float | None = None
 
 
-def create_featurizer(featurizer_type: str, rngs: nnx.Rngs):
+def create_featurizer(
+    featurizer_type: str,
+    rngs: nnx.Rngs,
+) -> tuple:
     """Create a molecular featurizer operator.
 
     Args:
@@ -263,7 +268,7 @@ def train_and_evaluate(
     X_test: jnp.ndarray,
     y_test: jnp.ndarray,
     task_type: str,
-    config: BenchmarkConfig,
+    config: MolNetBenchmarkConfig,
 ) -> tuple[dict, float]:
     """Train model and evaluate on all splits.
 
@@ -286,7 +291,9 @@ def train_and_evaluate(
     else:
         model = SimpleRegressor(n_features, config.hidden_dim, rngs=rngs)
 
-    optimizer = nnx.Optimizer(model, optax.adam(config.learning_rate))  # pyright: ignore[reportCallIssue]
+    optimizer = nnx.Optimizer(  # pyright: ignore[reportCallIssue]
+        model, optax.adam(config.learning_rate),
+    )
 
     # Training step
     @nnx.jit
@@ -295,7 +302,9 @@ def train_and_evaluate(
             pred = m(x)
             if task_type == "classification":
                 pred = nnx.sigmoid(pred).squeeze()
-                return -jnp.mean(y * jnp.log(pred + 1e-7) + (1 - y) * jnp.log(1 - pred + 1e-7))
+                pos = y * jnp.log(pred + 1e-7)
+                neg = (1 - y) * jnp.log(1 - pred + 1e-7)
+                return -jnp.mean(pos + neg)
             else:
                 return jnp.mean((pred - y) ** 2)
 
@@ -348,17 +357,22 @@ def train_and_evaluate(
     return metrics, train_time
 
 
-def run_benchmark(config: BenchmarkConfig) -> BenchmarkResult:
-    """Run a complete benchmark for a dataset/featurizer/split combination.
+def _run_single_benchmark(
+    config: MolNetBenchmarkConfig,
+) -> MolNetBenchmarkResult:
+    """Run a complete benchmark for a dataset/featurizer/split combo.
 
     Args:
-        config: Benchmark configuration
+        config: Benchmark configuration.
 
     Returns:
-        BenchmarkResult with all metrics
+        MolNetBenchmarkResult with all metrics.
     """
     print(f"\n{'=' * 60}")
-    print(f"Benchmark: {config.dataset} | {config.featurizer} | {config.split}")
+    print(
+        f"Benchmark: {config.dataset} | "
+        f"{config.featurizer} | {config.split}"
+    )
     print(f"{'=' * 60}")
 
     rngs = nnx.Rngs(config.seed)
@@ -447,7 +461,7 @@ def run_benchmark(config: BenchmarkConfig) -> BenchmarkResult:
         print(f"  Valid RMSE: {metrics['valid_rmse']:.4f}, R²: {metrics['valid_r2']:.4f}")
         print(f"  Test RMSE:  {metrics['test_rmse']:.4f}, R²: {metrics['test_r2']:.4f}")
 
-    return BenchmarkResult(
+    return MolNetBenchmarkResult(
         config=config,
         n_train=len(X_train),
         n_valid=len(X_valid),
@@ -460,34 +474,70 @@ def run_benchmark(config: BenchmarkConfig) -> BenchmarkResult:
     )
 
 
-def run_all_benchmarks(output_dir: Path) -> list[BenchmarkResult]:
+def run_benchmark(
+    *,
+    quick: bool = False,
+) -> MolNetBenchmarkResult:
+    """Run a representative MolNet benchmark.
+
+    Creates a default config (BBBP with ECFP, random split) and
+    runs a single benchmark. Used by ``run_all.py``.
+
+    Args:
+        quick: If True, train for 20 epochs instead of 100.
+
+    Returns:
+        MolNetBenchmarkResult for the BBBP/ECFP/random run.
+    """
+    n_epochs = 20 if quick else 100
+    config = MolNetBenchmarkConfig(
+        dataset="bbbp",
+        featurizer="ecfp",
+        split="random",
+        n_epochs=n_epochs,
+    )
+    result = _run_single_benchmark(config)
+    save_benchmark_result(
+        result=asdict(result),
+        domain="drug_discovery",
+        benchmark_name="molnet_benchmark",
+    )
+    return result
+
+
+def run_all_benchmarks(
+    output_dir: Path,
+) -> list[MolNetBenchmarkResult]:
     """Run benchmarks on all dataset/featurizer combinations.
 
     Args:
-        output_dir: Directory to save results
+        output_dir: Directory to save results.
 
     Returns:
-        List of benchmark results
+        List of benchmark results.
     """
     datasets = ["bbbp", "esol", "lipophilicity"]
     featurizers = ["ecfp", "maccs"]
     splits = ["random", "scaffold"]
 
-    results = []
+    results: list[MolNetBenchmarkResult] = []
 
     for dataset in datasets:
         for featurizer in featurizers:
             for split in splits:
-                config = BenchmarkConfig(
+                config = MolNetBenchmarkConfig(
                     dataset=dataset,
                     featurizer=featurizer,
                     split=split,
                 )
                 try:
-                    result = run_benchmark(config)
+                    result = _run_single_benchmark(config)
                     results.append(result)
                 except Exception as e:
-                    print(f"Error: {dataset}/{featurizer}/{split}: {e}")
+                    print(
+                        f"Error: {dataset}/"
+                        f"{featurizer}/{split}: {e}"
+                    )
                     continue
 
     # Save results
@@ -507,7 +557,7 @@ def run_all_benchmarks(output_dir: Path) -> list[BenchmarkResult]:
     return results
 
 
-def print_summary(results: list[BenchmarkResult]) -> None:
+def print_summary(results: list[MolNetBenchmarkResult]) -> None:
     """Print a summary table of benchmark results."""
     print("\n" + "=" * 80)
     print("BENCHMARK SUMMARY")
@@ -546,9 +596,16 @@ def print_summary(results: list[BenchmarkResult]) -> None:
                     ),
                     None,
                 )
-                ecfp_val = f"{ecfp.test_roc_auc:.4f}" if ecfp else "N/A"
-                maccs_val = f"{maccs.test_roc_auc:.4f}" if maccs else "N/A"
-                print(f"{dataset:<12} {split:<10} {ecfp_val:<12} {maccs_val:<12}")
+                ecfp_val = (
+                    f"{ecfp.test_roc_auc:.4f}" if ecfp else "N/A"
+                )
+                maccs_val = (
+                    f"{maccs.test_roc_auc:.4f}" if maccs else "N/A"
+                )
+                print(
+                    f"{dataset:<12} {split:<10} "
+                    f"{ecfp_val:<12} {maccs_val:<12}"
+                )
 
     if regression:
         print("\nRegression Tasks (Test RMSE / R²):")
@@ -579,16 +636,29 @@ def print_summary(results: list[BenchmarkResult]) -> None:
                     ),
                     None,
                 )
-                ecfp_val = f"{ecfp.test_rmse:.3f}/{ecfp.test_r2:.3f}" if ecfp else "N/A"
-                maccs_val = f"{maccs.test_rmse:.3f}/{maccs.test_r2:.3f}" if maccs else "N/A"
-                print(f"{dataset:<12} {split:<10} {ecfp_val:<20} {maccs_val:<20}")
+                ecfp_val = (
+                    f"{ecfp.test_rmse:.3f}/{ecfp.test_r2:.3f}"
+                    if ecfp
+                    else "N/A"
+                )
+                maccs_val = (
+                    f"{maccs.test_rmse:.3f}/{maccs.test_r2:.3f}"
+                    if maccs
+                    else "N/A"
+                )
+                print(
+                    f"{dataset:<12} {split:<10} "
+                    f"{ecfp_val:<20} {maccs_val:<20}"
+                )
 
     print("=" * 80)
 
 
-def main():
+def main() -> None:
     """Main entry point."""
-    parser = argparse.ArgumentParser(description="Run MolNet benchmarks using DiffBio operators")
+    parser = argparse.ArgumentParser(
+        description="Run MolNet benchmarks using DiffBio operators",
+    )
     parser.add_argument(
         "--dataset",
         type=str,
@@ -633,13 +703,13 @@ def main():
         results = run_all_benchmarks(args.output_dir)
         print_summary(results)
     elif args.dataset:
-        config = BenchmarkConfig(
+        config = MolNetBenchmarkConfig(
             dataset=args.dataset,
             featurizer=args.featurizer,
             split=args.split,
             n_epochs=args.epochs,
         )
-        run_benchmark(config)
+        _run_single_benchmark(config)
         print("\nFinal result saved.")
     else:
         parser.print_help()

@@ -26,16 +26,18 @@ import jax.numpy as jnp
 import numpy as np
 from flax import nnx
 
+from benchmarks._common import save_benchmark_result
+
 from diffbio.operators.drug_discovery import (
-    CircularFingerprintOperator,
+    DEFAULT_ATOM_FEATURES,
     CircularFingerprintConfig,
-    MACCSKeysOperator,
-    MACCSKeysConfig,
+    CircularFingerprintOperator,
     DifferentiableMolecularFingerprint,
+    MACCSKeysConfig,
+    MACCSKeysOperator,
     MolecularFingerprintConfig,
     smiles_to_graph,
     tanimoto_similarity,
-    DEFAULT_ATOM_FEATURES,
 )
 
 
@@ -60,7 +62,7 @@ TEST_MOLECULES = [
 ]
 
 
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class FingerprintBenchmarkResult:
     """Results from fingerprint benchmark."""
 
@@ -298,13 +300,20 @@ def compute_correlation(fps1: list[np.ndarray], fps2: list[np.ndarray]) -> float
     return float(np.mean(correlations))
 
 
-def run_benchmark() -> FingerprintBenchmarkResult:
-    """Run the complete fingerprint benchmark."""
+def _run_full_benchmark(
+    molecules: list[tuple[str, str]],
+) -> FingerprintBenchmarkResult:
+    """Run the complete fingerprint benchmark.
+
+    Args:
+        molecules: List of (name, SMILES) tuples to benchmark.
+
+    Returns:
+        FingerprintBenchmarkResult with all metrics.
+    """
     print("=" * 60)
     print("DiffBio Fingerprint Benchmark")
     print("=" * 60)
-
-    molecules = TEST_MOLECULES
 
     # Test each fingerprint type
     ecfp_metrics = test_ecfp_fingerprints(molecules)
@@ -362,11 +371,41 @@ def run_benchmark() -> FingerprintBenchmarkResult:
     return result
 
 
-def save_results(result: FingerprintBenchmarkResult, output_dir: Path) -> None:
+def run_benchmark(
+    *,
+    quick: bool = False,
+) -> FingerprintBenchmarkResult:
+    """Run a fingerprint benchmark.
+
+    When called with ``quick=True``, uses a reduced molecule set
+    (first 6 molecules) for faster CI runs. Used by ``run_all.py``.
+
+    Args:
+        quick: If True, benchmark fewer molecules.
+
+    Returns:
+        FingerprintBenchmarkResult with all metrics.
+    """
+    molecules = TEST_MOLECULES[:6] if quick else TEST_MOLECULES
+    result = _run_full_benchmark(molecules)
+    save_benchmark_result(
+        result=asdict(result),
+        domain="drug_discovery",
+        benchmark_name="fingerprint_benchmark",
+    )
+    return result
+
+
+def _save_results(
+    result: FingerprintBenchmarkResult,
+    output_dir: Path,
+) -> None:
     """Save benchmark results to JSON."""
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = output_dir / f"fingerprint_benchmark_{timestamp}.json"
+    output_file = (
+        output_dir / f"fingerprint_benchmark_{timestamp}.json"
+    )
 
     with open(output_file, "w") as f:
         json.dump(asdict(result), f, indent=2)
@@ -374,10 +413,10 @@ def save_results(result: FingerprintBenchmarkResult, output_dir: Path) -> None:
     print(f"Results saved to: {output_file}")
 
 
-def main():
+def main() -> None:
     """Main entry point."""
     result = run_benchmark()
-    save_results(result, Path("benchmarks/results"))
+    _save_results(result, Path("benchmarks/results"))
 
 
 if __name__ == "__main__":

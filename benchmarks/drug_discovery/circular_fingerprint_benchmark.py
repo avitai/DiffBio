@@ -22,12 +22,14 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
 import jax.numpy as jnp
 import numpy as np
+
+from benchmarks._common import save_benchmark_result
 
 # DiffBio imports
 from diffbio.operators.drug_discovery import (
@@ -179,9 +181,9 @@ def validate_smiles(smiles_list: list[tuple[str, str]]) -> list[tuple[str, str]]
     return valid
 
 
-@dataclass
-class BenchmarkResult:
-    """Results from a single benchmark run."""
+@dataclass(frozen=True, kw_only=True)
+class CircularFingerprintBenchmarkResult:
+    """Results from a single circular fingerprint benchmark run."""
 
     name: str
     n_molecules: int
@@ -302,15 +304,15 @@ def compare_fingerprints(
     }
 
 
-def run_benchmark(
+def _run_single_comparison(
     name: str,
     smiles_list: list[str],
     radius: int = 2,
     n_bits: int = 2048,
     n_warmup: int = 5,
     n_runs: int = 20,
-) -> BenchmarkResult:
-    """Run a complete benchmark comparing DiffBio and DeepChem."""
+) -> CircularFingerprintBenchmarkResult:
+    """Run a single comparison between DiffBio and DeepChem."""
     print(f"\n{'=' * 60}")
     print(f"Benchmark: {name}")
     print(f"  Molecules: {len(smiles_list)}")
@@ -347,25 +349,33 @@ def run_benchmark(
     avg_deepchem_time = np.mean(deepchem_times)
     n_mols = len(smiles_list)
 
-    result = BenchmarkResult(
+    result = CircularFingerprintBenchmarkResult(
         name=name,
         n_molecules=n_mols,
         mean_tanimoto=float(comparison["mean_tanimoto"]),
         min_tanimoto=float(comparison["min_tanimoto"]),
         max_tanimoto=float(comparison["max_tanimoto"]),
         exact_match_rate=float(comparison["exact_match_rate"]),
-        mean_bit_agreement=float(comparison["mean_bit_agreement"]),
+        mean_bit_agreement=float(
+            comparison["mean_bit_agreement"],
+        ),
         diffbio_time_ms=float(avg_diffbio_time),
         deepchem_time_ms=float(avg_deepchem_time),
-        diffbio_mols_per_sec=float((n_mols / avg_diffbio_time) * 1000),
-        deepchem_mols_per_sec=float((n_mols / avg_deepchem_time) * 1000),
+        diffbio_mols_per_sec=float(
+            (n_mols / avg_diffbio_time) * 1000,
+        ),
+        deepchem_mols_per_sec=float(
+            (n_mols / avg_deepchem_time) * 1000,
+        ),
         speedup=float(avg_deepchem_time / avg_diffbio_time),
     )
 
     return result
 
 
-def print_results(results: list[BenchmarkResult]) -> None:
+def print_results(
+    results: list[CircularFingerprintBenchmarkResult],
+) -> None:
     """Print benchmark results in a formatted table."""
     try:
         from tabulate import tabulate
@@ -397,7 +407,13 @@ def print_results(results: list[BenchmarkResult]) -> None:
     print(
         tabulate(
             accuracy_table,
-            headers=["Benchmark", "Mean Tanimoto", "Min Tanimoto", "Bit Agreement", "Exact Match"],
+            headers=[
+                "Benchmark",
+                "Mean Tanimoto",
+                "Min Tanimoto",
+                "Bit Agreement",
+                "Exact Match",
+            ],
             tablefmt="grid",
         )
     )
@@ -435,35 +451,21 @@ def print_results(results: list[BenchmarkResult]) -> None:
     )
 
 
-def save_results(results: list[BenchmarkResult], output_dir: Path) -> None:
+def _save_results(
+    results: list[CircularFingerprintBenchmarkResult],
+    output_dir: Path,
+) -> None:
     """Save benchmark results to JSON."""
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = output_dir / f"circular_fingerprint_benchmark_{timestamp}.json"
+    output_file = (
+        output_dir
+        / f"circular_fingerprint_benchmark_{timestamp}.json"
+    )
 
     data = {
         "timestamp": timestamp,
-        "benchmarks": [
-            {
-                "name": r.name,
-                "n_molecules": r.n_molecules,
-                "accuracy": {
-                    "mean_tanimoto": r.mean_tanimoto,
-                    "min_tanimoto": r.min_tanimoto,
-                    "max_tanimoto": r.max_tanimoto,
-                    "exact_match_rate": r.exact_match_rate,
-                    "mean_bit_agreement": r.mean_bit_agreement,
-                },
-                "performance": {
-                    "diffbio_time_ms": r.diffbio_time_ms,
-                    "deepchem_time_ms": r.deepchem_time_ms,
-                    "diffbio_mols_per_sec": r.diffbio_mols_per_sec,
-                    "deepchem_mols_per_sec": r.deepchem_mols_per_sec,
-                    "speedup": r.speedup,
-                },
-            }
-            for r in results
-        ],
+        "benchmarks": [asdict(r) for r in results],
     }
 
     with open(output_file, "w") as f:
@@ -472,25 +474,80 @@ def save_results(results: list[BenchmarkResult], output_dir: Path) -> None:
     print(f"\nResults saved to: {output_file}")
 
 
-def main():
-    """Run the full benchmark suite."""
+def run_benchmark(
+    *,
+    quick: bool = False,
+) -> CircularFingerprintBenchmarkResult:
+    """Run a representative circular fingerprint benchmark.
+
+    When ``quick=True``, uses only the first 10 molecules and
+    fewer timed runs. Used by ``run_all.py``.
+
+    Args:
+        quick: If True, use reduced molecule set and fewer runs.
+
+    Returns:
+        CircularFingerprintBenchmarkResult for ECFP4 comparison.
+    """
     print("=" * 80)
     print("DiffBio vs DeepChem: Circular Fingerprint Benchmark")
     print("=" * 80)
 
-    # Validate molecules first
+    print("\nValidating molecules...")
+    if quick:
+        valid_molecules = validate_smiles(TEST_MOLECULES[:10])
+    else:
+        valid_molecules = validate_smiles(TEST_MOLECULES)
+    print(
+        f"Using {len(valid_molecules)} valid molecules "
+        f"out of {len(TEST_MOLECULES)}"
+    )
+
+    smiles_list = [smiles for _, smiles in valid_molecules]
+    n_warmup = 2 if quick else 5
+    n_runs = 5 if quick else 20
+
+    # Always run ECFP4 as the representative benchmark
+    result = _run_single_comparison(
+        name="ECFP4 (radius=2, 2048 bits)",
+        smiles_list=smiles_list,
+        radius=2,
+        n_bits=2048,
+        n_warmup=n_warmup,
+        n_runs=n_runs,
+    )
+
+    save_benchmark_result(
+        result=asdict(result),
+        domain="drug_discovery",
+        benchmark_name="circular_fingerprint_benchmark",
+    )
+    return result
+
+
+def run_all_comparisons() -> None:
+    """Run the full comparison suite (all radii and bit sizes).
+
+    Called by ``main()`` for the CLI entry point.
+    """
+    print("=" * 80)
+    print("DiffBio vs DeepChem: Circular Fingerprint Benchmark")
+    print("=" * 80)
+
     print("\nValidating molecules...")
     valid_molecules = validate_smiles(TEST_MOLECULES)
-    print(f"Using {len(valid_molecules)} valid molecules out of {len(TEST_MOLECULES)}")
+    print(
+        f"Using {len(valid_molecules)} valid molecules "
+        f"out of {len(TEST_MOLECULES)}"
+    )
 
-    # Extract SMILES from validated molecules
     smiles_list = [smiles for _, smiles in valid_molecules]
 
-    results = []
+    results: list[CircularFingerprintBenchmarkResult] = []
 
     # Benchmark 1: ECFP4 (radius=2)
     results.append(
-        run_benchmark(
+        _run_single_comparison(
             name="ECFP4 (radius=2, 2048 bits)",
             smiles_list=smiles_list,
             radius=2,
@@ -500,7 +557,7 @@ def main():
 
     # Benchmark 2: ECFP6 (radius=3)
     results.append(
-        run_benchmark(
+        _run_single_comparison(
             name="ECFP6 (radius=3, 2048 bits)",
             smiles_list=smiles_list,
             radius=3,
@@ -510,7 +567,7 @@ def main():
 
     # Benchmark 3: Different bit sizes
     results.append(
-        run_benchmark(
+        _run_single_comparison(
             name="ECFP4 (radius=2, 1024 bits)",
             smiles_list=smiles_list,
             radius=2,
@@ -519,7 +576,7 @@ def main():
     )
 
     results.append(
-        run_benchmark(
+        _run_single_comparison(
             name="ECFP4 (radius=2, 4096 bits)",
             smiles_list=smiles_list,
             radius=2,
@@ -536,23 +593,42 @@ def main():
     print("=" * 80)
 
     avg_tanimoto = np.mean([r.mean_tanimoto for r in results])
-    avg_bit_agreement = np.mean([r.mean_bit_agreement for r in results])
+    avg_bit_agreement = np.mean(
+        [r.mean_bit_agreement for r in results],
+    )
     avg_speedup = np.mean([r.speedup for r in results])
 
     print(f"Average Tanimoto Similarity: {avg_tanimoto:.4f}")
     print(f"Average Bit Agreement: {avg_bit_agreement:.2%}")
-    print(f"Average Speedup (DiffBio vs DeepChem): {avg_speedup:.2f}x")
+    print(
+        f"Average Speedup (DiffBio vs DeepChem): "
+        f"{avg_speedup:.2f}x"
+    )
 
     if avg_tanimoto >= 0.99:
-        print("\n[PASS] DiffBio fingerprints are highly consistent with DeepChem")
+        print(
+            "\n[PASS] DiffBio fingerprints are highly "
+            "consistent with DeepChem"
+        )
     elif avg_tanimoto >= 0.95:
-        print("\n[PASS] DiffBio fingerprints are consistent with DeepChem (minor differences)")
+        print(
+            "\n[PASS] DiffBio fingerprints are consistent "
+            "with DeepChem (minor differences)"
+        )
     else:
-        print("\n[WARN] Significant differences detected between implementations")
+        print(
+            "\n[WARN] Significant differences detected "
+            "between implementations"
+        )
 
     # Save results
     output_dir = Path(__file__).parent / "results"
-    save_results(results, output_dir)
+    _save_results(results, output_dir)
+
+
+def main() -> None:
+    """Run the full benchmark suite."""
+    run_all_comparisons()
 
 
 if __name__ == "__main__":
