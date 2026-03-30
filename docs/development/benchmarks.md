@@ -154,32 +154,80 @@ if __name__ == "__main__":
 
 ---
 
-## scBench / spatialBench Task Coverage
+## Comparison with scBench / spatialBench State-of-the-Art
 
-DiffBio operators cover all **8 evaluation task types** from the
-[scBench](https://github.com/your-org/scbench) (30 canonical single-cell
-evaluations) and [spatialBench](https://github.com/your-org/spatialbench) (146
-spatial transcriptomics evaluations) benchmarks:
+DiffBio operators cover all evaluation task types from
+[scBench](https://github.com/your-org/scbench) (394 single-cell evaluations)
+and [spatialBench](https://github.com/your-org/spatialbench) (146 spatial
+transcriptomics evaluations). The tables below show the current
+state-of-the-art accuracy from published benchmark results alongside the
+DiffBio operators that address each task.
 
-| Task Type | DiffBio Operator | Benchmark File |
-|-----------|-----------------|----------------|
-| `qc_filtering` | `DifferentiableQualityFilter` | `preprocessing/` |
-| `normalization` | `VAENormalizer` | `singlecell/scvi_benchmark.py` |
-| `clustering` | `SoftKMeansClustering` | `singlecell/singlecell_benchmark.py` |
-| `cell_typing` | `CellAnnotator`, `SoftKMeans` | `singlecell/singlecell_benchmark.py` |
-| `differential_expression` | `NB-GLM`, `DE Pipeline` | `statistical/statistical_benchmark.py` |
-| `batch_correction` | `DifferentiableHarmony` | `singlecell/singlecell_benchmark.py` |
-| `trajectory` | `Pseudotime`, `FateProbability` | `singlecell/trajectory_benchmark.py` |
-| `spatial_analysis` | `SpatialDomain`, `SpatialDeconv` | `multiomics/multiomics_benchmark.py` |
+### scBench Leaderboard (by task category)
 
-Both scBench and spatialBench use the same 5 grader types that DiffBio's
-evaluation harness (`src/diffbio/evaluation/`) already supports:
+| Task | Best Model | Accuracy | n | DiffBio Operator | Benchmark |
+|------|-----------|----------|---|-----------------|-----------|
+| QC | Claude Opus 4.5 | 63.9% | 36 | `DifferentiableQualityFilter` | `preprocessing/` |
+| Normalization | Claude Opus 4.5 | 83.8% | 37 | `VAENormalizer` | `singlecell/scvi` |
+| Dim. Reduction | Claude Opus 4.6 | 55.4% | 69 | `DifferentiableUMAP`, `PHATE` | `normalization/` |
+| Clustering | Claude Opus 4.6 | 52.7% | 49 | `SoftKMeansClustering` | `singlecell/` |
+| Cell Typing | Claude Opus 4.6 | 48.2% | 118 | `CellAnnotator`, `SoftKMeans` | `singlecell/` |
+| Diff. Expression | Claude Opus 4.6 | 41.4% | 79 | `NB-GLM`, `DE Pipeline` | `statistical/` |
+| Trajectory | Claude Opus 4.5 | 61.9% | 7 | `Pseudotime`, `FateProbability` | `singlecell/trajectory` |
 
-- `numeric_tolerance` -- numeric answers with tolerance windows
-- `multiple_choice` -- discrete interpretation questions
-- `marker_gene_precision_recall` -- gene list recovery (P@K, R@K)
-- `distribution_comparison` -- cell type proportion comparison
-- `label_set_jaccard` -- set matching via Jaccard index
+### spatialBench Leaderboard (by task category)
+
+| Task | Best Model | Accuracy | n | DiffBio Operator | Benchmark |
+|------|-----------|----------|---|-----------------|-----------|
+| QC | Claude Opus 4.5 (CC) | 30.0% | 20 | `DifferentiableQualityFilter` | `preprocessing/` |
+| Normalization | GPT-5.2 | 76.2% | 7 | `VAENormalizer` | `singlecell/scvi` |
+| Dim. Reduction | Claude Sonnet 4.5 (CC) | 63.3% | 15 | `DifferentiableUMAP`, `PHATE` | `normalization/` |
+| Clustering | Claude Opus 4.5 (CC) | 60.3% | 21 | `SoftKMeansClustering` | `singlecell/` |
+| Cell Typing | Claude Opus 4.5 (CC) | 38.9% | 39 | `CellAnnotator`, `SoftKMeans` | `singlecell/` |
+| Diff. Expression | Claude Opus 4.5 (CC) | 46.2% | 26 | `NB-GLM`, `DE Pipeline` | `statistical/` |
+| Spatial Analysis | Claude Opus 4.5 (CC) | 66.7% | 17 | `SpatialDomain`, `SpatialDeconv` | `multiomics/` |
+
+*Source: scBench and spatialBench published results (3 runs per model, 95% CI).
+CC = Claude Code harness. Accuracy = mean pass rate across evaluations.*
+
+### How DiffBio Compares
+
+DiffBio's operators are **not directly comparable** to the AI agent accuracies
+above -- scBench/spatialBench measure an AI agent's ability to write and run
+analysis code on real datasets, while DiffBio benchmarks measure operator
+correctness on synthetic data. However, DiffBio operators are the **building
+blocks** that agents use to solve these tasks:
+
+- **DiffBio operators provide the differentiable primitives** (clustering,
+  normalization, DE testing, trajectory inference) that power the analysis
+- **scBench/spatialBench measure end-to-end task completion** including data
+  loading, parameter selection, result interpretation, and biological reasoning
+- **The evaluation harness** (`src/diffbio/evaluation/`) connects both: it
+  maps `BenchmarkProblem` tasks to DiffBio operators via `TaskAdapter`
+
+To run DiffBio operators on real scBench/spatialBench problems:
+
+```bash
+# Using the evaluation harness (requires .h5ad data files)
+python -c "
+from diffbio.evaluation import TaskAdapter, load_problems, run_benchmark
+problems = load_problems('path/to/scbench_problems.json')
+results = run_benchmark(problems, data_loader=my_loader)
+"
+```
+
+### Grader Types (shared with scBench/spatialBench)
+
+Both benchmarks use the same 5 grader types that DiffBio's evaluation harness
+(`src/diffbio/evaluation/`) supports:
+
+| Grader | Use Case | Example |
+|--------|----------|---------|
+| `numeric_tolerance` | Numeric answers with tolerance | Cell counts, expression values |
+| `multiple_choice` | Discrete interpretation | PC1 axis interpretation |
+| `marker_gene_precision_recall` | Gene list recovery (P@K, R@K) | DE marker genes |
+| `distribution_comparison` | Cell type proportions | Compartment fractions |
+| `label_set_jaccard` | Set matching | Present cell types |
 
 ---
 
