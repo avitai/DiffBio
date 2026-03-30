@@ -150,20 +150,120 @@ def _error_envelope(domain: str, module_path: str, error: str) -> BenchmarkEnvel
     )
 
 
+def _extract_from_result(result_dict: dict[str, Any]) -> dict[str, Any]:
+    """Extract structured envelope fields from a flat result dict.
+
+    Scans field names for common patterns (gradient_*, throughput_*,
+    *_score, etc.) to populate correctness, differentiability, and
+    performance sections automatically.
+
+    Args:
+        result_dict: Flat dict from ``dataclasses.asdict(result)``.
+
+    Returns:
+        Dict with keys: operators, correctness, differentiability,
+        performance, status.
+    """
+    correctness_tests: list[dict[str, Any]] = []
+    grad_norm = 0.0
+    grad_nonzero = False
+    throughput = 0.0
+    throughput_unit = "items/sec"
+    latency_ms = 0.0
+    has_failure = False
+
+    for key, value in result_dict.items():
+        if key == "timestamp":
+            continue
+
+        # Differentiability fields
+        if key == "gradient_norm" or key.endswith("_gradient_norm"):
+            grad_norm = max(grad_norm, float(value or 0))
+        elif key == "gradient_nonzero" or key.endswith("_gradient_nonzero"):
+            if value:
+                grad_nonzero = True
+
+        # Throughput fields (items_per_sec, per_second, per_sec, etc.)
+        elif isinstance(value, (int, float)) and (
+            "per_sec" in key or "per_second" in key
+        ):
+            val = float(value or 0)
+            if val > throughput:
+                throughput = val
+                # Clean up unit: "pileup_items_per_sec" -> "items/sec"
+                unit = key.replace("_per_second", "/s").replace(
+                    "_per_sec", "/s"
+                )
+                # Strip domain prefix (e.g., "pileup_items/s" -> "items/s")
+                parts = unit.split("_")
+                throughput_unit = parts[-1] if len(parts) > 1 else unit
+        elif isinstance(value, (int, float)) and (
+            "per_item_ms" in key or "time_per_pair_ms" in key
+            or "per_fold_ms" in key
+        ):
+            if float(value or 0) > 0:
+                latency_ms = float(value)
+
+        # Boolean correctness fields (shape_correct, *_passed, etc.)
+        elif isinstance(value, bool):
+            correctness_tests.append({
+                "name": key,
+                "value": 1.0 if value else 0.0,
+                "passed": value,
+            })
+            if not value and "gradient" not in key:
+                has_failure = True
+
+        # Numeric score fields
+        elif isinstance(value, (int, float)) and (
+            "score" in key or "accuracy" in key or "f1" in key
+            or "auc" in key or "mse" in key
+        ):
+            correctness_tests.append({
+                "name": key,
+                "value": float(value),
+                "passed": True,
+            })
+
+    all_correct = len(correctness_tests) == 0 or not has_failure
+    return {
+        "correctness": {
+            "passed": all_correct,
+            "tests": correctness_tests,
+        },
+        "differentiability": {
+            "passed": grad_nonzero,
+            "gradient_norm": grad_norm,
+            "gradient_nonzero": grad_nonzero,
+        },
+        "performance": {
+            "throughput": throughput,
+            "throughput_unit": throughput_unit,
+            "latency_ms": latency_ms,
+        },
+        "status": "pass" if all_correct else "fail",
+    }
+
+
 def _minimal_envelope(
     domain: str,
     module_path: str,
     result: Any,
 ) -> BenchmarkEnvelope:
-    """Create a minimal envelope from a raw benchmark result."""
-    from dataclasses import asdict  # noqa: PLC0415
+    """Create an envelope by extracting fields from a result dataclass.
+
+    Scans the result's field names to populate the structured envelope
+    sections (correctness, differentiability, performance) automatically.
+    """
+    from dataclasses import asdict, fields  # noqa: PLC0415
 
     name = module_path.rsplit(".", 1)[-1]
 
-    # Try to extract fields from dataclass result
     result_dict: dict[str, Any] = {}
     if hasattr(result, "__dataclass_fields__"):
         result_dict = asdict(result)
+
+    extracted = _extract_from_result(result_dict)
 
     return BenchmarkEnvelope(
         benchmark_id=f"{domain}/{name}",
@@ -171,7 +271,10 @@ def _minimal_envelope(
         operators_tested=[],
         timestamp=time.strftime("%Y-%m-%dT%H:%M:%S"),
         platform=collect_platform_info(),
-        status="pass",
+        status=extracted["status"],
+        correctness=extracted["correctness"],
+        differentiability=extracted["differentiability"],
+        performance=extracted["performance"],
         domain_metrics=result_dict,
     )
 
