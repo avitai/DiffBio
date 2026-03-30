@@ -236,8 +236,8 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("docs/development/benchmark-results.md"),
-        help="Output Markdown file path",
+        default=Path("benchmarks/results/benchmark-report.md"),
+        help="Output Markdown file path (default: benchmarks/results/)",
     )
     args = parser.parse_args()
 

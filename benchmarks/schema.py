@@ -155,7 +155,7 @@ def load_all_envelopes(results_dir: Path) -> list[BenchmarkEnvelope]:
     for path in sorted(results_dir.glob("*.json"), reverse=True):
         try:
             envelopes.append(load_envelope(path))
-        except (json.JSONDecodeError, TypeError, KeyError) as exc:
+        except (json.JSONDecodeError, TypeError, KeyError, AttributeError) as exc:
             logger.debug("Skipping %s: %s", path, exc)
 
     return envelopes
