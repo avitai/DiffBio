@@ -1,1 +1,0 @@
-"""DiffBio assembly benchmarks."""
