@@ -12,6 +12,8 @@ References:
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -216,7 +218,7 @@ class BenGRNSource(DataSourceModule):
         """Return number of cells."""
         return self.data["n_cells"]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[dict[str, Any]]:
         """Iterate over cells."""
         for i in range(len(self)):
             yield {

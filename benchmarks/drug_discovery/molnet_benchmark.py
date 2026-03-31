@@ -41,7 +41,7 @@ import jax.numpy as jnp
 import optax
 from flax import nnx
 
-from benchmarks._common import save_benchmark_result
+# TODO: refactor to use calibrax BenchmarkResult.save()
 
 # DiffBio imports
 from diffbio.operators.drug_discovery import (

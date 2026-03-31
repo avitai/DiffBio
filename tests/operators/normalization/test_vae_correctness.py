@@ -318,7 +318,7 @@ def _run_scvi_benchmark_inner(
     2. Create VAENormalizer with ZINB likelihood
     3. JIT-compiled training loop
     4. Compute evaluation metrics via calibrax
-    5. Check gradient flow via benchmarks._common
+    5. Check gradient flow via benchmarks._gradient
 
     Args:
         n_cells: Number of cells in synthetic data.

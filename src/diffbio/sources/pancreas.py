@@ -10,6 +10,8 @@ Source: scVelo tutorial dataset.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -83,7 +85,6 @@ class PancreasSource(DataSourceModule):
     def _load(self, config: PancreasConfig) -> dict[str, Any]:
         """Load and preprocess the h5ad file."""
         import anndata  # noqa: PLC0415
-        import scipy.sparse  # noqa: PLC0415
 
         path = Path(config.data_dir) / _FILENAME
         adata = anndata.read_h5ad(path)
@@ -96,16 +97,15 @@ class PancreasSource(DataSourceModule):
             idx.sort()
             adata = adata[idx].copy()
 
-        def _to_dense(x: Any) -> np.ndarray:
-            if scipy.sparse.issparse(x):
-                return np.asarray(x.toarray(), dtype=np.float32)
-            return np.asarray(x, dtype=np.float32)
+        from diffbio.sources._utils import to_dense_float32  # noqa: PLC0415
 
-        counts = jnp.array(_to_dense(adata.X))
+        counts = jnp.array(to_dense_float32(adata.X))
 
         # Spliced/unspliced for velocity
-        spliced = jnp.array(_to_dense(adata.layers["spliced"]))
-        unspliced = jnp.array(_to_dense(adata.layers["unspliced"]))
+        spliced = jnp.array(to_dense_float32(adata.layers["spliced"]))
+        unspliced = jnp.array(
+            to_dense_float32(adata.layers["unspliced"])
+        )
 
         # Cell type labels
         label_col = adata.obs[config.cluster_key]
@@ -147,7 +147,7 @@ class PancreasSource(DataSourceModule):
         """Return the number of cells."""
         return self.data["n_cells"]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[dict[str, Any]]:
         """Iterate over cells."""
         for i in range(len(self)):
             yield {

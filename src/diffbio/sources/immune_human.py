@@ -13,6 +13,8 @@ The dataset must be pre-downloaded to a local directory. See
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -43,13 +45,7 @@ def _require_anndata() -> Any:
         ) from err
 
 
-def _to_dense(matrix: Any) -> np.ndarray:
-    """Convert sparse or dense matrix to dense float32 numpy array."""
-    import scipy.sparse  # noqa: PLC0415
-
-    if scipy.sparse.issparse(matrix):
-        return np.asarray(matrix.toarray(), dtype=np.float32)
-    return np.asarray(matrix, dtype=np.float32)
+from diffbio.sources._utils import to_dense_float32 as _to_dense
 
 
 @dataclass(frozen=True)
@@ -239,7 +235,7 @@ class ImmuneHumanSource(DataSourceModule):
         """Return the number of cells in the dataset."""
         return self.data["n_cells"]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[dict[str, Any]]:
         """Iterate over individual cells."""
         for i in range(len(self)):
             yield {

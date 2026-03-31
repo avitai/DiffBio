@@ -27,6 +27,7 @@ from calibrax.core.result import BenchmarkResult
 from calibrax.profiling.timing import TimingCollector
 from flax import nnx
 
+from benchmarks._baselines.grn import GRN_BASELINES
 from benchmarks._gradient import check_gradient_flow
 from benchmarks._metrics.grn import evaluate_grn
 from diffbio.operators.singlecell.grn_inference import (
@@ -37,13 +38,7 @@ from diffbio.sources.bengrn_ground_truth import BenGRNConfig, BenGRNSource
 
 logger = logging.getLogger(__name__)
 
-# Published baselines (approximate AUPRC from benGRN/Beeline papers)
-_BASELINES = {
-    "GENIE3": {"auprc": 0.08},
-    "GRNBoost2": {"auprc": 0.07},
-    "pySCENIC": {"auprc": 0.06},
-    "Random": {"auprc": 0.02},
-}
+_BASELINES = GRN_BASELINES
 
 
 class GRNBenchmark:
@@ -169,8 +164,9 @@ class GRNBenchmark:
         print(
             f"  DiffBio GRN: {grn_metrics['auprc']:.6f}"
         )
-        for name, bl in _BASELINES.items():
-            print(f"  {name}: {bl['auprc']:.6f}")
+        for name, point in _BASELINES.items():
+            auprc = point.metrics["auprc"].value
+            print(f"  {name}: {auprc:.6f}")
 
         # 7. Build result
         metrics = {

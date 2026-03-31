@@ -25,6 +25,7 @@ from calibrax.core.result import BenchmarkResult
 from calibrax.profiling.timing import TimingCollector
 from flax import nnx
 
+from benchmarks._baselines.trajectory import TRAJECTORY_BASELINES
 from benchmarks._gradient import check_gradient_flow
 from diffbio.operators.singlecell.trajectory import (
     DifferentiablePseudotime,
@@ -38,11 +39,7 @@ from diffbio.sources.pancreas import PancreasConfig, PancreasSource
 
 logger = logging.getLogger(__name__)
 
-_BASELINES = {
-    "scVelo (dynamic)": {"spearman_pancreas": 0.85},
-    "DPT (scanpy)": {"spearman_pancreas": 0.75},
-    "Monocle3": {"spearman_pancreas": 0.80},
-}
+_BASELINES = TRAJECTORY_BASELINES
 
 
 class TrajectoryBenchmark:
@@ -180,8 +177,10 @@ class TrajectoryBenchmark:
         # 6. Comparison
         print("\nComparison (pseudotime):")
         print(f"  DiffBio Pseudotime: range={pt_range:.4f}")
-        for name, bl in _BASELINES.items():
-            sp = bl.get("spearman_pancreas", 0)
+        for name, point in _BASELINES.items():
+            sp = point.metrics.get(
+                "spearman_pancreas", Metric(value=0)
+            ).value
             print(f"  {name}: Spearman={sp}")
 
         return BenchmarkResult(

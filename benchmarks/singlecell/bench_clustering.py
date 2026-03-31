@@ -24,6 +24,7 @@ from calibrax.core.result import BenchmarkResult
 from calibrax.profiling.timing import TimingCollector
 from flax import nnx
 
+from benchmarks._baselines.clustering import CLUSTERING_BASELINES
 from benchmarks._gradient import check_gradient_flow
 from diffbio.operators.singlecell import (
     SoftClusteringConfig,
@@ -33,12 +34,7 @@ from diffbio.sources.immune_human import ImmuneHumanConfig, ImmuneHumanSource
 
 logger = logging.getLogger(__name__)
 
-# Published baselines (approximate, from scanpy benchmarks)
-_BASELINES = {
-    "Leiden (scanpy)": {"ari_kmeans": 0.65, "nmi_kmeans": 0.75},
-    "Louvain (scanpy)": {"ari_kmeans": 0.60, "nmi_kmeans": 0.72},
-    "k-means (sklearn)": {"ari_kmeans": 0.45, "nmi_kmeans": 0.60},
-}
+_BASELINES = CLUSTERING_BASELINES
 
 
 class ClusteringBenchmark:
@@ -152,11 +148,10 @@ class ClusteringBenchmark:
         print("\nComparison:")
         print(f"  {'Method':<22} {'ARI':>6} {'NMI':>6}")
         print(f"  {'DiffBio SoftKMeans':<22} {ari:>6.3f} {nmi:>6.3f}")
-        for name, bl in _BASELINES.items():
-            print(
-                f"  {name:<22} {bl['ari_kmeans']:>6.3f} "
-                f"{bl['nmi_kmeans']:>6.3f}"
-            )
+        for name, point in _BASELINES.items():
+            bl_ari = point.metrics["ari_kmeans"].value
+            bl_nmi = point.metrics["nmi_kmeans"].value
+            print(f"  {name:<22} {bl_ari:>6.3f} {bl_nmi:>6.3f}")
 
         # 7. Build result
         metrics = {
