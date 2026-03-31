@@ -135,9 +135,7 @@ class TestComputeQ3Metrics:
         true = jnp.array([0, 0, 1, 1, 2, 2])
         pred = jnp.array([0, 1, 1, 0, 2, 2])  # 4/6 correct
         result = compute_q3_metrics(pred, true)
-        np.testing.assert_allclose(
-            result["q3_overall"], 4.0 / 6.0, atol=1e-6
-        )
+        np.testing.assert_allclose(result["q3_overall"], 4.0 / 6.0, atol=1e-6)
         assert result["q3_coil"] == 0.5  # 1/2 correct
         assert result["q3_helix"] == 0.5  # 1/2 correct
         assert result["q3_strand"] == 1.0  # 2/2 correct
@@ -192,9 +190,7 @@ class TestSecondaryStructureBenchmark:
 
     def test_has_operator_tag(self, result) -> None:
         """Result is tagged with the operator name."""
-        assert result.tags["operator"] == (
-            "DifferentiableSecondaryStructure"
-        )
+        assert result.tags["operator"] == ("DifferentiableSecondaryStructure")
 
     def test_has_dataset_tag(self, result) -> None:
         """Result is tagged with the dataset name."""

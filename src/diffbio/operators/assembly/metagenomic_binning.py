@@ -13,17 +13,17 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
-from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float
 
-from diffbio.core.base_operators import EncoderDecoderOperator
+from diffbio.configs import TemperatureConfig
+from diffbio.core.base_operators import EncoderDecoderOperator, TemperatureOperator
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class MetagenomicBinnerConfig(OperatorConfig):
+class MetagenomicBinnerConfig(TemperatureConfig):
     """Configuration for metagenomic binning VAE.
 
     Attributes:
@@ -33,7 +33,6 @@ class MetagenomicBinnerConfig(OperatorConfig):
         hidden_dims: tuple of hidden layer dimensions for encoder/decoder.
         dropout_rate: Dropout rate for regularization.
         beta: KL divergence weight (beta-VAE).
-        temperature: Temperature for soft clustering.
         n_clusters: Number of clusters for soft binning.
     """
 
@@ -43,7 +42,6 @@ class MetagenomicBinnerConfig(OperatorConfig):
     hidden_dims: tuple[int, ...] = (512, 256)
     dropout_rate: float = 0.2
     beta: float = 1.0
-    temperature: float = 1.0
     n_clusters: int = 100
 
     def __post_init__(self) -> None:
@@ -54,7 +52,7 @@ class MetagenomicBinnerConfig(OperatorConfig):
         super().__post_init__()
 
 
-class DifferentiableMetagenomicBinner(EncoderDecoderOperator):
+class DifferentiableMetagenomicBinner(TemperatureOperator, EncoderDecoderOperator):
     """VAMB-style differentiable metagenomic binning.
 
     This operator implements a Variational Autoencoder for metagenomic binning,
@@ -146,9 +144,6 @@ class DifferentiableMetagenomicBinner(EncoderDecoderOperator):
             jax.random.normal(rngs.params(), (config.n_clusters, config.latent_dim)) * 0.1
         )
 
-        # Temperature for soft clustering
-        self.temperature = nnx.Param(jnp.array(config.temperature))
-
     def encode(
         self, x: Float[Array, "batch input_dim"]
     ) -> tuple[Float[Array, "batch latent"], Float[Array, "batch latent"]]:
@@ -213,7 +208,7 @@ class DifferentiableMetagenomicBinner(EncoderDecoderOperator):
         sq_distances = jnp.sum((z_expanded - centroids_expanded) ** 2, axis=-1)
 
         # Soft assignment via softmax
-        temperature = jnp.maximum(self.temperature[...], 1e-6)
+        temperature = jnp.maximum(self._temperature, 1e-6)
         assignments = nnx.softmax(-sq_distances / temperature, axis=-1)
         return assignments
 

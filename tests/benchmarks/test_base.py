@@ -16,23 +16,17 @@ class TestDiffBioBenchmarkConfig:
     """Tests for the benchmark config dataclass."""
 
     def test_frozen(self) -> None:
-        config = DiffBioBenchmarkConfig(
-            name="test", domain="test_domain"
-        )
+        config = DiffBioBenchmarkConfig(name="test", domain="test_domain")
         with pytest.raises(FrozenInstanceError):
             config.name = "changed"  # type: ignore[misc]
 
     def test_required_fields(self) -> None:
-        config = DiffBioBenchmarkConfig(
-            name="test/bench", domain="test"
-        )
+        config = DiffBioBenchmarkConfig(name="test/bench", domain="test")
         assert config.name == "test/bench"
         assert config.domain == "test"
 
     def test_quick_subsample_default(self) -> None:
-        config = DiffBioBenchmarkConfig(
-            name="test", domain="test"
-        )
+        config = DiffBioBenchmarkConfig(name="test", domain="test")
         assert config.quick_subsample == 2000
 
     def test_kw_only(self) -> None:

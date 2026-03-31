@@ -21,7 +21,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import jax
 import jax.numpy as jnp
 import numpy as np
 from flax import nnx
@@ -48,7 +47,7 @@ _STRAND_LATERAL_OFFSET = 0.8
 # Bond geometry for backbone atoms relative to CA
 _BOND_N_CA = 1.47  # N-CA bond length
 _BOND_CA_C = 1.52  # CA-C bond length
-_BOND_C_O = 1.23   # C=O bond length
+_BOND_C_O = 1.23  # C=O bond length
 
 _CONFIG = DiffBioBenchmarkConfig(
     name="protein/secondary_structure",
@@ -190,15 +189,9 @@ def _generate_coil_backbone(
         y = rng.uniform(-3.0, 3.0)
 
         ca = np.array([x, y, z])
-        n = ca + np.array(
-            [rng.uniform(-0.8, 0.8), rng.uniform(-0.8, 0.8), -1.2]
-        )
-        c = ca + np.array(
-            [rng.uniform(-0.8, 0.8), rng.uniform(-0.8, 0.8), 1.0]
-        )
-        o = c + np.array(
-            [rng.uniform(-0.6, 0.6), _BOND_C_O, rng.uniform(-0.3, 0.3)]
-        )
+        n = ca + np.array([rng.uniform(-0.8, 0.8), rng.uniform(-0.8, 0.8), -1.2])
+        c = ca + np.array([rng.uniform(-0.8, 0.8), rng.uniform(-0.8, 0.8), 1.0])
+        o = c + np.array([rng.uniform(-0.6, 0.6), _BOND_C_O, rng.uniform(-0.3, 0.3)])
 
         coords[i, 0] = n
         coords[i, 1] = ca
@@ -208,8 +201,7 @@ def _generate_coil_backbone(
     return jnp.array(coords)
 
 
-def generate_ideal_backbone(
-) -> tuple[jnp.ndarray, jnp.ndarray]:
+def generate_ideal_backbone() -> tuple[jnp.ndarray, jnp.ndarray]:
     """Generate combined backbone with known SS labels.
 
     Creates a protein backbone with three segments:
@@ -240,11 +232,13 @@ def generate_ideal_backbone(
     all_coords = all_coords[None, :, :, :]  # Add batch dim -> (1, 50, 4, 3)
 
     # Build labels
-    labels = np.concatenate([
-        np.full(_N_HELIX, SS_HELIX, dtype=np.int32),
-        np.full(_N_STRAND, SS_STRAND, dtype=np.int32),
-        np.full(_N_COIL, SS_LOOP, dtype=np.int32),
-    ])
+    labels = np.concatenate(
+        [
+            np.full(_N_HELIX, SS_HELIX, dtype=np.int32),
+            np.full(_N_STRAND, SS_STRAND, dtype=np.int32),
+            np.full(_N_COIL, SS_LOOP, dtype=np.int32),
+        ]
+    )
 
     return all_coords, jnp.array(labels)
 
@@ -318,9 +312,7 @@ class SecondaryStructureBenchmark(DiffBioBenchmark):
             temperature=1.0,
         )
         rngs = nnx.Rngs(42)
-        operator = DifferentiableSecondaryStructure(
-            op_config, rngs=rngs
-        )
+        operator = DifferentiableSecondaryStructure(op_config, rngs=rngs)
 
         # 3. Run prediction
         logger.info("Running DifferentiableSecondaryStructure...")
@@ -328,7 +320,7 @@ class SecondaryStructureBenchmark(DiffBioBenchmark):
         result, _, _ = operator.apply(input_data, {}, None)
 
         ss_indices = result["ss_indices"][0]  # Remove batch dim
-        ss_onehot = result["ss_onehot"][0]
+        result["ss_onehot"][0]
 
         # 4. Compute Q3 metrics
         quality = compute_q3_metrics(ss_indices, true_labels)
@@ -361,9 +353,7 @@ class SecondaryStructureBenchmark(DiffBioBenchmark):
             "input_data": input_data,
             "loss_fn": loss_fn,
             "n_items": _N_TOTAL,
-            "iterate_fn": lambda: operator.apply(
-                input_data, {}, None
-            ),
+            "iterate_fn": lambda: operator.apply(input_data, {}, None),
             "baselines": SS_BASELINES,
             "dataset_info": {
                 "name": "ideal_structures",

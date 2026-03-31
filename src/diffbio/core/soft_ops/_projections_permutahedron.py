@@ -157,6 +157,7 @@ def _smooth_majorization_bounds(
         log_E: jax.Array,
         x_j: jax.Array,
     ) -> tuple[jax.Array, None]:
+        """Update log-ESP state by incorporating element x_j."""
         # log E[k][j] = logaddexp(
         #     log E[k][j-1], x_j + log E[k-1][j-1]
         # )
@@ -173,6 +174,7 @@ def _smooth_majorization_bounds(
             log_E: jax.Array,
             x_j: jax.Array,
         ) -> tuple[jax.Array, None]:
+            """Gradient-checkpointed wrapper around _scan_step."""
             return _scan_step(log_E, x_j)
 
         log_E, _ = lax.scan(_checkpointed_scan_step, log_E, x)
@@ -262,6 +264,7 @@ def _proj_permutahedron_entropic_lp_lbfgs(
         beta: jax.Array,
         args: tuple,
     ) -> jax.Array:
+        """Evaluate the eliminated dual objective over beta."""
         z_s, b, b_n, tau, tau_m = args
         alpha, nu = _alpha_nu_from_beta(z_s, beta)
 
@@ -350,6 +353,7 @@ def _make_proj_permutahedron_entropic_lp(
         b: jax.Array,
         b_n: jax.Array,
     ) -> jax.Array:
+        """Solve the entropic LP dual via LBFGS and recover primal y."""
         orig_dtype = z.dtype
         _hp = _high_precision_dtype()
         if z.dtype != _hp:
@@ -368,6 +372,7 @@ def _make_proj_permutahedron_entropic_lp(
             beta: jax.Array,
             args: tuple,
         ) -> jax.Array:
+            """Evaluate the entropic dual objective for LBFGS."""
             z_s_, b_, b_n_, tau_, tau_m_ = args
             alpha, nu = _alpha_nu_from_beta(z_s_, beta)
             val = jnp.dot(alpha, b_) + nu * b_n_
@@ -416,6 +421,7 @@ def _make_proj_permutahedron_entropic_lp(
         b: jax.Array,
         b_n: jax.Array,
     ) -> tuple[jax.Array, tuple]:
+        """Forward pass for the entropic LP solver custom VJP."""
         z = jnp.asarray(z)
         b = jnp.asarray(b)
         b_n = jnp.asarray(b_n)
@@ -454,6 +460,7 @@ def _make_proj_permutahedron_entropic_lp(
             beta: jax.Array,
             args: tuple,
         ) -> jax.Array:
+            """Evaluate the entropic dual objective for forward LBFGS."""
             z_s_, b_, b_n_, tau_, tau_m_ = args
             alpha, nu = _alpha_nu_from_beta(z_s_, beta)
             val = jnp.dot(alpha, b_) + nu * b_n_
@@ -508,6 +515,7 @@ def _make_proj_permutahedron_entropic_lp(
         residuals: tuple,
         g: jax.Array,
     ) -> tuple[jax.Array, jax.Array, jax.Array]:
+        """Backward pass for the entropic LP solver custom VJP."""
         perm_z, inv_perm_z, s, d, tau, tau_m = residuals
         orig_dtype = g.dtype
         g = jnp.asarray(g)
@@ -529,6 +537,7 @@ def _make_proj_permutahedron_entropic_lp(
         rhs = g_s[:-1] - g_s[1:]  # D*g_s
 
         def m_matvec(v: jax.Array) -> jax.Array:
+            """Compute M*v for the CG linear solve."""
             return _hessian_beta_matvec(
                 v,
                 1.0 / w_beta,
@@ -546,6 +555,7 @@ def _make_proj_permutahedron_entropic_lp(
         )  # D^T*eta
 
         def _reverse_cumsum(u: jax.Array) -> jax.Array:
+            """Compute reverse cumulative sum of u."""
             return jnp.flip(jnp.cumsum(jnp.flip(u)))
 
         def _at_matvec(u: jax.Array) -> jax.Array:
@@ -585,6 +595,7 @@ def _make_proj_permutahedron_entropic_lp(
     # -- outer function: smooth bounds + solver --
 
     def _proj_fn(z: jax.Array, w: jax.Array) -> jax.Array:
+        """Project z onto the permutahedron of w using smooth bounds."""
         n = z.shape[0]
         if n <= 1:
             return w
@@ -618,6 +629,7 @@ def _pav_isotonic_decreasing_pnorm_q2(
     def merge_cond(
         state: tuple,
     ) -> jax.Array:
+        """Check whether the top two blocks violate isotonic order."""
         starts, sums, lens, m = state
         return (m >= 2) & (
             (sums[m - 2] / lens[m - 2].astype(dtype)) < (sums[m - 1] / lens[m - 1].astype(dtype))
@@ -626,6 +638,7 @@ def _pav_isotonic_decreasing_pnorm_q2(
     def merge_body(
         state: tuple,
     ) -> tuple:
+        """Merge the top two blocks on the stack."""
         starts, sums, lens, m = state
         i_prev = m - 2
         i_top = m - 1
@@ -649,6 +662,7 @@ def _pav_isotonic_decreasing_pnorm_q2(
         i: jax.Array,
         state: tuple,
     ) -> tuple:
+        """Push element i onto the stack and merge violating blocks."""
         starts, sums, lens, m = state
         starts = starts.at[m].set(jnp.int32(i))
         sums = sums.at[m].set(y[i])
@@ -884,10 +898,12 @@ def _pav_isotonic_decreasing_pnorm_q3(
     m0 = jnp.int32(0)
 
     def merge_cond(state: tuple) -> jax.Array:
+        """Check whether the top two q=3 blocks violate isotonic order."""
         starts, lens, sumw, mins, maxs, gam, m = state
         return (m >= 2) & (gam[m - 2] < gam[m - 1])
 
     def merge_body(state: tuple) -> tuple:
+        """Merge the top two q=3 blocks on the stack."""
         starts, lens, sumw, mins, maxs, gam, m = state
         i_prev = m - 2
         i_top = m - 1
@@ -940,6 +956,7 @@ def _pav_isotonic_decreasing_pnorm_q3(
         )
 
     def for_body(i: jax.Array, state: tuple) -> tuple:
+        """Push element i onto the q=3 stack and merge violating blocks."""
         starts, lens, sumw, mins, maxs, gam, m = state
 
         si = s[i]
@@ -1219,10 +1236,12 @@ def _pav_isotonic_decreasing_pnorm_q4(
     m0 = jnp.int32(0)
 
     def merge_cond(state: tuple) -> jax.Array:
+        """Check whether the top two q=4 blocks violate isotonic order."""
         starts, lens, sumw, m1, m2, m3, mins, maxs, gam, m = state
         return (m >= 2) & (gam[m - 2] < gam[m - 1])
 
     def merge_body(state: tuple) -> tuple:
+        """Merge the top two q=4 blocks on the stack."""
         starts, lens, sumw, m1, m2, m3, mins, maxs, gam, m = state
         i_prev = m - 2
         i_top = m - 1
@@ -1292,6 +1311,7 @@ def _pav_isotonic_decreasing_pnorm_q4(
         )
 
     def for_body(i: jax.Array, state: tuple) -> tuple:
+        """Push element i onto the q=4 stack and merge violating blocks."""
         starts, lens, sumw, m1, m2, m3, mins, maxs, gam, m = state
 
         si = s[i]
@@ -1552,13 +1572,16 @@ def _pav_isotonic_decreasing_entropic(
         logS: jax.Array,
         logW: jax.Array,
     ) -> jax.Array:
+        """Compute the entropic block level as logS - logW."""
         return logS - logW
 
     def merge_cond(state: tuple) -> jax.Array:
+        """Check whether the top two entropic blocks violate isotonic order."""
         starts, logS, logW, m = state
         return (m >= 2) & (gamma(logS[m - 2], logW[m - 2]) < gamma(logS[m - 1], logW[m - 1]))
 
     def merge_body(state: tuple) -> tuple:
+        """Merge the top two entropic blocks on the stack."""
         starts, logS, logW, m = state
         i_prev = m - 2
         i_top = m - 1
@@ -1580,6 +1603,7 @@ def _pav_isotonic_decreasing_entropic(
         i: jax.Array,
         state: tuple,
     ) -> tuple:
+        """Push element i onto the entropic stack and merge violations."""
         starts, logS, logW, m = state
         starts = starts.at[m].set(jnp.int32(i))
         logS = logS.at[m].set(s[i])

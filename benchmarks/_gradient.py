@@ -54,9 +54,9 @@ def check_gradient_flow(
     total_sq = 0.0
     for _, param in nnx.iter_graph(grads):
         if hasattr(param, "value") and isinstance(param.value, jnp.ndarray):
-            total_sq += float(jnp.sum(param.value ** 2))
+            total_sq += float(jnp.sum(param.value**2))
 
-    norm = total_sq ** 0.5
+    norm = total_sq**0.5
     return GradientFlowResult(
         gradient_norm=norm,
         gradient_nonzero=norm > 1e-8,

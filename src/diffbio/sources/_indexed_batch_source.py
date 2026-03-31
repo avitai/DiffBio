@@ -15,9 +15,11 @@ class IndexedBatchSourceMixin:
     """Reusable `reset` and `get_batch` logic for indexable data sources."""
 
     def _batch_total_size(self) -> int:
+        """Return the total number of elements available for batching."""
         raise NotImplementedError
 
     def _batch_element(self, idx: int) -> Element:
+        """Return the element at the given index."""
         raise NotImplementedError
 
     def reset(self, seed: int | None = None) -> None:

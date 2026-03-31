@@ -25,7 +25,8 @@ class TestDEBenchmark:
         return bench.run()
 
     def test_standard_contract(
-        self, result: BenchmarkResult,
+        self,
+        result: BenchmarkResult,
     ) -> None:
         """Verify the full standard benchmark result contract."""
         assert_valid_benchmark_result(
@@ -38,21 +39,24 @@ class TestDEBenchmark:
         )
 
     def test_concordance_in_range(
-        self, result: BenchmarkResult,
+        self,
+        result: BenchmarkResult,
     ) -> None:
         """Concordance (Jaccard) must be in [0, 1]."""
         score = result.metrics["concordance_with_ttest"].value
         assert 0.0 <= score <= 1.0
 
     def test_n_de_genes_positive(
-        self, result: BenchmarkResult,
+        self,
+        result: BenchmarkResult,
     ) -> None:
         """Must identify at least some DE genes."""
         n_de = result.metrics["n_de_genes"].value
         assert n_de > 0
 
     def test_has_log_likelihood(
-        self, result: BenchmarkResult,
+        self,
+        result: BenchmarkResult,
     ) -> None:
         """Total log-likelihood must be present and finite."""
         assert "total_log_likelihood" in result.metrics
@@ -60,19 +64,22 @@ class TestDEBenchmark:
         assert ll != 0.0
 
     def test_operator_tag(
-        self, result: BenchmarkResult,
+        self,
+        result: BenchmarkResult,
     ) -> None:
         """Operator tag must reference DifferentiableNBGLM."""
         assert "DifferentiableNBGLM" in result.tags["operator"]
 
     def test_dataset_tag(
-        self, result: BenchmarkResult,
+        self,
+        result: BenchmarkResult,
     ) -> None:
         """Dataset tag must be immune_human."""
         assert result.tags["dataset"] == "immune_human"
 
     def test_has_comparison_in_metadata(
-        self, result: BenchmarkResult,
+        self,
+        result: BenchmarkResult,
     ) -> None:
         """Baselines must be present in metadata."""
         assert "baselines" in result.metadata

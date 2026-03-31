@@ -147,9 +147,7 @@ def _compute_roc_auc(
 
     auc = 0.0
     for i in range(1, len(fpr_values)):
-        auc += (fpr_values[i] - fpr_values[i - 1]) * (
-            tpr_values[i] + tpr_values[i - 1]
-        ) / 2.0
+        auc += (fpr_values[i] - fpr_values[i - 1]) * (tpr_values[i] + tpr_values[i - 1]) / 2.0
     return float(auc)
 
 
@@ -210,11 +208,11 @@ def _train_and_evaluate(
         y: jnp.ndarray,
     ) -> jnp.ndarray:
         """Single training step returning the loss."""
+
         def loss_fn(m: _MLPClassifier) -> jnp.ndarray:
             logits = m(x).squeeze(-1)
-            return jnp.mean(
-                optax.sigmoid_binary_cross_entropy(logits, y)
-            )
+            return jnp.mean(optax.sigmoid_binary_cross_entropy(logits, y))
+
         loss, grads = nnx.value_and_grad(loss_fn)(mdl)
         opt.update(mdl, grads)
         return loss
@@ -281,12 +279,11 @@ class MolNetBenchmark(DiffBioBenchmark):
 
         # 3. Featurize molecules
         logger.info("Featurizing molecules...")
-        fingerprints, labels, n_valid = _featurize_molecules(
-            source, fp_operator
-        )
+        fingerprints, labels, n_valid = _featurize_molecules(source, fp_operator)
         logger.info(
             "  %d/%d molecules featurized successfully",
-            n_valid, n_total,
+            n_valid,
+            n_total,
         )
 
         # Subsample in quick mode
@@ -297,11 +294,11 @@ class MolNetBenchmark(DiffBioBenchmark):
 
         # 4. Train and evaluate
         n_epochs = 20 if self.quick else 50
-        logger.info(
-            "Training MLP classifier for %d epochs...", n_epochs
-        )
+        logger.info("Training MLP classifier for %d epochs...", n_epochs)
         metrics = _train_and_evaluate(
-            fingerprints, labels, source,
+            fingerprints,
+            labels,
+            source,
             n_epochs=n_epochs,
         )
         for key, value in sorted(metrics.items()):
@@ -311,9 +308,7 @@ class MolNetBenchmark(DiffBioBenchmark):
         first_elem = source[0]
         if first_elem is not None:
             try:
-                single_graph = smiles_to_graph(
-                    first_elem.data["smiles"]
-                )
+                single_graph = smiles_to_graph(first_elem.data["smiles"])
             except ValueError:
                 single_graph = {
                     "node_features": jnp.ones((3, DEFAULT_ATOM_FEATURES)),
@@ -340,9 +335,7 @@ class MolNetBenchmark(DiffBioBenchmark):
             "input_data": single_graph,
             "loss_fn": loss_fn,
             "n_items": n_valid,
-            "iterate_fn": lambda: fp_operator.apply(
-                single_graph, {}, None
-            ),
+            "iterate_fn": lambda: fp_operator.apply(single_graph, {}, None),
             "baselines": baselines,
             "dataset_info": {
                 "name": "bbbp",

@@ -114,6 +114,7 @@ def _sinkhorn_log_domain(
     def _step(
         carry: tuple[Float[Array, " n"], Float[Array, " m"]], _: None
     ) -> tuple[tuple[Float[Array, " n"], Float[Array, " m"]], None]:
+        """Perform one Sinkhorn iteration updating dual variables f and g."""
         f_prev, g_prev = carry
         # f update: epsilon * log(a) - epsilon * logsumexp((-C + g) / epsilon, axis=1)
         f_new = epsilon * log_a - epsilon * jax.scipy.special.logsumexp(

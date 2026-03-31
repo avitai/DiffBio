@@ -24,11 +24,11 @@ from flax import nnx
 
 from datarax.sources._eager_source_ops import eager_get_batch, eager_iter
 
+from diffbio.sources._utils import _require_anndata
 from diffbio.sources.anndata_source import (
     AnnDataSource,
     AnnDataSourceConfig,
     _load_obsm,
-    _require_anndata,
     _to_dense_array,
 )
 from diffbio.sources.perturbation._types import OutputSpaceMode

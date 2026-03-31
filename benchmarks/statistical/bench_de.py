@@ -113,10 +113,12 @@ def _welch_ttest_ranking(
     p_values = np.ones(n_genes)
     for g in range(n_genes):
         if group_a[:, g].std() > 0 or group_b[:, g].std() > 0:
-            _, p_val = sp_stats.ttest_ind(
-                group_a[:, g], group_b[:, g], equal_var=False,
+            result = sp_stats.ttest_ind(
+                group_a[:, g],
+                group_b[:, g],
+                equal_var=False,
             )
-            p_values[g] = p_val
+            p_values[g] = float(result.pvalue)
 
     return np.argsort(p_values)
 
@@ -152,15 +154,14 @@ class DEBenchmark(DiffBioBenchmark):
 
     def _run_core(self) -> dict[str, Any]:
         """Load immune_human, fit NB GLM, compute DE metrics."""
-        subsample = (
-            self.config.quick_subsample if self.quick else None
-        )
+        subsample = self.config.quick_subsample if self.quick else None
 
         # 1. Load dataset
         logger.info("Loading immune_human dataset...")
         source = ImmuneHumanSource(
             ImmuneHumanConfig(
-                data_dir=self.data_dir, subsample=subsample,
+                data_dir=self.data_dir,
+                subsample=subsample,
             )
         )
         data = source.load()
@@ -168,26 +169,28 @@ class DEBenchmark(DiffBioBenchmark):
         cell_type_labels = np.asarray(data["cell_type_labels"])
 
         # 2. Select two most abundant cell types
-        type_a, type_b, mask = _select_two_conditions(
-            cell_type_labels
-        )
+        type_a, type_b, mask = _select_two_conditions(cell_type_labels)
         counts_sub = counts[mask]
         labels_sub = cell_type_labels[mask]
         n_cells = int(counts_sub.shape[0])
         n_genes = int(counts_sub.shape[1])
 
         logger.info(
-            "  DE comparison: type %d vs type %d (%d cells, "
-            "%d genes)",
-            type_a, type_b, n_cells, n_genes,
+            "  DE comparison: type %d vs type %d (%d cells, %d genes)",
+            type_a,
+            type_b,
+            n_cells,
+            n_genes,
         )
 
         # 3. Build design matrix: intercept + condition indicator
         condition = (labels_sub == type_a).astype(np.float32)
-        design = jnp.column_stack([
-            jnp.ones(n_cells),
-            jnp.array(condition),
-        ])
+        design = jnp.column_stack(
+            [
+                jnp.ones(n_cells),
+                jnp.array(condition),
+            ]
+        )
         size_factors = _compute_size_factors(counts_sub)
 
         # 4. Create NB GLM operator
@@ -201,7 +204,9 @@ class DEBenchmark(DiffBioBenchmark):
         # 5. Fit: compute batch log-likelihood
         logger.info("Computing NB GLM log-likelihood...")
         total_ll = operator.batch_log_likelihood(
-            counts_sub, design, size_factors,
+            counts_sub,
+            design,
+            size_factors,
         )
         logger.info("  Total log-likelihood: %.2f", float(total_ll))
 
@@ -230,9 +235,7 @@ class DEBenchmark(DiffBioBenchmark):
             )
             return log_prob  # (n_genes,)
 
-        per_gene_ll = jax.vmap(
-            _per_sample_per_gene_ll
-        )(counts_sub, design, size_factors)
+        per_gene_ll = jax.vmap(_per_sample_per_gene_ll)(counts_sub, design, size_factors)
         # per_gene_ll shape: (n_cells, n_genes)
 
         # Sum across samples to get per-gene total LL
@@ -247,22 +250,20 @@ class DEBenchmark(DiffBioBenchmark):
         # 7. Compare against Welch t-test ranking
         logger.info("Computing t-test baseline ranking...")
         ttest_ranking = _welch_ttest_ranking(
-            np.asarray(counts_sub), np.asarray(condition),
+            np.asarray(counts_sub),
+            np.asarray(condition),
         )
 
-        nbglm_top = set(
-            int(x) for x in np.asarray(nbglm_ranking[:_TOP_K])
-        )
+        nbglm_top = set(int(x) for x in np.asarray(nbglm_ranking[:_TOP_K]))
         ttest_top = set(int(x) for x in ttest_ranking[:_TOP_K])
 
         concordance = _jaccard(nbglm_top, ttest_top)
-        n_de_genes = int(
-            jnp.sum(gene_deviation > jnp.median(gene_deviation))
-        )
+        n_de_genes = int(jnp.sum(gene_deviation > jnp.median(gene_deviation)))
 
         logger.info(
             "  Concordance (Jaccard top-%d): %.4f",
-            _TOP_K, concordance,
+            _TOP_K,
+            concordance,
         )
         logger.info("  DE genes (above median dev): %d", n_de_genes)
 
@@ -280,7 +281,8 @@ class DEBenchmark(DiffBioBenchmark):
         }
 
         def loss_fn(
-            model: DifferentiableNBGLM, d: dict[str, Any],
+            model: DifferentiableNBGLM,
+            d: dict[str, Any],
         ) -> jnp.ndarray:
             res, _, _ = model.apply(d, {}, None)
             return res["log_likelihood"]
@@ -294,7 +296,9 @@ class DEBenchmark(DiffBioBenchmark):
             "loss_fn": loss_fn,
             "n_items": n_cells,
             "iterate_fn": lambda: operator.batch_log_likelihood(
-                counts_sub, design, size_factors,
+                counts_sub,
+                design,
+                size_factors,
             ),
             "baselines": baselines,
             "dataset_info": {

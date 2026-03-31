@@ -50,8 +50,8 @@ _TIER_3 = [
 ]
 
 _TIERS = {
-    "ci": _TIER_1[:2],       # batch_correction + clustering only
-    "nightly": _TIER_1,      # all tier 1
+    "ci": _TIER_1[:2],  # batch_correction + clustering only
+    "nightly": _TIER_1,  # all tier 1
     "full": _TIER_1 + _TIER_2 + _TIER_3,
 }
 
@@ -81,9 +81,7 @@ def _run_single(
 
     bench_cls = getattr(module, class_name, None)
     if bench_cls is None:
-        logger.error(
-            "Class %s not found in %s", class_name, module_path
-        )
+        logger.error("Class %s not found in %s", class_name, module_path)
         return None
 
     try:
@@ -92,9 +90,7 @@ def _run_single(
     except (ValueError, TypeError, RuntimeError, OSError) as exc:
         # Benchmark can fail due to missing data, operator errors,
         # or resource issues. Log and continue to next benchmark.
-        logger.error(
-            "Benchmark %s/%s failed: %s", domain, class_name, exc
-        )
+        logger.error("Benchmark %s/%s failed: %s", domain, class_name, exc)
         return None
 
 
@@ -131,10 +127,7 @@ def _print_summary(
     print("DiffBio Benchmark Summary")
     print("=" * 70)
 
-    header = (
-        f"{'Benchmark':<35} {'Key Metric':<15} "
-        f"{'Value':>8} {'Status':>8}"
-    )
+    header = f"{'Benchmark':<35} {'Key Metric':<15} {'Value':>8} {'Status':>8}"
     print(header)
     print("-" * 70)
 
@@ -158,10 +151,7 @@ def _print_summary(
             value_str = "N/A"
 
         status = "PASS"
-        print(
-            f"{r.name:<35} {key:<15} "
-            f"{value_str:>8} {status:>8}"
-        )
+        print(f"{r.name:<35} {key:<15} {value_str:>8} {status:>8}")
 
     n_pass = len(results)
     minutes = int(elapsed // 60)
@@ -174,9 +164,7 @@ def _print_summary(
 
 def main() -> None:
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Run DiffBio benchmarks"
-    )
+    parser = argparse.ArgumentParser(description="Run DiffBio benchmarks")
     parser.add_argument(
         "--tier",
         choices=["ci", "nightly", "full"],
@@ -197,22 +185,16 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    logging.basicConfig(
-        level=logging.INFO, format="%(levelname)s: %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
     # Determine benchmarks to run
     benchmarks = _TIERS.get(args.tier, _TIER_1)
-    quick = args.quick if args.quick is not None else (
-        args.tier == "ci"
-    )
+    quick = args.quick if args.quick is not None else (args.tier == "ci")
 
     # Filter by domain if specified
     if args.domains:
         domain_set = set(args.domains.split(","))
-        benchmarks = [
-            b for b in benchmarks if b[0] in domain_set
-        ]
+        benchmarks = [b for b in benchmarks if b[0] in domain_set]
 
     print(f"Running {len(benchmarks)} benchmarks (tier={args.tier})")
     if quick:
@@ -221,9 +203,7 @@ def main() -> None:
     start = time.time()
     results: list[BenchmarkResult] = []
 
-    for i, (domain, module_path, class_name) in enumerate(
-        benchmarks, 1
-    ):
+    for i, (domain, module_path, class_name) in enumerate(benchmarks, 1):
         print(f"\n[{i}/{len(benchmarks)}] {domain}/{class_name}")
         result = _run_single(domain, module_path, class_name, quick)
         if result is not None:

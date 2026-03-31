@@ -18,7 +18,7 @@ from jaxtyping import Array, Float
 from diffbio.core import soft_ops
 
 
-@dataclass
+@dataclass(frozen=True)
 class BiologicalRegularizationConfig:
     """Configuration for biological regularization losses.
 

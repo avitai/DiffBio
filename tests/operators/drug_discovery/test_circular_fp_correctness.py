@@ -457,10 +457,7 @@ def _save_results(
     """Save benchmark results to JSON."""
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = (
-        output_dir
-        / f"circular_fingerprint_benchmark_{timestamp}.json"
-    )
+    output_file = output_dir / f"circular_fingerprint_benchmark_{timestamp}.json"
 
     data = {
         "timestamp": timestamp,
@@ -471,57 +468,6 @@ def _save_results(
         json.dump(data, f, indent=2)
 
     print(f"\nResults saved to: {output_file}")
-
-
-def run_benchmark(
-    *,
-    quick: bool = False,
-) -> CircularFingerprintBenchmarkResult:
-    """Run a representative circular fingerprint benchmark.
-
-    When ``quick=True``, uses only the first 10 molecules and
-    fewer timed runs. Used by ``run_all.py``.
-
-    Args:
-        quick: If True, use reduced molecule set and fewer runs.
-
-    Returns:
-        CircularFingerprintBenchmarkResult for ECFP4 comparison.
-    """
-    print("=" * 80)
-    print("DiffBio vs DeepChem: Circular Fingerprint Benchmark")
-    print("=" * 80)
-
-    print("\nValidating molecules...")
-    if quick:
-        valid_molecules = validate_smiles(TEST_MOLECULES[:10])
-    else:
-        valid_molecules = validate_smiles(TEST_MOLECULES)
-    print(
-        f"Using {len(valid_molecules)} valid molecules "
-        f"out of {len(TEST_MOLECULES)}"
-    )
-
-    smiles_list = [smiles for _, smiles in valid_molecules]
-    n_warmup = 2 if quick else 5
-    n_runs = 5 if quick else 20
-
-    # Always run ECFP4 as the representative benchmark
-    result = _run_single_comparison(
-        name="ECFP4 (radius=2, 2048 bits)",
-        smiles_list=smiles_list,
-        radius=2,
-        n_bits=2048,
-        n_warmup=n_warmup,
-        n_runs=n_runs,
-    )
-
-    save_benchmark_result(
-        result=asdict(result),
-        domain="drug_discovery",
-        benchmark_name="circular_fingerprint_benchmark",
-    )
-    return result
 
 
 def run_all_comparisons() -> None:
@@ -535,10 +481,7 @@ def run_all_comparisons() -> None:
 
     print("\nValidating molecules...")
     valid_molecules = validate_smiles(TEST_MOLECULES)
-    print(
-        f"Using {len(valid_molecules)} valid molecules "
-        f"out of {len(TEST_MOLECULES)}"
-    )
+    print(f"Using {len(valid_molecules)} valid molecules out of {len(TEST_MOLECULES)}")
 
     smiles_list = [smiles for _, smiles in valid_molecules]
 
@@ -599,36 +542,15 @@ def run_all_comparisons() -> None:
 
     print(f"Average Tanimoto Similarity: {avg_tanimoto:.4f}")
     print(f"Average Bit Agreement: {avg_bit_agreement:.2%}")
-    print(
-        f"Average Speedup (DiffBio vs DeepChem): "
-        f"{avg_speedup:.2f}x"
-    )
+    print(f"Average Speedup (DiffBio vs DeepChem): {avg_speedup:.2f}x")
 
     if avg_tanimoto >= 0.99:
-        print(
-            "\n[PASS] DiffBio fingerprints are highly "
-            "consistent with DeepChem"
-        )
+        print("\n[PASS] DiffBio fingerprints are highly consistent with DeepChem")
     elif avg_tanimoto >= 0.95:
-        print(
-            "\n[PASS] DiffBio fingerprints are consistent "
-            "with DeepChem (minor differences)"
-        )
+        print("\n[PASS] DiffBio fingerprints are consistent with DeepChem (minor differences)")
     else:
-        print(
-            "\n[WARN] Significant differences detected "
-            "between implementations"
-        )
+        print("\n[WARN] Significant differences detected between implementations")
 
     # Save results
     output_dir = Path(__file__).parent / "results"
     _save_results(results, output_dir)
-
-
-def main() -> None:
-    """Run the full benchmark suite."""
-    run_all_comparisons()
-
-
-if __name__ == "__main__":
-    main()

@@ -15,34 +15,32 @@ from dataclasses import dataclass
 from typing import Any
 
 import jax.numpy as jnp
-from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
 from flax import nnx
+
+from diffbio.configs import TemperatureConfig
+from diffbio.core.base_operators import TemperatureOperator
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class AncestryEstimatorConfig(OperatorConfig):
+class AncestryEstimatorConfig(TemperatureConfig):
     """Configuration for DifferentiableAncestryEstimator.
 
     Attributes:
         n_snps: Number of SNP markers in genotype input.
         n_populations: Number of ancestral populations (K).
         hidden_dims: Hidden layer dimensions for encoder.
-        temperature: Temperature for softmax ancestry proportions.
-            Lower values produce sharper (more confident) estimates.
         dropout_rate: Dropout rate for regularization.
     """
 
     n_snps: int = 10000
     n_populations: int = 5
     hidden_dims: tuple[int, ...] = (128, 64)
-    temperature: float = 1.0
     dropout_rate: float = 0.1
 
 
-class DifferentiableAncestryEstimator(OperatorModule):
+class DifferentiableAncestryEstimator(TemperatureOperator):
     """Neural ADMIXTURE-style differentiable ancestry estimator.
 
     This operator uses an autoencoder architecture to estimate ancestry
@@ -64,7 +62,6 @@ class DifferentiableAncestryEstimator(OperatorModule):
         encoder_dropout: Dropout layer for encoder.
         ancestry_head: Linear layer for ancestry proportions.
         population_frequencies: Learnable population allele frequencies (P matrix).
-        temperature: Temperature parameter for softmax.
 
     Example:
         ```python
@@ -125,9 +122,6 @@ class DifferentiableAncestryEstimator(OperatorModule):
             + 0.01
         )
 
-        # Temperature parameter
-        self.temperature = nnx.Param(jnp.array(config.temperature))
-
     def encode(self, genotypes: jnp.ndarray) -> jnp.ndarray:
         """Encode genotypes to latent representation.
 
@@ -162,7 +156,7 @@ class DifferentiableAncestryEstimator(OperatorModule):
         logits = self.ancestry_head(latent)
 
         # Apply temperature-controlled softmax
-        temperature = jnp.maximum(self.temperature[...], 1e-6)
+        temperature = jnp.maximum(self._temperature, 1e-6)
         proportions = nnx.softmax(logits / temperature, axis=-1)
 
         return proportions

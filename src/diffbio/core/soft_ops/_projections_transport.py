@@ -206,6 +206,7 @@ def _proj_transport_polytope_entropic_lbfgs(
             bool,
         ],
     ) -> jnp.ndarray:
+        """Compute the negative entropic OT dual objective for L-BFGS minimization."""
         C_, mu_, nu_, eps_, gauge_fix_ = args
         if gauge_fix_:
             f, g_rest = y
@@ -335,6 +336,7 @@ def _proj_transport_polytope_pnorm_lbfgs(
             bool,
         ],
     ) -> jnp.ndarray:
+        """Compute the negative p-norm OT dual objective for L-BFGS minimization."""
         C_, mu_, nu_, lam_pow_, gauge_fix_ = args
         if gauge_fix_:
             f, g_rest = y

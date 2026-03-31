@@ -152,9 +152,9 @@ def _run_jaxmd_baseline(
     displacement_fn, shift_fn = space.periodic(jnp.array(box_size))
     energy_fn = energy.lennard_jones_pair(
         displacement_fn,
-        sigma=_SIGMA,
-        epsilon=_EPSILON,
-        r_cutoff=_CUTOFF * _SIGMA,
+        sigma=jnp.array(_SIGMA),
+        epsilon=jnp.array(_EPSILON),
+        r_cutoff=jnp.array(_CUTOFF * _SIGMA),
     )
 
     init_fn, step_fn = simulate.nve(energy_fn, shift_fn, dt=dt)
@@ -274,9 +274,9 @@ class LJBenchmark(DiffBioBenchmark):
             )
         )
 
-        ke_init = float(quantity.kinetic_energy(velocity=velocities, mass=_MASS))
+        ke_init = float(quantity.kinetic_energy(velocity=velocities, mass=jnp.array(_MASS)))
         final_vel = int_result["velocities"]
-        ke_final = float(quantity.kinetic_energy(velocity=final_vel, mass=_MASS))
+        ke_final = float(quantity.kinetic_energy(velocity=final_vel, mass=jnp.array(_MASS)))
 
         total_init = initial_pe + ke_init
         total_final = final_pe + ke_final

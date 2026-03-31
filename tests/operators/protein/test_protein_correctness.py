@@ -18,23 +18,13 @@ Usage:
 
 from __future__ import annotations
 
-import logging
-from dataclasses import asdict, dataclass, field
-from datetime import datetime
-
 import jax.numpy as jnp
-from flax import nnx
 
-from benchmarks._gradient import check_gradient_flow
 from diffbio.operators.protein.secondary_structure import (
-    DifferentiableSecondaryStructure,
-    SecondaryStructureConfig,
     SS_HELIX,
     SS_LOOP,
     SS_STRAND,
 )
-
-logger = logging.getLogger(__name__)
 
 # -- Synthetic data constants ------------------------------------------------
 
@@ -49,54 +39,6 @@ STRAND_RISE_PER_RESIDUE = 3.3
 BOND_N_CA = 1.47
 BOND_CA_C = 1.52
 BOND_C_O = 1.24
-
-
-@dataclass(frozen=True, kw_only=True)
-class ProteinStructureBenchmarkResult:
-    """Results from protein secondary structure benchmark.
-
-    Attributes:
-        timestamp: ISO-format timestamp of the benchmark run.
-        n_residues: Total number of residues in the test protein.
-        n_helix: Number of helix residues.
-        n_strand: Number of strand residues.
-        n_coil: Number of coil residues.
-        ss_onehot_correct_shape: Whether ss_onehot has expected shape.
-        ss_onehot_values_valid: Whether values are in [0, 1] and
-            sum to approximately 1 per residue.
-        hbond_map_finite: Whether hbond_map contains only finite
-            values.
-        hbond_map_nonnegative: Whether hbond_map values are all
-            non-negative.
-        q3_helix: Fraction of helix residues correctly classified.
-        q3_strand: Fraction of strand residues correctly classified.
-        q3_coil: Fraction of coil residues correctly classified.
-        q3_overall: Overall Q3 accuracy across all residues.
-        gradient_norm: L2 norm of gradients through the operator.
-        gradient_nonzero: Whether gradient norm exceeds threshold.
-        residues_per_second: Throughput in residues per second.
-        wall_time_ms: Time per operator call in milliseconds.
-        config: Configuration dict used for the operator.
-    """
-
-    timestamp: str
-    n_residues: int
-    n_helix: int
-    n_strand: int
-    n_coil: int
-    ss_onehot_correct_shape: bool
-    ss_onehot_values_valid: bool
-    hbond_map_finite: bool
-    hbond_map_nonnegative: bool
-    q3_helix: float
-    q3_strand: float
-    q3_coil: float
-    q3_overall: float
-    gradient_norm: float
-    gradient_nonzero: bool
-    residues_per_second: float
-    wall_time_ms: float
-    config: dict = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -135,11 +77,13 @@ def _generate_helix_backbone(
         angle_n = 2.0 * jnp.pi * (i - 0.3) / HELIX_RESIDUES_PER_TURN
         z_n = HELIX_RISE_PER_RESIDUE * (i - 0.3)
         n = (
-            jnp.array([
-                radius * jnp.cos(angle_n),
-                radius * jnp.sin(angle_n),
-                z_n,
-            ])
+            jnp.array(
+                [
+                    radius * jnp.cos(angle_n),
+                    radius * jnp.sin(angle_n),
+                    z_n,
+                ]
+            )
             + offset
         )
 
@@ -147,19 +91,19 @@ def _generate_helix_backbone(
         angle_c = 2.0 * jnp.pi * (i + 0.3) / HELIX_RESIDUES_PER_TURN
         z_c = HELIX_RISE_PER_RESIDUE * (i + 0.3)
         c = (
-            jnp.array([
-                radius * jnp.cos(angle_c),
-                radius * jnp.sin(angle_c),
-                z_c,
-            ])
+            jnp.array(
+                [
+                    radius * jnp.cos(angle_c),
+                    radius * jnp.sin(angle_c),
+                    z_c,
+                ]
+            )
             + offset
         )
 
         # O is displaced from C perpendicular to the CA-C bond
         ca_c_vec = c - ca
-        ca_c_norm = ca_c_vec / (
-            jnp.linalg.norm(ca_c_vec) + 1e-8
-        )
+        ca_c_norm = ca_c_vec / (jnp.linalg.norm(ca_c_vec) + 1e-8)
         # Perpendicular direction in the xy-plane
         perp = jnp.array([-ca_c_norm[1], ca_c_norm[0], 0.0])
         o = c + perp * BOND_C_O
@@ -294,11 +238,13 @@ def generate_synthetic_protein(
     batched_coords = all_coords[None, :, :, :]
 
     # Ground truth labels
-    labels = jnp.concatenate([
-        jnp.full((n_helix,), SS_HELIX, dtype=jnp.int32),
-        jnp.full((n_strand,), SS_STRAND, dtype=jnp.int32),
-        jnp.full((n_coil,), SS_LOOP, dtype=jnp.int32),
-    ])
+    labels = jnp.concatenate(
+        [
+            jnp.full((n_helix,), SS_HELIX, dtype=jnp.int32),
+            jnp.full((n_strand,), SS_STRAND, dtype=jnp.int32),
+            jnp.full((n_coil,), SS_LOOP, dtype=jnp.int32),
+        ]
+    )
 
     return batched_coords, labels
 
@@ -374,9 +320,7 @@ def _validate_ss_onehot(
     """
     correct_shape = ss_onehot.shape == (batch, length, 3)
 
-    values_in_range = bool(
-        jnp.all(ss_onehot >= -1e-6) and jnp.all(ss_onehot <= 1.0 + 1e-6)
-    )
+    values_in_range = bool(jnp.all(ss_onehot >= -1e-6) and jnp.all(ss_onehot <= 1.0 + 1e-6))
     sums = jnp.sum(ss_onehot, axis=-1)
     sums_valid = bool(jnp.allclose(sums, 1.0, atol=1e-4))
 
@@ -401,189 +345,3 @@ def _validate_hbond_map(
         "hbond_map_finite": bool(jnp.all(jnp.isfinite(hbond_map))),
         "hbond_map_nonnegative": bool(jnp.all(hbond_map >= -1e-6)),
     }
-
-
-# ---------------------------------------------------------------------------
-# Benchmark runner
-# ---------------------------------------------------------------------------
-
-
-def run_benchmark(
-    *,
-    quick: bool = False,
-) -> ProteinStructureBenchmarkResult:
-    """Run the complete protein secondary structure benchmark.
-
-    Args:
-        quick: If True, use smaller data for faster execution.
-
-    Returns:
-        Benchmark results dataclass.
-    """
-    print("=" * 60)
-    print("DiffBio Protein Secondary Structure Benchmark")
-    print("=" * 60)
-
-    # -- Synthetic data ------------------------------------------------------
-    print("\nGenerating synthetic backbone coordinates...")
-    coords, labels = generate_synthetic_protein(quick=quick)
-    batch, length, _, _ = coords.shape
-
-    n_helix = 10 if quick else 20
-    n_strand = 8 if quick else 15
-    n_coil = 8 if quick else 15
-
-    print(f"  Total residues: {length}")
-    print(f"  Helix: {n_helix}  Strand: {n_strand}  Coil: {n_coil}")
-
-    # -- Create operator -----------------------------------------------------
-    print("\nCreating DifferentiableSecondaryStructure operator...")
-    config = SecondaryStructureConfig(
-        margin=1.0,
-        cutoff=-0.5,
-        temperature=1.0,
-    )
-    predictor = DifferentiableSecondaryStructure(
-        config,
-        rngs=nnx.Rngs(42),
-    )
-
-    # -- Run prediction ------------------------------------------------------
-    print("\nRunning secondary structure prediction...")
-    data = {"coordinates": coords}
-    result, _, _ = predictor.apply(data, {}, None)
-
-    ss_onehot = result["ss_onehot"]
-    hbond_map = result["hbond_map"]
-    ss_indices = result["ss_indices"]
-
-    # -- Validate outputs ----------------------------------------------------
-    print("\nValidating outputs...")
-    shape_validity = _validate_ss_onehot(ss_onehot, batch, length)
-    hbond_validity = _validate_hbond_map(hbond_map)
-
-    print(
-        f"  ss_onehot shape valid: "
-        f"{shape_validity['ss_onehot_correct_shape']}"
-    )
-    print(
-        f"  ss_onehot values valid: "
-        f"{shape_validity['ss_onehot_values_valid']}"
-    )
-    print(
-        f"  hbond_map finite: {hbond_validity['hbond_map_finite']}"
-    )
-    print(
-        f"  hbond_map non-negative: "
-        f"{hbond_validity['hbond_map_nonnegative']}"
-    )
-
-    # -- Q3 accuracy ---------------------------------------------------------
-    print("\nComputing Q3 accuracy...")
-    # Squeeze batch dimension for per-residue comparison
-    pred_indices = ss_indices[0]
-    q3_metrics = _compute_q3_accuracy(
-        pred_indices, labels, n_helix, n_strand, n_coil,
-    )
-    print(f"  Q3 helix:   {q3_metrics['q3_helix']:.3f}")
-    print(f"  Q3 strand:  {q3_metrics['q3_strand']:.3f}")
-    print(f"  Q3 coil:    {q3_metrics['q3_coil']:.3f}")
-    print(f"  Q3 overall: {q3_metrics['q3_overall']:.3f}")
-
-    # -- Gradient flow -------------------------------------------------------
-    print("\nChecking gradient flow...")
-
-    def loss_fn(
-        model: DifferentiableSecondaryStructure,
-        input_data: dict[str, jnp.ndarray],
-    ) -> jnp.ndarray:
-        """Scalar loss for gradient checking."""
-        out, _, _ = model.apply(input_data, {}, None)
-        return jnp.sum(out["ss_onehot"])
-
-    grad_metrics = check_gradient_flow(loss_fn, predictor, data)
-    print(f"  Gradient norm: {grad_metrics.gradient_norm:.6f}")
-    print(f"  Gradient non-zero: {grad_metrics.gradient_nonzero}")
-
-    # -- Throughput ----------------------------------------------------------
-    print("\nMeasuring throughput...")
-    n_iters = 20 if quick else 100
-    warmup = 3 if quick else 5
-
-    def _run_apply(
-        input_data: dict[str, jnp.ndarray],
-    ) -> tuple:
-        """Single operator call for throughput measurement."""
-        return predictor.apply(input_data, {}, None)
-
-    throughput_metrics = measure_throughput(
-        _run_apply,
-        args=(data,),
-        n_iterations=n_iters,
-        warmup=warmup,
-    )
-    residues_per_sec = (
-        length * throughput_metrics["items_per_sec"]
-    )
-    wall_time_ms = throughput_metrics["per_item_ms"]
-
-    print(f"  Residues/sec: {residues_per_sec:.1f}")
-    print(f"  Time per call: {wall_time_ms:.2f} ms")
-
-    # -- Compile results -----------------------------------------------------
-    config_dict = {
-        "margin": config.margin,
-        "cutoff": config.cutoff,
-        "temperature": config.temperature,
-        "min_helix_length": config.min_helix_length,
-    }
-
-    benchmark_result = ProteinStructureBenchmarkResult(
-        timestamp=datetime.now().isoformat(),
-        n_residues=length,
-        n_helix=n_helix,
-        n_strand=n_strand,
-        n_coil=n_coil,
-        **shape_validity,
-        **hbond_validity,
-        **q3_metrics,
-        gradient_norm=grad_metrics.gradient_norm,
-        gradient_nonzero=grad_metrics.gradient_nonzero,
-        residues_per_second=residues_per_sec,
-        wall_time_ms=wall_time_ms,
-        config=config_dict,
-    )
-
-    print("\n" + "=" * 60)
-    print("Summary")
-    print("=" * 60)
-    print(f"  Q3 overall: {q3_metrics['q3_overall']:.3f}")
-    print(
-        f"  Gradient flows: "
-        f"{grad_metrics.gradient_nonzero}"
-    )
-    print(f"  Throughput: {residues_per_sec:.1f} residues/sec")
-    print("=" * 60)
-
-    return benchmark_result
-
-
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
-
-
-def main() -> None:
-    """Run benchmark and save results."""
-    result = run_benchmark()
-    result_dict = asdict(result)
-    output_path = save_benchmark_result(
-        result_dict,
-        domain="protein",
-        benchmark_name="protein_structure",
-    )
-    print(f"\nResults saved to: {output_path}")
-
-
-if __name__ == "__main__":
-    main()

@@ -270,6 +270,4 @@ def assert_valid_benchmark_result(
     # Extra required keys
     if required_metric_keys:
         for key in required_metric_keys:
-            assert key in result.metrics, (
-                f"Missing required metric: {key}"
-            )
+            assert key in result.metrics, f"Missing required metric: {key}"

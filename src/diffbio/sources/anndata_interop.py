@@ -24,29 +24,12 @@ from typing import TYPE_CHECKING, Any
 import jax.numpy as jnp
 import numpy as np
 
+from diffbio.sources._utils import _require_anndata
+
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     import anndata
-
-
-def _require_anndata() -> Any:
-    """Import anndata, raising a clear error if not installed.
-
-    Returns:
-        The anndata module.
-
-    Raises:
-        ImportError: If anndata is not installed.
-    """
-    try:
-        import anndata as ad  # noqa: PLC0415
-
-        return ad
-    except ImportError as err:
-        raise ImportError(
-            "anndata is required for AnnData interop. Install with: uv pip install anndata"
-        ) from err
 
 
 def _require_pandas() -> Any:

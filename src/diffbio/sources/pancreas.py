@@ -71,9 +71,7 @@ class PancreasSource(DataSourceModule):
         name: str | None = None,
     ) -> None:
         """Load the pancreas dataset."""
-        super().__init__(
-            config, rngs=rngs, name=name or "PancreasSource"
-        )
+        super().__init__(config, rngs=rngs, name=name or "PancreasSource")
         self.data = self._load(config)
         logger.info(
             "Loaded pancreas: %d cells, %d genes, %d types",
@@ -91,9 +89,7 @@ class PancreasSource(DataSourceModule):
 
         if config.subsample is not None and config.subsample < adata.n_obs:
             rng = np.random.default_rng(42)
-            idx = rng.choice(
-                adata.n_obs, size=config.subsample, replace=False
-            )
+            idx = rng.choice(adata.n_obs, size=config.subsample, replace=False)
             idx.sort()
             adata = adata[idx].copy()
 
@@ -103,26 +99,20 @@ class PancreasSource(DataSourceModule):
 
         # Spliced/unspliced for velocity
         spliced = jnp.array(to_dense_float32(adata.layers["spliced"]))
-        unspliced = jnp.array(
-            to_dense_float32(adata.layers["unspliced"])
-        )
+        unspliced = jnp.array(to_dense_float32(adata.layers["unspliced"]))
 
         # Cell type labels
         label_col = adata.obs[config.cluster_key]
         if hasattr(label_col, "cat"):
             labels = np.asarray(label_col.cat.codes, dtype=np.int32)
         else:
-            _, labels = np.unique(
-                np.asarray(label_col), return_inverse=True
-            )
+            _, labels = np.unique(np.asarray(label_col), return_inverse=True)
             labels = labels.astype(np.int32)
 
         # Embeddings
         embeddings = jnp.array(
             np.asarray(
-                adata.obsm.get(
-                    "X_pca", np.zeros((adata.n_obs, 50))
-                ),
+                adata.obsm.get("X_pca", np.zeros((adata.n_obs, 50))),
                 dtype=np.float32,
             )
         )
@@ -151,8 +141,6 @@ class PancreasSource(DataSourceModule):
         """Iterate over cells."""
         for i in range(len(self)):
             yield {
-                k: v[i] if hasattr(v, "__getitem__")
-                and k != "gene_names"
-                else v
+                k: v[i] if hasattr(v, "__getitem__") and k != "gene_names" else v
                 for k, v in self.data.items()
             }

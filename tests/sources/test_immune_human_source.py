@@ -40,9 +40,7 @@ class TestImmuneHumanConfig:
             config.data_dir = "/other"  # type: ignore[misc]
 
     def test_subsample_config(self) -> None:
-        config = ImmuneHumanConfig(
-            data_dir=str(_DATA_DIR), subsample=2000
-        )
+        config = ImmuneHumanConfig(data_dir=str(_DATA_DIR), subsample=2000)
         assert config.subsample == 2000
 
 
@@ -53,9 +51,7 @@ class TestImmuneHumanSource:
     @pytest.fixture()
     def source(self) -> ImmuneHumanSource:
         """Load with subsample for fast tests."""
-        config = ImmuneHumanConfig(
-            data_dir=str(_DATA_DIR), subsample=500
-        )
+        config = ImmuneHumanConfig(data_dir=str(_DATA_DIR), subsample=500)
         return ImmuneHumanSource(config)
 
     def test_load_returns_dict(self, source: ImmuneHumanSource) -> None:
@@ -65,8 +61,11 @@ class TestImmuneHumanSource:
     def test_required_keys(self, source: ImmuneHumanSource) -> None:
         data = source.load()
         required = {
-            "counts", "batch_labels", "cell_type_labels",
-            "embeddings", "gene_names",
+            "counts",
+            "batch_labels",
+            "cell_type_labels",
+            "embeddings",
+            "gene_names",
         }
         assert required.issubset(data.keys())
 
@@ -80,9 +79,7 @@ class TestImmuneHumanSource:
         data = source.load()
         assert data["batch_labels"].shape == (500,)
 
-    def test_cell_type_labels_shape(
-        self, source: ImmuneHumanSource
-    ) -> None:
+    def test_cell_type_labels_shape(self, source: ImmuneHumanSource) -> None:
         data = source.load()
         assert data["cell_type_labels"].shape == (500,)
 
@@ -92,9 +89,7 @@ class TestImmuneHumanSource:
         assert data["embeddings"].shape[0] == 500
         assert isinstance(data["embeddings"], jnp.ndarray)
 
-    def test_gene_names_are_strings(
-        self, source: ImmuneHumanSource
-    ) -> None:
+    def test_gene_names_are_strings(self, source: ImmuneHumanSource) -> None:
         data = source.load()
         assert isinstance(data["gene_names"], list)
         assert all(isinstance(g, str) for g in data["gene_names"])
@@ -108,9 +103,7 @@ class TestImmuneHumanSource:
         unique_batches = np.unique(np.asarray(data["batch_labels"]))
         assert len(unique_batches) >= 2
 
-    def test_multiple_cell_types(
-        self, source: ImmuneHumanSource
-    ) -> None:
+    def test_multiple_cell_types(self, source: ImmuneHumanSource) -> None:
         data = source.load()
         unique_types = np.unique(np.asarray(data["cell_type_labels"]))
         assert len(unique_types) >= 2

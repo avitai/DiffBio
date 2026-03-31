@@ -27,25 +27,11 @@ from flax import nnx
 from datarax.core.config import StructuralConfig
 from datarax.core.data_source import DataSourceModule
 
+from diffbio.sources._utils import _require_anndata, to_dense_float32 as _to_dense
+
 logger = logging.getLogger(__name__)
 
 _FILENAME = "Immune_ALL_human.h5ad"
-
-
-def _require_anndata() -> Any:
-    """Import anndata with a clear error message."""
-    try:
-        import anndata  # noqa: PLC0415
-
-        return anndata
-    except ImportError as err:
-        raise ImportError(
-            "anndata is required for ImmuneHumanSource. "
-            "Install with: uv pip install anndata"
-        ) from err
-
-
-from diffbio.sources._utils import to_dense_float32 as _to_dense
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -131,9 +117,7 @@ class ImmuneHumanSource(DataSourceModule):
 
         if config.subsample is not None and config.subsample < adata.n_obs:
             rng = np.random.default_rng(42)
-            indices = rng.choice(
-                adata.n_obs, size=config.subsample, replace=False
-            )
+            indices = rng.choice(adata.n_obs, size=config.subsample, replace=False)
             indices.sort()
             adata = adata[indices].copy()
 
@@ -144,33 +128,22 @@ class ImmuneHumanSource(DataSourceModule):
         if hasattr(batch_col, "cat"):
             batch_labels = np.asarray(batch_col.cat.codes, dtype=np.int32)
         else:
-            _, batch_labels = np.unique(
-                np.asarray(batch_col), return_inverse=True
-            )
+            _, batch_labels = np.unique(np.asarray(batch_col), return_inverse=True)
             batch_labels = batch_labels.astype(np.int32)
 
         label_col = adata.obs[config.label_key]
         if hasattr(label_col, "cat"):
-            cell_type_labels = np.asarray(
-                label_col.cat.codes, dtype=np.int32
-            )
+            cell_type_labels = np.asarray(label_col.cat.codes, dtype=np.int32)
         else:
-            _, cell_type_labels = np.unique(
-                np.asarray(label_col), return_inverse=True
-            )
+            _, cell_type_labels = np.unique(np.asarray(label_col), return_inverse=True)
             cell_type_labels = cell_type_labels.astype(np.int32)
 
         # Get embeddings (PCA from obsm, or compute on the fly)
         if config.embedding_key in adata.obsm:
-            embeddings = jnp.array(
-                np.asarray(
-                    adata.obsm[config.embedding_key], dtype=np.float32
-                )
-            )
+            embeddings = jnp.array(np.asarray(adata.obsm[config.embedding_key], dtype=np.float32))
         else:
             logger.info(
-                "Embedding key '%s' not in obsm (%s). "
-                "Computing PCA (50 components).",
+                "Embedding key '%s' not in obsm (%s). Computing PCA (50 components).",
                 config.embedding_key,
                 list(adata.obsm.keys()),
             )
@@ -191,9 +164,7 @@ class ImmuneHumanSource(DataSourceModule):
         }
 
     @staticmethod
-    def _compute_pca(
-        counts: jnp.ndarray, n_components: int = 50
-    ) -> jnp.ndarray:
+    def _compute_pca(counts: jnp.ndarray, n_components: int = 50) -> jnp.ndarray:
         """Compute PCA embeddings from count matrix.
 
         Log-normalizes, then computes truncated SVD for PCA.
@@ -239,7 +210,6 @@ class ImmuneHumanSource(DataSourceModule):
         """Iterate over individual cells."""
         for i in range(len(self)):
             yield {
-                k: v[i] if hasattr(v, "__getitem__") and k != "gene_names"
-                else v
+                k: v[i] if hasattr(v, "__getitem__") and k != "gene_names" else v
                 for k, v in self.data.items()
             }

@@ -46,33 +46,20 @@ def generate_synthetic_expression(
     cells_per_type = n_cells // n_types
     type_labels_list: list[int] = []
     for t in range(n_types):
-        count = (
-            cells_per_type if t < n_types - 1
-            else n_cells - len(type_labels_list)
-        )
+        count = cells_per_type if t < n_types - 1 else n_cells - len(type_labels_list)
         type_labels_list.extend([t] * count)
     cell_type_labels = jnp.array(type_labels_list)
 
     cells_per_batch = n_cells // n_batches
     batch_labels_list: list[int] = []
     for b in range(n_batches):
-        count = (
-            cells_per_batch if b < n_batches - 1
-            else n_cells - len(batch_labels_list)
-        )
+        count = cells_per_batch if b < n_batches - 1 else n_cells - len(batch_labels_list)
         batch_labels_list.extend([b] * count)
     batch_labels = jnp.array(batch_labels_list)
 
-    batch_shifts = (
-        jax.random.normal(keys[1], (n_batches, n_genes))
-        * batch_effect_strength
-    )
+    batch_shifts = jax.random.normal(keys[1], (n_batches, n_genes)) * batch_effect_strength
     cell_noise = jax.random.normal(keys[2], (n_cells, n_genes)) * 0.3
-    cell_log_means = (
-        type_log_means[cell_type_labels]
-        + batch_shifts[batch_labels]
-        + cell_noise
-    )
+    cell_log_means = type_log_means[cell_type_labels] + batch_shifts[batch_labels] + cell_noise
 
     rates = jnp.exp(cell_log_means)
     dispersion = 5.0
@@ -148,19 +135,13 @@ def generate_synthetic_coverage(
     key = jax.random.key(seed)
     keys = jax.random.split(key, 4)
 
-    background = jax.random.poisson(
-        keys[0], background_rate, (length,)
-    ).astype(jnp.float32)
+    background = jax.random.poisson(keys[0], background_rate, (length,)).astype(jnp.float32)
 
     positions = jax.random.randint(keys[1], (n_peaks,), 0, length)
     min_w, max_w = peak_width_range
-    widths = jax.random.randint(
-        keys[2], (n_peaks,), min_w, max(min_w + 1, max_w)
-    )
+    widths = jax.random.randint(keys[2], (n_peaks,), min_w, max(min_w + 1, max_w))
     min_h, max_h = peak_height_range
-    heights = jax.random.uniform(
-        keys[3], (n_peaks,), minval=min_h, maxval=max_h
-    )
+    heights = jax.random.uniform(keys[3], (n_peaks,), minval=min_h, maxval=max_h)
 
     signal_np = np.array(background)
     truth_np = np.zeros(length, dtype=np.float32)

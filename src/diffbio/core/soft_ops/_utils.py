@@ -274,6 +274,7 @@ def reduce_in_chunks(
     f_remat = jax.checkpoint(f)
 
     def body(acc: jnp.ndarray, chunk: jnp.ndarray):
+        """Accumulate reduction result for one chunk."""
         return acc + f_remat(chunk), None
 
     result, _ = jax.lax.scan(body, init, xs_chunked)

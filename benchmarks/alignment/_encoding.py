@@ -11,9 +11,7 @@ import numpy as np
 
 from diffbio.operators.alignment import PROTEIN_ALPHABET
 
-ALPHABET_INDEX: dict[str, int] = {
-    aa: i for i, aa in enumerate(PROTEIN_ALPHABET)
-}
+ALPHABET_INDEX: dict[str, int] = {aa: i for i, aa in enumerate(PROTEIN_ALPHABET)}
 ALPHABET_SIZE = len(PROTEIN_ALPHABET)
 
 

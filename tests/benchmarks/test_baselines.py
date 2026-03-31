@@ -5,7 +5,6 @@ TDD: Verify baseline data structure before implementation.
 
 from __future__ import annotations
 
-import pytest
 
 from benchmarks._baselines.scib import INTEGRATION_BASELINES
 
@@ -22,24 +21,18 @@ class TestIntegrationBaselines:
 
     def test_each_method_has_aggregate(self) -> None:
         for name, point in INTEGRATION_BASELINES["immune_human"].items():
-            assert "aggregate_score" in point.metrics, (
-                f"{name} missing aggregate_score"
-            )
+            assert "aggregate_score" in point.metrics, f"{name} missing aggregate_score"
 
     def test_each_method_has_bio_metrics(self) -> None:
         for name, point in INTEGRATION_BASELINES["immune_human"].items():
-            assert "silhouette_label" in point.metrics, (
-                f"{name} missing silhouette_label"
-            )
+            assert "silhouette_label" in point.metrics, f"{name} missing silhouette_label"
 
     def test_values_are_calibrax_metrics(self) -> None:
         from calibrax.core.models import Metric  # noqa: PLC0415
 
         for name, point in INTEGRATION_BASELINES["immune_human"].items():
             for metric_name, metric in point.metrics.items():
-                assert isinstance(metric, Metric), (
-                    f"{name}/{metric_name} is not a Metric"
-                )
+                assert isinstance(metric, Metric), f"{name}/{metric_name} is not a Metric"
 
     def test_values_in_valid_range(self) -> None:
         for name, point in INTEGRATION_BASELINES["immune_human"].items():
@@ -54,6 +47,4 @@ class TestIntegrationBaselines:
 
     def test_has_source_tag(self) -> None:
         for name, point in INTEGRATION_BASELINES["immune_human"].items():
-            assert "source" in point.tags, (
-                f"{name} missing source tag"
-            )
+            assert "source" in point.tags, f"{name} missing source tag"

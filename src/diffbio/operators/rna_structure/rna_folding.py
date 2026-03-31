@@ -191,6 +191,7 @@ def mccaskill_partition_function(
         """Fill all entries with subsequence length d."""
 
         def compute_entry(i):
+            """Compute the log partition function Q[i, i+d] for one entry."""
             j = i + d
 
             # Case 1: j is unpaired, use Q[i, j-1]
@@ -200,6 +201,7 @@ def mccaskill_partition_function(
             # Sum over all k: Q[i,k-1] * exp(-E[k,j]/T) * (1 + Q[k+1,j-1])
 
             def pair_term(k):
+                """Compute the log contribution of pairing position k with j."""
                 # Boltzmann factor for k,j pair
                 log_bp = log_boltzmann[k, j]
 
@@ -236,6 +238,7 @@ def mccaskill_partition_function(
         # Compute entries for this diagonal
         # Use fori_loop for better tracing
         def body_fn(i, log_Q):
+            """Update the DP table for entry (i, i+d) if within bounds."""
             j = i + d
             valid = j < n
             new_val = jax.lax.cond(valid, lambda: compute_entry(i), lambda: 0.0)

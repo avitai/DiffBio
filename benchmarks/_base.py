@@ -124,30 +124,17 @@ class DiffBioBenchmark(ABC):
         )
 
         # Throughput measurement
-        n_iters = (
-            self.config.n_iterations_quick if self.quick
-            else self.config.n_iterations_full
-        )
+        n_iters = self.config.n_iterations_quick if self.quick else self.config.n_iterations_full
         logger.info("Measuring throughput...")
-        timing = self._measure_throughput(
-            iterate_fn, n_items, n_iters
-        )
+        timing = self._measure_throughput(iterate_fn, n_items, n_iters)
         items_per_sec = timing.num_elements / timing.wall_clock_sec
         logger.info("  %.0f items/sec", items_per_sec)
 
         # Build calibrax metrics
-        calibrax_metrics = {
-            k: Metric(value=float(v)) for k, v in metrics.items()
-        }
-        calibrax_metrics["gradient_norm"] = Metric(
-            value=grad.gradient_norm
-        )
-        calibrax_metrics["gradient_nonzero"] = Metric(
-            value=1.0 if grad.gradient_nonzero else 0.0
-        )
-        calibrax_metrics["items_per_sec"] = Metric(
-            value=items_per_sec
-        )
+        calibrax_metrics = {k: Metric(value=float(v)) for k, v in metrics.items()}
+        calibrax_metrics["gradient_norm"] = Metric(value=grad.gradient_norm)
+        calibrax_metrics["gradient_nonzero"] = Metric(value=1.0 if grad.gradient_nonzero else 0.0)
+        calibrax_metrics["items_per_sec"] = Metric(value=items_per_sec)
 
         # Print comparison table
         if baselines:
@@ -169,9 +156,7 @@ class DiffBioBenchmark(ABC):
             },
             metadata={
                 "dataset_info": dataset_info,
-                "baselines": {
-                    k: p.to_dict() for k, p in baselines.items()
-                },
+                "baselines": {k: p.to_dict() for k, p in baselines.items()},
             },
         )
 
@@ -188,9 +173,7 @@ class DiffBioBenchmark(ABC):
             # JAX/NNX gradient computation can fail for operators
             # without learnable parameters or incompatible loss_fn
             logger.warning("Gradient check failed: %s", exc)
-            return GradientFlowResult(
-                gradient_norm=0.0, gradient_nonzero=False
-            )
+            return GradientFlowResult(gradient_norm=0.0, gradient_nonzero=False)
 
     @staticmethod
     def _measure_throughput(

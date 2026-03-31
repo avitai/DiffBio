@@ -15,7 +15,7 @@ from rdkit import Chem
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True)
 class AtomFeatureConfig:
     """Configuration for atom feature extraction.
 

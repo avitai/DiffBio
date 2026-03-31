@@ -98,9 +98,7 @@ def _build_reference_signatures(
         Reference profiles (n_cell_types, n_genes).
     """
     n_genes = counts.shape[1]
-    signatures = np.zeros(
-        (n_cell_types, n_genes), dtype=np.float32
-    )
+    signatures = np.zeros((n_cell_types, n_genes), dtype=np.float32)
     for ct in range(n_cell_types):
         mask = cell_type_labels == ct
         if mask.sum() > 0:
@@ -145,17 +143,9 @@ def _aggregate_spots_by_proximity(
 
     # Determine radius: use percentile of pairwise distances
     sample_size = min(1000, n_spatial)
-    sample_idx = rng.choice(
-        n_spatial, size=sample_size, replace=False
-    )
-    sample_dists = tree.query(
-        spatial_coords[sample_idx], k=_CELLS_PER_SPOT_MAX
-    )[0]
-    radius = float(
-        np.percentile(
-            sample_dists[:, -1], _SPATIAL_RADIUS_PERCENTILE
-        )
-    )
+    sample_idx = rng.choice(n_spatial, size=sample_size, replace=False)
+    sample_dists = tree.query(spatial_coords[sample_idx], k=_CELLS_PER_SPOT_MAX)[0]
+    radius = float(np.percentile(sample_dists[:, -1], _SPATIAL_RADIUS_PERCENTILE))
     # Ensure radius captures at least a few cells
     radius = max(radius, float(np.median(sample_dists[:, 1])) * 2)
 
@@ -171,13 +161,9 @@ def _aggregate_spots_by_proximity(
             continue
 
         # Find neighbours within radius
-        neighbour_idx = tree.query_ball_point(
-            spatial_coords[centre_idx], r=radius
-        )
+        neighbour_idx = tree.query_ball_point(spatial_coords[centre_idx], r=radius)
         # Filter already used
-        neighbour_idx = [
-            j for j in neighbour_idx if not used[j]
-        ]
+        neighbour_idx = [j for j in neighbour_idx if not used[j]]
 
         if len(neighbour_idx) < _CELLS_PER_SPOT_MIN:
             continue
@@ -211,15 +197,9 @@ def _aggregate_spots_by_proximity(
         spot_coordinates.append(centroid)
 
     return {
-        "spot_expression": jnp.array(
-            np.stack(spot_expressions, axis=0)
-        ),
-        "true_proportions": jnp.array(
-            np.stack(spot_proportions, axis=0)
-        ),
-        "coordinates": jnp.array(
-            np.stack(spot_coordinates, axis=0)
-        ),
+        "spot_expression": jnp.array(np.stack(spot_expressions, axis=0)),
+        "true_proportions": jnp.array(np.stack(spot_proportions, axis=0)),
+        "coordinates": jnp.array(np.stack(spot_coordinates, axis=0)),
     }
 
 
@@ -257,9 +237,7 @@ def _compute_deconvolution_metrics(
 
     # Proportion sum-to-one: mean absolute deviation from 1.0
     row_sums = pred_np.sum(axis=-1)
-    proportion_sum_to_one = 1.0 - float(
-        np.mean(np.abs(row_sums - 1.0))
-    )
+    proportion_sum_to_one = 1.0 - float(np.mean(np.abs(row_sums - 1.0)))
 
     return {
         "pearson_correlation": pearson_correlation,
@@ -282,17 +260,11 @@ class SpatialDeconvBenchmark(DiffBioBenchmark):
 
     def _run_core(self) -> dict[str, Any]:
         """Load seqFISH, split, aggregate spots, deconvolve."""
-        subsample = (
-            self.config.quick_subsample if self.quick else None
-        )
+        subsample = self.config.quick_subsample if self.quick else None
 
         # 1. Load seqFISH dataset
         logger.info("Loading seqFISH cortex dataset...")
-        source = SeqFISHSource(
-            SeqFISHConfig(
-                data_dir=self.data_dir, subsample=subsample
-            )
-        )
+        source = SeqFISHSource(SeqFISHConfig(data_dir=self.data_dir, subsample=subsample))
         data = source.load()
         counts_jnp = data["counts"]
         cell_type_labels = data["cell_type_labels"]
@@ -303,16 +275,17 @@ class SpatialDeconvBenchmark(DiffBioBenchmark):
 
         logger.info(
             "  %d cells, %d genes, %d types",
-            n_cells, n_genes, n_cell_types,
+            n_cells,
+            n_genes,
+            n_cell_types,
         )
 
         # 2. Split: 80% reference, 20% spatial
-        ref_idx, spatial_idx = _split_reference_spatial(
-            n_cells, _REFERENCE_FRACTION
-        )
+        ref_idx, spatial_idx = _split_reference_spatial(n_cells, _REFERENCE_FRACTION)
         logger.info(
             "  Split: %d reference, %d spatial",
-            len(ref_idx), len(spatial_idx),
+            len(ref_idx),
+            len(spatial_idx),
         )
 
         counts_np = np.asarray(counts_jnp)
@@ -327,9 +300,7 @@ class SpatialDeconvBenchmark(DiffBioBenchmark):
 
         # 3. Build reference signatures from reference cells
         logger.info("Building reference signatures...")
-        reference_profiles = _build_reference_signatures(
-            ref_counts, ref_labels, n_cell_types
-        )
+        reference_profiles = _build_reference_signatures(ref_counts, ref_labels, n_cell_types)
 
         # 4. Aggregate spatial cells into pseudo-bulk spots
         logger.info("Aggregating spatial cells into spots...")
@@ -364,16 +335,12 @@ class SpatialDeconvBenchmark(DiffBioBenchmark):
 
         # 6. Compute metrics
         logger.info("Computing deconvolution metrics...")
-        quality = _compute_deconvolution_metrics(
-            predicted_proportions, spots["true_proportions"]
-        )
+        quality = _compute_deconvolution_metrics(predicted_proportions, spots["true_proportions"])
         for key, value in sorted(quality.items()):
             logger.info("  %s: %.4f", key, value)
 
         # Loss function for gradient check
-        def loss_fn(
-            model: SpatialDeconvolution, d: dict[str, Any]
-        ) -> jnp.ndarray:
+        def loss_fn(model: SpatialDeconvolution, d: dict[str, Any]) -> jnp.ndarray:
             res, _, _ = model.apply(d, {}, None)
             return jnp.sum(res["cell_proportions"])
 
@@ -383,9 +350,7 @@ class SpatialDeconvBenchmark(DiffBioBenchmark):
             "input_data": input_data,
             "loss_fn": loss_fn,
             "n_items": n_spots,
-            "iterate_fn": lambda: operator.apply(
-                input_data, {}, None
-            ),
+            "iterate_fn": lambda: operator.apply(input_data, {}, None),
             "baselines": DECONVOLUTION_BASELINES,
             "dataset_info": {
                 "name": "seqfish_cortex",

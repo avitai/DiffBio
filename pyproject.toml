@@ -77,7 +77,7 @@ benchmark = [
   "tabulate>=0.9",
   "deepchem>=2.8.0",
   "pandas>=2.0",
-  "matplotlib>=3.7",
+  "matplotlib>=3.7"
 ]
 cuda-dev = ["diffbio[dev,gpu]"]
 dev = [

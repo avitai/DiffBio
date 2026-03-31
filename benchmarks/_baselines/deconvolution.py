@@ -19,9 +19,7 @@ from __future__ import annotations
 
 from calibrax.core.models import Metric, Point
 
-_SOURCE_SPOTLESS = (
-    "Li et al., Genome Biology 2023 (spotless-benchmark)"
-)
+_SOURCE_SPOTLESS = "Li et al., Genome Biology 2023 (spotless-benchmark)"
 
 DECONVOLUTION_BASELINES: dict[str, Point] = {
     "RCTD": Point(

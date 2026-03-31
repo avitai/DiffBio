@@ -71,9 +71,7 @@ def evaluate_integration(
     from scib_metrics.nearest_neighbors import pynndescent  # noqa: PLC0415
 
     # Convert to writable numpy (pynndescent numba requires writable)
-    embeddings_np = np.array(
-        corrected_embeddings, dtype=np.float32, copy=True
-    )
+    embeddings_np = np.array(corrected_embeddings, dtype=np.float32, copy=True)
     labels_np = np.array(labels, dtype=np.int32, copy=True)
     batch_np = np.array(batch, dtype=np.int32, copy=True)
 
@@ -83,42 +81,31 @@ def evaluate_integration(
     nn = pynndescent(embeddings_np, n_neighbors=n_neighbors)
 
     # Bio conservation metrics
-    metrics["silhouette_label"] = float(
-        scib_metrics.silhouette_label(embeddings_np, labels_np)
-    )
+    metrics["silhouette_label"] = float(scib_metrics.silhouette_label(embeddings_np, labels_np))
 
-    nmi_ari = scib_metrics.nmi_ari_cluster_labels_kmeans(
-        embeddings_np, labels_np
-    )
+    nmi_ari = scib_metrics.nmi_ari_cluster_labels_kmeans(embeddings_np, labels_np)
     metrics["nmi_kmeans"] = float(nmi_ari["nmi"])
     metrics["ari_kmeans"] = float(nmi_ari["ari"])
 
     metrics["clisi"] = float(scib_metrics.clisi_knn(nn, labels_np))
 
     metrics["isolated_labels"] = float(
-        scib_metrics.isolated_labels(
-            embeddings_np, labels_np, batch_np
-        )
+        scib_metrics.isolated_labels(embeddings_np, labels_np, batch_np)
     )
 
     # Batch correction metrics
     metrics["silhouette_batch"] = float(
-        scib_metrics.silhouette_batch(
-            embeddings_np, labels_np, batch_np
-        )
+        scib_metrics.silhouette_batch(embeddings_np, labels_np, batch_np)
     )
 
     metrics["ilisi"] = float(scib_metrics.ilisi_knn(nn, batch_np))
 
-    metrics["graph_connectivity"] = float(
-        scib_metrics.graph_connectivity(nn, labels_np)
-    )
+    metrics["graph_connectivity"] = float(scib_metrics.graph_connectivity(nn, labels_np))
 
     # kBET (can be slow, wrap in try/except)
     try:
-        kbet_val = float(
-            scib_metrics.kbet_per_label(nn, batch_np, labels_np)
-        )
+        kbet_raw = scib_metrics.kbet_per_label(nn, batch_np, labels_np)
+        kbet_val = float(kbet_raw) if isinstance(kbet_raw, (int, float)) else float(kbet_raw[0])
         metrics["kbet"] = kbet_val
     except (ValueError, RuntimeError, IndexError) as exc:
         # kBET can fail on small/degenerate batches

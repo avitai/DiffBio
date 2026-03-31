@@ -18,9 +18,8 @@ Usage:
 
 from __future__ import annotations
 
-import sys
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
@@ -155,9 +154,7 @@ def compute_clustering_metrics(
     centers = jnp.stack(centers_list)
 
     # Inertia: sum of squared distances to nearest center
-    distances = jnp.linalg.norm(
-        embeddings[:, None, :] - centers[None, :, :], axis=-1
-    )
+    distances = jnp.linalg.norm(embeddings[:, None, :] - centers[None, :, :], axis=-1)
     min_distances = jnp.min(distances, axis=-1)
     inertia = float(jnp.sum(min_distances**2))
 
@@ -168,9 +165,7 @@ def compute_clustering_metrics(
         if mask.sum() <= 1:
             continue
         cluster_points = embeddings[mask]
-        within_dists = (
-            cluster_points[:, None, :] - cluster_points[None, :, :]
-        )
+        within_dists = cluster_points[:, None, :] - cluster_points[None, :, :]
         a = jnp.mean(jnp.linalg.norm(within_dists, axis=-1))
 
         b_vals: list[float] = []
@@ -180,22 +175,15 @@ def compute_clustering_metrics(
             mask2 = hard_assignments == c2
             if mask2.sum() > 0:
                 other_points = embeddings[mask2]
-                between_dists = (
-                    cluster_points[:, None, :]
-                    - other_points[None, :, :]
-                )
-                b = jnp.mean(
-                    jnp.linalg.norm(between_dists, axis=-1)
-                )
+                between_dists = cluster_points[:, None, :] - other_points[None, :, :]
+                b = jnp.mean(jnp.linalg.norm(between_dists, axis=-1))
                 b_vals.append(float(b))
         if b_vals:
             b_min = min(b_vals)
             sil = (b_min - float(a)) / max(float(a), b_min)
             silhouettes.append(sil)
 
-    silhouette_score = (
-        float(np.mean(silhouettes)) if silhouettes else 0.0
-    )
+    silhouette_score = float(np.mean(silhouettes)) if silhouettes else 0.0
 
     return {
         "inertia": inertia,
@@ -246,16 +234,10 @@ def test_harmony(data: dict[str, Any]) -> dict[str, Any]:
     corrected = result["corrected_embeddings"]
 
     # Compute batch variance before and after
-    variance_before = compute_batch_variance(
-        data["embeddings"], data["batch_labels"], n_batches
-    )
-    variance_after = compute_batch_variance(
-        corrected, data["batch_labels"], n_batches
-    )
+    variance_before = compute_batch_variance(data["embeddings"], data["batch_labels"], n_batches)
+    variance_after = compute_batch_variance(corrected, data["batch_labels"], n_batches)
     variance_reduction = (
-        (1 - variance_after / variance_before) * 100
-        if variance_before > 0
-        else 0.0
+        (1 - variance_after / variance_before) * 100 if variance_before > 0 else 0.0
     )
 
     # Gradient flow through model parameters
@@ -274,8 +256,7 @@ def test_harmony(data: dict[str, Any]) -> dict[str, Any]:
     print(f"    Variance reduction: {variance_reduction:.1f}%")
     print(f"    Time: {elapsed_ms:.2f}ms")
     print(
-        f"    Gradient norm: {grad_info.gradient_norm:.6f}"
-        f" (nonzero={grad_info.gradient_nonzero})"
+        f"    Gradient norm: {grad_info.gradient_norm:.6f} (nonzero={grad_info.gradient_nonzero})"
     )
 
     return {
@@ -321,9 +302,7 @@ def test_clustering(data: dict[str, Any]) -> dict[str, Any]:
 
     assignments = result["cluster_assignments"]
 
-    metrics = compute_clustering_metrics(
-        data["embeddings"], assignments, n_clusters
-    )
+    metrics = compute_clustering_metrics(data["embeddings"], assignments, n_clusters)
 
     # Gradient flow through model parameters
     def loss_fn(
@@ -340,8 +319,7 @@ def test_clustering(data: dict[str, Any]) -> dict[str, Any]:
     print(f"    Silhouette score: {metrics['silhouette']:.4f}")
     print(f"    Time: {elapsed_ms:.2f}ms")
     print(
-        f"    Gradient norm: {grad_info.gradient_norm:.6f}"
-        f" (nonzero={grad_info.gradient_nonzero})"
+        f"    Gradient norm: {grad_info.gradient_norm:.6f} (nonzero={grad_info.gradient_nonzero})"
     )
 
     return {
@@ -424,29 +402,19 @@ def run_benchmark(
         # Harmony
         harmony_variance_before=harmony_metrics["variance_before"],
         harmony_variance_after=harmony_metrics["variance_after"],
-        harmony_variance_reduction=harmony_metrics[
-            "variance_reduction"
-        ],
+        harmony_variance_reduction=harmony_metrics["variance_reduction"],
         harmony_time_ms=harmony_metrics["time_ms"],
         harmony_gradient_norm=harmony_metrics["gradient_norm"],
-        harmony_gradient_nonzero=harmony_metrics[
-            "gradient_nonzero"
-        ],
+        harmony_gradient_nonzero=harmony_metrics["gradient_nonzero"],
         # Clustering
         clustering_inertia=clustering_metrics["inertia"],
         clustering_silhouette=clustering_metrics["silhouette"],
         clustering_time_ms=clustering_metrics["time_ms"],
-        clustering_gradient_norm=clustering_metrics[
-            "gradient_norm"
-        ],
-        clustering_gradient_nonzero=clustering_metrics[
-            "gradient_nonzero"
-        ],
+        clustering_gradient_norm=clustering_metrics["gradient_norm"],
+        clustering_gradient_nonzero=clustering_metrics["gradient_nonzero"],
         # Performance
         harmony_cells_per_sec=harmony_metrics["cells_per_sec"],
-        clustering_cells_per_sec=clustering_metrics[
-            "cells_per_sec"
-        ],
+        clustering_cells_per_sec=clustering_metrics["cells_per_sec"],
     )
 
     print("\n" + "=" * 60)
@@ -460,19 +428,3 @@ def run_benchmark(
     print("=" * 60)
 
     return result
-
-
-def main() -> None:
-    """Main entry point."""
-    quick = "--quick" in sys.argv
-    result = run_benchmark(quick=quick)
-    output_path = save_benchmark_result(
-        asdict(result),
-        domain="singlecell",
-        benchmark_name="singlecell_benchmark",
-    )
-    print(f"Results saved to: {output_path}")
-
-
-if __name__ == "__main__":
-    main()

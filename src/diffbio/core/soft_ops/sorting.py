@@ -99,7 +99,10 @@ def _neuralsort_a_sum(
     x_flat = x_last.reshape(-1, n)
 
     def _single(x_row: Array) -> Array:
+        """Compute pairwise absolute difference sums for one row."""
+
         def _chunk_fn(x_chunk_j: Array) -> Array:
+            """Sum absolute differences against a chunk of columns."""
             return soft_abs(
                 x_row[:, None] - x_chunk_j[None, :],
                 mode=mode,
@@ -127,15 +130,17 @@ def _softsort_fused_sort(
     x_std_flat = x_std.reshape(-1, n)
 
     def _single(x_orig_row: Array, x_std_row: Array) -> Array:
-        anchors_row = jnp.sort(x_std_row, descending=descending)
+        """Compute soft-sorted values for a single row via SoftSort."""
 
         def _chunk_fn(anchors_chunk: Array) -> Array:
+            """Project an anchor chunk onto the simplex and gather values."""
             diff = jnp.abs(anchors_chunk[:, None] - x_std_row[None, :])
             p_chunk = proj_simplex(-diff, axis=-1, softness=softness, mode=mode)
             if not gated_grad:
                 p_chunk = jax.lax.stop_gradient(p_chunk)
             return jnp.einsum("cn,n->c", p_chunk, x_orig_row)
 
+        anchors_row = jnp.sort(x_std_row, descending=descending)
         return map_in_chunks(f=_chunk_fn, xs=anchors_row, chunk_size=128)
 
     result = jax.vmap(_single)(x_orig_flat, x_std_flat)
@@ -173,7 +178,10 @@ def _neuralsort_fused_sort(
         a_sum_row: Array,
         coef_row: Array,
     ) -> Array:
+        """Compute soft-sorted values for a single row via NeuralSort."""
+
         def _chunk_fn(coef_chunk: Array) -> Array:
+            """Project a coefficient chunk onto the simplex and gather values."""
             z_chunk = -(coef_chunk[:, None] * x_std_row[None, :] + a_sum_row[None, :])
             p_chunk = proj_simplex(z_chunk, axis=-1, softness=softness, mode=mode)
             if not gated_grad:
@@ -204,13 +212,15 @@ def _softsort_fused_rank(
     x_flat = x_last.reshape(-1, n)
 
     def _single(x_row: Array) -> Array:
-        anchors_row = jnp.sort(x_row, descending=descending)
+        """Compute soft ranks for a single row via SoftSort."""
 
         def _chunk_fn(x_chunk: Array) -> Array:
+            """Compute rank contributions for a chunk of elements."""
             diff = jnp.abs(x_chunk[:, None] - anchors_row[None, :])
             p_chunk = proj_simplex(-diff, axis=-1, softness=softness, mode=mode)
             return jnp.einsum("cn,n->c", p_chunk, nums)
 
+        anchors_row = jnp.sort(x_row, descending=descending)
         return map_in_chunks(f=_chunk_fn, xs=x_row, chunk_size=128)
 
     result = jax.vmap(_single)(x_flat)
@@ -247,9 +257,11 @@ def _neuralsort_fused_rank(
         row_sums_row: Array,
         coef_row: Array,
     ) -> Array:
+        """Compute soft ranks for a single row via NeuralSort."""
         coef_and_nums = jnp.stack([coef_row, nums], axis=-1)
 
         def _chunk_fn(data_chunk: Array) -> Array:
+            """Accumulate rank contributions from a chunk of coefficients."""
             coef_chunk = data_chunk[:, 0]
             nums_chunk = data_chunk[:, 1]
             z_chunk = -(coef_chunk[:, None] * x_row[None, :] + row_sums_row[None, :])

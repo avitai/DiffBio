@@ -23,8 +23,6 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
-from dataclasses import asdict, dataclass
-from datetime import datetime
 
 import jax
 import jax.numpy as jnp
@@ -45,45 +43,6 @@ from diffbio.operators.singlecell.soft_clustering import (
     SoftClusteringConfig,
     SoftKMeansClustering,
 )
-
-
-@dataclass(frozen=True, kw_only=True)
-class ScVIBenchmarkResult:
-    """Results from scVI-style benchmark.
-
-    Attributes:
-        timestamp: ISO-format timestamp of the benchmark run.
-        n_cells: Number of cells in synthetic dataset.
-        n_genes: Number of genes in synthetic dataset.
-        n_batches: Number of experimental batches.
-        n_types: Number of cell types.
-        n_epochs: Number of training epochs.
-        elbo: Final ELBO training loss.
-        reconstruction_mse: Mean squared reconstruction error.
-        silhouette: Silhouette score for cell-type separation.
-        batch_asw: Batch ASW (1 - |batch silhouette|).
-        ari: Adjusted Rand index of clusters vs true labels.
-        nmi: Normalized mutual information of clusters.
-        gradient_norm: L2 norm of gradients through the model.
-        gradient_nonzero: Whether gradient norm exceeds threshold.
-        training_time_ms: Wall-clock training time in milliseconds.
-    """
-
-    timestamp: str
-    n_cells: int
-    n_genes: int
-    n_batches: int
-    n_types: int
-    n_epochs: int
-    elbo: float
-    reconstruction_mse: float
-    silhouette: float
-    batch_asw: float
-    ari: float
-    nmi: float
-    gradient_norm: float
-    gradient_nonzero: bool
-    training_time_ms: float
 
 
 def generate_synthetic_pbmc_data(
@@ -115,24 +74,16 @@ def generate_synthetic_pbmc_data(
     keys = jax.random.split(key, 6)
 
     # Per-type mean expression profiles on log scale
-    type_log_means = (
-        jax.random.normal(keys[0], (n_types, n_genes)) * 1.5 + 2.0
-    )
+    type_log_means = jax.random.normal(keys[0], (n_types, n_genes)) * 1.5 + 2.0
 
     # Per-batch additive shift on log scale (batch effects)
-    batch_shifts = (
-        jax.random.normal(keys[1], (n_batches, n_genes)) * 0.5
-    )
+    batch_shifts = jax.random.normal(keys[1], (n_batches, n_genes)) * 0.5
 
     # Assign cells to types (roughly equal)
     cells_per_type = n_cells // n_types
     type_labels_list: list[int] = []
     for t in range(n_types):
-        count = (
-            cells_per_type
-            if t < n_types - 1
-            else n_cells - len(type_labels_list)
-        )
+        count = cells_per_type if t < n_types - 1 else n_cells - len(type_labels_list)
         type_labels_list.extend([t] * count)
     cell_type_labels = jnp.array(type_labels_list)
 
@@ -140,18 +91,12 @@ def generate_synthetic_pbmc_data(
     cells_per_batch = n_cells // n_batches
     batch_labels_list: list[int] = []
     for b in range(n_batches):
-        count = (
-            cells_per_batch
-            if b < n_batches - 1
-            else n_cells - len(batch_labels_list)
-        )
+        count = cells_per_batch if b < n_batches - 1 else n_cells - len(batch_labels_list)
         batch_labels_list.extend([b] * count)
     batch_labels = jnp.array(batch_labels_list)
 
     # Build per-cell log-mean expression: type mean + batch shift + noise
-    cell_log_means = (
-        type_log_means[cell_type_labels] + batch_shifts[batch_labels]
-    )
+    cell_log_means = type_log_means[cell_type_labels] + batch_shifts[batch_labels]
     cell_noise = jax.random.normal(keys[2], (n_cells, n_genes)) * 0.3
     cell_log_means = cell_log_means + cell_noise
 
@@ -160,9 +105,7 @@ def generate_synthetic_pbmc_data(
 
     # Negative binomial sampling: use Gamma-Poisson mixture
     dispersion = 5.0
-    gamma_samples = jax.random.gamma(
-        keys[3], dispersion, (n_cells, n_genes)
-    )
+    gamma_samples = jax.random.gamma(keys[3], dispersion, (n_cells, n_genes))
     scaled_rates = rates * gamma_samples / dispersion
     counts = jax.random.poisson(keys[4], scaled_rates).astype(jnp.float32)
 
@@ -226,18 +169,12 @@ def create_jit_train_step(
                 counts_i: jax.Array,
                 lib_i: jax.Array,
             ) -> jax.Array:
-                return model_inner.compute_elbo_loss(
-                    counts_i, lib_i
-                )
+                return model_inner.compute_elbo_loss(counts_i, lib_i)
 
-            losses = jax.vmap(per_cell_loss)(
-                counts_batch, library_size_batch
-            )
+            losses = jax.vmap(per_cell_loss)(counts_batch, library_size_batch)
             return jnp.mean(losses)
 
-        loss, grads = nnx.value_and_grad(
-            loss_fn, argnums=nnx.DiffState(0, nnx.Param)
-        )(m)
+        loss, grads = nnx.value_and_grad(loss_fn, argnums=nnx.DiffState(0, nnx.Param))(m)
         opt.update(m, grads)
         return loss
 
@@ -270,9 +207,7 @@ def _compute_latent_representations(
         reconstructed = jnp.exp(decode_out["log_rate"])
         return mean, reconstructed
 
-    latent_means, reconstructed = jax.vmap(encode_cell)(
-        counts, library_size
-    )
+    latent_means, reconstructed = jax.vmap(encode_cell)(counts, library_size)
     return latent_means, reconstructed
 
 
@@ -330,9 +265,7 @@ def _run_scvi_benchmark_inner(
         Dictionary with metric names as keys and float values.
     """
     # 1. Generate data
-    data = generate_synthetic_pbmc_data(
-        n_cells=n_cells, n_genes=n_genes, seed=seed
-    )
+    data = generate_synthetic_pbmc_data(n_cells=n_cells, n_genes=n_genes, seed=seed)
     counts = jnp.asarray(data["counts"])
     library_size = jnp.asarray(data["library_size"])
     cell_type_labels = jnp.asarray(data["cell_type_labels"])
@@ -349,9 +282,7 @@ def _run_scvi_benchmark_inner(
     model = VAENormalizer(config, rngs=nnx.Rngs(seed))
 
     # 3. JIT-compiled training loop using nnx.Optimizer
-    nnx_optimizer = nnx.Optimizer(
-        model, optax.adam(1e-3), wrt=nnx.Param
-    )
+    nnx_optimizer = nnx.Optimizer(model, optax.adam(1e-3), wrt=nnx.Param)
     train_step = create_jit_train_step(model, nnx_optimizer)
 
     start_time = time.time()
@@ -369,9 +300,7 @@ def _run_scvi_benchmark_inner(
     latent_means, reconstructed = _compute_latent_representations(
         trained_model, counts, library_size
     )
-    reconstruction_mse = float(
-        jnp.mean((counts - reconstructed) ** 2)
-    )
+    reconstruction_mse = float(jnp.mean((counts - reconstructed) ** 2))
 
     # Latent silhouette (bio conservation)
     sil = float(silhouette_score(latent_means, cell_type_labels))
@@ -381,15 +310,9 @@ def _run_scvi_benchmark_inner(
     batch_asw = 1.0 - abs(batch_sil)
 
     # Cluster with SoftKMeans and evaluate
-    cluster_labels = _cluster_latent(
-        latent_means, n_clusters=n_types, seed=seed
-    )
+    cluster_labels = _cluster_latent(latent_means, n_clusters=n_types, seed=seed)
     ari = float(adjusted_rand_index(cell_type_labels, cluster_labels))
-    nmi = float(
-        normalized_mutual_information_clustering(
-            cell_type_labels, cluster_labels
-        )
-    )
+    nmi = float(normalized_mutual_information_clustering(cell_type_labels, cluster_labels))
 
     # 5. Gradient flow check via shared utility
     def grad_loss_fn(
@@ -404,9 +327,7 @@ def _run_scvi_benchmark_inner(
 
         return jnp.mean(jax.vmap(per_cell)(c, ls))
 
-    grad_result = check_gradient_flow(
-        grad_loss_fn, trained_model, counts, library_size
-    )
+    grad_result = check_gradient_flow(grad_loss_fn, trained_model, counts, library_size)
 
     return {
         "elbo": elbo_value,
@@ -422,95 +343,3 @@ def _run_scvi_benchmark_inner(
         "n_genes": n_genes,
         "n_epochs": n_epochs,
     }
-
-
-def run_benchmark(*, quick: bool = False) -> ScVIBenchmarkResult:
-    """Run the complete scVI-style VAE benchmark.
-
-    Args:
-        quick: If True, use reduced dataset sizes and fewer epochs
-            for faster CI runs (n_cells=50, n_genes=20, n_epochs=5).
-
-    Returns:
-        Benchmark results dataclass.
-    """
-    n_cells = 50 if quick else 500
-    n_genes = 20 if quick else 200
-    n_epochs = 5 if quick else 50
-    seed = 42
-
-    print("=" * 60)
-    print("DiffBio scVI-style VAE Benchmark")
-    if quick:
-        print("  (quick mode)")
-    print("=" * 60)
-
-    print("\nGenerating synthetic PBMC-like data...")
-    data = generate_synthetic_pbmc_data(
-        n_cells=n_cells, n_genes=n_genes, seed=seed
-    )
-    print(f"  Cells: {data['n_cells']}")
-    print(f"  Genes: {data['n_genes']}")
-    print(f"  Batches: {data['n_batches']}")
-    print(f"  Cell types: {data['n_types']}")
-
-    print("\nTraining VAENormalizer (ZINB likelihood)...")
-    results = _run_scvi_benchmark_inner(
-        n_cells=n_cells,
-        n_genes=n_genes,
-        n_epochs=n_epochs,
-        seed=seed,
-    )
-
-    print("\nResults:")
-    print(f"  ELBO:               {results['elbo']:.2f}")
-    print(f"  Reconstruction MSE: {results['reconstruction_mse']:.4f}")
-    print(f"  Silhouette (bio):   {results['silhouette']:.4f}")
-    print(f"  Batch ASW:          {results['batch_asw']:.4f}")
-    print(f"  ARI:                {results['ari']:.4f}")
-    print(f"  NMI:                {results['nmi']:.4f}")
-    print(f"  Gradient norm:      {results['gradient_norm']:.6f}")
-    print(f"  Gradient non-zero:  {results['gradient_nonzero']}")
-    print(
-        f"  Training time:      {results['training_time_ms']:.0f}ms"
-    )
-
-    benchmark_result = ScVIBenchmarkResult(
-        timestamp=datetime.now().isoformat(),
-        n_cells=n_cells,
-        n_genes=n_genes,
-        n_batches=int(data["n_batches"]),
-        n_types=int(data["n_types"]),
-        n_epochs=n_epochs,
-        elbo=results["elbo"],
-        reconstruction_mse=results["reconstruction_mse"],
-        silhouette=results["silhouette"],
-        batch_asw=results["batch_asw"],
-        ari=results["ari"],
-        nmi=results["nmi"],
-        gradient_norm=results["gradient_norm"],
-        gradient_nonzero=results["gradient_nonzero"],
-        training_time_ms=results["training_time_ms"],
-    )
-
-    print("\n" + "=" * 60)
-    print("Benchmark complete.")
-    print("=" * 60)
-
-    return benchmark_result
-
-
-def main() -> None:
-    """Run benchmark and save results."""
-    result = run_benchmark()
-    result_dict = asdict(result)
-    output_path = save_benchmark_result(
-        result_dict,
-        domain="singlecell",
-        benchmark_name="scvi",
-    )
-    print(f"\nResults saved to: {output_path}")
-
-
-if __name__ == "__main__":
-    main()

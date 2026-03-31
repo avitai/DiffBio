@@ -58,9 +58,7 @@ def _parse_fasta(path: Path) -> list[tuple[str, str]]:
             line = line.rstrip("\n")
             if line.startswith(">"):
                 if current_name is not None:
-                    entries.append(
-                        (current_name, "".join(current_seq_parts))
-                    )
+                    entries.append((current_name, "".join(current_seq_parts)))
                 current_name = line[1:].strip()
                 current_seq_parts = []
             elif current_name is not None:
@@ -92,9 +90,7 @@ class BalifamConfig(StructuralConfig):
         super().__post_init__()
         valid_tiers = {100, 1000, 10000}
         if self.tier not in valid_tiers:
-            raise ValueError(
-                f"tier must be one of {valid_tiers}, got {self.tier}"
-            )
+            raise ValueError(f"tier must be one of {valid_tiers}, got {self.tier}")
         tier_dir = Path(self.data_dir) / f"balifam{self.tier}"
         if not tier_dir.exists():
             raise FileNotFoundError(
@@ -147,9 +143,7 @@ class BalifamSource(DataSourceModule):
             config.tier,
         )
 
-    def _load_families(
-        self, config: BalifamConfig
-    ) -> list[dict[str, Any]]:
+    def _load_families(self, config: BalifamConfig) -> list[dict[str, Any]]:
         """Load families from disk.
 
         Args:
@@ -183,13 +177,15 @@ class BalifamSource(DataSourceModule):
             sequences = _parse_fasta(in_path)
             reference = _parse_fasta(ref_path)
 
-            families.append({
-                "family_id": family_id,
-                "sequences": sequences,
-                "reference": reference,
-                "n_sequences": len(sequences),
-                "n_reference": len(reference),
-            })
+            families.append(
+                {
+                    "family_id": family_id,
+                    "sequences": sequences,
+                    "reference": reference,
+                    "n_sequences": len(sequences),
+                    "n_reference": len(reference),
+                }
+            )
 
         return families
 

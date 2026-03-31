@@ -43,8 +43,7 @@ def evaluate_grn(
 
     if pred.shape != truth.shape:
         raise ValueError(
-            f"Shape mismatch: predicted {predicted.shape} "
-            f"vs ground_truth {ground_truth.shape}"
+            f"Shape mismatch: predicted {predicted.shape} vs ground_truth {ground_truth.shape}"
         )
 
     n_total = len(truth)
@@ -78,9 +77,7 @@ def evaluate_grn(
     # Only at points where recall changes (true positives found)
     tp_mask = truth_sorted > 0
     if tp_mask.sum() > 0:
-        average_precision = float(
-            np.sum(precision_curve[tp_mask]) / n_positives
-        )
+        average_precision = float(np.sum(precision_curve[tp_mask]) / n_positives)
     else:
         average_precision = 0.0
 

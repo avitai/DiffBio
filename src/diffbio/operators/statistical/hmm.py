@@ -145,6 +145,7 @@ class DifferentiableHMM(HMMOperator):
         # Soft emission: sum over emissions weighted by observation probs
         # log P(o_t | state) = logsumexp(log_emit + log(o_t))
         def soft_emission(obs: Float[Array, "n_emissions"]) -> Float[Array, "n_states"]:
+            """Compute log emission probability for soft observation vector."""
             # obs is (n_emissions,), log_emit is (n_states, n_emissions)
             log_obs = jnp.log(obs + 1e-10)
             return jax.scipy.special.logsumexp(log_emit + log_obs, axis=1)
@@ -156,6 +157,7 @@ class DifferentiableHMM(HMMOperator):
         def forward_step(
             log_alpha: Float[Array, "n_states"], obs: Float[Array, "n_emissions"]
         ) -> tuple[Float[Array, "n_states"], None]:
+            """Advance the forward variable by one time step."""
             log_alpha_expanded = log_alpha[:, None]
             log_alpha_new = jax.scipy.special.logsumexp(log_alpha_expanded + log_trans, axis=0)
             log_alpha_new = log_alpha_new + soft_emission(obs)

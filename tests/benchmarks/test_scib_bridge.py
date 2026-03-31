@@ -25,14 +25,10 @@ def synthetic_integration_data() -> dict[str, np.ndarray]:
     # Generate embeddings with cluster structure
     centers = rng.normal(size=(n_types, n_features)) * 3.0
     labels = np.repeat(np.arange(n_types), n_cells // n_types)
-    embeddings = centers[labels] + rng.normal(
-        size=(n_cells, n_features)
-    ) * 0.5
+    embeddings = centers[labels] + rng.normal(size=(n_cells, n_features)) * 0.5
 
     # Assign batches
-    batch = np.tile(np.arange(n_batches), n_cells // n_batches + 1)[
-        :n_cells
-    ]
+    batch = np.tile(np.arange(n_batches), n_cells // n_batches + 1)[:n_cells]
 
     return {
         "embeddings": embeddings.astype(np.float32),
@@ -44,22 +40,14 @@ def synthetic_integration_data() -> dict[str, np.ndarray]:
 class TestEvaluateIntegration:
     """Tests for the evaluate_integration bridge function."""
 
-    def test_returns_dict(
-        self, synthetic_integration_data: dict[str, np.ndarray]
-    ) -> None:
+    def test_returns_dict(self, synthetic_integration_data: dict[str, np.ndarray]) -> None:
         d = synthetic_integration_data
-        result = evaluate_integration(
-            d["embeddings"], d["labels"], d["batch"]
-        )
+        result = evaluate_integration(d["embeddings"], d["labels"], d["batch"])
         assert isinstance(result, dict)
 
-    def test_required_metric_keys(
-        self, synthetic_integration_data: dict[str, np.ndarray]
-    ) -> None:
+    def test_required_metric_keys(self, synthetic_integration_data: dict[str, np.ndarray]) -> None:
         d = synthetic_integration_data
-        result = evaluate_integration(
-            d["embeddings"], d["labels"], d["batch"]
-        )
+        result = evaluate_integration(d["embeddings"], d["labels"], d["batch"])
         required_keys = {
             "silhouette_label",
             "silhouette_batch",
@@ -79,9 +67,7 @@ class TestEvaluateIntegration:
         self, synthetic_integration_data: dict[str, np.ndarray]
     ) -> None:
         d = synthetic_integration_data
-        result = evaluate_integration(
-            d["embeddings"], d["labels"], d["batch"]
-        )
+        result = evaluate_integration(d["embeddings"], d["labels"], d["batch"])
         for key, value in result.items():
             assert isinstance(value, float), f"{key} is not float"
             assert np.isfinite(value), f"{key} is not finite: {value}"
@@ -90,9 +76,7 @@ class TestEvaluateIntegration:
         self, synthetic_integration_data: dict[str, np.ndarray]
     ) -> None:
         d = synthetic_integration_data
-        result = evaluate_integration(
-            d["embeddings"], d["labels"], d["batch"]
-        )
+        result = evaluate_integration(d["embeddings"], d["labels"], d["batch"])
         # aggregate = 0.6 * bio + 0.4 * batch
         expected = 0.6 * result["bio_score"] + 0.4 * result["batch_score"]
         assert abs(result["aggregate_score"] - expected) < 1e-6
@@ -101,15 +85,11 @@ class TestEvaluateIntegration:
         self, synthetic_integration_data: dict[str, np.ndarray]
     ) -> None:
         d = synthetic_integration_data
-        result = evaluate_integration(
-            d["embeddings"], d["labels"], d["batch"]
-        )
+        result = evaluate_integration(d["embeddings"], d["labels"], d["batch"])
         # Well-separated clusters should give positive silhouette
         assert result["silhouette_label"] > 0.0
 
-    def test_accepts_jax_arrays(
-        self, synthetic_integration_data: dict[str, np.ndarray]
-    ) -> None:
+    def test_accepts_jax_arrays(self, synthetic_integration_data: dict[str, np.ndarray]) -> None:
         d = synthetic_integration_data
         result = evaluate_integration(
             jnp.array(d["embeddings"]),

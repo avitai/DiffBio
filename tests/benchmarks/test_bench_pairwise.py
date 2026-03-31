@@ -28,9 +28,7 @@ class TestPairwiseBenchmark:
         bench = PairwiseBenchmark(quick=True)
         return bench.run()
 
-    def test_standard_contract(
-        self, result: BenchmarkResult
-    ) -> None:
+    def test_standard_contract(self, result: BenchmarkResult) -> None:
         """Verify the full standard benchmark result contract."""
         assert_valid_benchmark_result(
             result,
@@ -42,39 +40,27 @@ class TestPairwiseBenchmark:
             ],
         )
 
-    def test_has_operator_tag(
-        self, result: BenchmarkResult
-    ) -> None:
+    def test_has_operator_tag(self, result: BenchmarkResult) -> None:
         """Tags must identify the operator under test."""
         assert "SmoothSmithWaterman" in result.tags["operator"]
 
-    def test_has_dataset_tag(
-        self, result: BenchmarkResult
-    ) -> None:
+    def test_has_dataset_tag(self, result: BenchmarkResult) -> None:
         """Tags must identify the dataset."""
         assert result.tags["dataset"] == "balifam100"
 
-    def test_alignment_score_is_positive(
-        self, result: BenchmarkResult
-    ) -> None:
+    def test_alignment_score_is_positive(self, result: BenchmarkResult) -> None:
         """Average alignment score must be positive."""
         score = result.metrics["avg_alignment_score"].value
         assert score > 0.0
 
-    def test_pairs_evaluated_positive(
-        self, result: BenchmarkResult
-    ) -> None:
+    def test_pairs_evaluated_positive(self, result: BenchmarkResult) -> None:
         """At least one pair must have been evaluated."""
         n_pairs = result.metrics["n_pairs_evaluated"].value
         assert n_pairs >= 1.0
 
-    def test_all_scores_finite(
-        self, result: BenchmarkResult
-    ) -> None:
+    def test_all_scores_finite(self, result: BenchmarkResult) -> None:
         """All alignment scores should be finite."""
-        n_finite = result.metrics[
-            "alignment_scores_finite"
-        ].value
+        n_finite = result.metrics["alignment_scores_finite"].value
         n_pairs = result.metrics["n_pairs_evaluated"].value
         assert n_finite == n_pairs
 
@@ -85,17 +71,13 @@ class TestPairwiseBenchmark:
         assert "gap_extend" in result.config
         assert "max_seq_length" in result.config
 
-    def test_has_dataset_metadata(
-        self, result: BenchmarkResult
-    ) -> None:
+    def test_has_dataset_metadata(self, result: BenchmarkResult) -> None:
         """Result must contain dataset info in metadata."""
         info = result.metadata["dataset_info"]
         assert "n_families" in info
         assert "n_pairs" in info
 
-    def test_has_baselines_in_metadata(
-        self, result: BenchmarkResult
-    ) -> None:
+    def test_has_baselines_in_metadata(self, result: BenchmarkResult) -> None:
         """Result must store published baselines for comparison."""
         baselines = result.metadata["baselines"]
         assert "BLAST" in baselines

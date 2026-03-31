@@ -141,6 +141,7 @@ class SoftErrorCorrection(TemperatureOperator):
 
         # Build window features with padding for edge positions
         def get_position_features(offset: Array | int) -> Float[Array, "features"]:
+            """Extract sequence and quality features at a single window offset."""
             pos = position + offset - half_window
             # Handle boundary conditions with zeros
             in_bounds = (pos >= 0) & (pos < seq_len)
@@ -262,6 +263,7 @@ class SoftErrorCorrection(TemperatureOperator):
 
         # Correct each position
         def correct_fn(position: Array | int) -> Float[Array, "alphabet"]:
+            """Correct base probabilities at a single position."""
             return self._correct_position(sequence, quality_scores, position)
 
         corrected_sequence = jax.vmap(correct_fn)(jnp.arange(seq_len))

@@ -7,6 +7,25 @@ from typing import Any
 import numpy as np
 
 
+def _require_anndata() -> Any:
+    """Import anndata, raising a clear error if not installed.
+
+    Returns:
+        The anndata module.
+
+    Raises:
+        ImportError: If anndata is not installed.
+    """
+    try:
+        import anndata  # noqa: PLC0415
+
+        return anndata
+    except ImportError as err:
+        raise ImportError(
+            "anndata is required for this source. Install it with: uv pip install anndata"
+        ) from err
+
+
 def to_dense_float32(matrix: Any) -> np.ndarray:
     """Convert a sparse or dense matrix to a dense float32 numpy array.
 

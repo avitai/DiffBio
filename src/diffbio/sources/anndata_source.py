@@ -36,26 +36,9 @@ from datarax.core.config import StructuralConfig
 from datarax.core.data_source import DataSourceModule
 from datarax.sources._eager_source_ops import eager_get_batch, eager_iter, eager_reset
 
+from diffbio.sources._utils import _require_anndata
+
 logger = logging.getLogger(__name__)
-
-
-def _require_anndata() -> Any:
-    """Import anndata, raising a clear error if not installed.
-
-    Returns:
-        The anndata module.
-
-    Raises:
-        ImportError: If anndata is not installed.
-    """
-    try:
-        import anndata  # noqa: PLC0415
-
-        return anndata
-    except ImportError as err:
-        raise ImportError(
-            "anndata is required for AnnDataSource. Install with: uv pip install anndata"
-        ) from err
 
 
 def _to_dense_array(matrix: Any) -> np.ndarray:

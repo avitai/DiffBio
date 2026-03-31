@@ -19,9 +19,7 @@ Usage:
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
-from datetime import datetime
-from pathlib import Path
+from dataclasses import dataclass, field
 
 import jax
 import jax.numpy as jnp
@@ -57,10 +55,7 @@ def encode_rna_string(sequence: str) -> jnp.ndarray:
     indices: list[int] = []
     for char in sequence.upper():
         if char not in _RNA_CHAR_TO_INDEX:
-            msg = (
-                f"Invalid RNA character '{char}'. "
-                "Expected one of A, C, G, U."
-            )
+            msg = f"Invalid RNA character '{char}'. Expected one of A, C, G, U."
             raise ValueError(msg)
         indices.append(_RNA_CHAR_TO_INDEX[char])
     return jax.nn.one_hot(jnp.array(indices), num_classes=4)
@@ -103,57 +98,6 @@ _SHORT = RNATestCase(
     sequence="GCGAAGC",
     known_pairs=[(0, 6), (1, 5)],
 )
-
-
-# ------------------------------------------------------------------
-# Result dataclass
-# ------------------------------------------------------------------
-
-
-@dataclass(frozen=True)
-class RNAStructureBenchmarkResult:
-    """Results from the RNA structure benchmark.
-
-    Attributes:
-        timestamp: ISO-format timestamp of the run.
-        temperature: Temperature parameter used.
-        min_hairpin_loop: Minimum hairpin loop size.
-        shape_correct: Whether bp_probs had the expected (L, L) shape.
-        values_in_range: Whether all bp_probs values fall in [0, 1].
-        is_symmetric: Whether bp_probs is symmetric within tolerance.
-        partition_function_finite: Whether partition_function is finite.
-        partition_function_positive: Whether exp(partition_function) > 0.
-        hairpin_pair_mean_prob: Mean bp_prob at known hairpin pairs.
-        stem_pair_mean_prob: Mean bp_prob at known stem pairs.
-        random_baseline_mean_prob: Mean bp_prob across all valid entries.
-        pairs_above_baseline: Whether known pairs exceed the baseline.
-        gradient_norm: L2 norm of parameter gradients.
-        gradient_nonzero: Whether gradient norm exceeds threshold.
-        nucleotides_per_second: Throughput in nucleotides / second.
-        per_fold_ms: Wall time per single fold call (ms).
-    """
-
-    timestamp: str
-    temperature: float
-    min_hairpin_loop: int
-    # Shape and range
-    shape_correct: bool
-    values_in_range: bool
-    is_symmetric: bool
-    # Partition function
-    partition_function_finite: bool
-    partition_function_positive: bool
-    # Known-pair detection
-    hairpin_pair_mean_prob: float
-    stem_pair_mean_prob: float
-    random_baseline_mean_prob: float
-    pairs_above_baseline: bool
-    # Differentiability
-    gradient_norm: float
-    gradient_nonzero: bool
-    # Performance
-    nucleotides_per_second: float
-    per_fold_ms: float
 
 
 # ------------------------------------------------------------------
@@ -200,12 +144,8 @@ def _check_shape_and_range(
 
     length = len(test_case.sequence)
     shape_correct = bp_probs.shape == (length, length)
-    values_in_range = bool(
-        jnp.all(bp_probs >= -1e-6) & jnp.all(bp_probs <= 1.0 + 1e-6)
-    )
-    is_symmetric = bool(
-        jnp.allclose(bp_probs, bp_probs.T, atol=1e-6)
-    )
+    values_in_range = bool(jnp.all(bp_probs >= -1e-6) & jnp.all(bp_probs <= 1.0 + 1e-6))
+    is_symmetric = bool(jnp.allclose(bp_probs, bp_probs.T, atol=1e-6))
 
     return {
         "shape_correct": shape_correct,
@@ -322,153 +262,3 @@ def _check_gradient_flow(
         return result["bp_probs"].sum()
 
     return check_gradient_flow(loss_fn, predictor, data)
-
-
-def _measure_throughput(
-    predictor: DifferentiableRNAFold,
-    seq_length: int,
-    n_iterations: int,
-    warmup: int,
-) -> dict[str, float]:
-    """Measure folding throughput in nucleotides per second.
-
-    Args:
-        predictor: RNA fold operator.
-        seq_length: Length of the random sequence to fold.
-        n_iterations: Number of timed iterations.
-        warmup: Number of untimed warmup iterations.
-
-    Returns:
-        Dictionary with nucleotides_per_second and per_fold_ms.
-    """
-    key = jax.random.key(99)
-    indices = jax.random.randint(key, (seq_length,), 0, 4)
-    seq = jax.nn.one_hot(indices, 4)
-    data = {"sequence": seq}
-
-    def fold_fn(
-        input_data: dict[str, jnp.ndarray],
-    ) -> tuple[dict, dict, None]:
-        """Wrapper to pass to measure_throughput."""
-        return predictor.apply(input_data, {}, None)
-
-    raw = measure_throughput(
-        fold_fn,
-        args=(data,),
-        n_iterations=n_iterations,
-        warmup=warmup,
-    )
-
-    nucleotides_per_sec = (
-        seq_length * raw["items_per_sec"]
-    )
-
-    return {
-        "nucleotides_per_second": nucleotides_per_sec,
-        "per_fold_ms": raw["per_item_ms"],
-    }
-
-
-# ------------------------------------------------------------------
-# Main entry point
-# ------------------------------------------------------------------
-
-
-def run_benchmark(
-    quick: bool = False,
-) -> RNAStructureBenchmarkResult:
-    """Run the complete RNA structure benchmark.
-
-    Args:
-        quick: If True, use shorter sequences and fewer iterations
-            for a faster run (useful in CI).
-
-    Returns:
-        Frozen dataclass with all benchmark metrics.
-    """
-    print("=" * 60)
-    print("DiffBio RNA Structure Benchmark")
-    print("=" * 60)
-
-    temperature = 1.0
-    min_hairpin_loop = 3
-    predictor = _create_predictor(
-        temperature=temperature,
-        min_hairpin_loop=min_hairpin_loop,
-    )
-
-    # -- Shape, range, symmetry --
-    test_case = _SHORT if quick else _HAIRPIN
-    print("\nChecking bp_probs shape, range, symmetry...")
-    shape_results = _check_shape_and_range(predictor, test_case)
-    for key, val in shape_results.items():
-        print(f"  {key}: {val}")
-
-    # -- Partition function --
-    print("\nChecking partition function...")
-    pf_results = _check_partition_function(predictor, test_case)
-    for key, val in pf_results.items():
-        print(f"  {key}: {val}")
-
-    # -- Known pair detection --
-    print("\nChecking known base pair detection...")
-    pair_results = _check_known_pairs(
-        predictor, _HAIRPIN, _LONGER_STEM
-    )
-    for key, val in pair_results.items():
-        print(f"  {key}: {val}")
-
-    # -- Gradient flow --
-    print("\nChecking gradient flow...")
-    grad_case = _SHORT if quick else _HAIRPIN
-    grad_results = _check_gradient_flow(predictor, grad_case)
-    print(f"  gradient_norm: {grad_results.gradient_norm:.6f}")
-    print(f"  gradient_nonzero: {grad_results.gradient_nonzero}")
-
-    # -- Throughput --
-    seq_length = 20 if quick else 50
-    n_iter = 20 if quick else 100
-    warmup_iter = 3 if quick else 5
-    print(f"\nMeasuring throughput (seq_length={seq_length})...")
-    perf_results = _measure_throughput(
-        predictor, seq_length, n_iter, warmup_iter
-    )
-    print(
-        f"  nucleotides/sec: "
-        f"{perf_results['nucleotides_per_second']:.0f}"
-    )
-    print(f"  per_fold_ms: {perf_results['per_fold_ms']:.2f}")
-
-    # -- Assemble result --
-    result = RNAStructureBenchmarkResult(
-        timestamp=datetime.now().isoformat(),
-        temperature=temperature,
-        min_hairpin_loop=min_hairpin_loop,
-        **shape_results,
-        **pf_results,
-        **pair_results,  # pyright: ignore[reportArgumentType]
-        **asdict(grad_results),
-        **perf_results,
-    )
-
-    print("\n" + "=" * 60)
-    print("Benchmark complete!")
-    print("=" * 60)
-
-    return result
-
-
-def main() -> None:
-    """Entry point for the RNA structure benchmark."""
-    result = run_benchmark()
-    output_path = save_benchmark_result(
-        result=asdict(result),
-        domain="rna_structure",
-        benchmark_name="rna_structure_benchmark",
-        output_dir=Path("benchmarks/results"),
-    )
-    print(f"Results saved to: {output_path}")
-
-
-if __name__ == "__main__":
-    main()

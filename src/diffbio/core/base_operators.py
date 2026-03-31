@@ -74,9 +74,9 @@ class TemperatureOperator(OperatorModule):
         super().__init__(config, rngs=rngs, name=name)
 
         temperature = getattr(config, "temperature", DEFAULT_TEMPERATURE)
-        learnable = getattr(config, "learnable_temperature", False)
+        is_learnable = getattr(config, "learnable_temperature", False)
 
-        if learnable:
+        if is_learnable:
             self.temperature = init_learnable_param(temperature)
         else:
             self._temperature_value = temperature

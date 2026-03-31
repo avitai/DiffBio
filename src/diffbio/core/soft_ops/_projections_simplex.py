@@ -49,6 +49,7 @@ def _proj_unit_simplex_q2_jvp(
     primals: list[Array],
     tangents: list[Array],
 ) -> tuple[Array, Array]:
+    """Compute the JVP for L2 simplex projection."""
     (values,) = primals
     (values_dot,) = tangents
     primal_out = _proj_unit_simplex_q2(values)
@@ -87,6 +88,7 @@ def _proj_unit_simplex_q3_impl(
 
 @jax.custom_jvp
 def _proj_unit_simplex_q3(values: Array) -> Array:
+    """Project onto the unit simplex using p=3/2 norm regularizer."""
     return _proj_unit_simplex_q3_impl(values)[0]
 
 
@@ -95,6 +97,7 @@ def _proj_unit_simplex_q3_jvp(
     primals: list[Array],
     tangents: list[Array],
 ) -> tuple[Array, Array]:
+    """Compute the JVP for p=3/2 simplex projection."""
     (values,) = primals
     (values_dot,) = tangents
     primal_out, theta = _proj_unit_simplex_q3_impl(values)
@@ -158,6 +161,7 @@ def _proj_unit_simplex_q4_impl(
 
 @jax.custom_jvp
 def _proj_unit_simplex_q4(values: Array) -> Array:
+    """Project onto the unit simplex using p=4/3 norm regularizer."""
     return _proj_unit_simplex_q4_impl(values)[0]
 
 
@@ -166,6 +170,7 @@ def _proj_unit_simplex_q4_jvp(
     primals: list[Array],
     tangents: list[Array],
 ) -> tuple[Array, Array]:
+    """Compute the JVP for p=4/3 simplex projection."""
     (values,) = primals
     (values_dot,) = tangents
     primal_out, theta = _proj_unit_simplex_q4_impl(values)

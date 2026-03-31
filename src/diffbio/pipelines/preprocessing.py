@@ -194,6 +194,7 @@ class PreprocessingPipeline(OperatorModule):
         if self.adapter_removal is not None:
 
             def apply_adapter_removal(read, quality):
+                """Apply adapter removal to a single read."""
                 adapter_data = {"sequence": read, "quality_scores": quality}
                 adapter_result, _, _ = self.adapter_removal.apply(adapter_data, {}, None)
                 return adapter_result["sequence"], adapter_result["quality_scores"]
@@ -213,6 +214,7 @@ class PreprocessingPipeline(OperatorModule):
         if self.error_correction is not None:
 
             def apply_error_correction(read, quality):
+                """Apply error correction to a single read."""
                 ec_data = {"sequence": read, "quality_scores": quality}
                 ec_result, _, _ = self.error_correction.apply(ec_data, {}, None)
                 return ec_result["sequence"]

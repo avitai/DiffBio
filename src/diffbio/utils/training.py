@@ -176,6 +176,7 @@ class Trainer:
             """
 
             def compute_loss(model_inner: OperatorModule):
+                """Apply the pipeline and compute the loss for gradient computation."""
                 # Apply pipeline
                 result_data, _, _ = model_inner.apply(batch_data, {}, None)
                 # Compute loss
@@ -344,6 +345,7 @@ def create_synthetic_training_data(
 
         # Extract read segments
         def get_read(pos):
+            """Extract a one-hot encoded read segment starting at the given position."""
             segment = jax.lax.dynamic_slice(ref_one_hot, (pos, 0), (read_length, 4))
             return segment
 
@@ -481,11 +483,13 @@ def create_realistic_training_data(
 
         # Build reads with actual variants
         def build_read(read_idx):
+            """Build a single read with variants applied at appropriate positions."""
             pos = positions[read_idx]
             shows_var = read_shows_variant[read_idx]
 
             # Get reference segment for this read
             def get_base_at(offset):
+                """Return the base at a read offset, substituting variants when applicable."""
                 ref_pos = pos + offset
                 ref_base = ref_one_hot[ref_pos]
                 alt_base = alt_one_hot[ref_pos]
@@ -545,10 +549,12 @@ def create_realistic_training_data(
 
         # Slightly lower quality near variant positions in reads
         def check_variant_overlap(read_idx):
+            """Check which positions in a read overlap with variant sites."""
             pos = positions[read_idx]
 
             # Get variant status for each position in this read
             def is_var_at(offset):
+                """Return whether the position at this offset is a variant site."""
                 ref_pos = pos + offset
                 return variant_types[ref_pos] > 0
 

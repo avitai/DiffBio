@@ -57,17 +57,11 @@ class BatchCorrectionBenchmark(DiffBioBenchmark):
 
     def _run_core(self) -> dict[str, Any]:
         """Load immune_human, run Harmony, compute scib-metrics."""
-        subsample = (
-            self.config.quick_subsample if self.quick else None
-        )
+        subsample = self.config.quick_subsample if self.quick else None
 
         # 1. Load dataset
         logger.info("Loading immune_human dataset...")
-        source = ImmuneHumanSource(
-            ImmuneHumanConfig(
-                data_dir=self.data_dir, subsample=subsample
-            )
-        )
+        source = ImmuneHumanSource(ImmuneHumanConfig(data_dir=self.data_dir, subsample=subsample))
         data = source.load()
         n_cells = data["n_cells"]
         n_batches = data["n_batches"]
@@ -77,7 +71,10 @@ class BatchCorrectionBenchmark(DiffBioBenchmark):
 
         logger.info(
             "  %d cells, %d genes, %d batches, %d types",
-            n_cells, data["n_genes"], n_batches, data["n_types"],
+            n_cells,
+            data["n_genes"],
+            n_batches,
+            data["n_types"],
         )
 
         # 2. Create and run operator
@@ -109,9 +106,7 @@ class BatchCorrectionBenchmark(DiffBioBenchmark):
             logger.info("  %s: %.4f", key, value)
 
         # Loss function for gradient check
-        def loss_fn(
-            model: DifferentiableHarmony, d: dict[str, Any]
-        ) -> jnp.ndarray:
+        def loss_fn(model: DifferentiableHarmony, d: dict[str, Any]) -> jnp.ndarray:
             res, _, _ = model.apply(d, {}, None)
             return jnp.sum(res["corrected_embeddings"])
 
@@ -123,9 +118,7 @@ class BatchCorrectionBenchmark(DiffBioBenchmark):
             "input_data": input_data,
             "loss_fn": loss_fn,
             "n_items": n_cells,
-            "iterate_fn": lambda: operator.apply(
-                input_data, {}, None
-            ),
+            "iterate_fn": lambda: operator.apply(input_data, {}, None),
             "baselines": baselines,
             "dataset_info": {
                 "name": "immune_human",
@@ -147,7 +140,8 @@ class BatchCorrectionBenchmark(DiffBioBenchmark):
 def main() -> None:
     """CLI entry point."""
     DiffBioBenchmark.cli_main(
-        BatchCorrectionBenchmark, _CONFIG,
+        BatchCorrectionBenchmark,
+        _CONFIG,
         data_dir="/media/mahdi/ssd23/Data/scib",
     )
 

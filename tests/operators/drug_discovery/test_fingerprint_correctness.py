@@ -370,31 +370,6 @@ def _run_full_benchmark(
     return result
 
 
-def run_benchmark(
-    *,
-    quick: bool = False,
-) -> FingerprintBenchmarkResult:
-    """Run a fingerprint benchmark.
-
-    When called with ``quick=True``, uses a reduced molecule set
-    (first 6 molecules) for faster CI runs. Used by ``run_all.py``.
-
-    Args:
-        quick: If True, benchmark fewer molecules.
-
-    Returns:
-        FingerprintBenchmarkResult with all metrics.
-    """
-    molecules = TEST_MOLECULES[:6] if quick else TEST_MOLECULES
-    result = _run_full_benchmark(molecules)
-    save_benchmark_result(
-        result=asdict(result),
-        domain="drug_discovery",
-        benchmark_name="fingerprint_benchmark",
-    )
-    return result
-
-
 def _save_results(
     result: FingerprintBenchmarkResult,
     output_dir: Path,
@@ -402,21 +377,9 @@ def _save_results(
     """Save benchmark results to JSON."""
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = (
-        output_dir / f"fingerprint_benchmark_{timestamp}.json"
-    )
+    output_file = output_dir / f"fingerprint_benchmark_{timestamp}.json"
 
     with open(output_file, "w") as f:
         json.dump(asdict(result), f, indent=2)
 
     print(f"Results saved to: {output_file}")
-
-
-def main() -> None:
-    """Main entry point."""
-    result = run_benchmark()
-    _save_results(result, Path("benchmarks/results"))
-
-
-if __name__ == "__main__":
-    main()

@@ -7,6 +7,7 @@ import jax.numpy as jnp
 from flax import nnx
 
 from diffbio.operators.drug_discovery.message_passing import StackedMessagePassing
+from diffbio.utils.nn_utils import ensure_rngs
 
 logger = logging.getLogger(__name__)
 
@@ -14,13 +15,6 @@ logger = logging.getLogger(__name__)
 def stabilize_operator_id(module: Any) -> None:
     """Mark operator unique ID as static for NNX/JAX transformations."""
     module._unique_id = nnx.static(module._unique_id)
-
-
-def ensure_rngs(rngs: nnx.Rngs | None) -> nnx.Rngs:
-    """Return a default RNG container when one is not provided."""
-    if rngs is not None:
-        return rngs
-    return nnx.Rngs(0)
 
 
 def build_encoder(

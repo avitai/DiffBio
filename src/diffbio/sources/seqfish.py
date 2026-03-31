@@ -23,24 +23,11 @@ from datarax.core.config import StructuralConfig
 from datarax.core.data_source import DataSourceModule
 from flax import nnx
 
-from diffbio.sources._utils import to_dense_float32 as _to_dense
+from diffbio.sources._utils import _require_anndata, to_dense_float32 as _to_dense
 
 logger = logging.getLogger(__name__)
 
 _FILENAME = "seqfish_cortex.h5ad"
-
-
-def _require_anndata() -> Any:
-    """Import anndata with a clear error message."""
-    try:
-        import anndata  # noqa: PLC0415
-
-        return anndata
-    except ImportError as err:
-        raise ImportError(
-            "anndata is required for SeqFISHSource. "
-            "Install with: uv pip install anndata"
-        ) from err
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -66,9 +53,7 @@ class SeqFISHConfig(StructuralConfig):
         path = Path(self.data_dir) / _FILENAME
         if not path.exists():
             raise FileNotFoundError(
-                f"Dataset not found: {path}. "
-                f"Download via squidpy: "
-                f"squidpy.datasets.seqfish()"
+                f"Dataset not found: {path}. Download via squidpy: squidpy.datasets.seqfish()"
             )
 
 
@@ -107,9 +92,7 @@ class SeqFISHSource(DataSourceModule):
             rngs: Optional RNG state (unused, for interface compat).
             name: Optional module name.
         """
-        super().__init__(
-            config, rngs=rngs, name=name or "SeqFISHSource"
-        )
+        super().__init__(config, rngs=rngs, name=name or "SeqFISHSource")
         self.data = self._load(config)
         logger.info(
             "Loaded seqfish_cortex: %d cells, %d genes, %d types",
@@ -124,10 +107,7 @@ class SeqFISHSource(DataSourceModule):
         path = Path(config.data_dir) / _FILENAME
         adata = anndata_mod.read_h5ad(path)
 
-        if (
-            config.subsample is not None
-            and config.subsample < adata.n_obs
-        ):
+        if config.subsample is not None and config.subsample < adata.n_obs:
             rng = np.random.default_rng(42)
             indices = rng.choice(
                 adata.n_obs,
@@ -142,23 +122,15 @@ class SeqFISHSource(DataSourceModule):
         # Encode cell type labels as integer codes
         label_col = adata.obs[config.label_key]
         if hasattr(label_col, "cat"):
-            cell_type_labels = np.asarray(
-                label_col.cat.codes, dtype=np.int32
-            )
+            cell_type_labels = np.asarray(label_col.cat.codes, dtype=np.int32)
             cell_type_names = list(label_col.cat.categories)
         else:
-            unique_labels, cell_type_labels = np.unique(
-                np.asarray(label_col), return_inverse=True
-            )
+            unique_labels, cell_type_labels = np.unique(np.asarray(label_col), return_inverse=True)
             cell_type_labels = cell_type_labels.astype(np.int32)
             cell_type_names = list(unique_labels)
 
         # Spatial coordinates
-        spatial_coords = jnp.array(
-            np.asarray(
-                adata.obsm[config.spatial_key], dtype=np.float32
-            )
-        )
+        spatial_coords = jnp.array(np.asarray(adata.obsm[config.spatial_key], dtype=np.float32))
 
         gene_names = list(adata.var_names)
 
@@ -193,8 +165,7 @@ class SeqFISHSource(DataSourceModule):
             yield {
                 k: (
                     v[i]
-                    if hasattr(v, "__getitem__")
-                    and k not in ("gene_names", "cell_type_names")
+                    if hasattr(v, "__getitem__") and k not in ("gene_names", "cell_type_names")
                     else v
                 )
                 for k, v in self.data.items()
