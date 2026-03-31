@@ -36,14 +36,14 @@ _TIER_1 = [
 
 _TIER_2 = [
     ("alignment", "benchmarks.alignment.bench_msa", "MSABenchmark"),
+    ("alignment", "benchmarks.alignment.bench_pairwise", "PairwiseBenchmark"),
     ("rna_structure", "benchmarks.rna_structure.bench_rna_fold", "RNAFoldBenchmark"),
+    ("protein", "benchmarks.protein.bench_secondary_structure", "SecondaryStructureBenchmark"),
     ("molecular_dynamics", "benchmarks.molecular_dynamics.bench_lj", "LJBenchmark"),
 ]
 
-_TIER_3: list[tuple[str, str, str]] = [
-    # ("multiomics", "benchmarks.multiomics.bench_spatial_deconv", "SpatialDeconvBenchmark"),
-    # ("statistical", "benchmarks.statistical.bench_de", "DEBenchmark"),
-    # ("epigenomics", "benchmarks.epigenomics.bench_peak_calling", "PeakCallingBenchmark"),
+_TIER_3 = [
+    ("statistical", "benchmarks.statistical.bench_de", "DEBenchmark"),
 ]
 
 _TIERS = {

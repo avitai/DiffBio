@@ -25,6 +25,7 @@ from flax import nnx
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.alignment import MSA_BASELINES
 from benchmarks._metrics.alignment import sp_score, tc_score
+from benchmarks.alignment._encoding import onehot_encode_sequence
 from diffbio.operators.alignment import PROTEIN_ALPHABET
 from diffbio.operators.alignment.soft_msa import (
     SoftProgressiveMSA,
@@ -34,43 +35,12 @@ from diffbio.sources.balifam import BalifamConfig, BalifamSource
 
 logger = logging.getLogger(__name__)
 
-_ALPHABET_INDEX: dict[str, int] = {aa: i for i, aa in enumerate(PROTEIN_ALPHABET)}
-
 _CONFIG = DiffBioBenchmarkConfig(
     name="alignment/msa",
     domain="alignment",
     n_iterations_quick=5,
     n_iterations_full=10,
 )
-
-
-def _onehot_encode_sequence(
-    sequence: str,
-    max_length: int,
-    alphabet_size: int = 20,
-) -> jnp.ndarray:
-    """One-hot encode a protein sequence, padded to max_length.
-
-    Unknown residues (not in the standard 20 amino acid alphabet)
-    are encoded as uniform distributions over all residues.
-
-    Args:
-        sequence: Amino acid sequence string (uppercase).
-        max_length: Pad/truncate to this length.
-        alphabet_size: Size of amino acid alphabet.
-
-    Returns:
-        One-hot array of shape (max_length, alphabet_size).
-    """
-    result = np.zeros((max_length, alphabet_size), dtype=np.float32)
-    for i, aa in enumerate(sequence[:max_length]):
-        idx = _ALPHABET_INDEX.get(aa.upper())
-        if idx is not None:
-            result[i, idx] = 1.0
-        else:
-            # Unknown residue: uniform
-            result[i, :] = 1.0 / alphabet_size
-    return jnp.array(result)
 
 
 def _decode_alignment(
@@ -203,7 +173,7 @@ class MSABenchmark(DiffBioBenchmark):
             seq_lengths = [len(s) for s in raw_seqs]
             padded_len = max(seq_lengths)
 
-            encoded = jnp.stack([_onehot_encode_sequence(seq, padded_len, 20) for seq in raw_seqs])
+            encoded = jnp.stack([onehot_encode_sequence(seq, padded_len, 20) for seq in raw_seqs])
 
             input_data = {"sequences": encoded}
             result_data, _, _ = operator.apply(input_data, {}, None)
@@ -236,7 +206,7 @@ class MSABenchmark(DiffBioBenchmark):
         sample_seqs = sample_seqs[:5]
         sample_raw = [s[:max_seq_length] for _, s in sample_seqs]
         sample_len = max(len(s) for s in sample_raw)
-        sample_encoded = jnp.stack([_onehot_encode_sequence(s, sample_len, 20) for s in sample_raw])
+        sample_encoded = jnp.stack([onehot_encode_sequence(s, sample_len, 20) for s in sample_raw])
         sample_input = {"sequences": sample_encoded}
 
         def loss_fn(model: SoftProgressiveMSA, d: dict[str, Any]) -> jnp.ndarray:

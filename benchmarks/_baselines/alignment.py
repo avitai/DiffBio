@@ -1,7 +1,8 @@
-"""Published MSA baselines from BAliBASE benchmarks.
+"""Published alignment baselines from BAliBASE benchmarks.
 
-SP and TC scores for established multiple sequence alignment tools
-on BAliBASE reference alignments. Values are representative averages
+SP and TC scores for established multiple sequence alignment tools,
+and average alignment scores for pairwise alignment tools, on
+BAliBASE reference alignments. Values are representative averages
 across BAliBASE families from published benchmarking studies.
 
 Sources:
@@ -11,6 +12,12 @@ Sources:
   Version 7" MBE (2013).
 - Edgar "MUSCLE v5 enables improved estimates of phylogenetic
   tree confidence" Nature Methods (2022).
+- Altschul et al. "Gapped BLAST and PSI-BLAST" Nucleic Acids
+  Research 25(17):3389-3402, 1997.
+- Pearson "An introduction to sequence similarity searching"
+  Current Protocols in Bioinformatics (2013).
+- Smith & Waterman "Identification of common molecular
+  subsequences" J. Mol. Biol. 147:195-197, 1981.
 """
 
 from __future__ import annotations
@@ -54,6 +61,33 @@ MSA_BASELINES: dict[str, Point] = {
         metrics={
             "sp_score": Metric(value=0.84),
             "tc_score": Metric(value=0.55),
+        },
+    ),
+}
+
+PAIRWISE_BASELINES: dict[str, Point] = {
+    "BLAST": Point(
+        name="BLAST",
+        scenario="balifam100_pairwise",
+        tags={"framework": "blast", "source": _SOURCE_BALIBASE},
+        metrics={
+            "avg_alignment_score": Metric(value=45.0),
+        },
+    ),
+    "SSEARCH": Point(
+        name="SSEARCH",
+        scenario="balifam100_pairwise",
+        tags={"framework": "ssearch", "source": _SOURCE_BALIBASE},
+        metrics={
+            "avg_alignment_score": Metric(value=48.0),
+        },
+    ),
+    "FASTA": Point(
+        name="FASTA",
+        scenario="balifam100_pairwise",
+        tags={"framework": "fasta", "source": _SOURCE_BALIBASE},
+        metrics={
+            "avg_alignment_score": Metric(value=42.0),
         },
     ),
 }
