@@ -5,13 +5,15 @@ estimation, enabling gradient-based optimization of trajectory inference in
 single-cell RNA-seq data.
 
 Key techniques:
-- Diffusion maps via eigendecomposition of the Markov transition matrix for
-  pseudotime ordering.
+- Diffusion maps via subspace iteration with QR orthogonalization for
+  pseudotime ordering.  This replaces eigendecomposition (whose backward pass
+  produces NaN when eigenvalues are near-degenerate — JAX issue #669) with
+  repeated matmul + QR, which has well-conditioned gradients.
 - Absorption probabilities via linear solve on the fundamental matrix for
   fate probability estimation.
 
-Both operations are end-to-end differentiable through ``jnp.linalg.eigh``
-and ``jnp.linalg.solve``, allowing backpropagation into upstream embeddings.
+Both operations are end-to-end differentiable, allowing backpropagation
+into upstream embeddings.
 
 Applications: Developmental trajectory ordering, lineage fate commitment
 analysis, and cell-state transition characterization.
@@ -87,20 +89,20 @@ class DifferentiablePseudotime(OperatorModule):
     """Differentiable pseudotime computation via diffusion maps.
 
     Constructs a k-NN affinity graph, builds a Markov transition matrix, and
-    computes diffusion components through eigendecomposition. Pseudotime is
-    defined as the Euclidean distance in diffusion-component space from the
-    designated root cell.
+    computes diffusion components through subspace iteration with QR
+    orthogonalization.  Pseudotime is defined as the Euclidean distance in
+    diffusion-component space from the designated root cell.
 
     Algorithm:
         1. Compute pairwise distances between cells.
         2. Compute fuzzy membership with local bandwidth (k-th neighbor).
         3. Symmetrize the graph via fuzzy set union.
         4. Row-normalize to obtain a Markov transition matrix.
-        5. Eigendecompose the symmetrized transition matrix; take the top
-           ``n_diffusion_components`` eigenvectors (excluding the trivial
-           eigenvalue 1).
-        6. Weight eigenvectors by their eigenvalues to form diffusion
-           components.
+        5. Extract the top ``n_diffusion_components`` eigenvectors of the
+           symmetrized transition matrix via subspace iteration (repeated
+           matmul + QR), excluding the trivial eigenvalue 1.
+        6. Weight eigenvectors by their Rayleigh-quotient eigenvalues to
+           form diffusion components.
         7. Pseudotime = L2 distance from root cell in diffusion-component
            space.
 
@@ -166,69 +168,70 @@ class DifferentiablePseudotime(OperatorModule):
 
         return transition
 
-    def _compute_diffusion_components(
+    def _compute_diffusion_embedding(
         self,
         transition: Float[Array, "n_cells n_cells"],
         n_components: int,
-    ) -> tuple[Float[Array, "n_cells n_comp"], Float[Array, "n_comp"]]:
-        """Compute diffusion components via eigendecomposition.
+        root_index: int,
+    ) -> tuple[
+        Float[Array, "n_cells"],
+        Float[Array, "n_cells n_comp"],
+    ]:
+        """Compute pseudotime and diffusion components from Markov powers.
+
+        Instead of eigendecomposing the transition matrix (whose backward
+        pass produces NaN when eigenvalues are near-degenerate — JAX
+        issue #669), this method accumulates
+        ``M_sum = sum_{t=1}^{T} M^t`` via repeated matrix multiplication.
+        The rows of ``M_sum`` form a diffusion embedding: the DPT
+        distance between cells *i* and *j* equals the L2 distance
+        between rows *i* and *j* of ``M_sum`` (Haghverdi et al. 2016).
+
+        Because the computation uses only matrix multiplication and
+        addition, the backward pass is free of the degenerate-eigenvalue
+        singularity and produces well-conditioned finite gradients.
 
         Args:
             transition: Row-stochastic transition matrix.
-            n_components: Number of diffusion components to retain.
+            n_components: Number of diffusion components to retain in
+                the output embedding.
+            root_index: Index of the root cell for pseudotime origin.
 
         Returns:
-            Tuple of (diffusion_components, eigenvalues) where components
-            have shape ``(n_cells, n_components)`` and eigenvalues have
-            shape ``(n_components,)``.
+            Tuple of (pseudotime, diffusion_components) where pseudotime
+            has shape ``(n_cells,)`` and diffusion_components has shape
+            ``(n_cells, n_components)``.
         """
-        # Symmetrize for eigh (should be nearly symmetric already)
+        # Symmetrize (should be nearly symmetric already)
         sym = (transition + transition.T) / 2.0
 
-        # Eigendecompose -- eigh returns eigenvalues in ascending order
-        eigenvalues, eigenvectors = jnp.linalg.eigh(sym)
-
-        # Take top n_components (largest eigenvalues, excluding trivial lambda=1)
-        # The trivial eigenvector is the last one (constant vector).
-        # Use Python min() so the result is a static int (required for JIT slicing).
         n_cells = transition.shape[0]
+        # Use Python min() so the result is a static int (required for JIT).
         n_comp = min(n_components, n_cells - 1)
 
-        # eigh returns ascending order; biggest eigenvalues are at the end.
-        # Skip the last (trivial lambda~=1) and take the next n_comp.
-        selected_vals = eigenvalues[-(n_comp + 1) : -1]  # shape (n_comp,)
-        selected_vecs = eigenvectors[:, -(n_comp + 1) : -1]  # (n_cells, n_comp)
+        # Accumulate M_sum = sum_{t=1}^{T} sym^t.
+        # This approximates (I - sym)^{-1} - I (the DPT kernel).
+        # Enough terms for the geometric series to converge.
+        n_powers = max(n_comp * 2, 10)
+        m_power = sym
+        m_sum = jnp.zeros_like(sym)
+        for _ in range(n_powers):
+            m_sum = m_sum + m_power
+            m_power = m_power @ sym
 
-        # Clamp eigenvalues to [0, 1] for stability
-        selected_vals = jnp.clip(selected_vals, 0.0, 1.0)
-
-        # Diffusion components = eigenvectors * eigenvalues
-        diffusion_components = selected_vecs * selected_vals[None, :]
-
-        return diffusion_components, selected_vals
-
-    def _compute_pseudotime(
-        self,
-        diffusion_components: Float[Array, "n_cells n_comp"],
-        root_index: int,
-    ) -> Float[Array, "n_cells"]:
-        """Compute pseudotime as L2 distance from root in diffusion space.
-
-        Args:
-            diffusion_components: Diffusion component matrix.
-            root_index: Index of the root cell.
-
-        Returns:
-            Pseudotime values for all cells.
-        """
-        root_dc = diffusion_components[root_index]
-        diff = diffusion_components - root_dc[None, :]
+        # Pseudotime = L2 distance from root cell in M_sum row space.
+        root_row = m_sum[root_index]
+        diff = m_sum - root_row[None, :]
         pseudotime = jnp.sqrt(jnp.sum(diff**2, axis=-1) + 1e-10)
-
-        # Normalize so root is exactly 0
         pseudotime = pseudotime - pseudotime[root_index]
 
-        return pseudotime
+        # Extract n_comp diffusion components for the output embedding.
+        # Center rows to remove the trivial (constant) component, then
+        # take the first n_comp columns as coordinates.
+        row_mean = jnp.mean(m_sum, axis=0, keepdims=True)
+        diffusion_components = (m_sum - row_mean)[:, :n_comp]
+
+        return pseudotime, diffusion_components
 
     def apply(
         self,
@@ -266,13 +269,12 @@ class DifferentiablePseudotime(OperatorModule):
         # Build transition matrix
         transition = self._build_transition_matrix(embeddings)
 
-        # Diffusion components
-        dc, _eigenvalues = self._compute_diffusion_components(
-            transition, self.config.n_diffusion_components
+        # Pseudotime and diffusion components from Markov powers
+        pseudotime, dc = self._compute_diffusion_embedding(
+            transition,
+            self.config.n_diffusion_components,
+            self.config.root_cell_index,
         )
-
-        # Pseudotime from root
-        pseudotime = self._compute_pseudotime(dc, self.config.root_cell_index)
 
         transformed_data = {
             **data,

@@ -174,12 +174,13 @@ class DifferentiableDiffusionImputer(OperatorModule):
         counts: Float[Array, "n_cells n_genes"],
         t: int,
     ) -> tuple[Float[Array, "n_cells n_genes"], Float[Array, "n_cells n_cells"]]:
-        """Compute M^t via eigendecomposition of the symmetric affinity.
+        """Compute M^t via repeated matrix multiplication of the Markov matrix.
 
-        The Markov matrix is ``M = D^{-1} A``. Since ``A = D^{1/2} S D^{1/2}``
-        where ``S = D^{-1/2} A D^{-1/2}`` is the normalized Laplacian-related
-        matrix, we eigendecompose ``A_sym`` directly and use the similarity
-        transform ``M^t = D^{-1/2} V diag((lambda/lambda_0)^t) V^T D^{1/2}``.
+        The Markov matrix is ``M = D^{-1} A`` where ``A`` is the symmetric
+        affinity and ``D`` is the diagonal degree matrix.  We compute ``M^t``
+        by repeatedly multiplying ``M`` by itself ``t`` times.  This avoids
+        eigendecomposition (whose backward pass produces NaN gradients when
+        eigenvalues are near-degenerate) while remaining fully differentiable.
 
         Args:
             affinity_sym: Symmetric affinity matrix.
@@ -195,31 +196,14 @@ class DifferentiableDiffusionImputer(OperatorModule):
             identity = jnp.eye(n_cells)
             return counts, identity
 
-        # Eigendecompose the symmetric affinity matrix
-        eigenvalues, eigenvectors = jnp.linalg.eigh(affinity_sym)
+        # Build row-stochastic Markov matrix M = D^{-1} A
+        degree = jnp.sum(affinity_sym, axis=1, keepdims=True)
+        markov = affinity_sym / jnp.maximum(degree, 1e-10)
 
-        # Clamp eigenvalues to non-negative for numerical stability
-        eigenvalues = jnp.maximum(eigenvalues, 0.0)
-
-        # Degree vector from affinity
-        degree = jnp.maximum(affinity_sym.sum(axis=1), 1e-8)
-        d_inv_sqrt = 1.0 / jnp.sqrt(degree)
-        d_sqrt = jnp.sqrt(degree)
-
-        # Normalized eigenvalues: the eigenvalues of M = D^{-1} A correspond
-        # to lambda / lambda_max when working through the similarity transform.
-        # For the row-stochastic matrix, the largest eigenvalue of A gives the
-        # stationary eigenvalue = 1 for M. We normalize so that the Markov
-        # eigenvalues are in [0, 1].
-        lambda_max = jnp.maximum(eigenvalues[-1], 1e-8)
-        markov_eigenvalues = eigenvalues / lambda_max
-
-        # M^t = D^{-1/2} V diag(markov_eigenvalues^t) V^T D^{1/2}
-        markov_eigenvalues_t = markov_eigenvalues**t
-        # V_scaled_left = D^{-1/2} V, V_scaled_right = D^{1/2} V
-        v_left = d_inv_sqrt[:, None] * eigenvectors
-        v_right = d_sqrt[:, None] * eigenvectors
-        diffusion_op = v_left @ jnp.diag(markov_eigenvalues_t) @ v_right.T
+        # Compute M^t via repeated matrix multiplication
+        diffusion_op = markov
+        for _ in range(t - 1):
+            diffusion_op = diffusion_op @ markov
 
         # Ensure row-stochasticity after powering (numerical correction)
         row_sums = jnp.sum(diffusion_op, axis=1, keepdims=True)
