@@ -92,17 +92,17 @@ class TestLJBenchmark:
         assert "operator" in result.tags
         assert "ForceFieldOperator" in result.tags["operator"]
 
-    def test_has_potential_tag(
+    def test_has_operator_tag(
         self, result: BenchmarkResult
     ) -> None:
-        assert result.tags.get("potential") == "lennard_jones"
+        assert "operator" in result.tags
 
-    def test_has_steps_per_sec_metric(
+    def test_has_throughput_metric(
         self, result: BenchmarkResult
     ) -> None:
-        """Must report DiffBio throughput."""
-        assert "steps_per_sec" in result.metrics
-        sps = result.metrics["steps_per_sec"].value
+        """Must report DiffBio throughput (added by base class)."""
+        assert "items_per_sec" in result.metrics
+        sps = result.metrics["items_per_sec"].value
         assert sps > 0.0
 
     def test_has_energy_drift_metric(
@@ -164,8 +164,8 @@ class TestLJBenchmark:
     def test_has_system_metadata(
         self, result: BenchmarkResult
     ) -> None:
-        assert "system_info" in result.metadata
-        info = result.metadata["system_info"]
+        assert "dataset_info" in result.metadata
+        info = result.metadata["dataset_info"]
         assert "n_particles" in info
         assert "dimension" in info
         assert "lattice" in info

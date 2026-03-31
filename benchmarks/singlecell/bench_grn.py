@@ -16,58 +16,55 @@ Usage:
 from __future__ import annotations
 
 import logging
-import sys
-import time
 from typing import Any
 
 import jax.numpy as jnp
 import numpy as np
-from calibrax.core.models import Metric
-from calibrax.core.result import BenchmarkResult
-from calibrax.profiling.timing import TimingCollector
 from flax import nnx
 
+from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.grn import GRN_BASELINES
-from benchmarks._gradient import check_gradient_flow
 from benchmarks._metrics.grn import evaluate_grn
 from diffbio.operators.singlecell.grn_inference import (
     DifferentiableGRN,
     GRNInferenceConfig,
 )
-from diffbio.sources.bengrn_ground_truth import BenGRNConfig, BenGRNSource
+from diffbio.sources.bengrn_ground_truth import (
+    BenGRNConfig,
+    BenGRNSource,
+)
 
 logger = logging.getLogger(__name__)
 
-_BASELINES = GRN_BASELINES
+_DATA_DIR = "/media/mahdi/ssd23/Works/benGRN/data/GroundTruth/stone_and_sroy"
+
+_CONFIG = DiffBioBenchmarkConfig(
+    name="singlecell/grn",
+    domain="singlecell",
+    quick_subsample=500,
+    n_iterations_quick=5,
+    n_iterations_full=20,
+)
 
 
-class GRNBenchmark:
-    """Evaluate DifferentiableGRN on mESC ChIP+Perturb ground truth.
-
-    Args:
-        quick: If True, limit to 500 genes for speed.
-        data_dir: Path to benGRN ground truth data.
-    """
+class GRNBenchmark(DiffBioBenchmark):
+    """Evaluate DifferentiableGRN on mESC ChIP+Perturb ground truth."""
 
     def __init__(
         self,
+        config: DiffBioBenchmarkConfig = _CONFIG,
         *,
         quick: bool = False,
-        data_dir: str = str(
-            "/media/mahdi/ssd23/Works/benGRN/data/"
-            "GroundTruth/stone_and_sroy"
-        ),
+        data_dir: str = _DATA_DIR,
     ) -> None:
-        self.quick = quick
-        self.data_dir = data_dir
+        super().__init__(config, quick=quick, data_dir=data_dir)
 
-    def run(self) -> BenchmarkResult:
-        """Execute the GRN benchmark."""
+    def _run_core(self) -> dict[str, Any]:
+        """Load GRN data, run operator, evaluate against GT."""
         max_genes = 500 if self.quick else 2000
-        n_iters = 5 if self.quick else 20
 
         # 1. Load data
-        print("Loading benGRN mESC ground truth...")
+        logger.info("Loading benGRN mESC ground truth...")
         source = BenGRNSource(
             BenGRNConfig(
                 data_dir=self.data_dir,
@@ -87,41 +84,36 @@ class GRNBenchmark:
         tf_indices = data["tf_indices"]
         gt_matrix = data["ground_truth_matrix"]
 
-        print(
-            f"  {n_cells} cells, {n_genes} genes, "
-            f"{n_tfs} TFs, {n_edges} GT edges"
+        logger.info(
+            "  %d cells, %d genes, %d TFs, %d GT edges",
+            n_cells,
+            n_genes,
+            n_tfs,
+            n_edges,
         )
 
         # 2. Run DifferentiableGRN
-        print("Running DifferentiableGRN...")
-        config = GRNInferenceConfig(
+        logger.info("Running DifferentiableGRN...")
+        op_config = GRNInferenceConfig(
             n_genes=n_genes,
             n_tfs=n_tfs,
             hidden_dim=32 if self.quick else 64,
             num_heads=4,
         )
         rngs = nnx.Rngs(42)
-        operator = DifferentiableGRN(config, rngs=rngs)
+        operator = DifferentiableGRN(op_config, rngs=rngs)
 
         input_data = {
             "counts": counts,
             "tf_indices": jnp.array(tf_indices),
         }
-
-        start = time.perf_counter()
         result, _, _ = operator.apply(input_data, {}, None)
-        wall_time = time.perf_counter() - start
 
         grn_matrix = result["grn_matrix"]
-        print(
-            f"  GRN shape: {grn_matrix.shape}, "
-            f"Time: {wall_time:.2f}s"
-        )
+        logger.info("  GRN shape: %s", grn_matrix.shape)
 
         # 3. Evaluate against ground truth
-        print("Evaluating against ChIP+Perturb ground truth...")
-
-        # Expand GRN from (n_tfs, n_genes) to (n_genes, n_genes)
+        logger.info("Evaluating against ChIP+Perturb ground truth...")
         pred_full = np.zeros((n_genes, n_genes), dtype=np.float32)
         grn_np = np.asarray(jnp.abs(grn_matrix))
         for i, tf_idx in enumerate(tf_indices):
@@ -131,102 +123,44 @@ class GRNBenchmark:
         grn_metrics = evaluate_grn(pred_full, gt_matrix)
 
         for key, value in sorted(grn_metrics.items()):
-            print(f"  {key}: {value:.6f}")
+            logger.info("  %s: %.6f", key, value)
 
-        # 4. Gradient flow
-        print("Checking gradient flow...")
-
-        def loss_fn(
-            model: DifferentiableGRN, d: dict[str, Any]
-        ) -> jnp.ndarray:
+        # Loss function for gradient check
+        def loss_fn(model: DifferentiableGRN, d: dict[str, Any]) -> jnp.ndarray:
             res, _, _ = model.apply(d, {}, None)
             return jnp.sum(res["grn_matrix"])
 
-        grad = check_gradient_flow(loss_fn, operator, input_data)
-        print(f"  Gradient norm: {grad.gradient_norm:.4f}")
-
-        # 5. Throughput
-        print("Measuring throughput...")
-        collector = TimingCollector(warmup_iterations=2)
-        timing = collector.measure_iteration(
-            iterator=iter(range(n_iters)),
-            num_batches=n_iters,
-            process_fn=lambda _: operator.apply(
-                input_data, {}, None
-            ),
-            count_fn=lambda _: n_cells,
-        )
-        cells_per_sec = timing.num_elements / timing.wall_clock_sec
-        print(f"  {cells_per_sec:.0f} cells/sec")
-
-        # 6. Comparison
-        print("\nComparison (AUPRC):")
-        print(
-            f"  DiffBio GRN: {grn_metrics['auprc']:.6f}"
-        )
-        for name, point in _BASELINES.items():
-            auprc = point.metrics["auprc"].value
-            print(f"  {name}: {auprc:.6f}")
-
-        # 7. Build result
-        metrics = {
-            k: Metric(value=v) for k, v in grn_metrics.items()
-        }
-        metrics["gradient_norm"] = Metric(
-            value=grad.gradient_norm
-        )
-        metrics["gradient_nonzero"] = Metric(
-            value=1.0 if grad.gradient_nonzero else 0.0
-        )
-        metrics["cells_per_sec"] = Metric(value=cells_per_sec)
-
-        return BenchmarkResult(
-            name="singlecell/grn",
-            domain="diffbio_benchmarks",
-            tags={
-                "operator": "DifferentiableGRN",
-                "dataset": "bengrn_mesc",
-                "ground_truth": "chipunion_KDUnion_intersect",
-                "framework": "diffbio",
-            },
-            timing=timing,
-            metrics=metrics,
-            config={
+        return {
+            "metrics": grn_metrics,
+            "operator": operator,
+            "input_data": input_data,
+            "loss_fn": loss_fn,
+            "n_items": n_cells,
+            "iterate_fn": lambda: operator.apply(input_data, {}, None),
+            "baselines": GRN_BASELINES,
+            "dataset_info": {
+                "n_cells": n_cells,
                 "n_genes": n_genes,
                 "n_tfs": n_tfs,
-                "hidden_dim": config.hidden_dim,
-                "quick": self.quick,
+                "n_gt_edges": n_edges,
             },
-            metadata={
-                "dataset_info": {
-                    "n_cells": n_cells,
-                    "n_genes": n_genes,
-                    "n_tfs": n_tfs,
-                    "n_gt_edges": n_edges,
-                },
-                "baselines": {k: p.to_dict() for k, p in _BASELINES.items()},
+            "operator_config": {
+                "n_genes": n_genes,
+                "n_tfs": n_tfs,
+                "hidden_dim": op_config.hidden_dim,
             },
-        )
+            "operator_name": "DifferentiableGRN",
+            "dataset_name": "bengrn_mesc",
+        }
 
 
 def main() -> None:
-    """Main entry point."""
-    logging.basicConfig(level=logging.INFO)
-    quick = "--quick" in sys.argv
-
-    print("=" * 60)
-    print("DiffBio Benchmark: GRN Inference")
-    print("=" * 60)
-
-    bench = GRNBenchmark(quick=quick)
-    result = bench.run()
-
-    from pathlib import Path  # noqa: PLC0415
-
-    out = Path("benchmarks/results/singlecell")
-    out.mkdir(parents=True, exist_ok=True)
-    result.save(out / "grn.json")
-    print(f"\nSaved to: {out / 'grn.json'}")
+    """CLI entry point."""
+    DiffBioBenchmark.cli_main(
+        GRNBenchmark,
+        _CONFIG,
+        data_dir=_DATA_DIR,
+    )
 
 
 if __name__ == "__main__":
