@@ -184,7 +184,9 @@ class DiffBioBenchmark(ABC):
         """Check gradient flow through the operator."""
         try:
             return check_gradient_flow(loss_fn, operator, input_data)
-        except Exception as exc:
+        except (ValueError, TypeError, RuntimeError) as exc:
+            # JAX/NNX gradient computation can fail for operators
+            # without learnable parameters or incompatible loss_fn
             logger.warning("Gradient check failed: %s", exc)
             return GradientFlowResult(
                 gradient_norm=0.0, gradient_nonzero=False
@@ -223,18 +225,18 @@ class DiffBioBenchmark(ABC):
         if not keys:
             return
 
-        # Print header
+        # Log comparison table
         header = f"  {'Method':<22}"
         for k in keys:
             header += f" {k:>12}"
-        print(f"\n{header}")
-        print("  " + "-" * (len(header) - 2))
+        logger.info("\n%s", header)
+        logger.info("  %s", "-" * (len(header) - 2))
 
         # DiffBio row
         row = f"  {'DiffBio':<22}"
         for k in keys:
             row += f" {metrics.get(k, 0):>12.4f}"
-        print(row)
+        logger.info("%s", row)
 
         # Baseline rows
         for name, point in baselines.items():
@@ -242,7 +244,7 @@ class DiffBioBenchmark(ABC):
             for k in keys:
                 val = point.metrics.get(k, Metric(value=0)).value
                 row += f" {val:>12.4f}"
-            print(row)
+            logger.info("%s", row)
 
     @classmethod
     def cli_main(

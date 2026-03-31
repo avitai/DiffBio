@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 _FILENAME = "endocrinogenesis_day15.h5ad"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class PancreasConfig(StructuralConfig):
     """Configuration for PancreasSource.
 

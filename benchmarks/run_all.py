@@ -89,7 +89,9 @@ def _run_single(
     try:
         bench = bench_cls(quick=quick)
         return bench.run()
-    except Exception as exc:
+    except (ValueError, TypeError, RuntimeError, OSError) as exc:
+        # Benchmark can fail due to missing data, operator errors,
+        # or resource issues. Log and continue to next benchmark.
         logger.error(
             "Benchmark %s/%s failed: %s", domain, class_name, exc
         )
@@ -246,8 +248,8 @@ def main() -> None:
             store = Store(Path("benchmarks/results"))
             store.save(run)
             print("\nRun saved to: benchmarks/results/")
-        except Exception as exc:
-            logger.debug("Could not save Run: %s", exc)
+        except (OSError, TypeError, ValueError) as exc:
+            logger.warning("Could not save Run: %s", exc)
 
 
 if __name__ == "__main__":

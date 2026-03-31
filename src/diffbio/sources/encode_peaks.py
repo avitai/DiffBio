@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_DATA_PATH = "/media/mahdi/ssd23/Data/encode/CTCF_K562_narrowPeak.bed.gz"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class ENCODEPeakConfig(StructuralConfig):
     """Configuration for ENCODEPeakSource.
 
@@ -61,7 +61,7 @@ class ENCODEPeakConfig(StructuralConfig):
             )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class ENCODEPeak:
     """A single ENCODE narrowPeak record.
 

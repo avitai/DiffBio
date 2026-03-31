@@ -72,7 +72,7 @@ def _parse_fasta(path: Path) -> list[tuple[str, str]]:
     return entries
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class BalifamConfig(StructuralConfig):
     """Configuration for BalifamSource.
 

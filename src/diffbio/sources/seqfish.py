@@ -43,7 +43,7 @@ def _require_anndata() -> Any:
         ) from err
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class SeqFISHConfig(StructuralConfig):
     """Configuration for SeqFISHSource.
 

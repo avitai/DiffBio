@@ -112,8 +112,9 @@ def evaluate_integration(
             scib_metrics.kbet_per_label(nn, batch_np, labels_np)
         )
         metrics["kbet"] = kbet_val
-    except Exception as exc:
-        logger.debug("kBET computation failed: %s", exc)
+    except (ValueError, RuntimeError, IndexError) as exc:
+        # kBET can fail on small/degenerate batches
+        logger.warning("kBET computation failed: %s", exc)
         metrics["kbet"] = 0.0
 
     # Aggregate scores (scib paper formula)

@@ -33,7 +33,7 @@ _BASE_DIR = Path(
 )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class BenGRNConfig(StructuralConfig):
     """Configuration for BenGRNSource.
 
@@ -114,7 +114,7 @@ class BenGRNSource(DataSourceModule):
         # Parse TSV: row 0 = cell/sample names (header)
         # Rows 1+: gene_name \t val1 \t val2 \t ...
         # Transpose: genes are rows, cells are columns
-        _cell_names = lines[0].strip().split("\t")  # noqa: F841
+        # Line 0 is cell/sample header -- skip it
         gene_names: list[str] = []
         expr_cols: list[list[float]] = []
         for line in lines[1:]:

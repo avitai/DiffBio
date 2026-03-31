@@ -48,7 +48,7 @@ def _require_anndata() -> Any:
 from diffbio.sources._utils import to_dense_float32 as _to_dense
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class ImmuneHumanConfig(StructuralConfig):
     """Configuration for ImmuneHumanSource.
 

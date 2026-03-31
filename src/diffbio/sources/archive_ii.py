@@ -36,7 +36,7 @@ _DEFAULT_DATA_DIR = "/media/mahdi/ssd23/Works/RNAFoldAssess/tutorial/processed_d
 _STRUCTURE_FILENAME = "example_data_structure.csv"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class ArchiveIIConfig(StructuralConfig):
     """Configuration for ArchiveIISource.
 
