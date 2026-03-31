@@ -20,6 +20,7 @@ import shutil
 import urllib.error
 import urllib.request
 import warnings
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -161,7 +162,7 @@ class MolNetSourceConfig(StructuralConfig):
     data_dir: Path | None = None
     download: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate configuration after initialization."""
         super().__post_init__()
         if not self.dataset_name:
@@ -468,7 +469,7 @@ class MolNetSource(DataSourceModule):
             return None
         return self._data[idx]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Element]:  # type: ignore[override]
         """Return iterator over elements."""
         self._current_idx = 0
         return self

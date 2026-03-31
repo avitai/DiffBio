@@ -14,6 +14,7 @@ References:
 """
 
 import logging
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -44,7 +45,7 @@ class FastaSourceConfig(StructuralConfig):
     handle_n: Literal["uniform", "zero"] = "uniform"
     create_index: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate configuration after initialization."""
         super().__post_init__()
         if self.file_path is None:
@@ -183,7 +184,7 @@ class FastaSource(IndexedBatchSourceMixin, DataSourceModule):
         seq_name = self._sequence_names[idx]
         return self._sequence_to_element(idx, seq_name)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Element]:  # type: ignore[override]
         """Return iterator over sequences."""
         self._current_idx = 0
         return self

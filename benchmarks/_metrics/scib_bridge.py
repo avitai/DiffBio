@@ -70,34 +70,42 @@ def evaluate_integration(
     import scib_metrics  # noqa: PLC0415
     from scib_metrics.nearest_neighbors import pynndescent  # noqa: PLC0415
 
-    # Convert to writable numpy (pynndescent numba requires writable arrays)
-    X = np.array(corrected_embeddings, dtype=np.float32, copy=True)
+    # Convert to writable numpy (pynndescent numba requires writable)
+    embeddings_np = np.array(
+        corrected_embeddings, dtype=np.float32, copy=True
+    )
     labels_np = np.array(labels, dtype=np.int32, copy=True)
     batch_np = np.array(batch, dtype=np.int32, copy=True)
 
     metrics: dict[str, float] = {}
 
     # Compute nearest neighbors (shared across kNN-based metrics)
-    nn = pynndescent(X, n_neighbors=n_neighbors)
+    nn = pynndescent(embeddings_np, n_neighbors=n_neighbors)
 
     # Bio conservation metrics
     metrics["silhouette_label"] = float(
-        scib_metrics.silhouette_label(X, labels_np)
+        scib_metrics.silhouette_label(embeddings_np, labels_np)
     )
 
-    nmi_ari = scib_metrics.nmi_ari_cluster_labels_kmeans(X, labels_np)
+    nmi_ari = scib_metrics.nmi_ari_cluster_labels_kmeans(
+        embeddings_np, labels_np
+    )
     metrics["nmi_kmeans"] = float(nmi_ari["nmi"])
     metrics["ari_kmeans"] = float(nmi_ari["ari"])
 
     metrics["clisi"] = float(scib_metrics.clisi_knn(nn, labels_np))
 
     metrics["isolated_labels"] = float(
-        scib_metrics.isolated_labels(X, labels_np, batch_np)
+        scib_metrics.isolated_labels(
+            embeddings_np, labels_np, batch_np
+        )
     )
 
     # Batch correction metrics
     metrics["silhouette_batch"] = float(
-        scib_metrics.silhouette_batch(X, labels_np, batch_np)
+        scib_metrics.silhouette_batch(
+            embeddings_np, labels_np, batch_np
+        )
     )
 
     metrics["ilisi"] = float(scib_metrics.ilisi_knn(nn, batch_np))
