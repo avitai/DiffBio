@@ -70,7 +70,15 @@ version = "0.1.0"
 
 [project.optional-dependencies]
 all = ["diffbio[benchmark,dev,docs,genomics,gpu,soft-ops-advanced,soft-ops-ot,test,torch-io]"]
-benchmark = ["deepchem>=2.8.0", "pandas>=2.0", "matplotlib>=3.7", "tabulate>=0.9"]
+benchmark = [
+  "scib-metrics>=0.5",
+  "pynndescent>=0.5",
+  "squidpy>=1.4",
+  "tabulate>=0.9",
+  "deepchem>=2.8.0",
+  "pandas>=2.0",
+  "matplotlib>=3.7",
+]
 cuda-dev = ["diffbio[dev,gpu]"]
 dev = [
   "build>=1.0.3",
