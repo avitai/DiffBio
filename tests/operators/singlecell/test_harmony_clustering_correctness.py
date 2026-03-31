@@ -196,7 +196,7 @@ def compute_clustering_metrics(
 # -------------------------------------------------------------------
 
 
-def test_harmony(data: dict[str, Any]) -> dict[str, Any]:
+def _test_harmony(data: dict[str, Any]) -> dict[str, Any]:
     """Test DifferentiableHarmony operator.
 
     Args:
@@ -270,7 +270,7 @@ def test_harmony(data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def test_clustering(data: dict[str, Any]) -> dict[str, Any]:
+def _test_clustering(data: dict[str, Any]) -> dict[str, Any]:
     """Test SoftKMeansClustering operator.
 
     Args:
@@ -388,10 +388,10 @@ def run_benchmark(
     print(f"  True clusters: {data['n_clusters']}")
 
     # Test Harmony
-    harmony_metrics = test_harmony(data)
+    harmony_metrics = _test_harmony(data)
 
     # Test clustering
-    clustering_metrics = test_clustering(data)
+    clustering_metrics = _test_clustering(data)
 
     result = SingleCellBenchmarkResult(
         timestamp=datetime.now().isoformat(),

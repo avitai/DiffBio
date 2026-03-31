@@ -43,7 +43,7 @@ from diffbio.operators.singlecell.trajectory import (
 # -------------------------------------------------------------------
 
 
-def test_fate_probability(
+def _test_fate_probability(
     transition_matrix: jnp.ndarray,
     n_cells: int,
     n_terminal: int = 2,
@@ -100,7 +100,7 @@ def test_fate_probability(
     }
 
 
-def test_ot_trajectory(
+def _test_ot_trajectory(
     counts_t1: jnp.ndarray,
     counts_t2: jnp.ndarray,
     n1: int,

@@ -111,7 +111,7 @@ def compute_fingerprint_metrics(
     }
 
 
-def test_ecfp_fingerprints(molecules: list[tuple[str, str]]) -> dict:
+def _test_ecfp_fingerprints(molecules: list[tuple[str, str]]) -> dict:
     """Test ECFP4 fingerprints."""
     print("\n  Testing ECFP4 fingerprints...")
 
@@ -170,7 +170,7 @@ def test_ecfp_fingerprints(molecules: list[tuple[str, str]]) -> dict:
     return metrics
 
 
-def test_maccs_fingerprints(molecules: list[tuple[str, str]]) -> dict:
+def _test_maccs_fingerprints(molecules: list[tuple[str, str]]) -> dict:
     """Test MACCS Keys fingerprints."""
     print("\n  Testing MACCS Keys fingerprints...")
 
@@ -224,7 +224,7 @@ def test_maccs_fingerprints(molecules: list[tuple[str, str]]) -> dict:
     return metrics
 
 
-def test_neural_fingerprints(molecules: list[tuple[str, str]]) -> dict:
+def _test_neural_fingerprints(molecules: list[tuple[str, str]]) -> dict:
     """Test Neural (learned) fingerprints."""
     print("\n  Testing Neural fingerprints...")
 
@@ -315,9 +315,9 @@ def _run_full_benchmark(
     print("=" * 60)
 
     # Test each fingerprint type
-    ecfp_metrics = test_ecfp_fingerprints(molecules)
-    maccs_metrics = test_maccs_fingerprints(molecules)
-    neural_metrics = test_neural_fingerprints(molecules)
+    ecfp_metrics = _test_ecfp_fingerprints(molecules)
+    maccs_metrics = _test_maccs_fingerprints(molecules)
+    neural_metrics = _test_neural_fingerprints(molecules)
 
     # Compute cross-correlations
     print("\n  Computing fingerprint correlations...")

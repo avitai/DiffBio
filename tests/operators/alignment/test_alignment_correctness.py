@@ -34,7 +34,7 @@ def create_aligner(
     return SmoothSmithWaterman(config, scoring_matrix=scoring_matrix, rngs=nnx.Rngs(42))
 
 
-def test_accuracy(
+def _test_accuracy(
     aligner: SmoothSmithWaterman,
 ) -> dict[str, float]:
     """Test alignment accuracy on known cases.
@@ -76,7 +76,7 @@ def test_accuracy(
     return results
 
 
-def test_differentiability(
+def _test_differentiability(
     aligner: SmoothSmithWaterman,
 ) -> dict[str, float | bool]:
     """Test gradient flow through alignment w.r.t. sequence inputs.
@@ -108,7 +108,7 @@ def test_differentiability(
     }
 
 
-def test_temperature_sweep() -> dict[str, float]:
+def _test_temperature_sweep() -> dict[str, float]:
     """Test alignment behavior across temperatures.
 
     Returns:
