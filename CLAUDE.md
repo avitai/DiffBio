@@ -298,6 +298,7 @@ src/diffbio/
 1. **Logsumexp Relaxation**: Replace discrete `max` with smooth `logsumexp` (Smith-Waterman)
 2. **Sigmoid Thresholds**: Replace hard thresholds with sigmoid (Quality filtering)
 3. **Segment Sum Aggregation**: Replace counting with weighted accumulation (Pileup)
+4. **Markov Power Accumulation**: Replace eigendecomposition with repeated matrix multiplication for diffusion operators (Imputation, Pseudotime) — avoids NaN gradients from degenerate eigenvalues
 
 ## Testing Strategy
 

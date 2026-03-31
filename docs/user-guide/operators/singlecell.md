@@ -247,7 +247,7 @@ contamination = result["contamination_fraction"]
 
 ## DifferentiableDiffusionImputer
 
-MAGIC-style diffusion imputation that constructs a cell-cell affinity graph using an alpha-decaying kernel, eigendecomposes the affinity matrix, and computes M^t for imputation. Recovers gene-gene relationships masked by technical dropout noise.
+MAGIC-style diffusion imputation that constructs a cell-cell affinity graph using an alpha-decaying kernel, builds a row-stochastic Markov matrix M = D^{-1}A, and computes M^t via repeated matrix multiplication for imputation. Recovers gene-gene relationships masked by technical dropout noise.
 
 ### Quick Start
 
@@ -284,8 +284,8 @@ diffusion_op = result["diffusion_operator"]  # M^t matrix
 1. Compute pairwise distances between cells
 2. Build alpha-decay affinity: $K(i,j) = \exp(-(d / \sigma_i)^{\text{decay}})$
 3. Symmetrize via fuzzy set union
-4. Eigendecompose the symmetric affinity
-5. Compute $M^t = D^{-1/2} V \text{diag}((\lambda/\lambda_0)^t) V^T D^{1/2}$
+4. Row-normalize to Markov matrix $M = D^{-1} A$
+5. Compute $M^t$ via repeated matrix multiplication ($t$ iterations)
 6. Impute: `imputed = M^t @ counts`
 
 ## DifferentiableTransformerDenoiser
@@ -339,7 +339,7 @@ mask = result["mask"]               # (n_genes,)
 
 ## DifferentiablePseudotime
 
-Diffusion-map pseudotime ordering via eigendecomposition of the Markov transition matrix. Pseudotime is the Euclidean distance from a root cell in diffusion-component space.
+Diffusion-map pseudotime ordering via accumulated Markov matrix powers. Pseudotime is the L2 distance from a root cell in diffusion-embedding space (rows of the accumulated power matrix).
 
 ### Quick Start
 
@@ -373,9 +373,9 @@ transition = result["transition_matrix"]           # (n_cells, n_cells)
 ### Algorithm
 
 1. Compute pairwise distances, build fuzzy k-NN graph
-2. Symmetrize and row-normalize to Markov transition matrix
-3. Eigendecompose: take top eigenvectors weighted by eigenvalues
-4. Pseudotime = L2 distance from root cell in diffusion-component space
+2. Symmetrize and row-normalize to Markov transition matrix $M$
+3. Accumulate $M_{\text{sum}} = \sum_{t=1}^{T} M^t$ via repeated matrix multiplication
+4. Pseudotime = L2 distance from root cell in $M_{\text{sum}}$ row space
 
 ## DifferentiableFateProbability
 

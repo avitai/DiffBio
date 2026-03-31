@@ -122,14 +122,25 @@ class MyBenchmark(DiffBioBenchmark):
         source = MyDataSource(MyConfig(data_dir=self.data_dir))
         data = source.load()
 
-        # 2. Run operator
+        # 2. Create operator
         operator = MyOperator(config, rngs=nnx.Rngs(42))
+
+        # 3. Train operator (for operators with learnable parameters)
+        #    Use an unsupervised loss and gradient descent via optax.
+        #    Physics-based operators (e.g. Smith-Waterman, DSSP) that
+        #    have no learnable params can skip this step.
+        opt = nnx.Optimizer(operator, optax.adam(1e-3), wrt=nnx.Param)
+        for step in range(n_steps):
+            loss, grads = nnx.value_and_grad(unsupervised_loss)(operator)
+            opt.update(operator, grads)
+
+        # 4. Evaluate trained operator
         result, _, _ = operator.apply(data, {}, None)
 
-        # 3. Compute metrics
+        # 5. Compute metrics
         metrics = evaluate_my_domain(result, ground_truth)
 
-        # 4. Return standard dict
+        # 6. Return standard dict
         return {
             "metrics": metrics,
             "operator": operator,
@@ -146,6 +157,13 @@ class MyBenchmark(DiffBioBenchmark):
 
 The base class handles: gradient flow check, throughput measurement,
 comparison table printing, `BenchmarkResult` construction, and CLI.
+
+> **Important**: Operators with learnable parameters (neural networks,
+> learnable centroids, GLM coefficients) must be trained before
+> evaluation. Comparing untrained random weights against optimised
+> baselines produces misleading results. Use an unsupervised loss
+> appropriate to the domain (e.g. reconstruction error, compactness,
+> log-likelihood).
 
 ---
 

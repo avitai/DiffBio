@@ -213,19 +213,25 @@ uv run pytest tests/integration/ -vv
 ```
 DiffBio/
 ├── src/diffbio/
-│   ├── operators/          # Differentiable operators
-│   │   ├── quality_filter.py
-│   │   ├── pileup.py
-│   │   ├── smith_waterman.py
-│   │   └── classifier.py
-│   ├── pipelines/          # End-to-end pipelines
-│   │   └── variant_calling.py
-│   └── utils/              # Training utilities
-│       └── training.py
-└── tests/
-    ├── operators/          # Unit tests for operators
-    ├── pipelines/          # Pipeline tests
-    └── integration/        # Integration tests
+│   ├── core/               # Base operators, graph utils, soft ops
+│   ├── operators/           # 35+ differentiable operators
+│   │   ├── alignment/       # Smith-Waterman, profile HMM, soft MSA
+│   │   ├── variant/         # Pileup, classifiers, CNV segmentation
+│   │   ├── singlecell/      # Clustering, trajectory, velocity, GRN, ...
+│   │   ├── drug_discovery/  # Fingerprints, property prediction, ADMET
+│   │   ├── epigenomics/     # Peak calling, chromatin state
+│   │   ├── normalization/   # VAE normalizer, UMAP, PHATE
+│   │   ├── statistical/     # HMM, NB GLM, EM quantification
+│   │   ├── multiomics/      # Hi-C, spatial deconvolution
+│   │   └── ...              # preprocessing, protein, RNA, assembly, ...
+│   ├── pipelines/           # End-to-end pipelines
+│   ├── losses/              # Alignment, single-cell, statistical losses
+│   ├── sources/             # Data loaders (FASTA, BAM, MolNet, ...)
+│   ├── splitters/           # Dataset splitting strategies
+│   └── utils/               # Training utilities
+├── tests/                   # Unit, integration, and benchmark tests
+├── benchmarks/              # Domain benchmarks with training + baselines
+└── docs/                    # MkDocs documentation
 ```
 
 ## Requirements

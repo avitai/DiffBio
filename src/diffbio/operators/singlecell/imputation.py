@@ -4,8 +4,8 @@ This module provides two complementary imputation strategies:
 
 1. **DifferentiableDiffusionImputer**: MAGIC-style diffusion imputation that
    constructs a cell-cell affinity graph using an alpha-decaying kernel,
-   eigendecomposes the symmetric affinity matrix, and uses the relationship
-   ``M = D^{-1} A`` to compute M^t for diffusion-based imputation.
+   builds a row-stochastic Markov matrix ``M = D^{-1} A``, and computes
+   ``M^t`` via repeated matrix multiplication for diffusion-based imputation.
 
 2. **DifferentiableTransformerDenoiser**: Transformer-based gene denoiser that
    treats genes as tokens, randomly masks a fraction of them, and predicts
@@ -65,15 +65,17 @@ class DifferentiableDiffusionImputer(OperatorModule):
     """Differentiable MAGIC-style diffusion imputation.
 
     Constructs a cell-cell affinity graph using an alpha-decaying kernel,
-    symmetrizes it, eigendecomposes the symmetric affinity matrix, and uses
-    the relationship ``M = D^{-1} A`` to compute M^t for imputation.
+    symmetrizes it, builds a row-stochastic Markov matrix ``M = D^{-1} A``,
+    and computes ``M^t`` via repeated matrix multiplication for imputation.
+    This avoids eigendecomposition (whose backward pass produces NaN when
+    eigenvalues are near-degenerate) while remaining fully differentiable.
 
     Algorithm:
         1. Compute pairwise distances between cells
         2. Build alpha-decay affinity: ``K(i,j) = exp(-(d/sigma_i)^decay)``
         3. Symmetrize the affinity via fuzzy set union
-        4. Eigendecompose the symmetric affinity A_sym
-        5. Derive M^t = D^{-1/2} V diag((lambda/lambda_0)^t) V^T D^{1/2}
+        4. Row-normalize to Markov matrix ``M = D^{-1} A``
+        5. Compute ``M^t`` via repeated matrix multiplication (t iterations)
         6. Impute: ``imputed = M^t @ counts``
 
     Args:
@@ -247,7 +249,7 @@ class DifferentiableDiffusionImputer(OperatorModule):
         # Build symmetric affinity matrix
         affinity_sym = self._build_symmetric_affinity(counts)
 
-        # Diffuse via eigendecomposition of affinity
+        # Diffuse via repeated matrix multiplication of Markov matrix
         imputed, diffusion_op = self._diffuse(affinity_sym, counts, self.config.diffusion_t)
 
         transformed_data = {
