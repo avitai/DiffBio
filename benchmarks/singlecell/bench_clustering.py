@@ -185,7 +185,7 @@ class ClusteringBenchmark:
                     "n_cells": n_cells,
                     "n_types": n_types,
                 },
-                "baselines": _BASELINES,
+                "baselines": {k: p.to_dict() for k, p in _BASELINES.items()},
             },
         )
 

@@ -203,7 +203,7 @@ class TrajectoryBenchmark:
                     "n_cells": n_cells,
                     "n_genes": n_genes,
                 },
-                "baselines": _BASELINES,
+                "baselines": {k: p.to_dict() for k, p in _BASELINES.items()},
             },
         )
 

@@ -204,7 +204,7 @@ class GRNBenchmark:
                     "n_tfs": n_tfs,
                     "n_gt_edges": n_edges,
                 },
-                "baselines": _BASELINES,
+                "baselines": {k: p.to_dict() for k, p in _BASELINES.items()},
             },
         )
 
