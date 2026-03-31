@@ -96,6 +96,24 @@ class TestReadDownsampler:
         assert result["pert_code"] == 1
         assert result["other"] == "preserved"
 
+    def test_jit_compatible(self) -> None:
+        """Test JIT compilation works for ReadDownsampler."""
+        config = DownsamplingConfig(
+            mode="fraction", fraction=0.5, apply_log1p=False, is_log1p_input=False
+        )
+        op = ReadDownsampler(config, rngs=nnx.Rngs(0))
+
+        @jax.jit
+        def compute(operator: ReadDownsampler, counts: jnp.ndarray) -> jnp.ndarray:
+            data = {"counts": counts}
+            result, _, _ = operator.apply(data, {}, None)
+            return result["counts"]
+
+        counts = jnp.array([[100.0, 200.0, 50.0]])
+        result = compute(op, counts)
+        assert result.shape == counts.shape
+        assert jnp.all(jnp.isfinite(result))
+
     def test_non_negative_output(self) -> None:
         config = DownsamplingConfig(
             mode="fraction", fraction=0.3, apply_log1p=False, is_log1p_input=False

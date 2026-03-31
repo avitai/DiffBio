@@ -440,6 +440,28 @@ class TestMDIntegratorOperator:
         assert grads is not None
         assert grads.shape == positions.shape
 
+    def test_jit_compatibility(self, operator):
+        """Test JIT compilation works for MDIntegratorOperator."""
+        n_particles = 6
+        positions = jax.random.uniform(
+            jax.random.PRNGKey(0), (n_particles, 3), minval=2, maxval=8.0
+        )
+        velocities = jax.random.normal(jax.random.PRNGKey(1), (n_particles, 3)) * 0.1
+
+        @jax.jit
+        def compute(pos, vel):
+            data = {"positions": pos, "velocities": vel}
+            result, _, _ = operator.apply(data, {}, None)
+            return result["positions"], result["trajectory"]
+
+        final_pos, trajectory = compute(positions, velocities)
+        assert final_pos.shape == (n_particles, 3)
+        assert jnp.all(jnp.isfinite(final_pos))
+
+        # Second call should produce same result
+        final_pos2, _ = compute(positions, velocities)
+        assert jnp.allclose(final_pos, final_pos2)
+
     def test_invalid_integrator_type(self):
         """Test that invalid integrator type raises ValueError at init time."""
         config = MDIntegratorConfig(integrator_type="invalid_type", box_size=10.0)

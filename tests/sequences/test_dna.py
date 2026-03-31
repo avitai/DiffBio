@@ -389,6 +389,17 @@ class TestGradientFlow:
         assert grad is not None
         assert grad.shape == seq.shape
 
+    def test_reverse_complement_gradient(self):
+        """Test gradients flow through reverse complement."""
+
+        def loss_fn(encoded):
+            return jnp.sum(reverse_complement_dna(encoded))
+
+        seq = encode_dna_string("AACGT").astype(jnp.float32)
+        grad = jax.grad(loss_fn)(seq)
+        assert grad is not None
+        assert grad.shape == seq.shape
+
 
 class TestJITCompatibility:
     """Tests for JAX JIT compilation compatibility."""
@@ -436,6 +447,18 @@ class TestJITCompatibility:
 
         result = compute_complement(seq)
         assert result.shape == seq.shape
+
+    def test_reverse_complement_jit(self):
+        """Test reverse_complement_dna is JIT compatible."""
+        seq = encode_dna_string("AACGT")
+
+        @jax.jit
+        def compute_rc(x):
+            return reverse_complement_dna(x)
+
+        result = compute_rc(seq)
+        assert result.shape == seq.shape
+        assert jnp.all(jnp.isfinite(result))
 
 
 class TestEdgeCases:

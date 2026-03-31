@@ -168,6 +168,35 @@ class TestSequenceOperator:
         row_sums = jnp.sum(normalized, axis=-1)
         assert jnp.allclose(row_sums, 1.0)
 
+    def test_jit_compatible(self, rngs):
+        """Test SequenceOperator methods work under JIT."""
+        from diffbio.core.base_operators import SequenceOperator
+
+        op = SequenceOperator(MockSequenceConfig(), rngs=rngs)
+        seq = jax.random.normal(jax.random.PRNGKey(42), (5, DNA_ALPHABET_SIZE))
+
+        @jax.jit
+        def normalize(s):
+            return op.normalize_sequence(s)
+
+        result = normalize(seq)
+        assert jnp.allclose(jnp.sum(result, axis=-1), 1.0, atol=1e-5)
+
+    def test_gradient_through_normalize(self, rngs):
+        """Test gradients flow through sequence normalization."""
+        from diffbio.core.base_operators import SequenceOperator
+
+        op = SequenceOperator(MockSequenceConfig(), rngs=rngs)
+
+        def loss_fn(s):
+            return jnp.sum(op.normalize_sequence(s))
+
+        seq = jax.random.normal(jax.random.PRNGKey(42), (5, DNA_ALPHABET_SIZE))
+        grad = jax.grad(loss_fn)(seq)
+        assert grad is not None
+        assert grad.shape == seq.shape
+        assert jnp.all(jnp.isfinite(grad))
+
 
 # =============================================================================
 # EncoderDecoderOperator Tests
@@ -218,6 +247,38 @@ class TestEncoderDecoderOperator:
         # KL divergence from N(0,1) to N(0,1) should be close to 0
         assert jnp.abs(kl) < EPSILON * 10
 
+    def test_jit_compatible(self, rngs):
+        """Test EncoderDecoderOperator methods work under JIT."""
+        from diffbio.core.base_operators import EncoderDecoderOperator
+
+        op = EncoderDecoderOperator(MockEncoderDecoderConfig(), rngs=rngs)
+
+        @jax.jit
+        def compute_kl(mean, log_var):
+            return op.kl_divergence(mean, log_var)
+
+        mean = jnp.zeros((5, DEFAULT_LATENT_DIM))
+        log_var = jnp.zeros((5, DEFAULT_LATENT_DIM))
+        result = compute_kl(mean, log_var)
+        assert jnp.isfinite(result)
+
+    def test_gradient_through_reparameterize(self, rngs):
+        """Test gradients flow through reparameterization trick."""
+        from diffbio.core.base_operators import EncoderDecoderOperator
+
+        op = EncoderDecoderOperator(MockEncoderDecoderConfig(), rngs=rngs)
+
+        def loss_fn(mean, log_var):
+            z = op.reparameterize(mean, log_var)
+            return jnp.sum(z)
+
+        mean = jnp.ones((3, DEFAULT_LATENT_DIM))
+        log_var = jnp.zeros((3, DEFAULT_LATENT_DIM))
+        grad_mean = jax.grad(loss_fn, argnums=0)(mean, log_var)
+        assert grad_mean is not None
+        assert grad_mean.shape == mean.shape
+        assert jnp.all(jnp.isfinite(grad_mean))
+
 
 # =============================================================================
 # GraphOperator Tests
@@ -260,6 +321,39 @@ class TestGraphOperator:
         assert jnp.allclose(result[0], jnp.array([4.0, 6.0]))
         # Node 1 should have message 2
         assert jnp.allclose(result[1], jnp.array([5.0, 6.0]))
+
+    def test_jit_compatible(self, rngs):
+        """Test GraphOperator scatter_aggregate works under JIT."""
+        from diffbio.core.base_operators import GraphOperator
+
+        op = GraphOperator(MockGraphConfig(), rngs=rngs)
+
+        @jax.jit
+        def aggregate(messages, indices):
+            return op.scatter_aggregate(messages, indices, 3, "sum")
+
+        messages = jnp.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+        indices = jnp.array([0, 0, 1])
+        result = aggregate(messages, indices)
+        assert result.shape == (3, 2)
+        assert jnp.all(jnp.isfinite(result))
+
+    def test_gradient_through_scatter(self, rngs):
+        """Test gradients flow through scatter aggregation."""
+        from diffbio.core.base_operators import GraphOperator
+
+        op = GraphOperator(MockGraphConfig(), rngs=rngs)
+
+        def loss_fn(messages):
+            indices = jnp.array([0, 0, 1])
+            result = op.scatter_aggregate(messages, indices, 3, "sum")
+            return jnp.sum(result)
+
+        messages = jnp.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+        grad = jax.grad(loss_fn)(messages)
+        assert grad is not None
+        assert grad.shape == messages.shape
+        assert jnp.all(jnp.isfinite(grad))
 
 
 # =============================================================================
@@ -304,6 +398,36 @@ class TestHMMOperator:
         assert posteriors.shape == (seq_length, DEFAULT_HMM_STATES)
         # Each position should sum to 1
         assert jnp.allclose(jnp.sum(posteriors, axis=-1), 1.0, atol=1e-5)
+
+    def test_jit_compatible(self, rngs):
+        """Test HMMOperator forward pass works under JIT."""
+        from diffbio.core.base_operators import HMMOperator
+
+        op = HMMOperator(MockHMMConfig(), rngs=rngs)
+
+        @jax.jit
+        def compute(obs):
+            return op.forward_pass(obs)
+
+        observations = jnp.array([0, 1, 2, 3])
+        result = compute(observations)
+        assert jnp.isfinite(result)
+        assert result < 0  # Log probability should be negative
+
+    def test_gradient_through_forward(self, rngs):
+        """Test gradients flow through HMM forward pass to parameters."""
+        from diffbio.core.base_operators import HMMOperator
+
+        op = HMMOperator(MockHMMConfig(), rngs=rngs)
+        observations = jnp.array([0, 1, 2, 3])
+
+        @nnx.value_and_grad
+        def loss_fn(hmm_op):
+            return hmm_op.forward_pass(observations)
+
+        loss, grads = loss_fn(op)
+        assert jnp.isfinite(loss)
+        assert grads is not None
 
 
 # =============================================================================

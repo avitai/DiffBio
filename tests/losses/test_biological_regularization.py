@@ -314,6 +314,30 @@ class TestJITCompatibility:
         result = jit_loss(seq)
         assert result is not None
 
+    def test_gap_pattern_jit_compatible(self, rngs):
+        """Test gap pattern loss works with JIT."""
+        loss_fn = GapPatternRegularization(max_gap_length=10, rngs=rngs)
+        alignment = jax.nn.softmax(jax.random.normal(jax.random.PRNGKey(0), (5, 5)), axis=-1)
+
+        @jax.jit
+        def jit_loss(a):
+            return loss_fn(a)
+
+        result = jit_loss(alignment)
+        assert jnp.isfinite(result)
+
+    def test_complexity_loss_jit_compatible(self, rngs):
+        """Test sequence complexity loss works with JIT."""
+        loss_fn = SequenceComplexityLoss(min_entropy=1.0, rngs=rngs)
+        seq = jax.nn.softmax(jax.random.normal(jax.random.PRNGKey(0), (10, 4)))
+
+        @jax.jit
+        def jit_loss(s):
+            return loss_fn(s)
+
+        result = jit_loss(seq)
+        assert jnp.isfinite(result)
+
     def test_combined_loss_jit_compatible(self, rngs):
         """Test combined loss works with JIT."""
         config = BiologicalRegularizationConfig()

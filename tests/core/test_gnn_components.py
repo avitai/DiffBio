@@ -958,3 +958,26 @@ class TestGATv2Block:
         assert hasattr(grads, "layer_norm2")
         assert hasattr(grads, "ff_linear1")
         assert hasattr(grads, "ff_linear2")
+
+    def test_jit_compatible(self, rngs, small_graph):
+        """Test that GATv2Block works under JIT compilation."""
+        hidden_dim = small_graph["node_feat_dim"]
+        block = GATv2Block(
+            hidden_dim=hidden_dim,
+            num_heads=4,
+            edge_features=small_graph["edge_feat_dim"],
+            dropout_rate=0.0,
+            rngs=rngs,
+        )
+
+        @jax.jit
+        def forward(node_features, edge_index, edge_features):
+            return block(node_features, edge_index, edge_features)
+
+        output = forward(
+            small_graph["node_features"],
+            small_graph["edge_index"],
+            small_graph["edge_features"],
+        )
+        assert output.shape == small_graph["node_features"].shape
+        assert jnp.isfinite(output).all()

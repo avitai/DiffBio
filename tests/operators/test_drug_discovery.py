@@ -574,6 +574,31 @@ class TestDifferentiableMolecularFingerprint:
         grads = nnx.grad(loss_fn)(fp_op, data)
         assert grads is not None
 
+    def test_jit_compatible(self, molecular_graph):
+        """Test JIT compilation works for DifferentiableMolecularFingerprint."""
+        from diffbio.operators.drug_discovery import (
+            DifferentiableMolecularFingerprint,
+            MolecularFingerprintConfig,
+        )
+
+        config = MolecularFingerprintConfig(fingerprint_dim=64)
+        fp_op = DifferentiableMolecularFingerprint(config, rngs=nnx.Rngs(42))
+
+        data = {
+            "node_features": molecular_graph["node_features"],
+            "adjacency": molecular_graph["adjacency"],
+            "node_mask": jnp.ones(molecular_graph["num_nodes"]),
+        }
+
+        @jax.jit
+        def compute(fp_op, data):
+            result, _, _ = fp_op.apply(data, {}, None)
+            return result["fingerprint"]
+
+        fingerprint = compute(fp_op, data)
+        assert fingerprint.shape == (64,)
+        assert jnp.all(jnp.isfinite(fingerprint))
+
     def test_different_molecules_different_fingerprints(self):
         """Test that different molecules produce different fingerprints."""
         from diffbio.operators.drug_discovery import (
@@ -1057,6 +1082,30 @@ class TestCircularFingerprintOperator:
 
         grads = nnx.grad(loss_fn)(op)
         assert grads is not None
+
+    def test_jit_compatible(self, molecular_graph):
+        """Test JIT compilation works for CircularFingerprintOperator."""
+        from diffbio.operators.drug_discovery import (
+            CircularFingerprintConfig,
+            CircularFingerprintOperator,
+        )
+
+        config = CircularFingerprintConfig(n_bits=128, differentiable=True)
+        op = CircularFingerprintOperator(config, rngs=nnx.Rngs(42))
+
+        data = {
+            **molecular_graph,
+            "node_mask": jnp.ones(molecular_graph["num_nodes"]),
+        }
+
+        @jax.jit
+        def compute(op, data):
+            result, _, _ = op.apply(data, {}, None)
+            return result["fingerprint"]
+
+        fingerprint = compute(op, data)
+        assert fingerprint.shape == (128,)
+        assert jnp.all(jnp.isfinite(fingerprint))
 
     def test_different_molecules_different_fingerprints(self):
         """Test that different molecules produce different fingerprints."""

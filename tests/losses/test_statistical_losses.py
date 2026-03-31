@@ -230,3 +230,17 @@ class TestJITCompatibility:
 
         loss = jit_loss(x, x_recon, mean, logvar)
         assert jnp.isfinite(loss)
+
+    def test_hmm_loss_jit(self, rngs):
+        """Test HMM likelihood loss with JIT."""
+        loss_fn = HMMLikelihoodLoss(n_states=3, n_emissions=4, rngs=rngs)
+
+        @jax.jit
+        def jit_loss(observations):
+            return loss_fn(observations)
+
+        key = jax.random.key(0)
+        observations = jax.random.randint(key, (10, 50), 0, 4)
+
+        loss = jit_loss(observations)
+        assert jnp.isfinite(loss)

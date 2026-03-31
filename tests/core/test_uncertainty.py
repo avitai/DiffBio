@@ -142,3 +142,96 @@ class TestConformalUQOperator:
             r_narrow["confidence_interval_upper"] - r_narrow["confidence_interval_lower"]
         )
         assert width_wide >= width_narrow - 1e-6
+
+
+class TestJITCompatibility:
+    """Tests for JIT compatibility of UQ operators."""
+
+    def test_ensemble_jit_apply(self, rngs: nnx.Rngs) -> None:
+        """Test EnsembleUQOperator works under JIT."""
+        base_op = _make_simple_operator(rngs)
+        config = EnsembleUQConfig(n_members=2)
+        uq_op = EnsembleUQOperator(config, base_operator=base_op, rngs=rngs)
+
+        data = _make_embeddings()
+
+        @jax.jit
+        def forward(embeddings: jnp.ndarray) -> jnp.ndarray:
+            result, _, _ = uq_op.apply({"embeddings": embeddings}, {}, None)
+            return result["uncertainty"]
+
+        uncertainty = forward(data["embeddings"])
+        assert uncertainty is not None
+        assert jnp.all(jnp.isfinite(uncertainty))
+
+    def test_conformal_jit_apply(self, rngs: nnx.Rngs) -> None:
+        """Test ConformalUQOperator works under JIT."""
+        base_op = _make_simple_operator(rngs)
+        config = ConformalUQConfig(alpha=0.1, num_samples=3)
+        uq_op = ConformalUQOperator(config, base_operator=base_op, rngs=rngs)
+
+        data = _make_embeddings()
+
+        @jax.jit
+        def forward(embeddings: jnp.ndarray) -> jnp.ndarray:
+            result, _, _ = uq_op.apply({"embeddings": embeddings}, {}, None)
+            return result["uncertainty"]
+
+        uncertainty = forward(data["embeddings"])
+        assert uncertainty is not None
+        assert jnp.all(jnp.isfinite(uncertainty))
+
+
+class TestGradientFlow:
+    """Tests for differentiability of UQ operators."""
+
+    def test_ensemble_gradient_through_input(self, rngs: nnx.Rngs) -> None:
+        """Test gradients flow through EnsembleUQOperator."""
+        base_op = _make_simple_operator(rngs)
+        config = EnsembleUQConfig(n_members=2)
+        uq_op = EnsembleUQOperator(config, base_operator=base_op, rngs=rngs)
+
+        def loss_fn(embeddings: jnp.ndarray) -> jnp.ndarray:
+            result, _, _ = uq_op.apply({"embeddings": embeddings}, {}, None)
+            return result["cluster_assignments"].sum()
+
+        data = _make_embeddings()
+        grads = jax.grad(loss_fn)(data["embeddings"])
+        assert grads is not None
+        assert grads.shape == data["embeddings"].shape
+        assert jnp.all(jnp.isfinite(grads))
+
+    def test_conformal_gradient_through_input(self, rngs: nnx.Rngs) -> None:
+        """Test gradients flow through ConformalUQOperator."""
+        base_op = _make_simple_operator(rngs)
+        config = ConformalUQConfig(alpha=0.1, num_samples=3)
+        uq_op = ConformalUQOperator(config, base_operator=base_op, rngs=rngs)
+
+        def loss_fn(embeddings: jnp.ndarray) -> jnp.ndarray:
+            result, _, _ = uq_op.apply({"embeddings": embeddings}, {}, None)
+            return result["cluster_assignments"].sum()
+
+        data = _make_embeddings()
+        grads = jax.grad(loss_fn)(data["embeddings"])
+        assert grads is not None
+        assert grads.shape == data["embeddings"].shape
+        assert jnp.all(jnp.isfinite(grads))
+
+    def test_ensemble_gradient_through_params(self, rngs: nnx.Rngs) -> None:
+        """Test gradients flow to base operator parameters through ensemble wrapper."""
+        from flax import nnx
+
+        base_op = _make_simple_operator(rngs)
+        config = EnsembleUQConfig(n_members=2)
+        uq_op = EnsembleUQOperator(config, base_operator=base_op, rngs=rngs)
+
+        data = _make_embeddings()
+
+        @nnx.value_and_grad
+        def loss_fn(uq_operator: EnsembleUQOperator) -> jnp.ndarray:
+            result, _, _ = uq_operator.apply(data, {}, None)
+            return result["cluster_assignments"].sum()
+
+        loss, grads = loss_fn(uq_op)
+        assert jnp.isfinite(loss)
+        assert grads is not None

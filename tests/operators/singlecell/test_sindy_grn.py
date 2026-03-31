@@ -119,6 +119,20 @@ class TestSINDyGRNOperator:
         assert grads.shape == simple_counts.shape
         assert jnp.all(jnp.isfinite(grads))
 
+    def test_jit_compatible(self, rngs: nnx.Rngs, simple_counts: jnp.ndarray) -> None:
+        """Test JIT compilation works for SINDyGRNOperator."""
+        config = SINDyGRNConfig(n_genes=5, polynomial_degree=1)
+        op = SINDyGRNOperator(config, rngs=rngs)
+
+        @jax.jit
+        def compute(counts: jnp.ndarray) -> jnp.ndarray:
+            result, _, _ = op.apply({"counts": counts}, {}, None)
+            return result["grn_coefficients"]
+
+        coefficients = compute(simple_counts)
+        assert coefficients.shape == (5, 5)
+        assert jnp.all(jnp.isfinite(coefficients))
+
     def test_degree_2_library(self, rngs: nnx.Rngs, simple_counts: jnp.ndarray) -> None:
         """Degree-2 produces larger coefficient matrix."""
         config = SINDyGRNConfig(n_genes=5, polynomial_degree=2)

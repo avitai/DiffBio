@@ -191,6 +191,48 @@ class TestVariantCallingPipeline:
         assert jnp.all(result["predictions"] < 3)
 
 
+class TestVariantCallingPipelineJITCompatibility:
+    """Tests for JIT compatibility of the variant calling pipeline."""
+
+    @pytest.fixture
+    def pipeline(self, rngs):
+        config = VariantCallingPipelineConfig(
+            reference_length=20,
+            num_classes=3,
+            pileup_window_size=5,
+            classifier_hidden_dim=8,
+        )
+        pipeline = VariantCallingPipeline(config, rngs=rngs)
+        pipeline.eval_mode()
+        return pipeline
+
+    def test_jit_apply(self, pipeline):
+        """Test JIT compilation works for VariantCallingPipeline."""
+        key = jax.random.PRNGKey(42)
+        k1, k2, k3 = jax.random.split(key, 3)
+
+        indices = jax.random.randint(k1, (3, 8), 0, 4)
+        reads = jax.nn.one_hot(indices, 4).astype(jnp.float32)
+        positions = jax.random.randint(k2, (3,), 0, 10)
+        quality = jax.random.uniform(k3, (3, 8), minval=10.0, maxval=40.0)
+
+        @jax.jit
+        def forward(r, pos, q):
+            data = {"reads": r, "positions": pos, "quality": q}
+            result_data, _, _ = pipeline.apply(data, {}, None)
+            return result_data["logits"], result_data["probabilities"]
+
+        logits, probs = forward(reads, positions, quality)
+        assert logits.shape == (20, 3)
+        assert probs.shape == (20, 3)
+        assert jnp.all(jnp.isfinite(logits))
+        assert jnp.all(jnp.isfinite(probs))
+
+        # Second call should produce same result
+        logits2, _ = forward(reads, positions, quality)
+        assert jnp.allclose(logits, logits2)
+
+
 class TestVariantCallingPipelineGradients:
     """Tests for gradient flow through the pipeline."""
 
