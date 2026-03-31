@@ -1,13 +1,11 @@
 """Tests for benchmarks.molecular_dynamics.bench_lj.
 
-TDD: These tests define the expected behavior of the Lennard-Jones
-molecular dynamics benchmark before optimising performance.
+Validates the Lennard-Jones molecular dynamics benchmark and its helpers.
 """
 
 from __future__ import annotations
 
 import pytest
-from calibrax.core.models import Metric
 from calibrax.core.result import BenchmarkResult
 
 from benchmarks.molecular_dynamics.bench_lj import (
@@ -15,6 +13,7 @@ from benchmarks.molecular_dynamics.bench_lj import (
     _generate_fcc_lattice,
     _generate_velocities,
 )
+from tests.benchmarks.conftest import assert_valid_benchmark_result
 
 
 class TestFCCLattice:
@@ -72,85 +71,32 @@ class TestLJBenchmark:
         bench = LJBenchmark(quick=True)
         return bench.run()
 
-    def test_returns_benchmark_result(
-        self, result: BenchmarkResult
-    ) -> None:
-        """Benchmark must return a calibrax BenchmarkResult."""
-        assert isinstance(result, BenchmarkResult)
+    def test_standard_contract(self, result: BenchmarkResult) -> None:
+        """Verify the full standard benchmark result contract."""
+        assert_valid_benchmark_result(
+            result,
+            expected_name="molecular_dynamics/lj",
+            required_metric_keys=[
+                "energy_drift",
+                "jaxmd_steps_per_sec",
+                "jaxmd_energy_drift",
+                "initial_energy",
+                "final_energy",
+            ],
+        )
 
-    def test_name_is_correct(
-        self, result: BenchmarkResult
-    ) -> None:
-        assert result.name == "molecular_dynamics/lj"
-
-    def test_domain(self, result: BenchmarkResult) -> None:
-        assert result.domain == "diffbio_benchmarks"
-
-    def test_has_operator_tag(
-        self, result: BenchmarkResult
-    ) -> None:
-        assert "operator" in result.tags
+    def test_has_operator_tag(self, result: BenchmarkResult) -> None:
         assert "ForceFieldOperator" in result.tags["operator"]
 
-    def test_has_operator_tag(
-        self, result: BenchmarkResult
-    ) -> None:
-        assert "operator" in result.tags
-
-    def test_has_throughput_metric(
-        self, result: BenchmarkResult
-    ) -> None:
-        """Must report DiffBio throughput (added by base class)."""
-        assert "items_per_sec" in result.metrics
-        sps = result.metrics["items_per_sec"].value
-        assert sps > 0.0
-
-    def test_has_energy_drift_metric(
-        self, result: BenchmarkResult
-    ) -> None:
-        """Must report energy conservation drift."""
-        assert "energy_drift" in result.metrics
+    def test_energy_drift_nonnegative(self, result: BenchmarkResult) -> None:
+        """Energy conservation drift must be non-negative."""
         drift = result.metrics["energy_drift"].value
         assert drift >= 0.0
 
-    def test_has_jaxmd_steps_per_sec(
-        self, result: BenchmarkResult
-    ) -> None:
-        """Must report jax-md baseline throughput."""
-        assert "jaxmd_steps_per_sec" in result.metrics
+    def test_jaxmd_steps_per_sec_positive(self, result: BenchmarkResult) -> None:
+        """jax-md baseline throughput must be positive."""
         sps = result.metrics["jaxmd_steps_per_sec"].value
         assert sps > 0.0
-
-    def test_has_jaxmd_energy_drift(
-        self, result: BenchmarkResult
-    ) -> None:
-        assert "jaxmd_energy_drift" in result.metrics
-
-    def test_has_gradient_norm(
-        self, result: BenchmarkResult
-    ) -> None:
-        assert "gradient_norm" in result.metrics
-
-    def test_has_gradient_nonzero(
-        self, result: BenchmarkResult
-    ) -> None:
-        assert "gradient_nonzero" in result.metrics
-        # ForceFieldOperator has no learnable nnx.Param parameters,
-        # so gradient_nonzero may be 0.0 (gradients flow through
-        # inputs, not model parameters)
-        assert "gradient_nonzero" in result.metrics
-
-    def test_metrics_are_calibrax_metric(
-        self, result: BenchmarkResult
-    ) -> None:
-        for key, metric in result.metrics.items():
-            assert isinstance(metric, Metric), (
-                f"{key} is not a Metric"
-            )
-
-    def test_has_timing(self, result: BenchmarkResult) -> None:
-        assert result.timing is not None
-        assert result.timing.wall_clock_sec > 0
 
     def test_has_config(self, result: BenchmarkResult) -> None:
         assert "n_particles" in result.config
@@ -161,18 +107,13 @@ class TestLJBenchmark:
         assert "cutoff" in result.config
         assert "box_size" in result.config
 
-    def test_has_system_metadata(
-        self, result: BenchmarkResult
-    ) -> None:
-        assert "dataset_info" in result.metadata
+    def test_has_system_metadata(self, result: BenchmarkResult) -> None:
         info = result.metadata["dataset_info"]
         assert "n_particles" in info
         assert "dimension" in info
         assert "lattice" in info
 
-    def test_energy_values_finite(
-        self, result: BenchmarkResult
-    ) -> None:
+    def test_energy_values_finite(self, result: BenchmarkResult) -> None:
         """Initial and final energies must be finite."""
         import math  # noqa: PLC0415
 

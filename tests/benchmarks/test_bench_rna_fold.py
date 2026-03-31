@@ -1,7 +1,6 @@
 """Tests for benchmarks.rna_structure.bench_rna_fold.
 
-TDD: These tests define the expected behavior of the RNA folding
-benchmark before full evaluation on the real dataset.
+Validates the RNA folding benchmark and its helper functions.
 """
 
 from __future__ import annotations
@@ -10,7 +9,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from calibrax.core.models import Metric
 from calibrax.core.result import BenchmarkResult
 
 from benchmarks._metrics.structure import (
@@ -21,6 +19,7 @@ from benchmarks.rna_structure.bench_rna_fold import (
     RNAFoldBenchmark,
     encode_rna_sequence,
 )
+from tests.benchmarks.conftest import assert_valid_benchmark_result
 
 _DATA_DIR = Path("/media/mahdi/ssd23/Works/RNAFoldAssess/tutorial/processed_data")
 _SKIP = not (_DATA_DIR / "example_data_structure.csv").exists()
@@ -207,59 +206,32 @@ class TestBasePairMetrics:
 class TestRNAFoldBenchmark:
     """Integration tests for the RNA fold benchmark."""
 
-    @pytest.fixture()
+    @pytest.fixture(scope="class")
     def result(self) -> BenchmarkResult:
         """Run benchmark in quick mode."""
         bench = RNAFoldBenchmark(quick=True)
         return bench.run()
 
-    def test_returns_benchmark_result(self, result: BenchmarkResult) -> None:
-        """Benchmark returns a BenchmarkResult."""
-        assert isinstance(result, BenchmarkResult)
-
-    def test_name_is_correct(self, result: BenchmarkResult) -> None:
-        """Result name matches expected path."""
-        assert result.name == "rna_structure/rna_fold"
-
-    def test_domain(self, result: BenchmarkResult) -> None:
-        """Domain is diffbio_benchmarks."""
-        assert result.domain == "diffbio_benchmarks"
+    def test_standard_contract(self, result: BenchmarkResult) -> None:
+        """Verify the full standard benchmark result contract."""
+        assert_valid_benchmark_result(
+            result,
+            expected_name="rna_structure/rna_fold",
+            required_metric_keys=["f1", "sensitivity", "ppv"],
+        )
 
     def test_has_operator_tag(self, result: BenchmarkResult) -> None:
         """Result is tagged with the operator name."""
-        assert "operator" in result.tags
         assert "DifferentiableRNAFold" in result.tags["operator"]
 
     def test_has_dataset_tag(self, result: BenchmarkResult) -> None:
         """Result is tagged with the dataset name."""
-        assert "dataset" in result.tags
         assert result.tags["dataset"] == "archiveII"
-
-    def test_has_structure_metrics(self, result: BenchmarkResult) -> None:
-        """Result contains F1, sensitivity, and PPV metrics."""
-        assert "f1" in result.metrics
-        assert "sensitivity" in result.metrics
-        assert "ppv" in result.metrics
-
-    def test_metrics_are_calibrax_metric(self, result: BenchmarkResult) -> None:
-        """All metrics are calibrax Metric instances."""
-        for key, metric in result.metrics.items():
-            assert isinstance(metric, Metric), f"{key} is not a Metric"
 
     def test_f1_in_range(self, result: BenchmarkResult) -> None:
         """F1 score is between 0 and 1."""
         score = result.metrics["f1"].value
         assert 0.0 <= score <= 1.0
-
-    def test_has_gradient_metrics(self, result: BenchmarkResult) -> None:
-        """Result contains gradient flow metrics."""
-        assert "gradient_norm" in result.metrics
-        assert "gradient_nonzero" in result.metrics
-
-    def test_has_timing(self, result: BenchmarkResult) -> None:
-        """Result has non-zero timing information."""
-        assert result.timing is not None
-        assert result.timing.wall_clock_sec > 0
 
     def test_has_config(self, result: BenchmarkResult) -> None:
         """Result config contains operator parameters."""
@@ -268,7 +240,6 @@ class TestRNAFoldBenchmark:
 
     def test_has_dataset_metadata(self, result: BenchmarkResult) -> None:
         """Result metadata contains dataset information."""
-        assert "dataset_info" in result.metadata
         info = result.metadata["dataset_info"]
         assert "n_sequences" in info
         assert info["n_sequences"] > 0

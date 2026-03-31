@@ -5,10 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from calibrax.core.models import Metric
 from calibrax.core.result import BenchmarkResult
 
 from benchmarks.singlecell.bench_trajectory import TrajectoryBenchmark
+from tests.benchmarks.conftest import assert_valid_benchmark_result
 
 _DATA_DIR = Path("/media/mahdi/ssd23/Data/scvelo")
 _SKIP = not (_DATA_DIR / "endocrinogenesis_day15.h5ad").exists()
@@ -18,36 +18,18 @@ _SKIP = not (_DATA_DIR / "endocrinogenesis_day15.h5ad").exists()
 class TestTrajectoryBenchmark:
     """Tests for the trajectory benchmark."""
 
-    @pytest.fixture()
+    @pytest.fixture(scope="class")
     def result(self) -> BenchmarkResult:
         bench = TrajectoryBenchmark(quick=True)
         return bench.run()
 
-    def test_returns_benchmark_result(
-        self, result: BenchmarkResult
-    ) -> None:
-        assert isinstance(result, BenchmarkResult)
-
-    def test_name(self, result: BenchmarkResult) -> None:
-        assert result.name == "singlecell/trajectory"
-
-    def test_has_pseudotime_metrics(
-        self, result: BenchmarkResult
-    ) -> None:
-        assert "pseudotime_range" in result.metrics
-
-    def test_has_velocity_metrics(
-        self, result: BenchmarkResult
-    ) -> None:
-        assert "velocity_shape_correct" in result.metrics
-
-    def test_has_gradient_metrics(
-        self, result: BenchmarkResult
-    ) -> None:
-        assert "gradient_norm" in result.metrics
-
-    def test_has_timing(self, result: BenchmarkResult) -> None:
-        assert result.timing is not None
+    def test_standard_contract(self, result: BenchmarkResult) -> None:
+        """Verify the full standard benchmark result contract."""
+        assert_valid_benchmark_result(
+            result,
+            expected_name="singlecell/trajectory",
+            required_metric_keys=["pseudotime_range", "velocity_shape_correct"],
+        )
 
     def test_has_dataset_tag(self, result: BenchmarkResult) -> None:
         assert result.tags["dataset"] == "pancreas"

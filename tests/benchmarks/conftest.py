@@ -200,3 +200,76 @@ def problems_json_path(tmp_path: Path) -> Path:
     path = tmp_path / "problems.json"
     path.write_text(json.dumps(problems), encoding="utf-8")
     return path
+
+
+# ---------------------------------------------------------------------------
+# Shared benchmark result assertions
+# ---------------------------------------------------------------------------
+
+
+def assert_valid_benchmark_result(
+    result: Any,
+    *,
+    expected_name: str | None = None,
+    expected_domain: str = "diffbio_benchmarks",
+    required_metric_keys: list[str] | None = None,
+) -> None:
+    """Assert that a benchmark result conforms to the standard contract.
+
+    Checks that the result is a calibrax BenchmarkResult with the
+    expected structure: correct type, domain, timing, gradient
+    metrics, and all metric values are calibrax Metric objects.
+
+    Args:
+        result: The benchmark result to validate.
+        expected_name: If set, verify the result name matches.
+        expected_domain: Expected domain value.
+        required_metric_keys: Extra metric keys that must be present.
+    """
+    from calibrax.core.models import Metric  # noqa: PLC0415
+    from calibrax.core.result import BenchmarkResult  # noqa: PLC0415
+
+    # Type check
+    assert isinstance(result, BenchmarkResult), (
+        f"Expected BenchmarkResult, got {type(result).__name__}"
+    )
+
+    # Name and domain
+    if expected_name is not None:
+        assert result.name == expected_name
+    assert result.domain == expected_domain
+
+    # Tags
+    assert "operator" in result.tags
+    assert "dataset" in result.tags
+    assert result.tags.get("framework") == "diffbio"
+
+    # Timing
+    assert result.timing is not None
+    assert result.timing.wall_clock_sec > 0
+
+    # Gradient metrics (added by base class)
+    assert "gradient_norm" in result.metrics
+    assert "gradient_nonzero" in result.metrics
+
+    # Throughput (added by base class)
+    assert "items_per_sec" in result.metrics
+
+    # All metrics are calibrax Metric objects
+    for key, metric in result.metrics.items():
+        assert isinstance(metric, Metric), (
+            f"metrics[{key!r}] is {type(metric).__name__}, not Metric"
+        )
+
+    # Config has quick flag
+    assert "quick" in result.config
+
+    # Dataset info in metadata
+    assert "dataset_info" in result.metadata
+
+    # Extra required keys
+    if required_metric_keys:
+        for key in required_metric_keys:
+            assert key in result.metrics, (
+                f"Missing required metric: {key}"
+            )
