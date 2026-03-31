@@ -78,8 +78,9 @@ data = {"sequence": sequence}
 result, state, metadata = encoder.apply(data, {}, None)
 
 # Get embeddings
-global_embedding = result["embedding"]       # (256,)
-position_embeddings = result["position_embeddings"]  # (100, 256)
+global_embedding = result["embeddings"]       # (256,)
+token_embeddings = result["token_embeddings"]  # (100, 256)
+foundation_metadata = result["foundation_model"]
 ```
 
 ### Configuration
@@ -109,8 +110,9 @@ position_embeddings = result["position_embeddings"]  # (100, 256)
 | Key | Shape | Description |
 |-----|-------|-------------|
 | `sequence` | same as input | Original input sequence |
-| `embedding` | (hidden_dim,) or (batch, hidden_dim) | Global sequence embedding |
-| `position_embeddings` | (length, hidden_dim) or (batch, length, hidden_dim) | Per-position hidden states |
+| `embeddings` | (hidden_dim,) or (batch, hidden_dim) | Global sequence embedding |
+| `token_embeddings` | (length, hidden_dim) or (batch, length, hidden_dim) | Per-position hidden states |
+| `foundation_model` | metadata dict | JIT-safe artifact metadata for model family, artifact ID, preprocessing version, adapter mode, and pooling strategy |
 
 ### Factory Functions
 
@@ -184,7 +186,7 @@ def loss_fn(model, sequence, target_embedding):
     """MSE loss for embedding similarity."""
     data = {"sequence": sequence}
     result, _, _ = model.apply(data, {}, None)
-    return jnp.mean((result["embedding"] - target_embedding) ** 2)
+    return jnp.mean((result["embeddings"] - target_embedding) ** 2)
 
 @nnx.jit
 def train_step(model, opt_state, sequence, target):
@@ -203,7 +205,7 @@ The encoder is fully differentiable with respect to both input sequences and mod
 # Gradients w.r.t. input sequence (for sequence optimization)
 def embedding_loss(seq):
     result, _, _ = encoder.apply({"sequence": seq}, {}, None)
-    return result["embedding"].sum()
+    return result["embeddings"].sum()
 
 # Use soft one-hot (probabilities) for gradient flow
 logits = jax.random.normal(jax.random.PRNGKey(0), (100, 4))
@@ -246,9 +248,10 @@ rp = model.generate_random_params(jax.random.key(0), {"counts": (100, 2000)})
 data = {"counts": counts, "gene_ids": jnp.arange(2000)}
 result, state, metadata = model.apply(data, {}, None, random_params=rp)
 
-cell_embeddings = result["cell_embeddings"]        # (n_cells, hidden_dim)
-gene_embeddings = result["gene_embeddings"]        # (n_genes, hidden_dim)
+cell_embeddings = result["embeddings"]             # (n_cells, hidden_dim)
+gene_context = result["token_embeddings"]          # (n_cells, n_genes, hidden_dim)
 predicted = result["predicted_expression"]         # (n_cells, n_genes)
+foundation_metadata = result["foundation_model"]
 ```
 
 ### Configuration
@@ -296,11 +299,11 @@ At low temperature the soft permutation approaches the hard argsort. The key ins
 |-------------|-------------|
 | Sequence classification | Classify DNA/RNA sequences using the global embedding |
 | Variant effect prediction | Encode sequences with/without variants and compare embeddings |
-| Motif discovery | Analyze position embeddings for learned sequence features |
+| Motif discovery | Analyze token embeddings for learned sequence features |
 | Transfer learning | Use pre-trained embeddings for downstream tasks |
 | Sequence similarity | Compute similarity between sequence embeddings |
 | Cell embedding | DifferentiableFoundationModel produces per-cell embeddings from expression |
-| Gene program discovery | Foundation model gene embeddings capture co-regulation |
+| Gene program discovery | Contextual token embeddings capture cell-specific co-regulation structure |
 | Masked expression prediction | Self-supervised pre-training on gene expression |
 
 ## References

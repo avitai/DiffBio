@@ -10,6 +10,7 @@ import jax.numpy as jnp
 import pytest
 from flax import nnx
 
+from diffbio.operators.foundation_models import decode_foundation_text
 from diffbio.operators.foundation_models.foundation_model import (
     DifferentiableFoundationModel,
     FoundationModelConfig,
@@ -162,9 +163,10 @@ class TestDifferentiableFoundationModel:
         )
         result, state, metadata = model.apply(sample_data, {}, None, random_params=rp)
 
-        assert "gene_embeddings" in result
-        assert "cell_embeddings" in result
+        assert "embeddings" in result
+        assert "token_embeddings" in result
         assert "predicted_expression" in result
+        assert "foundation_model" in result
         # Original data preserved
         assert "counts" in result
         assert "gene_ids" in result
@@ -180,8 +182,8 @@ class TestDifferentiableFoundationModel:
         )
         result, _, _ = model.apply(sample_data, {}, None, random_params=rp)
 
-        assert result["gene_embeddings"].shape == (N_GENES, HIDDEN_DIM)
-        assert result["cell_embeddings"].shape == (N_CELLS, HIDDEN_DIM)
+        assert result["embeddings"].shape == (N_CELLS, HIDDEN_DIM)
+        assert result["token_embeddings"].shape == (N_CELLS, N_GENES, HIDDEN_DIM)
         assert result["predicted_expression"].shape == (N_CELLS, N_GENES)
 
     def test_masked_genes_predicted(
@@ -198,19 +200,36 @@ class TestDifferentiableFoundationModel:
         predicted = result["predicted_expression"]
         assert jnp.all(jnp.isfinite(predicted))
 
-    def test_cell_embeddings_finite(
+    def test_embedding_outputs_finite(
         self,
         model: DifferentiableFoundationModel,
         sample_data: dict[str, jax.Array],
     ) -> None:
-        """Test that cell embeddings are finite."""
+        """Test that canonical embedding outputs are finite."""
         rp = model.generate_random_params(
             jax.random.key(0), {"counts": sample_data["counts"].shape}
         )
         result, _, _ = model.apply(sample_data, {}, None, random_params=rp)
 
-        assert jnp.all(jnp.isfinite(result["cell_embeddings"]))
-        assert jnp.all(jnp.isfinite(result["gene_embeddings"]))
+        assert jnp.all(jnp.isfinite(result["embeddings"]))
+        assert jnp.all(jnp.isfinite(result["token_embeddings"]))
+
+    def test_foundation_metadata(self, model, sample_data: dict[str, jax.Array]) -> None:
+        """Test canonical foundation-model metadata for the single-cell operator."""
+        rp = model.generate_random_params(
+            jax.random.key(0), {"counts": sample_data["counts"].shape}
+        )
+        result, _, _ = model.apply(sample_data, {}, None, random_params=rp)
+        metadata = result["foundation_model"]
+
+        assert decode_foundation_text(metadata["model_family"]) == "single_cell_transformer"
+        assert decode_foundation_text(metadata["artifact_id"]) == model.config.artifact_id
+        assert (
+            decode_foundation_text(metadata["preprocessing_version"])
+            == model.config.preprocessing_version
+        )
+        assert decode_foundation_text(metadata["adapter_mode"]) == "native_trainable"
+        assert decode_foundation_text(metadata["pooling_strategy"]) == "mean"
 
 
 # ---------------------------------------------------------------------------
@@ -242,12 +261,12 @@ class TestGradientFlow:
         assert jnp.any(grad != 0), "All gradients are zero"
         assert jnp.all(jnp.isfinite(grad))
 
-    def test_gradient_through_gene_embeddings(
+    def test_gradient_through_token_embeddings(
         self,
         model: DifferentiableFoundationModel,
         sample_data: dict[str, jax.Array],
     ) -> None:
-        """Test gradient flows from gene embeddings back to input counts."""
+        """Test gradient flows from token embeddings back to input counts."""
         gene_ids = sample_data["gene_ids"]
         counts = sample_data["counts"]
         rp = model.generate_random_params(jax.random.key(0), {"counts": counts.shape})
@@ -255,12 +274,12 @@ class TestGradientFlow:
         def loss_fn(c: jax.Array) -> jax.Array:
             data = {"counts": c, "gene_ids": gene_ids}
             result, _, _ = model.apply(data, {}, None, random_params=rp)
-            return jnp.mean(result["gene_embeddings"] ** 2)
+            return jnp.mean(result["token_embeddings"] ** 2)
 
         grad = jax.grad(loss_fn)(counts)
         assert grad is not None
         assert grad.shape == counts.shape
-        assert jnp.any(grad != 0), "All gradients are zero for gene embeddings loss"
+        assert jnp.any(grad != 0), "All gradients are zero for token embeddings loss"
         assert jnp.all(jnp.isfinite(grad))
 
 
@@ -289,8 +308,8 @@ class TestJITCompatibility:
             return result
 
         result = run(counts)
-        assert result["cell_embeddings"].shape == (N_CELLS, HIDDEN_DIM)
-        assert jnp.all(jnp.isfinite(result["cell_embeddings"]))
+        assert result["embeddings"].shape == (N_CELLS, HIDDEN_DIM)
+        assert jnp.all(jnp.isfinite(result["embeddings"]))
 
     def test_jit_gradient(
         self,
@@ -347,9 +366,10 @@ class TestEdgeCases:
         rp = mdl.generate_random_params(jax.random.key(0), {"counts": counts.shape})
         result, _, _ = mdl.apply(data, {}, None, random_params=rp)
 
-        assert result["cell_embeddings"].shape == (1, HIDDEN_DIM)
+        assert result["embeddings"].shape == (1, HIDDEN_DIM)
+        assert result["token_embeddings"].shape == (1, N_GENES, HIDDEN_DIM)
         assert result["predicted_expression"].shape == (1, N_GENES)
-        assert jnp.all(jnp.isfinite(result["cell_embeddings"]))
+        assert jnp.all(jnp.isfinite(result["embeddings"]))
 
     def test_no_masking(self) -> None:
         """Test with mask_ratio=0 (no masking)."""
@@ -376,4 +396,4 @@ class TestEdgeCases:
 
         assert result["predicted_expression"].shape == (N_CELLS, N_GENES)
         assert jnp.all(jnp.isfinite(result["predicted_expression"]))
-        assert jnp.all(jnp.isfinite(result["cell_embeddings"]))
+        assert jnp.all(jnp.isfinite(result["embeddings"]))

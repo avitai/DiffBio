@@ -24,12 +24,18 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
-from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.core import soft_ops
+from diffbio.operators.foundation_models.contracts import (
+    FoundationEmbeddingMixin,
+    FoundationEmbeddingOperatorConfig,
+    FoundationModelKind,
+    PoolingStrategy,
+    register_foundation_model,
+)
 
 from diffbio.operators.foundation_models.transformer_encoder import (
     TransformerSequenceEncoder,
@@ -40,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class FoundationModelConfig(OperatorConfig):
+class FoundationModelConfig(FoundationEmbeddingOperatorConfig):
     """Configuration for DifferentiableFoundationModel.
 
     Attributes:
@@ -50,6 +56,9 @@ class FoundationModelConfig(OperatorConfig):
         num_heads: Number of attention heads.
         mask_ratio: Fraction of genes to mask during training (scGPT default 0.15).
         dropout_rate: Dropout rate for regularization.
+        adapter_mode: Integration mode for the model artifact.
+        artifact_id: Identifier for the model artifact/version.
+        preprocessing_version: Version tag for count/gene-ID preprocessing.
     """
 
     n_genes: int = 2000
@@ -58,6 +67,8 @@ class FoundationModelConfig(OperatorConfig):
     num_heads: int = 4
     mask_ratio: float = 0.15
     dropout_rate: float = 0.1
+    artifact_id: str = "diffbio.differentiable_foundation_model"
+    preprocessing_version: str = "counts_gene_ids_v1"
 
     def __post_init__(self) -> None:
         """Set stochastic defaults for masking and validate."""
@@ -143,7 +154,7 @@ def _soft_sort_permutation(
     return soft_ops.argsort(values, axis=0, descending=True, softness=temperature)
 
 
-class DifferentiableFoundationModel(OperatorModule):
+class DifferentiableFoundationModel(FoundationEmbeddingMixin, OperatorModule):
     """Differentiable single-cell foundation model operator.
 
     Implements a masked gene expression prediction model inspired by
@@ -178,6 +189,8 @@ class DifferentiableFoundationModel(OperatorModule):
         >>> data = {"counts": counts, "gene_ids": jnp.arange(2000)}
         >>> result, state, meta = model.apply(data, {}, None, random_params=rp)
     """
+
+    foundation_model_kind = FoundationModelKind.SINGLE_CELL_TRANSFORMER
 
     def __init__(
         self,
@@ -226,6 +239,10 @@ class DifferentiableFoundationModel(OperatorModule):
 
         # Output head: hidden_dim -> 1 (predict scalar expression per gene)
         self.output_head = nnx.Linear(config.hidden_dim, 1, rngs=rngs)
+
+    def foundation_pooling_strategy(self) -> PoolingStrategy:
+        """Return the pooling strategy for cell-level embeddings."""
+        return PoolingStrategy.MEAN
 
     def generate_random_params(
         self,
@@ -319,9 +336,11 @@ class DifferentiableFoundationModel(OperatorModule):
                 - transformed_data contains:
 
                     - All original keys from data
-                    - ``"gene_embeddings"``: Gene representations ``(n_genes, hidden_dim)``
-                    - ``"cell_embeddings"``: Cell embeddings ``(n_cells, hidden_dim)``
+                    - ``"embeddings"``: Cell embeddings ``(n_cells, hidden_dim)``
+                    - ``"token_embeddings"``: Contextual gene embeddings
+                      ``(n_cells, n_genes, hidden_dim)``
                     - ``"predicted_expression"``: Predicted expression ``(n_cells, n_genes)``
+                    - ``"foundation_model"``: Canonical artifact metadata
                 - state is passed through unchanged
                 - metadata is passed through unchanged
         """
@@ -340,22 +359,25 @@ class DifferentiableFoundationModel(OperatorModule):
         gene_ids_int = gene_ids.astype(jnp.int32)
 
         # Process each cell independently via vmap
-        gene_reps, cell_embeddings, predicted = jax.vmap(
+        gene_reps, embeddings, predicted = jax.vmap(
             self._process_single_cell,
             in_axes=(0, None, None),
         )(counts, gene_ids_int, mask)
         # gene_reps: (n_cells, n_genes, hidden_dim)
-        # cell_embeddings: (n_cells, hidden_dim)
+        # embeddings: (n_cells, hidden_dim)
         # predicted: (n_cells, n_genes)
 
-        # Gene embeddings: mean over cells for a single per-gene representation
-        gene_embeddings = jnp.mean(gene_reps, axis=0)  # (n_genes, hidden_dim)
-
-        transformed_data = {
-            **data,
-            "gene_embeddings": gene_embeddings,
-            "cell_embeddings": cell_embeddings,
-            "predicted_expression": predicted,
-        }
+        transformed_data = self.foundation_result(
+            data,
+            embeddings,
+            token_embeddings=gene_reps,
+            extra_outputs={"predicted_expression": predicted},
+        )
 
         return transformed_data, state, metadata
+
+
+register_foundation_model(
+    FoundationModelKind.SINGLE_CELL_TRANSFORMER,
+    DifferentiableFoundationModel,
+)

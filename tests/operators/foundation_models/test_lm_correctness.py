@@ -59,16 +59,16 @@ def _test_transformer(
     data = {"sequence": sequences}
     result, _, _ = encoder.apply(data, {}, None)
 
-    embedding = result["embedding"]
-    position_embeddings = result["position_embeddings"]
+    embeddings = result["embeddings"]
+    token_embeddings = result["token_embeddings"]
 
-    shape_ok = embedding.shape == (n_seqs, hidden_dim) and position_embeddings.shape == (
+    shape_ok = embeddings.shape == (n_seqs, hidden_dim) and token_embeddings.shape == (
         n_seqs,
         seq_len,
         hidden_dim,
     )
     values_finite = bool(
-        jnp.all(jnp.isfinite(embedding)) and jnp.all(jnp.isfinite(position_embeddings))
+        jnp.all(jnp.isfinite(embeddings)) and jnp.all(jnp.isfinite(token_embeddings))
     )
 
     return {
@@ -108,18 +108,18 @@ def _test_foundation_model(
     data = {"counts": counts, "gene_ids": gene_ids}
     result, _, _ = model.apply(data, {}, None)
 
-    cell_embeddings = result["cell_embeddings"]
-    gene_embeddings = result["gene_embeddings"]
+    embeddings = result["embeddings"]
+    token_embeddings = result["token_embeddings"]
     predicted = result["predicted_expression"]
 
     shape_ok = (
-        cell_embeddings.shape == (n_cells, config.hidden_dim)
-        and gene_embeddings.shape == (n_genes, config.hidden_dim)
+        embeddings.shape == (n_cells, config.hidden_dim)
+        and token_embeddings.shape == (n_cells, n_genes, config.hidden_dim)
         and predicted.shape == (n_cells, n_genes)
     )
     values_finite = bool(
-        jnp.all(jnp.isfinite(cell_embeddings))
-        and jnp.all(jnp.isfinite(gene_embeddings))
+        jnp.all(jnp.isfinite(embeddings))
+        and jnp.all(jnp.isfinite(token_embeddings))
         and jnp.all(jnp.isfinite(predicted))
     )
 

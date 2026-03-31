@@ -82,7 +82,7 @@ sequence = jax.nn.one_hot(
 
 # Apply
 result, _, _ = encoder.apply({"sequence": sequence}, {}, None)
-embedding = result["embedding"]  # (256,)
+embedding = result["embeddings"]  # (256,)
 ```
 
 ### Full Configuration
@@ -122,7 +122,7 @@ sequences = jax.nn.one_hot(
 )
 
 result, _, _ = encoder.apply({"sequence": sequences}, {}, None)
-embeddings = result["embedding"]  # (8, 256)
+embeddings = result["embeddings"]  # (8, 256)
 ```
 
 ### Gradient Computation
@@ -135,7 +135,7 @@ encoder = create_dna_encoder()
 
 def loss_fn(model, sequence):
     result, _, _ = model.apply({"sequence": sequence}, {}, None)
-    return result["embedding"].sum()
+    return result["embeddings"].sum()
 
 # Compute gradients w.r.t. model parameters
 _, grads = nnx.value_and_grad(loss_fn)(encoder, sequence)
@@ -153,8 +153,9 @@ _, grads = nnx.value_and_grad(loss_fn)(encoder, sequence)
 | Key | Shape | Type | Description |
 |-----|-------|------|-------------|
 | `sequence` | same as input | float32 | Original input sequence |
-| `embedding` | (hidden_dim,) or (batch, hidden_dim) | float32 | Global sequence embedding |
-| `position_embeddings` | (length, hidden_dim) or (batch, length, hidden_dim) | float32 | Per-position hidden states |
+| `embeddings` | (hidden_dim,) or (batch, hidden_dim) | float32 | Global sequence embedding |
+| `token_embeddings` | (length, hidden_dim) or (batch, length, hidden_dim) | float32 | Per-position hidden states |
+| `foundation_model` | metadata dict | dict[str, uint8 array] | JIT-safe artifact metadata for model family, artifact ID, preprocessing version, adapter mode, and pooling strategy |
 
 ## Reference Configurations
 

@@ -25,17 +25,23 @@ from typing import Any, Literal
 import jax
 import jax.numpy as jnp
 from artifex.generative_models.core.layers import TransformerEncoder
-from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.base_operators import SequenceOperator
+from diffbio.operators.foundation_models.contracts import (
+    FoundationEmbeddingMixin,
+    FoundationEmbeddingOperatorConfig,
+    FoundationModelKind,
+    PoolingStrategy,
+    register_foundation_model,
+)
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class TransformerSequenceEncoderConfig(OperatorConfig):
+class TransformerSequenceEncoderConfig(FoundationEmbeddingOperatorConfig):
     """Configuration for TransformerSequenceEncoder.
 
     Attributes:
@@ -47,6 +53,9 @@ class TransformerSequenceEncoderConfig(OperatorConfig):
         alphabet_size: Size of nucleotide alphabet (4 for DNA/RNA).
         dropout_rate: Dropout rate for regularization.
         pooling: Pooling strategy for sequence embedding ("mean" or "cls").
+        adapter_mode: Integration mode for the encoder artifact.
+        artifact_id: Identifier for the encoder artifact/version.
+        preprocessing_version: Version tag for sequence preprocessing.
         input_embedding_type: Type of input embedding. "linear" projects
             one-hot encoded input via nnx.Linear. "token_embedding" uses
             nnx.Embed for integer token ID input.
@@ -62,11 +71,13 @@ class TransformerSequenceEncoderConfig(OperatorConfig):
     alphabet_size: int = 4
     dropout_rate: float = 0.1
     pooling: Literal["mean", "cls"] = "mean"
+    artifact_id: str = "diffbio.transformer_sequence_encoder"
+    preprocessing_version: str = "one_hot_v1"
     input_embedding_type: Literal["linear", "token_embedding"] = "linear"
     vocab_size: int | None = None
 
 
-class TransformerSequenceEncoder(SequenceOperator):
+class TransformerSequenceEncoder(FoundationEmbeddingMixin, SequenceOperator):
     """Transformer-based encoder for DNA/RNA sequences.
 
     This operator implements a BERT-style transformer encoder that
@@ -99,9 +110,11 @@ class TransformerSequenceEncoder(SequenceOperator):
         encoder = TransformerSequenceEncoder(config, rngs=nnx.Rngs(42))
         data = {"sequence": one_hot_sequence}
         result, state, meta = encoder.apply(data, {}, None)
-        embedding = result["embedding"]
+        embeddings = result["embeddings"]
         ```
     """
+
+    foundation_model_kind = FoundationModelKind.SEQUENCE_TRANSFORMER
 
     def __init__(
         self,
@@ -163,6 +176,10 @@ class TransformerSequenceEncoder(SequenceOperator):
             rngs=rngs,
         )
 
+    def foundation_pooling_strategy(self) -> PoolingStrategy:
+        """Return the pooling strategy for the global sequence embedding."""
+        return PoolingStrategy(self.config.pooling)
+
     def get_positional_encoding(
         self,
         seq_len: int,
@@ -202,7 +219,7 @@ class TransformerSequenceEncoder(SequenceOperator):
             mask: Optional attention mask.
 
         Returns:
-            Tuple of (global_embedding, position_embeddings).
+            Tuple of (global_embedding, token_embeddings).
         """
         # Project input to hidden dimension
         hidden = self.input_projection(sequence)
@@ -265,7 +282,7 @@ class TransformerSequenceEncoder(SequenceOperator):
             masks: Optional attention masks.
 
         Returns:
-            Tuple of (global_embeddings, position_embeddings).
+            Tuple of (global_embeddings, token_embeddings).
         """
         batch_size = sequences.shape[0]
 
@@ -337,8 +354,9 @@ class TransformerSequenceEncoder(SequenceOperator):
                 - transformed_data contains:
 
                     - All original keys from data
-                    - "embedding": Global sequence embedding
-                    - "position_embeddings": Per-position hidden states
+                    - "embeddings": Global sequence embedding
+                    - "token_embeddings": Per-position hidden states
+                    - "foundation_model": Canonical artifact metadata
                 - state is passed through unchanged
                 - metadata is passed through unchanged
         """
@@ -355,16 +373,15 @@ class TransformerSequenceEncoder(SequenceOperator):
         single_ndim = 1 if is_token_mode else 2
 
         if sequence.ndim == single_ndim:
-            embedding, position_embeddings = self._encode_single(sequence, mask)
+            embeddings, token_embeddings = self._encode_single(sequence, mask)
         else:
-            embedding, position_embeddings = self._encode_batch(sequence, mask)
+            embeddings, token_embeddings = self._encode_batch(sequence, mask)
 
-        # Build output data, preserving all input keys
-        transformed_data = {
-            **data,
-            "embedding": embedding,
-            "position_embeddings": position_embeddings,
-        }
+        transformed_data = self.foundation_result(
+            data,
+            embeddings,
+            token_embeddings=token_embeddings,
+        )
 
         return transformed_data, state, metadata
 
@@ -451,6 +468,7 @@ def create_dna_encoder(
         encoder = create_dna_encoder(hidden_dim=256, num_layers=6)
         data = {"sequence": dna_one_hot}
         result, _, _ = encoder.apply(data, {}, None)
+        embeddings = result["embeddings"]
         ```
     """
     return _create_sequence_encoder(
@@ -464,6 +482,12 @@ def create_dna_encoder(
         pooling=pooling,
         rngs=rngs,
     )
+
+
+register_foundation_model(
+    FoundationModelKind.SEQUENCE_TRANSFORMER,
+    TransformerSequenceEncoder,
+)
 
 
 def create_rna_encoder(

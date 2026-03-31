@@ -1,7 +1,7 @@
 """Foundation model operators for DiffBio.
 
 This module provides transformer-based sequence encoders and single-cell
-foundation model infrastructure.
+foundation model infrastructure plus shared adapter contracts.
 
 Operators:
     TransformerSequenceEncoder: BERT-style transformer for sequence embedding
@@ -11,8 +11,23 @@ Operators:
 Factory Functions:
     create_dna_encoder: Create encoder for DNA sequences
     create_rna_encoder: Create encoder for RNA sequences
+    create_foundation_model: Create registered foundation-model operator
 """
 
+from diffbio.operators.foundation_models.contracts import (
+    AdapterMode,
+    FoundationArtifactSpec,
+    FoundationEmbeddingMixin,
+    FoundationEmbeddingOperatorConfig,
+    FoundationModelKind,
+    PoolingStrategy,
+    build_foundation_model_metadata,
+    create_foundation_model,
+    decode_foundation_text,
+    encode_foundation_text,
+    get_foundation_model_cls,
+    register_foundation_model,
+)
 from diffbio.operators.foundation_models.foundation_model import (
     DifferentiableFoundationModel,
     FoundationModelConfig,
@@ -29,8 +44,20 @@ __all__ = [
     "DifferentiableFoundationModel",
     "FoundationModelConfig",
     "GeneTokenizer",
+    "AdapterMode",
+    "FoundationArtifactSpec",
+    "FoundationEmbeddingMixin",
+    "FoundationEmbeddingOperatorConfig",
+    "FoundationModelKind",
+    "PoolingStrategy",
     "TransformerSequenceEncoder",
     "TransformerSequenceEncoderConfig",
+    "build_foundation_model_metadata",
+    "create_foundation_model",
     "create_dna_encoder",
+    "decode_foundation_text",
+    "encode_foundation_text",
+    "get_foundation_model_cls",
     "create_rna_encoder",
+    "register_foundation_model",
 ]

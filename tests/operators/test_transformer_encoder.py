@@ -13,6 +13,7 @@ from diffbio.operators.foundation_models import (
     TransformerSequenceEncoder,
     TransformerSequenceEncoderConfig,
     create_dna_encoder,
+    decode_foundation_text,
     create_rna_encoder,
 )
 
@@ -95,13 +96,14 @@ class TestTransformerSequenceEncoder:
 
         # Check output keys
         assert "sequence" in result
-        assert "embedding" in result
-        assert "position_embeddings" in result
+        assert "embeddings" in result
+        assert "token_embeddings" in result
+        assert "foundation_model" in result
 
         # Check shapes
         assert result["sequence"].shape == (batch_size, seq_len, 4)
-        assert result["embedding"].shape == (batch_size, 64)
-        assert result["position_embeddings"].shape == (batch_size, seq_len, 64)
+        assert result["embeddings"].shape == (batch_size, 64)
+        assert result["token_embeddings"].shape == (batch_size, seq_len, 64)
 
     def test_single_sequence(self, encoder):
         """Test encoding a single sequence (no batch dimension)."""
@@ -115,8 +117,8 @@ class TestTransformerSequenceEncoder:
         result, _, _ = encoder.apply(data, {}, None)
 
         # Should handle single sequence
-        assert result["embedding"].shape == (64,)
-        assert result["position_embeddings"].shape == (seq_len, 64)
+        assert result["embeddings"].shape == (64,)
+        assert result["token_embeddings"].shape == (seq_len, 64)
 
     def test_cls_pooling(self):
         """Test CLS token pooling strategy."""
@@ -139,7 +141,7 @@ class TestTransformerSequenceEncoder:
         result, _, _ = encoder.apply(data, {}, None)
 
         # CLS pooling should use first position
-        assert result["embedding"].shape == (32,)
+        assert result["embeddings"].shape == (32,)
 
     def test_mean_pooling(self):
         """Test mean pooling strategy."""
@@ -161,7 +163,7 @@ class TestTransformerSequenceEncoder:
         data = {"sequence": sequence}
         result, _, _ = encoder.apply(data, {}, None)
 
-        assert result["embedding"].shape == (32,)
+        assert result["embeddings"].shape == (32,)
 
     def test_attention_mask(self, encoder):
         """Test attention mask handling."""
@@ -178,7 +180,7 @@ class TestTransformerSequenceEncoder:
         result, _, _ = encoder.apply(data, {}, None)
 
         # Should produce output even with mask
-        assert result["embedding"].shape == (64,)
+        assert result["embeddings"].shape == (64,)
 
     def test_gradient_flow(self, encoder):
         """Test that gradients flow through the encoder."""
@@ -190,7 +192,7 @@ class TestTransformerSequenceEncoder:
         def loss_fn(seq):
             data = {"sequence": seq}
             result, _, _ = encoder.apply(data, {}, None)
-            return result["embedding"].sum()
+            return result["embeddings"].sum()
 
         grads = jax.grad(loss_fn)(sequence)
 
@@ -210,7 +212,7 @@ class TestTransformerSequenceEncoder:
         def loss_fn(enc):
             data = {"sequence": sequence}
             result, _, _ = enc.apply(data, {}, None)
-            return result["embedding"].sum()
+            return result["embeddings"].sum()
 
         # Use nnx.value_and_grad for NNX modules
         _, grads = nnx.value_and_grad(loss_fn)(encoder)
@@ -230,7 +232,7 @@ class TestTransformerSequenceEncoder:
         def encode(seq):
             data = {"sequence": seq}
             result, _, _ = encoder.apply(data, {}, None)
-            return result["embedding"]
+            return result["embeddings"]
 
         # Should compile and run without errors
         embedding = encode(sequence)
@@ -254,7 +256,7 @@ class TestTransformerSequenceEncoder:
         result1, _, _ = encoder.apply(data, {}, None)
         result2, _, _ = encoder.apply(data, {}, None)
 
-        assert jnp.allclose(result1["embedding"], result2["embedding"])
+        assert jnp.allclose(result1["embeddings"], result2["embeddings"])
 
     def test_different_sequence_lengths(self, encoder):
         """Test encoder handles different sequence lengths."""
@@ -267,8 +269,28 @@ class TestTransformerSequenceEncoder:
             data = {"sequence": sequence}
             result, _, _ = encoder.apply(data, {}, None)
 
-            assert result["embedding"].shape == (64,)
-            assert result["position_embeddings"].shape == (seq_len, 64)
+            assert result["embeddings"].shape == (64,)
+            assert result["token_embeddings"].shape == (seq_len, 64)
+
+    def test_foundation_metadata(self, encoder):
+        """Test the canonical foundation-model metadata payload."""
+        seq_len = 12
+        sequence = jax.nn.one_hot(
+            jax.random.randint(jax.random.PRNGKey(7), (seq_len,), 0, 4),
+            num_classes=4,
+        )
+
+        result, _, _ = encoder.apply({"sequence": sequence}, {}, None)
+        metadata = result["foundation_model"]
+
+        assert decode_foundation_text(metadata["model_family"]) == "sequence_transformer"
+        assert decode_foundation_text(metadata["artifact_id"]) == encoder.config.artifact_id
+        assert (
+            decode_foundation_text(metadata["preprocessing_version"])
+            == encoder.config.preprocessing_version
+        )
+        assert decode_foundation_text(metadata["adapter_mode"]) == "native_trainable"
+        assert decode_foundation_text(metadata["pooling_strategy"]) == encoder.config.pooling
 
 
 class TestFactoryFunctions:
@@ -392,7 +414,7 @@ class TestEdgeCases:
         data = {"sequence": sequence}
 
         result, _, _ = encoder.apply(data, {}, None)
-        assert result["embedding"].shape == (32,)
+        assert result["embeddings"].shape == (32,)
 
     def test_max_length_sequence(self):
         """Test handling of sequences at max length."""
@@ -413,7 +435,7 @@ class TestEdgeCases:
         data = {"sequence": sequence}
 
         result, _, _ = encoder.apply(data, {}, None)
-        assert result["embedding"].shape == (32,)
+        assert result["embeddings"].shape == (32,)
 
     def test_soft_one_hot_input(self):
         """Test handling of soft (probabilistic) one-hot input."""
@@ -434,7 +456,7 @@ class TestEdgeCases:
         data = {"sequence": sequence}
 
         result, _, _ = encoder.apply(data, {}, None)
-        assert result["embedding"].shape == (32,)
+        assert result["embeddings"].shape == (32,)
 
     def test_preserves_input_in_output(self):
         """Test that original input is preserved in output."""
@@ -508,8 +530,8 @@ class TestTokenEmbeddingMode:
         data = {"sequence": token_ids}
         result, _, _ = encoder.apply(data, {}, None)
 
-        assert result["embedding"].shape == (32,)
-        assert result["position_embeddings"].shape == (seq_len, 32)
+        assert result["embeddings"].shape == (32,)
+        assert result["token_embeddings"].shape == (seq_len, 32)
 
     def test_token_embedding_batch(self) -> None:
         """Test batched integer input works in token mode."""
@@ -529,8 +551,8 @@ class TestTokenEmbeddingMode:
         data = {"sequence": token_ids}
         result, _, _ = encoder.apply(data, {}, None)
 
-        assert result["embedding"].shape == (batch_size, 32)
-        assert result["position_embeddings"].shape == (batch_size, seq_len, 32)
+        assert result["embeddings"].shape == (batch_size, 32)
+        assert result["token_embeddings"].shape == (batch_size, seq_len, 32)
 
     def test_token_embedding_gradient_flow(self) -> None:
         """Test gradients flow through token embedding mode."""
@@ -550,7 +572,7 @@ class TestTokenEmbeddingMode:
         def loss_fn(enc: TransformerSequenceEncoder) -> jax.Array:
             data = {"sequence": token_ids}
             result, _, _ = enc.apply(data, {}, None)
-            return result["embedding"].sum()
+            return result["embeddings"].sum()
 
         _, grads = nnx.value_and_grad(loss_fn)(encoder)
         assert grads is not None
@@ -574,7 +596,7 @@ class TestTokenEmbeddingMode:
         def encode(tokens: jax.Array) -> jax.Array:
             data = {"sequence": tokens}
             result, _, _ = encoder.apply(data, {}, None)
-            return result["embedding"]
+            return result["embeddings"]
 
         embedding = encode(token_ids)
         assert embedding.shape == (32,)
@@ -609,5 +631,5 @@ class TestTokenEmbeddingMode:
         data = {"sequence": sequence}
         result, _, _ = encoder.apply(data, {}, None)
 
-        assert result["embedding"].shape == (32,)
-        assert result["position_embeddings"].shape == (seq_len, 32)
+        assert result["embeddings"].shape == (32,)
+        assert result["token_embeddings"].shape == (seq_len, 32)
