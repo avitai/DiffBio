@@ -9,8 +9,13 @@ Pipeline:
     1. Load BBBP via MolNetSource
     2. Convert SMILES to graphs, featurize with CircularFingerprintOperator
     3. Split 80/10/10 via RandomSplitter
-    4. Train MLP classifier (~50 epochs, 20 in quick mode)
+    4. Train MLP classifier on fingerprints (~50 epochs)
     5. Evaluate ROC-AUC on test set
+
+Note: The CircularFingerprintOperator uses a hash-based message-passing
+architecture that approximates Morgan fingerprints.  Its GNN encoder
+produces structured features by design; end-to-end training requires
+graph batching/padding infrastructure not yet implemented.
 
 Results are compared against published baselines:
 GCN (0.877), AttentiveFP (0.858), D-MPNN (0.910).
@@ -184,7 +189,6 @@ def _train_and_evaluate(
     )
     split = splitter.split(source)
 
-    # Clamp indices to valid range (some molecules were skipped)
     n_valid = fingerprints.shape[0]
     train_idx = np.asarray(split.train_indices)
     test_idx = np.asarray(split.test_indices)
@@ -292,7 +296,7 @@ class MolNetBenchmark(DiffBioBenchmark):
             labels = labels[: self.config.quick_subsample]
             n_valid = self.config.quick_subsample
 
-        # 4. Train and evaluate
+        # 4. Train MLP classifier on fingerprints
         n_epochs = 20 if self.quick else 50
         logger.info("Training MLP classifier for %d epochs...", n_epochs)
         metrics = _train_and_evaluate(

@@ -5,6 +5,9 @@ Evaluates DiffBio's DifferentiablePseudotime on PCA embeddings and
 DifferentiableVelocity on spliced/unspliced counts from the scVelo
 pancreas endocrinogenesis dataset (3,696 cells, 27,998 genes).
 
+Velocity parameters (kinetics rates and time encoder) are optimised
+via gradient descent on VelocityConsistencyLoss (unsupervised).
+
 Usage:
     python benchmarks/singlecell/bench_trajectory.py
     python benchmarks/singlecell/bench_trajectory.py --quick
@@ -15,11 +18,14 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import jax
 import jax.numpy as jnp
+import optax
 from flax import nnx
 
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.trajectory import TRAJECTORY_BASELINES
+from diffbio.losses.singlecell_losses import VelocityConsistencyLoss
 from diffbio.operators.singlecell.trajectory import (
     DifferentiablePseudotime,
     PseudotimeConfig,
@@ -107,6 +113,35 @@ class TrajectoryBenchmark(DiffBioBenchmark):
             "spliced": spliced_sub,
             "unspliced": unspliced_sub,
         }
+
+        # Train velocity parameters (unsupervised consistency loss)
+        n_steps = 100 if self.quick else 300
+        logger.info("Training velocity params (%d steps)...", n_steps)
+        vel_loss = VelocityConsistencyLoss(rngs=rngs)
+        vel_opt = nnx.Optimizer(vel_op, optax.adam(1e-3), wrt=nnx.Param)
+
+        @nnx.jit
+        def _vel_step(
+            model: DifferentiableVelocity,
+            optimizer: nnx.Optimizer,
+            data: dict[str, jax.Array],
+        ) -> jax.Array:
+            def _loss(m: DifferentiableVelocity) -> jax.Array:
+                res, _, _ = m.apply(data, {}, None)
+                return vel_loss(
+                    data["spliced"],
+                    res["velocity"],
+                    res["projected_spliced"],
+                )
+
+            loss, grads = nnx.value_and_grad(_loss)(model)
+            optimizer.update(model, grads)
+            return loss
+
+        for step in range(n_steps):
+            loss_val = _vel_step(vel_op, vel_opt, vel_input)
+            if (step + 1) % 50 == 0:
+                logger.info("  step %d/%d  loss=%.4f", step + 1, n_steps, float(loss_val))
 
         vel_result, _, _ = vel_op.apply(vel_input, {}, None)
 

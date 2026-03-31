@@ -5,6 +5,10 @@ Evaluates DiffBio's SpatialDeconvolution operator on the seqFISH
 mouse cortex dataset (Lohoff et al., 19,416 cells, 351 genes,
 22 cell types) using a split-and-aggregate evaluation protocol:
 
+The deconvolution network is optimised via gradient descent on
+an unsupervised expression reconstruction loss (proportions @
+reference should reconstruct spot expression).
+
 1. Load real seqFISH h5ad (spatially resolved single-cell data)
 2. Split cells: 80% as single-cell reference, 20% as spatial
 3. Build reference signatures: mean expression per cell type
@@ -27,8 +31,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 import numpy as np
+import optax
 from flax import nnx
 
 from benchmarks._base import (
@@ -330,6 +336,32 @@ class SpatialDeconvBenchmark(DiffBioBenchmark):
             "reference_profiles": reference_profiles,
             "coordinates": spots["coordinates"],
         }
+
+        # Train: minimise expression reconstruction error (unsupervised).
+        # predicted proportions @ reference_profiles ≈ spot_expression.
+        n_steps = 200 if self.quick else 500
+        logger.info("Training deconvolution (%d steps, unsupervised)...", n_steps)
+        opt = nnx.Optimizer(operator, optax.adam(1e-3), wrt=nnx.Param)
+
+        @nnx.jit
+        def _deconv_step(
+            model: SpatialDeconvolution,
+            optimizer: nnx.Optimizer,
+            data: dict[str, jax.Array],
+        ) -> jax.Array:
+            def _loss(m: SpatialDeconvolution) -> jax.Array:
+                res, _, _ = m.apply(data, {}, None)
+                return jnp.mean((res["reconstructed_expression"] - data["spot_expression"]) ** 2)
+
+            loss, grads = nnx.value_and_grad(_loss)(model)
+            optimizer.update(model, grads)
+            return loss
+
+        for step in range(n_steps):
+            loss_val = _deconv_step(operator, opt, input_data)
+            if (step + 1) % 50 == 0:
+                logger.info("  step %d/%d  loss=%.4f", step + 1, n_steps, float(loss_val))
+
         result, _, _ = operator.apply(input_data, {}, None)
         predicted_proportions = result["cell_proportions"]
 

@@ -5,6 +5,10 @@ Evaluates DiffBio's DifferentiableGRN operator against ChIP+Perturb
 ground truth regulatory edges from the benGRN benchmark framework
 (Stone & Sroy gold standards).
 
+The GRN operator's attention weights are optimised via gradient
+descent on an unsupervised expression reconstruction loss
+(tf_activity @ grn_matrix should predict counts) with L1 sparsity.
+
 Metrics: AUPRC, precision, recall, EPR (early precision rank).
 Baselines: GENIE3, pySCENIC, GRNBoost2 published AUPRC values.
 
@@ -18,8 +22,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 import numpy as np
+import optax
 from flax import nnx
 
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
@@ -107,6 +113,42 @@ class GRNBenchmark(DiffBioBenchmark):
             "counts": counts,
             "tf_indices": jnp.array(tf_indices),
         }
+
+        # Train GRN weights via unsupervised expression reconstruction:
+        # predicted_expression = tf_activity @ grn_matrix should reconstruct counts.
+        n_steps = 100 if self.quick else 300
+        logger.info("Training GRN params (%d steps, unsupervised)...", n_steps)
+        opt = nnx.Optimizer(operator, optax.adam(1e-3), wrt=nnx.Param)
+
+        # Normalise counts for reconstruction target
+        log_counts = jnp.log1p(counts)
+        target = log_counts / (jnp.max(log_counts) + 1e-8)
+
+        @nnx.jit
+        def _grn_step(
+            model: DifferentiableGRN,
+            optimizer: nnx.Optimizer,
+            data: dict[str, jax.Array],
+            tgt: jax.Array,
+        ) -> jax.Array:
+            def _loss(m: DifferentiableGRN) -> jax.Array:
+                res, _, _ = m.apply(data, {}, None)
+                # Reconstruct expression from TF activity and GRN matrix
+                reconstructed = res["tf_activity"] @ res["grn_matrix"]
+                recon_loss = jnp.mean((reconstructed - tgt) ** 2)
+                # L1 sparsity on GRN for biological realism
+                sparsity = 0.01 * jnp.mean(jnp.abs(res["grn_matrix"]))
+                return recon_loss + sparsity
+
+            loss, grads = nnx.value_and_grad(_loss)(model)
+            optimizer.update(model, grads)
+            return loss
+
+        for step in range(n_steps):
+            loss_val = _grn_step(operator, opt, input_data, target)
+            if (step + 1) % 50 == 0:
+                logger.info("  step %d/%d  loss=%.4f", step + 1, n_steps, float(loss_val))
+
         result, _, _ = operator.apply(input_data, {}, None)
 
         grn_matrix = result["grn_matrix"]

@@ -3,7 +3,8 @@
 
 Evaluates DiffBio's SoftProgressiveMSA operator on balifam100, a curated
 subset of BAliBASE protein family alignments, using SP (Sum of Pairs)
-and TC (Total Column) scores.
+and TC (Total Column) scores. The sequence encoder is trained via
+gradient descent on alignment quality (unsupervised) before evaluation.
 
 Results are compared against published baselines: MAFFT, ClustalW,
 MUSCLE, and T-Coffee.
@@ -18,13 +19,16 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 import numpy as np
+import optax
 from flax import nnx
 
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.alignment import MSA_BASELINES
 from benchmarks._metrics.alignment import sp_score, tc_score
+from diffbio.losses.alignment_losses import AlignmentScoreLoss
 from benchmarks.alignment._encoding import onehot_encode_sequence
 from diffbio.operators.alignment import PROTEIN_ALPHABET
 from diffbio.operators.alignment.soft_msa import (
@@ -151,6 +155,50 @@ class MSABenchmark(DiffBioBenchmark):
         )
         rngs = nnx.Rngs(42)
         operator = SoftProgressiveMSA(op_config, rngs=rngs)
+
+        # 2b. Train sequence encoder on alignment quality (unsupervised).
+        # Use the first family's sequences to optimise the encoder so
+        # that the alignment score is maximised.
+        train_family = families[0]
+        train_seqs = _extract_ref_sequences_from_input(train_family)
+        if len(train_seqs) >= 2:
+            train_raw = [seq[:max_seq_length] for _, seq in train_seqs]
+            train_lens = [len(s) for s in train_raw]
+            train_padded = max(train_lens)
+            train_encoded = jnp.stack(
+                [onehot_encode_sequence(s, train_padded, 20) for s in train_raw]
+            )
+            train_input = {"sequences": train_encoded}
+
+            n_steps = 100 if self.quick else 300
+            logger.info("Training MSA encoder (%d steps)...", n_steps)
+            AlignmentScoreLoss(rngs=rngs)
+            opt = nnx.Optimizer(operator, optax.adam(1e-3), wrt=nnx.Param)
+
+            @nnx.jit
+            def _msa_step(
+                model: SoftProgressiveMSA,
+                optimizer: nnx.Optimizer,
+                data: dict[str, jax.Array],
+            ) -> jax.Array:
+                def _loss(m: SoftProgressiveMSA) -> jax.Array:
+                    res, _, _ = m.apply(data, {}, None)
+                    # Maximise alignment score (negate for minimisation)
+                    return -jnp.mean(res["alignment_scores"])
+
+                loss, grads = nnx.value_and_grad(_loss)(model)
+                optimizer.update(model, grads)
+                return loss
+
+            for step in range(n_steps):
+                loss_val = _msa_step(operator, opt, train_input)
+                if (step + 1) % 50 == 0:
+                    logger.info(
+                        "  step %d/%d  loss=%.4f",
+                        step + 1,
+                        n_steps,
+                        float(loss_val),
+                    )
 
         # 3. Evaluate on each family
         logger.info("Running SoftProgressiveMSA on families...")

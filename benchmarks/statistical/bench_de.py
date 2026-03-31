@@ -5,7 +5,8 @@ Evaluates DiffBio's DifferentiableNBGLM operator on the immune human
 dataset (33,506 cells, 10 batches, 16 cell types). A two-condition
 DE analysis is created by comparing the two most abundant cell types.
 
-The NB GLM is fit to each sample via ``batch_log_likelihood`` and
+The NB GLM coefficients and dispersions are optimised via gradient
+descent on the negative log-likelihood (fully unsupervised), then
 per-gene DE significance is derived from the fitted coefficients.
 Results are compared against a simple Welch t-test on log-normalized
 counts, with concordance measured as Jaccard overlap of top-50 genes.
@@ -23,6 +24,7 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 import numpy as np
+import optax
 from flax import nnx
 from scipy import stats as sp_stats
 
@@ -201,14 +203,37 @@ class DEBenchmark(DiffBioBenchmark):
         rngs = nnx.Rngs(42)
         operator = DifferentiableNBGLM(op_config, rngs=rngs)
 
-        # 5. Fit: compute batch log-likelihood
-        logger.info("Computing NB GLM log-likelihood...")
+        # 5. Fit: maximise NB log-likelihood via gradient descent
+        n_steps = 100 if self.quick else 300
+        logger.info("Fitting NB GLM (%d steps)...", n_steps)
+        opt = nnx.Optimizer(operator, optax.adam(1e-2), wrt=nnx.Param)
+
+        @nnx.jit
+        def _fit_step(
+            model: DifferentiableNBGLM,
+            optimizer: nnx.Optimizer,
+            c: jax.Array,
+            d: jax.Array,
+            sf: jax.Array,
+        ) -> jax.Array:
+            def _neg_ll(m: DifferentiableNBGLM) -> jax.Array:
+                return -m.batch_log_likelihood(c, d, sf)
+
+            loss, grads = nnx.value_and_grad(_neg_ll)(model)
+            optimizer.update(model, grads)
+            return loss
+
+        for step in range(n_steps):
+            loss = _fit_step(operator, opt, counts_sub, design, size_factors)
+            if (step + 1) % 50 == 0:
+                logger.info("  step %d/%d  neg_ll=%.2f", step + 1, n_steps, float(loss))
+
         total_ll = operator.batch_log_likelihood(
             counts_sub,
             design,
             size_factors,
         )
-        logger.info("  Total log-likelihood: %.2f", float(total_ll))
+        logger.info("  Final log-likelihood: %.2f", float(total_ll))
 
         # 6. Rank genes by per-gene log-likelihood contribution
         # Compute per-sample, per-gene log probs via vmap

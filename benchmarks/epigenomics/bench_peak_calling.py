@@ -4,8 +4,10 @@
 Evaluates DiffBio's DifferentiablePeakCaller on real ENCODE CTCF
 ChIP-seq narrowPeak data from K562 cells. A synthetic coverage signal
 is reconstructed from the known peak coordinates and signal values,
-then fed through the differentiable peak caller. Called peaks are
-compared against the ENCODE ground truth.
+then fed through the differentiable peak caller. The CNN filters
+are trained via gradient descent on a self-supervised coverage
+reconstruction loss before evaluation. Called peaks are compared
+against the ENCODE ground truth.
 
 Metrics: precision, recall, F1, Jaccard index.
 
@@ -22,8 +24,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 import numpy as np
+import optax
 from flax import nnx
 
 from benchmarks._base import (
@@ -262,7 +266,38 @@ class PeakCallingBenchmark(DiffBioBenchmark):
         operator = DifferentiablePeakCaller(op_config, rngs=rngs)
 
         coverage_jax = jnp.array(coverage)
+        jnp.array(truth_mask)
         input_data = {"coverage": coverage_jax}
+
+        # Train CNN peak detector: self-supervised loss encouraging
+        # peak_probabilities to reconstruct the normalised coverage shape.
+        # High coverage => high peak probability, low => low.
+        n_steps = 200 if self.quick else 500
+        logger.info("Training peak caller (%d steps)...", n_steps)
+        opt = nnx.Optimizer(operator, optax.adam(1e-3), wrt=nnx.Param)
+        cov_norm = coverage_jax / (jnp.max(coverage_jax) + 1e-8)
+
+        @nnx.jit
+        def _peak_step(
+            model: DifferentiablePeakCaller,
+            optimizer: nnx.Optimizer,
+            data: dict[str, jax.Array],
+            target: jax.Array,
+        ) -> jax.Array:
+            def _loss(m: DifferentiablePeakCaller) -> jax.Array:
+                res, _, _ = m.apply(data, {}, None)
+                probs = res["peak_probabilities"]
+                return jnp.mean(optax.sigmoid_binary_cross_entropy(probs, target))
+
+            loss, grads = nnx.value_and_grad(_loss)(model)
+            optimizer.update(model, grads)
+            return loss
+
+        for step in range(n_steps):
+            loss_val = _peak_step(operator, opt, input_data, cov_norm)
+            if (step + 1) % 50 == 0:
+                logger.info("  step %d/%d  loss=%.4f", step + 1, n_steps, float(loss_val))
+
         result, _, _ = operator.apply(input_data, {}, None)
 
         # 5. Threshold peak_probabilities to get binary predictions
