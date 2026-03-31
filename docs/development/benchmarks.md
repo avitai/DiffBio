@@ -1,580 +1,174 @@
 # Benchmarks
 
-DiffBio includes a comprehensive benchmark suite that evaluates **22 benchmarks
-across 15 operator domains**, testing correctness, differentiability (gradient
-flow), and throughput. The suite integrates with
-[scBench](https://github.com/your-org/scbench) and
-[spatialBench](https://github.com/your-org/spatialbench) evaluation task types.
-
----
-
-## Quick Start
-
-```bash
-# Activate environment (required for GPU support)
-source ./activate.sh
-
-# Run all benchmarks (full mode, ~30-60 min)
-python benchmarks/run_all.py
-
-# Run in quick mode (~5 min, reduced data sizes for CI)
-python benchmarks/run_all.py --quick
-
-# Run a single domain
-python benchmarks/run_all.py --domains variant
-
-# Run multiple domains
-python benchmarks/run_all.py --domains variant,singlecell,statistical
-
-# Run a single benchmark standalone
-python benchmarks/variant/variant_calling_benchmark.py
-python benchmarks/variant/variant_calling_benchmark.py --quick
-```
-
----
-
-## Benchmark Architecture
-
-### Directory Layout
-
-Benchmarks are organized into **domain subdirectories** that mirror
-`src/diffbio/operators/`:
-
-```
-benchmarks/
-    _common.py          # Shared utilities (gradient checks, throughput, data generators)
-    schema.py           # Unified BenchmarkEnvelope result format
-    dashboard.py        # Terminal dashboard rendering
-    regression.py       # Baseline management and regression detection
-    run_all.py          # Master runner
-    generate_report.py  # Markdown report generator for docs
-
-    alignment/          # SmoothSmithWaterman
-    assembly/           # GNNAssemblyNavigator, MetagenomicBinner
-    drug_discovery/     # ECFP4, MACCS, Neural FP, MolNet datasets
-    epigenomics/        # PeakCaller (CNN/FNO), ChromatinState
-    language_models/    # TransformerEncoder, FoundationModel
-    molecular_dynamics/ # ForceField, MDIntegrator
-    multiomics/         # MultiOmicsVAE, SpatialDeconv, HiC, SpatialGene
-    normalization/      # DifferentiableUMAP, DifferentiablePHATE
-    preprocessing/      # AdapterRemoval, DuplicateFilter, ErrorCorrection
-    protein/            # SecondaryStructure (DSSP-style)
-    rna_structure/      # RNAFold (McCaskill partition function)
-    singlecell/         # Harmony, SoftKMeans, VAE, Pseudotime, Velocity, GRN
-    specialized/        # CRISPR, Ancestry, SpectralSimilarity
-    statistical/        # HMM, NB-GLM, EM quantification
-    variant/            # Pileup, VariantClassifier, CNVSegmentation
-
-    results/            # JSON output (gitignored)
-    baselines/          # Baseline snapshots for regression detection
-```
-
-### Shared Infrastructure (`_common.py`)
-
-All benchmarks share utilities to enforce consistency (DRY):
-
-| Utility | Purpose |
-|---------|---------|
-| `BaseBenchmarkResult` | Frozen dataclass with common result fields |
-| `GradientFlowResult` | Return type for gradient checks |
-| `check_gradient_flow(loss_fn, model, *args)` | Verify gradients flow through an nnx.Module |
-| `measure_throughput(fn, args, n_iterations, warmup)` | Timing with JIT warmup and `block_until_ready()` |
-| `save_benchmark_result(result, domain, name)` | Save JSON to `results/<domain>/` |
-| `collect_platform_info()` | JAX version, device, Python version |
-| `generate_synthetic_expression(...)` | Synthetic scRNA-seq data with batch effects |
-| `generate_synthetic_sequences(...)` | One-hot encoded random DNA/RNA sequences |
-| `generate_synthetic_coverage(...)` | Coverage signal with known peaks |
-
-### Benchmark Pattern
-
-Every benchmark follows the same structure:
-
-```python
-from __future__ import annotations
-
-from dataclasses import dataclass
-from benchmarks._common import (
-    check_gradient_flow,
-    measure_throughput,
-    save_benchmark_result,
-)
-
-@dataclass(frozen=True, kw_only=True)
-class MyBenchmarkResult:
-    """Frozen result with all metrics."""
-    shape_correct: bool
-    gradient_norm: float
-    gradient_nonzero: bool
-    throughput: float
-    # ... domain-specific fields
-
-def run_benchmark(*, quick: bool = False) -> MyBenchmarkResult:
-    """Run the benchmark. Use quick=True for CI."""
-    n_items = 50 if quick else 500
-    # ... create operator, run tests, return result
-
-def main() -> None:
-    result = run_benchmark()
-    save_benchmark_result(asdict(result), "my_domain", "my_benchmark")
-
-if __name__ == "__main__":
-    main()
-```
-
----
-
-## Capabilities Matrix
-
-### All 22 Benchmarks by Domain
-
-| Domain | Benchmark | Operators Tested | Key Metrics |
-|--------|-----------|-----------------|-------------|
-| **Alignment** | `alignment_benchmark.py` | SmoothSmithWaterman | Score accuracy, gradient flow, temperature sweep, throughput |
-| **Assembly** | `assembly_benchmark.py` | GNNAssemblyNavigator, MetagenomicBinner | Edge selection, binning quality, gradient flow |
-| **Drug Discovery** | `molnet_benchmark.py` | ECFP4, MACCS on MoleculeNet | ROC-AUC, RMSE, R^2 on BBBP/ESOL/Lipophilicity |
-| | `fingerprint_benchmark.py` | ECFP4, MACCS, Neural FP | Bit density, correlation, gradient flow |
-| | `circular_fingerprint_benchmark.py` | ECFP4 vs DeepChem | Tanimoto, bit agreement, speedup |
-| **Epigenomics** | `epigenomics_benchmark.py` | PeakCaller (CNN), FNOPeakCaller, ChromatinState | Peak precision/recall, CNN vs FNO, state accuracy |
-| **Language Models** | `language_model_benchmark.py` | TransformerEncoder, FoundationModel | Embedding quality, gradient flow, throughput |
-| **Molecular Dynamics** | `molecular_dynamics_benchmark.py` | ForceField, MDIntegrator | Energy conservation, force accuracy, trajectory |
-| **Multi-omics** | `multiomics_benchmark.py` | MultiOmicsVAE, SpatialDeconv, HiC, SpatialGene | Latent quality, proportion accuracy, TAD detection |
-| **Normalization** | `dimreduction_benchmark.py` | DifferentiableUMAP, DifferentiablePHATE | Cluster separation, gradient flow, throughput |
-| **Preprocessing** | `preprocessing_benchmark.py` | AdapterRemoval, DuplicateFilter, ErrorCorrection | Detection accuracy, gradient flow through chain |
-| **Protein** | `protein_structure_benchmark.py` | SecondaryStructure | Q3 accuracy (helix/strand/coil), H-bond quality |
-| **RNA Structure** | `rna_structure_benchmark.py` | RNAFold | Base pair recovery, partition function, temperature sweep |
-| **Single-Cell** | `singlecell_benchmark.py` | Harmony, SoftKMeans | Batch mixing, silhouette, clustering inertia |
-| | `scvi_benchmark.py` | VAENormalizer (ZINB) | ELBO, reconstruction MSE, ARI, NMI, batch ASW |
-| | `trajectory_benchmark.py` | Pseudotime, Fate, Velocity, OTTrajectory | Pseudotime ordering, fate sums, velocity shape |
-| | `grn_benchmark.py` | GRN, SINDy, CellCommunication | Edge recovery, coefficient sparsity, communication scores |
-| **Specialized** | `crispr_benchmark.py` | CRISPRScorer | Score shape, gradient-guided optimization |
-| | `population_benchmark.py` | AncestryEstimator | Proportion accuracy, row sums |
-| | `metabolomics_benchmark.py` | SpectralSimilarity | Similarity scores, embedding quality |
-| **Statistical** | `statistical_benchmark.py` | HMM, NB-GLM, EM | Log-likelihood, parameter recovery, abundances |
-| **Variant** | `variant_calling_benchmark.py` | Pileup, Classifier, CNVSegmentation | Pileup accuracy, classification F1, breakpoint detection |
-
----
-
-## Comparison with scBench / spatialBench State-of-the-Art
-
-DiffBio operators cover all evaluation task types from
-[scBench](https://github.com/your-org/scbench) (394 single-cell evaluations)
-and [spatialBench](https://github.com/your-org/spatialbench) (146 spatial
-transcriptomics evaluations). The tables below show the current
-state-of-the-art accuracy from published benchmark results alongside the
-DiffBio operators that address each task.
-
-### scBench Leaderboard (by task category)
-
-| Task | Best Model | Accuracy | n | DiffBio Operator | Benchmark |
-|------|-----------|----------|---|-----------------|-----------|
-| QC | Claude Opus 4.5 | 63.9% | 36 | `DifferentiableQualityFilter` | `preprocessing/` |
-| Normalization | Claude Opus 4.5 | 83.8% | 37 | `VAENormalizer` | `singlecell/scvi` |
-| Dim. Reduction | Claude Opus 4.6 | 55.4% | 69 | `DifferentiableUMAP`, `PHATE` | `normalization/` |
-| Clustering | Claude Opus 4.6 | 52.7% | 49 | `SoftKMeansClustering` | `singlecell/` |
-| Cell Typing | Claude Opus 4.6 | 48.2% | 118 | `CellAnnotator`, `SoftKMeans` | `singlecell/` |
-| Diff. Expression | Claude Opus 4.6 | 41.4% | 79 | `NB-GLM`, `DE Pipeline` | `statistical/` |
-| Trajectory | Claude Opus 4.5 | 61.9% | 7 | `Pseudotime`, `FateProbability` | `singlecell/trajectory` |
-
-### spatialBench Leaderboard (by task category)
-
-| Task | Best Model | Accuracy | n | DiffBio Operator | Benchmark |
-|------|-----------|----------|---|-----------------|-----------|
-| QC | Claude Opus 4.5 (CC) | 30.0% | 20 | `DifferentiableQualityFilter` | `preprocessing/` |
-| Normalization | GPT-5.2 | 76.2% | 7 | `VAENormalizer` | `singlecell/scvi` |
-| Dim. Reduction | Claude Sonnet 4.5 (CC) | 63.3% | 15 | `DifferentiableUMAP`, `PHATE` | `normalization/` |
-| Clustering | Claude Opus 4.5 (CC) | 60.3% | 21 | `SoftKMeansClustering` | `singlecell/` |
-| Cell Typing | Claude Opus 4.5 (CC) | 38.9% | 39 | `CellAnnotator`, `SoftKMeans` | `singlecell/` |
-| Diff. Expression | Claude Opus 4.5 (CC) | 46.2% | 26 | `NB-GLM`, `DE Pipeline` | `statistical/` |
-| Spatial Analysis | Claude Opus 4.5 (CC) | 66.7% | 17 | `SpatialDomain`, `SpatialDeconv` | `multiomics/` |
-
-*Source: scBench and spatialBench published results (3 runs per model, 95% CI).
-CC = Claude Code harness. Accuracy = mean pass rate across evaluations.*
-
-### How DiffBio Compares
-
-DiffBio's operators are **not directly comparable** to the AI agent accuracies
-above -- scBench/spatialBench measure an AI agent's ability to write and run
-analysis code on real datasets, while DiffBio benchmarks measure operator
-correctness on synthetic data. However, DiffBio operators are the **building
-blocks** that agents use to solve these tasks:
-
-- **DiffBio operators provide the differentiable primitives** (clustering,
-  normalization, DE testing, trajectory inference) that power the analysis
-- **scBench/spatialBench measure end-to-end task completion** including data
-  loading, parameter selection, result interpretation, and biological reasoning
-- **The evaluation harness** (`src/diffbio/evaluation/`) connects both: it
-  maps `BenchmarkProblem` tasks to DiffBio operators via `TaskAdapter`
-
-To run DiffBio operators on real scBench/spatialBench problems:
-
-```bash
-# Using the evaluation harness (requires .h5ad data files)
-python -c "
-from diffbio.evaluation import TaskAdapter, load_problems, run_benchmark
-problems = load_problems('path/to/scbench_problems.json')
-results = run_benchmark(problems, data_loader=my_loader)
-"
-```
-
-### Grader Types (shared with scBench/spatialBench)
-
-Both benchmarks use the same 5 grader types that DiffBio's evaluation harness
-(`src/diffbio/evaluation/`) supports:
-
-| Grader | Use Case | Example |
-|--------|----------|---------|
-| `numeric_tolerance` | Numeric answers with tolerance | Cell counts, expression values |
-| `multiple_choice` | Discrete interpretation | PC1 axis interpretation |
-| `marker_gene_precision_recall` | Gene list recovery (P@K, R@K) | DE marker genes |
-| `distribution_comparison` | Cell type proportions | Compartment fractions |
-| `label_set_jaccard` | Set matching | Present cell types |
+DiffBio includes a benchmark suite that evaluates operators on **real datasets**
+with **field-standard metrics** and **comparison tables** against published SOTA
+methods.
 
 ---
 
 ## Running Benchmarks
 
-### Master Runner (`run_all.py`)
-
-The master runner discovers and executes all 22 benchmarks, renders a terminal
-dashboard, and optionally manages baselines:
-
 ```bash
-# Full suite
-python benchmarks/run_all.py
+source ./activate.sh
 
-# Quick mode (reduced data sizes for CI, ~5 min)
-python benchmarks/run_all.py --quick
+# CI tier (~1 min, subsampled datasets)
+python benchmarks/run_all.py --tier ci --quick
 
-# Filter by domain(s)
-python benchmarks/run_all.py --domains variant,statistical,protein
+# Nightly tier (~30 min, full Tier 1+2 benchmarks)
+python benchmarks/run_all.py --tier nightly
 
-# Custom output directory
-python benchmarks/run_all.py --output-dir /tmp/bench_results
-```
+# Full suite (~2 hours on GPU)
+python benchmarks/run_all.py --tier full
 
-The dashboard shows a capabilities matrix, scBench/spatialBench task coverage,
-and a pass/fail/error summary:
+# Filter by domain
+python benchmarks/run_all.py --tier nightly --domains singlecell
 
-```
-================================================================================
-                     DiffBio Benchmark Dashboard
-                     0.1.0 | cuda:0
-================================================================================
-
-CAPABILITIES MATRIX
-+--------------------+---------------------+---------+------+--------+---------+
-| Domain             | Operator            | Correct | Diff | Status | Thru.   |
-+--------------------+---------------------+---------+------+--------+---------+
-| alignment          | SmoothSmithWaterman | 4/4     | PASS | PASS   | 6.2/s   |
-| variant            | Pileup, Classifier  | 3/3     | PASS | PASS   | 5k/s    |
-| ...                | ...                 | ...     | ...  | ...    | ...     |
-+--------------------+---------------------+---------+------+--------+---------+
-
-PASS: 22/22 | FAIL: 0 | ERROR: 0 | TIME: 8m 12s
-```
-
-### Single Benchmark
-
-Each benchmark can be run standalone:
-
-```bash
-# Default (full data sizes)
-python benchmarks/statistical/statistical_benchmark.py
-
-# Quick mode
-python benchmarks/statistical/statistical_benchmark.py --quick
-
-# MolNet with specific config
-python benchmarks/drug_discovery/molnet_benchmark.py --dataset bbbp --featurizer ecfp
-
-# All MolNet combinations
-python benchmarks/drug_discovery/molnet_benchmark.py --all
-```
-
-### Quick Mode
-
-Quick mode reduces data sizes for fast CI runs (~5 min total instead of
-~30-60 min). Typical reductions:
-
-| Parameter | Full | Quick |
-|-----------|------|-------|
-| Cells | 500 | 50 |
-| Genes | 200 | 20 |
-| Sequence length | 500-1000 | 50-100 |
-| Training epochs | 50-100 | 5-20 |
-| Throughput iterations | 100 | 10-20 |
-| Particles (MD) | 64 | 8 |
-
----
-
-## Regression Detection
-
-### Saving a Baseline
-
-After a successful run, save the results as a baseline:
-
-```bash
-python benchmarks/run_all.py --save-baseline
-# Output: benchmarks/baselines/baseline_20260330.json
-```
-
-### Checking for Regressions
-
-Compare current results against a saved baseline:
-
-```bash
-python benchmarks/run_all.py --check-regression benchmarks/baselines/baseline_20260330.json
-```
-
-Regression thresholds (in `regression.py`):
-
-| Check | Threshold | Severity |
-|-------|-----------|----------|
-| Correctness test flips pass → fail | Any flip | Error (blocks) |
-| Throughput drops | > 10% | Error (blocks) |
-| Gradient goes to zero | Any | Error (blocks) |
-
-Exit code is non-zero if any error-severity regressions are detected, making
-this suitable for CI.
-
----
-
-## Generating Reports
-
-### Markdown Report
-
-Generate a Markdown report for the documentation site:
-
-```bash
-python benchmarks/generate_report.py
-# Output: benchmarks/results/benchmark-report.md (gitignored)
-
-# Or specify a custom path
-python benchmarks/generate_report.py --output /tmp/report.md
-```
-
-The report includes:
-
-- Environment table (DiffBio version, JAX, device, Python)
-- Capabilities matrix with pass/fail icons
-- scBench/spatialBench task coverage
-- Per-domain detail sections (correctness tests, gradient norms, throughput)
-
-### JSON Results
-
-All benchmarks save timestamped JSON to `benchmarks/results/<domain>/`:
-
-```json
-{
-  "timestamp": "2026-03-30T10:35:32",
-  "hmm_log_likelihood_finite": true,
-  "hmm_posteriors_sum_to_one": true,
-  "hmm_gradient_norm": 10.32,
-  "hmm_gradient_nonzero": true,
-  "hmm_throughput_per_item_ms": 172.29,
-  "hmm_throughput_items_per_sec": 5.8,
-  ...
-}
+# Single benchmark
+python benchmarks/singlecell/bench_batch_correction.py --quick
 ```
 
 ---
 
-## Benchmark Methodology
+## Benchmark Suite
 
-### What Each Benchmark Tests
+### Single-Cell (5 benchmarks)
 
-Every benchmark evaluates three aspects of each operator:
+| Benchmark | Operator | Dataset | Metrics | Baselines |
+|-----------|----------|---------|---------|-----------|
+| Batch Correction | DifferentiableHarmony | immune_human (33K cells, 10 batches) | Full scib-metrics (aggregate, silhouette, NMI, ARI, iLISI, cLISI) | scVI, Harmony (R), Scanorama, BBKNN |
+| Clustering | SoftKMeansClustering | immune_human (16 cell types) | ARI, NMI, silhouette | Leiden, Louvain, sklearn k-means |
+| VAE Integration | VAENormalizer (ZINB) | immune_human | ELBO + scib-metrics suite | scVI, scANVI |
+| Trajectory | Pseudotime + Velocity | pancreas (3.7K cells) | Pseudotime range, velocity shape | scVelo, DPT, Monocle3 |
+| GRN Inference | DifferentiableGRN | benGRN mESC (11.6K edges) | AUPRC, precision, recall | GENIE3, GRNBoost2, pySCENIC |
 
-1. **Correctness** -- Output shapes, value ranges, mathematical properties
-   (probabilities sum to 1, energies are finite, etc.)
+### Alignment (2 benchmarks)
 
-2. **Differentiability** -- Gradient flow through the operator via
-   `check_gradient_flow()`. This verifies that `nnx.grad` produces non-zero
-   gradients through learnable parameters, confirming the operator is usable in
-   end-to-end differentiable pipelines.
+| Benchmark | Operator | Dataset | Metrics | Baselines |
+|-----------|----------|---------|---------|-----------|
+| MSA | SoftProgressiveMSA | balifam100 (59 families) | SP score, TC score | MAFFT, ClustalW, MUSCLE, T-Coffee |
+| Pairwise | SmoothSmithWaterman | balifam100 | Alignment score | BLAST, SSEARCH, FASTA |
 
-3. **Throughput** -- Items processed per second via `measure_throughput()` with
-   JIT warmup and `block_until_ready()` for accurate GPU timing.
+### Structure Prediction (2 benchmarks)
 
-### Synthetic Data
+| Benchmark | Operator | Dataset | Metrics | Baselines |
+|-----------|----------|---------|---------|-----------|
+| RNA Folding | DifferentiableRNAFold | ArchiveII | Sensitivity, PPV, F1 | ViennaRNA, LinearFold, EternaFold |
+| Protein SS | DifferentiableSecondaryStructure | Ideal backbones | Q3 accuracy | DSSP, STRIDE, KAKSI |
 
-Benchmarks use synthetic data for **reproducibility** and **zero external
-dependencies**. The data generators in `_common.py` produce realistic inputs:
+### Molecular Dynamics (1 benchmark)
 
-- **`generate_synthetic_expression()`** -- scRNA-seq counts with per-type
-  expression profiles, batch effects, and negative binomial sampling. Used by
-  single-cell, trajectory, GRN, and dimensionality reduction benchmarks.
+| Benchmark | Operator | Dataset | Metrics | Baselines |
+|-----------|----------|---------|---------|-----------|
+| LJ Fluid | ForceFieldOperator + MDIntegrator | 64K LJ system | Steps/sec, energy drift | jax-md (direct), LAMMPS |
 
-- **`generate_synthetic_sequences()`** -- One-hot encoded DNA/RNA sequences.
-  Used by alignment, preprocessing, and language model benchmarks.
+### Statistical (1 benchmark)
 
-- **`generate_synthetic_coverage()`** -- Poisson background + Gaussian peaks.
-  Used by the epigenomics benchmark.
-
-Domain-specific generators create additional data (assembly graphs, molecular
-dynamics lattices, Hi-C contact matrices, etc.) within each benchmark file.
-
-### Reproducibility
-
-- Fixed random seeds (`jax.random.key(42)`, `nnx.Rngs(42)`)
-- Deterministic data generation
-- JIT warmup before timing
-- `block_until_ready()` for accurate GPU measurements
+| Benchmark | Operator | Dataset | Metrics | Baselines |
+|-----------|----------|---------|---------|-----------|
+| DE Analysis | DifferentiableNBGLM | immune_human (2 cell types) | Concordance with t-test | DESeq2, edgeR, Wilcoxon |
 
 ---
 
-## Adding a New Benchmark
+## scBench / spatialBench Context
 
-1. **Create the file**: `benchmarks/<domain>/<name>_benchmark.py`
+DiffBio operators cover all evaluation task types from
+[scBench](https://github.com/your-org/scbench) (394 single-cell evaluations)
+and [spatialBench](https://github.com/your-org/spatialbench) (146 spatial
+evaluations).
 
-2. **Follow the pattern**:
-    - Frozen `@dataclass(frozen=True, kw_only=True)` for results
-    - `run_benchmark(*, quick: bool = False)` entry point
-    - Import shared utilities from `benchmarks._common`
-    - Print results during execution
-    - `main()` with `--quick` flag support
+### scBench Leaderboard (by task category)
 
-3. **Register it**: Add to `_BENCHMARK_REGISTRY` in `benchmarks/run_all.py`:
-    ```python
-    ("my_domain", "benchmarks.my_domain.my_benchmark"),
-    ```
+| Task | Best Model | Accuracy | DiffBio Operator |
+|------|-----------|----------|-----------------|
+| QC | Claude Opus 4.5 | 63.9% | DifferentiableQualityFilter |
+| Normalization | Claude Opus 4.5 | 83.8% | VAENormalizer |
+| Clustering | Claude Opus 4.6 | 52.7% | SoftKMeansClustering |
+| Cell Typing | Claude Opus 4.6 | 48.2% | CellAnnotator |
+| Diff. Expression | Claude Opus 4.6 | 41.4% | NB-GLM, DE Pipeline |
+| Trajectory | Claude Opus 4.5 | 61.9% | Pseudotime |
 
-4. **Test it**:
-    ```bash
-    python benchmarks/my_domain/my_benchmark.py --quick
-    ```
+### spatialBench Leaderboard (by task category)
 
-5. **Update docs**: Add a row to the capabilities matrix table above.
+| Task | Best Model | Accuracy | DiffBio Operator |
+|------|-----------|----------|-----------------|
+| Normalization | GPT-5.2 | 76.2% | VAENormalizer |
+| Clustering | Claude Opus 4.5 (CC) | 60.3% | SoftKMeansClustering |
+| Spatial Analysis | Claude Opus 4.5 (CC) | 66.7% | SpatialDomain |
+| Diff. Expression | Claude Opus 4.5 (CC) | 46.2% | NB-GLM |
 
-### Example: Minimal Benchmark
+*Source: scBench and spatialBench published results (3 runs per model, 95% CI).*
+
+---
+
+## Architecture
+
+Built on the **calibrax** + **datarax** ecosystem:
+
+- **calibrax**: `BenchmarkResult`, `Metric`, `Point`, `TimingCollector`,
+  `Store`, regression detection, publication export
+- **datarax**: `DataSourceModule` for loading real datasets
+- **DiffBio-specific**: `check_gradient_flow()` for verifying operator
+  differentiability
+
+### Benchmark Pattern
+
+Every benchmark inherits from `DiffBioBenchmark` and implements only
+`_run_core()`:
 
 ```python
-#!/usr/bin/env python3
-"""Minimal benchmark template."""
-from __future__ import annotations
+class MyBenchmark(DiffBioBenchmark):
+    def _run_core(self) -> dict[str, Any]:
+        # 1. Load data via DataSource
+        source = MyDataSource(MyConfig(data_dir=self.data_dir))
+        data = source.load()
 
-import sys
-from dataclasses import asdict, dataclass
-from datetime import datetime
+        # 2. Run operator
+        operator = MyOperator(config, rngs=nnx.Rngs(42))
+        result, _, _ = operator.apply(data, {}, None)
 
-import jax.numpy as jnp
-from flax import nnx
+        # 3. Compute metrics
+        metrics = evaluate_my_domain(result, ground_truth)
 
-from benchmarks._common import (
-    check_gradient_flow,
-    measure_throughput,
-    save_benchmark_result,
-)
-
-
-@dataclass(frozen=True, kw_only=True)
-class MyResult:
-    """Benchmark results."""
-    timestamp: str
-    shape_correct: bool
-    gradient_norm: float
-    gradient_nonzero: bool
-    throughput_items_per_sec: float
-
-
-def run_benchmark(*, quick: bool = False) -> MyResult:
-    """Run the benchmark."""
-    from diffbio.operators.my_domain import MyOperator, MyConfig
-
-    n = 50 if quick else 500
-    config = MyConfig(...)
-    op = MyOperator(config, rngs=nnx.Rngs(42))
-
-    # Correctness
-    data = {"input": jnp.ones((n, 10))}
-    result, _, _ = op.apply(data, {}, None)
-    shape_ok = result["output"].shape == (n, 10)
-
-    # Gradient flow
-    def loss_fn(model, x):
-        r, _, _ = model.apply(x, {}, None)
-        return jnp.sum(r["output"])
-
-    grad = check_gradient_flow(loss_fn, op, data)
-
-    # Throughput
-    tp = measure_throughput(
-        lambda x: op.apply(x, {}, None),
-        (data,),
-        n_iterations=10 if quick else 100,
-    )
-
-    return MyResult(
-        timestamp=datetime.now().isoformat(),
-        shape_correct=shape_ok,
-        gradient_norm=grad.gradient_norm,
-        gradient_nonzero=grad.gradient_nonzero,
-        throughput_items_per_sec=tp["items_per_sec"],
-    )
-
-
-def main() -> None:
-    quick = "--quick" in sys.argv
-    result = run_benchmark(quick=quick)
-    print(f"Shape correct: {result.shape_correct}")
-    print(f"Gradient nonzero: {result.gradient_nonzero}")
-    print(f"Throughput: {result.throughput_items_per_sec:.1f}/s")
-    save_benchmark_result(
-        asdict(result), "my_domain", "my_benchmark"
-    )
-
-
-if __name__ == "__main__":
-    main()
+        # 4. Return standard dict
+        return {
+            "metrics": metrics,
+            "operator": operator,
+            "input_data": data,
+            "loss_fn": lambda m, d: jnp.sum(m.apply(d, {}, None)[0]["output"]),
+            "n_items": len(source),
+            "iterate_fn": lambda: operator.apply(data, {}, None),
+            "baselines": MY_BASELINES,
+            "dataset_info": {"n_items": len(source)},
+            "operator_name": "MyOperator",
+            "dataset_name": "my_dataset",
+        }
 ```
+
+The base class handles: gradient flow check, throughput measurement,
+comparison table printing, `BenchmarkResult` construction, and CLI.
 
 ---
 
-## Unified Result Schema (`schema.py`)
+## Datasets
 
-For integration with the dashboard and regression detection, benchmarks can
-optionally produce a `BenchmarkEnvelope`:
+### Required Downloads
 
-```python
-from benchmarks.schema import BenchmarkEnvelope
+| Dataset | Size | Path | Download |
+|---------|------|------|----------|
+| immune_human | 2.0 GB | `/media/mahdi/ssd23/Data/scib/Immune_ALL_human.h5ad` | [Figshare](https://ndownloader.figshare.com/files/25717328) |
+| pancreas | 51 MB | `/media/mahdi/ssd23/Data/scvelo/endocrinogenesis_day15.h5ad` | [GitHub](https://github.com/theislab/scvelo_notebooks/raw/master/data/Pancreas/endocrinogenesis_day15.h5ad) |
 
-envelope = BenchmarkEnvelope(
-    benchmark_id="variant/variant_calling",
-    domain="variant",
-    operators_tested=["DifferentiablePileup", "VariantClassifier"],
-    timestamp="2026-03-30T14:22:01",
-    platform=collect_platform_info(),
-    status="pass",
-    correctness={
-        "passed": True,
-        "tests": [
-            {"name": "pileup_shape", "value": 1.0, "passed": True},
-            {"name": "prob_sum_one", "value": 1.0, "passed": True},
-        ],
-    },
-    differentiability={
-        "passed": True,
-        "gradient_norm": 4.12,
-        "gradient_nonzero": True,
-    },
-    performance={
-        "throughput": 5000.0,
-        "throughput_unit": "positions/sec",
-        "latency_ms": 0.2,
-    },
-    evaluation_task_types=["qc_filtering"],
-)
-```
+### From Cloned Repos
+
+| Dataset | Repo | Used By |
+|---------|------|---------|
+| balifam100 | `../balifam/` | MSA, pairwise alignment |
+| ArchiveII | `../RNAFoldAssess/` | RNA folding |
+| mESC ground truth | `../benGRN/` | GRN inference |
 
 ---
 
-## Results from Latest Run
-
-!!! note "Auto-generated results"
-    Run `python benchmarks/generate_report.py` to generate a report at
-    `benchmarks/results/benchmark-report.md` from the latest JSON output.
-
-### Test Environment
+## Test Environment
 
 | Component | Value |
 |-----------|-------|
@@ -582,4 +176,4 @@ envelope = BenchmarkEnvelope(
 | Python | 3.12.6 |
 | JAX | 0.9.0.1 |
 | GPU | NVIDIA GeForce RTX 4090 (24 GB) |
-| Backend | CUDA (gpu) |
+| Backend | CUDA |
