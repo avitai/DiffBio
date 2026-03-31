@@ -34,11 +34,10 @@ _TIER_1 = [
     ("singlecell", "benchmarks.singlecell.bench_grn", "GRNBenchmark"),
 ]
 
-_TIER_2: list[tuple[str, str, str]] = [
-    # To be added as benchmarks are implemented:
-    # ("alignment", "benchmarks.alignment.bench_msa", "MSABenchmark"),
-    # ("rna_structure", "benchmarks.rna_structure.bench_rna_fold", "RNAFoldBenchmark"),
-    # ("molecular_dynamics", "benchmarks.molecular_dynamics.bench_lj", "LJBenchmark"),
+_TIER_2 = [
+    ("alignment", "benchmarks.alignment.bench_msa", "MSABenchmark"),
+    ("rna_structure", "benchmarks.rna_structure.bench_rna_fold", "RNAFoldBenchmark"),
+    ("molecular_dynamics", "benchmarks.molecular_dynamics.bench_lj", "LJBenchmark"),
 ]
 
 _TIER_3: list[tuple[str, str, str]] = [
