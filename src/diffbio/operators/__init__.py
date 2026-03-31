@@ -18,7 +18,7 @@ from diffbio.operators import assembly
 from diffbio.operators import crispr
 from diffbio.operators import drug_discovery
 from diffbio.operators import epigenomics
-from diffbio.operators import language_models
+from diffbio.operators import foundation_models
 from diffbio.operators import mapping
 from diffbio.operators import metabolomics
 from diffbio.operators import molecular_dynamics
@@ -43,7 +43,7 @@ __all__ = [
     "crispr",
     "drug_discovery",
     "epigenomics",
-    "language_models",
+    "foundation_models",
     "mapping",
     "metabolomics",
     "molecular_dynamics",

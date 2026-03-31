@@ -223,6 +223,31 @@ class TestPerturbationAnnDataSource:
         # But obsm embedding should be available
         assert "obsm" in element
 
+    def test_external_perturbation_embeddings_override_one_hot(
+        self, synthetic_h5ad_path: Path, tmp_path: Path
+    ) -> None:
+        embedding_dim = 7
+        external_embeddings = np.arange(len(ALL_PERTS) * embedding_dim, dtype=np.float32).reshape(
+            len(ALL_PERTS), embedding_dim
+        )
+        embedding_path = tmp_path / "pert_embeddings.npy"
+        np.save(embedding_path, external_embeddings)
+
+        config = PerturbationSourceConfig(
+            file_path=str(synthetic_h5ad_path),
+            output_space="all",
+            perturbation_features_file=str(embedding_path),
+        )
+        source = PerturbationAnnDataSource(config)
+        element = source[0]
+
+        assert element["pert_emb"].shape == (embedding_dim,)
+        np.testing.assert_allclose(
+            np.asarray(element["pert_emb"]),
+            external_embeddings[element["pert_code"]],
+            atol=1e-6,
+        )
+
     def test_should_yield_controls_false_skips_controls(self, synthetic_h5ad_path: Path) -> None:
         config = PerturbationSourceConfig(
             file_path=str(synthetic_h5ad_path),

@@ -166,19 +166,19 @@ the right smoothness level from data.
 
 ## The Ecosystem
 
-DiffBio is part of a family of libraries that share the datarax operator
-contract:
+DiffBio is part of a layered JAX/NNX scientific ML ecosystem:
 
 | Library | Role | How DiffBio Uses It |
 |---|---|---|
-| **datarax** | Pipeline framework | Base `OperatorModule`, config system, data flow |
-| **calibrax** | Metrics and evaluation | ARI, NMI, silhouette, AUROC for evaluating results |
-| **artifex** | Generative model losses | KL divergence, ELBO components for VAE operators |
-| **opifex** | Multi-task training | `GradNormBalancer` for multi-loss optimization |
+| **datarax** | Execution and data contracts | Base `OperatorModule`, config system, `Batch`, data-source patterns |
+| **artifex** | Modeling substrate | Transformer layers, reusable generative-model components, modality-aligned building blocks |
+| **opifex** | Scientific ML substrate | Multi-objective training, field autodiff, operator-learning, and advanced optimization methods |
+| **calibrax** | Evaluation and governance | Metrics, `BenchmarkResult`, comparison, profiling, storage, regression checks |
 
-DiffBio operators produce results; calibrax evaluates them; artifex provides
-training losses; opifex balances multiple objectives. The integration is
-through standard JAX arrays — no special adapters needed.
+DiffBio owns the biology-specific operator layer. Datarax provides the execution
+contract, Artifex provides reusable model components, Opifex provides
+scientific-training infrastructure, and Calibrax provides evaluation and
+benchmark governance.
 
 ```python
 # DiffBio operator produces latent representations
@@ -188,7 +188,7 @@ result, _, _ = vae_normalizer.apply(data, {}, None)
 from calibrax.metrics.functional.clustering import silhouette_score
 score = silhouette_score(result["latent_mean"], labels)
 
-# artifex provides training loss components
+# artifex provides reusable generative-model loss components
 from artifex.generative_models.core.losses.divergence import gaussian_kl_divergence
 kl = gaussian_kl_divergence(result["latent_mean"], result["latent_logvar"])
 ```

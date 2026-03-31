@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import pytest
 from flax import nnx
 
-from diffbio.operators.language_models import (
+from diffbio.operators.foundation_models import (
     TransformerSequenceEncoder,
     TransformerSequenceEncoderConfig,
     create_dna_encoder,

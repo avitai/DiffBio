@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import jax.numpy as jnp
 import numpy as np
 import pytest
 
 from diffbio.sources.perturbation._types import OutputSpaceMode
 from diffbio.sources.perturbation.output_space import (
-    load_external_embeddings,
     select_output_counts,
 )
 
@@ -41,21 +38,3 @@ class TestSelectOutputCounts:
         counts = jnp.ones((5, 10))
         result = select_output_counts(counts, hvg_indices=None, mode=OutputSpaceMode.EMBEDDING)
         assert result.shape == (5, 0)
-
-
-class TestLoadExternalEmbeddings:
-    """Tests for load_external_embeddings."""
-
-    def test_load_npy_file(self, tmp_path: Path) -> None:
-        data = np.random.default_rng(42).standard_normal((50, 32)).astype(np.float32)
-        path = tmp_path / "embeddings.npy"
-        np.save(path, data)
-
-        result = load_external_embeddings(path)
-        assert isinstance(result, jnp.ndarray)
-        assert result.shape == (50, 32)
-        np.testing.assert_allclose(result, data, atol=1e-6)
-
-    def test_nonexistent_file_raises(self, tmp_path: Path) -> None:
-        with pytest.raises(FileNotFoundError):
-            load_external_embeddings(tmp_path / "nonexistent.npy")

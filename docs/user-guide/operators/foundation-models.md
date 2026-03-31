@@ -1,12 +1,20 @@
-# DNA/RNA Language Model Operators
+# DNA/RNA Foundation Model Operators
 
-DiffBio provides differentiable transformer-based sequence encoders following DNABERT and RNA-FM architecture patterns for embedding DNA/RNA sequences.
+DiffBio provides differentiable foundation-model operators for DNA/RNA
+sequences and single-cell expression, following DNABERT, RNA-FM, Geneformer,
+and scGPT architecture patterns.
 
-<span class="operator-lm">Language Models</span> <span class="diff-high">Fully Differentiable</span>
+These operators sit in DiffBio's biology-specific layer and reuse the wider
+ecosystem stack: Datarax for operator contracts, Artifex for transformer/model
+components, Opifex for advanced scientific-training workflows, and Calibrax for
+benchmark evaluation.
+
+<span class="operator-lm">Foundation Models</span> <span class="diff-high">Fully Differentiable</span>
 
 ## Overview
 
-Language model operators convert nucleotide sequences into dense embeddings using transformer architectures:
+Foundation model operators convert nucleotide sequences and gene-expression
+profiles into dense embeddings using transformer architectures:
 
 - **TransformerSequenceEncoder**: BERT-style transformer for DNA/RNA sequence embedding
 - **DifferentiableFoundationModel**: Geneformer/scGPT-style masked gene expression model
@@ -15,6 +23,9 @@ Language model operators convert nucleotide sequences into dense embeddings usin
 ## TransformerSequenceEncoder
 
 Differentiable transformer encoder following DNABERT/RNA-FM patterns. Converts one-hot encoded nucleotide sequences into dense embeddings suitable for downstream bioinformatics tasks.
+
+The encoder reuses Artifex's transformer core rather than maintaining a
+parallel generic transformer implementation inside DiffBio.
 
 ### Architecture
 
@@ -40,7 +51,7 @@ graph TB
 from flax import nnx
 import jax
 import jax.numpy as jnp
-from diffbio.operators.language_models import (
+from diffbio.operators.foundation_models import (
     TransformerSequenceEncoder,
     TransformerSequenceEncoderConfig,
     create_dna_encoder,
@@ -216,7 +227,7 @@ Geneformer/scGPT-inspired masked gene expression model for single-cell genomics.
 ### Quick Start
 
 ```python
-from diffbio.operators.language_models import (
+from diffbio.operators.foundation_models import (
     DifferentiableFoundationModel, FoundationModelConfig,
 )
 
@@ -268,7 +279,7 @@ Geneformer-style rank-value gene tokenizer using differentiable soft sorting. Co
 ### Quick Start
 
 ```python
-from diffbio.operators.language_models import GeneTokenizer
+from diffbio.operators.foundation_models import GeneTokenizer
 
 tokenizer = GeneTokenizer(n_genes=2000, rngs=nnx.Rngs(0))
 

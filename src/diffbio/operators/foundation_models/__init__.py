@@ -1,4 +1,4 @@
-"""Language model operators for DiffBio.
+"""Foundation model operators for DiffBio.
 
 This module provides transformer-based sequence encoders and single-cell
 foundation model infrastructure.
@@ -13,12 +13,12 @@ Factory Functions:
     create_rna_encoder: Create encoder for RNA sequences
 """
 
-from diffbio.operators.language_models.foundation_model import (
+from diffbio.operators.foundation_models.foundation_model import (
     DifferentiableFoundationModel,
     FoundationModelConfig,
     GeneTokenizer,
 )
-from diffbio.operators.language_models.transformer_encoder import (
+from diffbio.operators.foundation_models.transformer_encoder import (
     TransformerSequenceEncoder,
     TransformerSequenceEncoderConfig,
     create_dna_encoder,

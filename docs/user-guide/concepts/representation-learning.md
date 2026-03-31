@@ -112,9 +112,9 @@ and serves as a building block for more complex models.
 
 ---
 
-## Biological Language Models
+## Biological Foundation Models
 
-Language models trained on biological sequences learn representations that
+Foundation models trained on biological sequences learn representations that
 capture evolutionary and functional relationships. DiffBio provides three
 operators at different scales:
 
@@ -248,7 +248,7 @@ DiffBio's differentiable operators enable:
 ## Further Reading
 
 - [Normalization Operators](../operators/normalization.md) -- VAE normalizer, embeddings, UMAP, PHATE
-- [Language Model Operators](../operators/language-models.md) -- transformers and foundation models
+- [Foundation Model Operators](../operators/foundation-models.md) -- transformers and foundation models
 - [Statistical Operators](../operators/statistical.md) -- HMM, NB-GLM, EM quantification
 - [Normalization API](../../api/operators/normalization.md) -- full API reference
 - [Statistical API](../../api/operators/statistical.md) -- full API reference

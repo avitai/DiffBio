@@ -1,4 +1,4 @@
-"""Tests for diffbio.operators.language_models.foundation_model module.
+"""Tests for diffbio.operators.foundation_models.foundation_model module.
 
 These tests define the expected behavior of GeneTokenizer, FoundationModelConfig,
 and DifferentiableFoundationModel for Geneformer/scGPT-style single-cell
@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import pytest
 from flax import nnx
 
-from diffbio.operators.language_models.foundation_model import (
+from diffbio.operators.foundation_models.foundation_model import (
     DifferentiableFoundationModel,
     FoundationModelConfig,
     GeneTokenizer,

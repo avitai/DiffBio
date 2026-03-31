@@ -213,6 +213,6 @@ plt.title('RNA Base Pair Probability Matrix')
 
 ## Next Steps
 
-- See [Language Model Operators](language-models.md) for sequence embedding
+- See [Foundation Model Operators](foundation-models.md) for sequence embedding
 - Explore [Statistical Operators](statistical.md) for related analysis methods
 - Check [RNA-seq Operators](rnaseq.md) for transcriptomics analysis

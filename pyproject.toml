@@ -31,13 +31,13 @@ classifiers = [
   "License :: OSI Approved :: MIT License"
 ]
 dependencies = [
-  # Core framework - Datarax
+  # Datarax - operator, source, and pipeline contracts
   "datarax @ git+https://github.com/avitai/datarax.git",
-  # Artifex - Flax NNX neural network components (positional encoding, residual blocks, losses)
+  # Artifex - modeling, modality, and transformer substrate
   "artifex @ git+https://github.com/avitai/artifex.git",
-  # Opifex - Scientific machine learning (GradNorm, neural operators)
+  # Opifex - scientific ML, operator learning, and advanced optimization
   "opifex @ git+https://github.com/avitai/Opifex.git",
-  # Calibrax - Benchmarking metrics (clustering, distribution, contrastive)
+  # Calibrax - benchmarking, comparison, profiling, and regression control
   "calibrax @ git+https://github.com/avitai/calibrax.git",
   # JAX ecosystem
   "beartype>=0.14.1",
@@ -60,7 +60,7 @@ dependencies = [
   "jax-md>=0.2.27",
   "rdkit>=2025.9.3"
 ]
-description = "DiffBio: End-to-end differentiable bioinformatics pipelines built on Datarax"
+description = "DiffBio: End-to-end differentiable bioinformatics pipelines built on Datarax, Artifex, Opifex, and Calibrax"
 keywords = ["jax", "flax", "bioinformatics", "differentiable", "variant-calling", "alignment", "machine-learning"]
 license = {file = "LICENSE"}
 name = "diffbio"

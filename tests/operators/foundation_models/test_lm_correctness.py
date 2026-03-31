@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Language model correctness tests for DiffBio.
+"""Foundation model correctness tests for DiffBio.
 
-Validates DiffBio's biological language model operators for output
+Validates DiffBio's biological foundation model operators for output
 shape correctness, value finiteness, and gradient flow:
 - TransformerSequenceEncoder (DNA/RNA transformer encoding)
 - DifferentiableFoundationModel (single-cell foundation model)
@@ -12,11 +12,11 @@ from __future__ import annotations
 import jax.numpy as jnp
 from flax import nnx
 
-from diffbio.operators.language_models.foundation_model import (
+from diffbio.operators.foundation_models.foundation_model import (
     DifferentiableFoundationModel,
     FoundationModelConfig,
 )
-from diffbio.operators.language_models.transformer_encoder import (
+from diffbio.operators.foundation_models.transformer_encoder import (
     TransformerSequenceEncoder,
     TransformerSequenceEncoderConfig,
 )

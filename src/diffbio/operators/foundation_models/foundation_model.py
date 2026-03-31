@@ -31,7 +31,7 @@ from jaxtyping import Array, Float, PyTree
 
 from diffbio.core import soft_ops
 
-from diffbio.operators.language_models.transformer_encoder import (
+from diffbio.operators.foundation_models.transformer_encoder import (
     TransformerSequenceEncoder,
     TransformerSequenceEncoderConfig,
 )

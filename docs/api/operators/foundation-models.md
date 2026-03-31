@@ -1,10 +1,11 @@
-# Language Model Operators API
+# Foundation Model Operators API
 
-Differentiable transformer-based operators for DNA/RNA sequence embedding.
+Differentiable transformer-based operators for DNA/RNA sequence embedding and
+single-cell foundation-model workflows.
 
 ## TransformerSequenceEncoder
 
-::: diffbio.operators.language_models.transformer_encoder.TransformerSequenceEncoder
+::: diffbio.operators.foundation_models.transformer_encoder.TransformerSequenceEncoder
     options:
       show_root_heading: true
       show_source: false
@@ -15,7 +16,7 @@ Differentiable transformer-based operators for DNA/RNA sequence embedding.
 
 ## TransformerSequenceEncoderConfig
 
-::: diffbio.operators.language_models.transformer_encoder.TransformerSequenceEncoderConfig
+::: diffbio.operators.foundation_models.transformer_encoder.TransformerSequenceEncoderConfig
     options:
       show_root_heading: true
       members: []
@@ -24,19 +25,19 @@ Differentiable transformer-based operators for DNA/RNA sequence embedding.
 
 ### create_dna_encoder
 
-::: diffbio.operators.language_models.transformer_encoder.create_dna_encoder
+::: diffbio.operators.foundation_models.transformer_encoder.create_dna_encoder
     options:
       show_root_heading: true
 
 ### create_rna_encoder
 
-::: diffbio.operators.language_models.transformer_encoder.create_rna_encoder
+::: diffbio.operators.foundation_models.transformer_encoder.create_rna_encoder
     options:
       show_root_heading: true
 
 ## DifferentiableFoundationModel
 
-::: diffbio.operators.language_models.foundation_model.DifferentiableFoundationModel
+::: diffbio.operators.foundation_models.foundation_model.DifferentiableFoundationModel
     options:
       show_root_heading: true
       show_source: false
@@ -46,14 +47,14 @@ Differentiable transformer-based operators for DNA/RNA sequence embedding.
 
 ## FoundationModelConfig
 
-::: diffbio.operators.language_models.foundation_model.FoundationModelConfig
+::: diffbio.operators.foundation_models.foundation_model.FoundationModelConfig
     options:
       show_root_heading: true
       members: []
 
 ## GeneTokenizer
 
-::: diffbio.operators.language_models.foundation_model.GeneTokenizer
+::: diffbio.operators.foundation_models.foundation_model.GeneTokenizer
     options:
       show_root_heading: true
       show_source: false
@@ -66,7 +67,7 @@ Differentiable transformer-based operators for DNA/RNA sequence embedding.
 ### Basic Usage
 
 ```python
-from diffbio.operators.language_models import create_dna_encoder
+from diffbio.operators.foundation_models import create_dna_encoder
 import jax
 import jax.numpy as jnp
 
@@ -87,7 +88,7 @@ embedding = result["embedding"]  # (256,)
 ### Full Configuration
 
 ```python
-from diffbio.operators.language_models import (
+from diffbio.operators.foundation_models import (
     TransformerSequenceEncoder,
     TransformerSequenceEncoderConfig,
 )

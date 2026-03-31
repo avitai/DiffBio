@@ -19,6 +19,7 @@ Interop:
 from diffbio.sources.anndata_interop import from_anndata, to_anndata
 from diffbio.sources.anndata_source import AnnDataSource, AnnDataSourceConfig
 from diffbio.sources.bam import BAMSource, BAMSourceConfig
+from diffbio.sources.embeddings import load_embedding_array
 from diffbio.sources.encode_peaks import ENCODEPeakConfig, ENCODEPeakSource
 from diffbio.sources.fasta import FastaSource, FastaSourceConfig
 from diffbio.sources.indexed_view import IndexedViewSource, IndexedViewSourceConfig
@@ -50,6 +51,7 @@ __all__ = [
     "MolNetSource",
     "MolNetSourceConfig",
     "from_anndata",
+    "load_embedding_array",
     "to_anndata",
     # Perturbation
     "BatchControlMapping",

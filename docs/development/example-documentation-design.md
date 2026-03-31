@@ -821,7 +821,7 @@ uv run mkdocs build
 | Multi-Omics Integration | Multi-Omics | MultiOmicsVAE + GradNorm | Planned |
 | Spatial Transcriptomics | Spatial | SpatialDomain + PASTE alignment | Planned |
 | GRN Inference | Regulatory | DifferentiableGRN + SCENIC comparison | Planned |
-| Foundation Model | Language Models | GeneTokenizer + masked prediction | Planned |
+| Foundation Model | Foundation Models | GeneTokenizer + masked prediction | Planned |
 | Full Single-Cell Pipeline | Pipelines | Simulate → Normalize → Impute → Annotate → Trajectory | Planned |
 
 ## Related Files

@@ -1,5 +1,5 @@
 site_name: DiffBio
-site_description: End-to-end differentiable bioinformatics pipelines built on JAX/Flax and Datarax, providing differentiable implementations of sequence alignment, variant calling, and genomic analysis
+site_description: End-to-end differentiable bioinformatics pipelines built on JAX/Flax NNX, Datarax, Artifex, Opifex, and Calibrax
 site_author: Mahdi Shafiei
 site_url: https://docs.avitai.bio/diffbio
 repo_url: https://github.com/mahdi-shafiei/DiffBio
@@ -117,7 +117,7 @@ nav:
           - Population Genetics: user-guide/operators/population.md
           - CRISPR: user-guide/operators/crispr.md
           - Protein Structure: user-guide/operators/protein.md
-          - Language Models: user-guide/operators/language-models.md
+          - Foundation Models: user-guide/operators/foundation-models.md
           - RNA Structure: user-guide/operators/rna-structure.md
           - Molecular Dynamics: user-guide/operators/molecular-dynamics.md
           - Drug Discovery: user-guide/operators/drug-discovery.md
@@ -165,7 +165,7 @@ nav:
           - Population Genetics: api/operators/population.md
           - CRISPR: api/operators/crispr.md
           - Protein Structure: api/operators/protein.md
-          - Language Models: api/operators/language-models.md
+          - Foundation Models: api/operators/foundation-models.md
           - RNA Structure: api/operators/rna-structure.md
           - Molecular Dynamics: api/operators/molecular-dynamics.md
           - Drug Discovery: api/operators/drug-discovery.md

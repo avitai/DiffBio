@@ -1,8 +1,8 @@
-"""DiffBio: End-to-end differentiable bioinformatics pipelines built on Datarax.
+"""DiffBio: End-to-end differentiable bioinformatics pipelines built on the wider JAX/NNX ecosystem.
 
 This package provides differentiable bioinformatics pipeline components that
-integrate with the Datarax framework for gradient-based optimization of
-genomics workflows.
+integrate with Datarax, Artifex, Opifex, and Calibrax for gradient-based
+optimization of genomics workflows.
 
 Key components:
 - sequences: Biological sequence data types (DNA, RNA, Protein)

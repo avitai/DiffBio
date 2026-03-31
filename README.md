@@ -12,14 +12,24 @@
 </p>
 
 <p align="center">
-  Built on <a href="https://github.com/mahdi-shafiei/workshop-data">Datarax</a> | Powered by <a href="https://jax.readthedocs.io/">JAX</a> & <a href="https://flax.readthedocs.io/">Flax NNX</a>
+  Built on <a href="https://github.com/mahdi-shafiei/workshop-data">Datarax</a>, <a href="https://github.com/avitai/artifex">Artifex</a>, <a href="https://github.com/avitai/Opifex">Opifex</a>, and <a href="https://github.com/avitai/calibrax">Calibrax</a> | Powered by <a href="https://jax.readthedocs.io/">JAX</a> & <a href="https://flax.readthedocs.io/">Flax NNX</a>
 </p>
 
 ---
 
 ## Overview
 
-DiffBio is a framework for building **end-to-end differentiable bioinformatics pipelines**. By replacing discrete operations with differentiable relaxations, DiffBio enables gradient-based optimization through entire analysis workflows.
+DiffBio is a framework for building **end-to-end differentiable bioinformatics
+pipelines**. By replacing discrete operations with differentiable relaxations,
+DiffBio enables gradient-based optimization through entire analysis workflows.
+
+DiffBio is the biology-specific differentiable operator layer of a wider
+JAX/NNX scientific ML ecosystem. It uses:
+
+- **Datarax** for operator and dataflow contracts
+- **Artifex** for reusable model-building and transformer components
+- **Opifex** for scientific ML and advanced optimization primitives
+- **Calibrax** for metrics, benchmarking, comparison, and regression control
 
 Traditional bioinformatics pipelines use discrete operations (hard thresholds, argmax decisions) that block gradient flow. DiffBio addresses this by:
 
@@ -35,7 +45,7 @@ This enables learning optimal pipeline parameters directly from data, rather tha
 - **35+ Differentiable Operators** covering alignment, variant calling, single-cell analysis, epigenomics, RNA-seq, preprocessing, normalization, and multi-omics
 - **5 End-to-End Pipelines** for variant calling, single-cell analysis, differential expression, and preprocessing
 - **GPU-Accelerated** computation via JAX's XLA compilation
-- **Composable Architecture** using the Datarax operator framework
+- **Composable Architecture** built on the Datarax, Artifex, Opifex, and Calibrax stack
 - **Training Utilities** with gradient clipping, custom loss functions, and synthetic data generation
 
 For complete operator and pipeline listings, see the [Operators Overview](https://docs.avitai.bio/diffbio/user-guide/operators/overview/) and [Pipelines Overview](https://docs.avitai.bio/diffbio/user-guide/pipelines/overview/) in the documentation.
@@ -47,11 +57,8 @@ For complete operator and pipeline listings, see the [Operators Overview](https:
 git clone https://github.com/mahdi-shafiei/DiffBio.git
 cd DiffBio
 
-# Install with uv (recommended)
+# Install with uv
 uv sync
-
-# Or with pip
-pip install -e .
 ```
 
 ## Quick Start
@@ -165,7 +172,17 @@ trained_pipeline = trainer.pipeline
 
 ## Architecture
 
-DiffBio is built on [Datarax](https://github.com/mahdi-shafiei/workshop-data), a framework for composable data processing operators. Each DiffBio operator inherits from `OperatorModule` and implements:
+DiffBio sits on a layered ecosystem rather than standing alone:
+
+| Layer | Library | Role In DiffBio |
+|---|---|---|
+| Execution contracts | [Datarax](https://github.com/mahdi-shafiei/workshop-data) | Operator, data-source, and pipeline contracts |
+| Modeling substrate | [Artifex](https://github.com/avitai/artifex) | Reusable transformer and generative-model components |
+| Scientific ML substrate | [Opifex](https://github.com/avitai/Opifex) | Scientific optimization, operator learning, and advanced training methods |
+| Evaluation substrate | [Calibrax](https://github.com/avitai/calibrax) | Metrics, benchmarking, comparison, profiling, and regression checks |
+| Biology-specific layer | DiffBio | Differentiable biological operators and domain compositions |
+
+Each DiffBio operator inherits from Datarax's `OperatorModule` and implements:
 
 ```
 apply(data, state, metadata) -> (output_data, output_state, output_metadata)
@@ -241,7 +258,7 @@ DiffBio/
 - Flax 0.10+
 - Optax 0.2.4+
 - jaxtyping 0.2.36+
-- Datarax (installed automatically)
+- Datarax, Artifex, Opifex, and Calibrax (installed automatically)
 
 ## License
 
@@ -252,4 +269,7 @@ Apache License 2.0. See [LICENSE](LICENSE) for details.
 DiffBio builds on ideas from:
 - [SMURF](https://www.biorxiv.org/content/10.1101/2021.10.23.465204): Differentiable Smith-Waterman for end-to-end MSA learning
 - [Datarax](https://github.com/mahdi-shafiei/workshop-data): Composable data processing framework
+- [Artifex](https://github.com/avitai/artifex): Generative-model and transformer substrate
+- [Opifex](https://github.com/avitai/Opifex): Scientific ML and advanced optimization substrate
+- [Calibrax](https://github.com/avitai/calibrax): Benchmarking, comparison, and regression substrate
 - [Flax NNX](https://flax.readthedocs.io/): Neural network library for JAX

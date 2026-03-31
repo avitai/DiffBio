@@ -75,7 +75,7 @@ tests/
 │   ├── assembly/
 │   ├── drug_discovery/
 │   ├── epigenomics/
-│   ├── language_models/
+│   ├── foundation_models/
 │   ├── mapping/
 │   ├── multiomics/
 │   ├── normalization/

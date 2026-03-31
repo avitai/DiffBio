@@ -1,4 +1,4 @@
-"""Transformer-based sequence encoder for DNA/RNA sequences.
+"""Transformer-based sequence encoder for DNA/RNA foundation models.
 
 This module provides a differentiable transformer encoder following
 DNABERT/RNA-FM architecture patterns. The encoder converts one-hot

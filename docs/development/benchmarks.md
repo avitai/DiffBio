@@ -9,22 +9,20 @@ methods.
 ## Running Benchmarks
 
 ```bash
-source ./activate.sh
-
 # CI tier (~1 min, subsampled datasets)
-python benchmarks/run_all.py --tier ci --quick
+uv run python benchmarks/run_all.py --tier ci --quick
 
 # Nightly tier (~30 min, full Tier 1+2 benchmarks)
-python benchmarks/run_all.py --tier nightly
+uv run python benchmarks/run_all.py --tier nightly
 
 # Full suite (~2 hours on GPU)
-python benchmarks/run_all.py --tier full
+uv run python benchmarks/run_all.py --tier full
 
 # Filter by domain
-python benchmarks/run_all.py --tier nightly --domains singlecell
+uv run python benchmarks/run_all.py --tier nightly --domains singlecell
 
 # Single benchmark
-python benchmarks/singlecell/bench_batch_correction.py --quick
+uv run python benchmarks/singlecell/bench_batch_correction.py --quick
 ```
 
 ---
@@ -102,11 +100,16 @@ evaluations).
 
 ## Architecture
 
-Built on the **calibrax** + **datarax** ecosystem:
+Built on the Datarax, Artifex, Opifex, and Calibrax ecosystem:
 
+- **datarax**: `DataSourceModule` and execution patterns for loading and
+  iterating real datasets
+- **artifex**: benchmark and model-adapter reference patterns for model-facing
+  integrations
+- **opifex**: scientific-training and optimization surfaces used by
+  benchmarked operators
 - **calibrax**: `BenchmarkResult`, `Metric`, `Point`, `TimingCollector`,
-  `Store`, regression detection, publication export
-- **datarax**: `DataSourceModule` for loading real datasets
+  `Store`, regression detection, comparison, and publication export
 - **DiffBio-specific**: `check_gradient_flow()` for verifying operator
   differentiability
 

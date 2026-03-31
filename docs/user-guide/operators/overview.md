@@ -154,7 +154,7 @@ See the [Soft Operations concept guide](../concepts/soft-operations.md) for a de
 |----------|-------------|--------|
 | `DifferentiableSecondaryStructure` | PyDSSP-style DSSP with continuous H-bond matrix | <span class="diff-high">Implemented</span> |
 
-### [Language Model Operators](language-models.md)
+### [Foundation Model Operators](foundation-models.md)
 
 | Operator | Description | Status |
 |----------|-------------|--------|

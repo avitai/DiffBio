@@ -11,7 +11,7 @@ This module provides two complementary imputation strategies:
    treats genes as tokens, randomly masks a fraction of them, and predicts
    the masked gene expression values from the unmasked context using a
    transformer encoder. Reuses ``TransformerSequenceEncoder`` from the
-   language models module (DRY).
+   foundation models module (DRY).
 
 Applications: Denoising dropout events in scRNA-seq count matrices, recovering
 gene-gene relationships masked by technical noise.
@@ -34,7 +34,7 @@ from diffbio.core.graph_utils import (
     compute_pairwise_distances,
     symmetrize_graph,
 )
-from diffbio.operators.language_models.transformer_encoder import (
+from diffbio.operators.foundation_models.transformer_encoder import (
     TransformerSequenceEncoder,
     TransformerSequenceEncoderConfig,
 )
