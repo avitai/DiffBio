@@ -32,6 +32,7 @@ _TIER_1 = [
     ("singlecell", "benchmarks.singlecell.bench_vae_integration", "VAEIntegrationBenchmark"),
     ("singlecell", "benchmarks.singlecell.bench_trajectory", "TrajectoryBenchmark"),
     ("singlecell", "benchmarks.singlecell.bench_grn", "GRNBenchmark"),
+    ("drug_discovery", "benchmarks.drug_discovery.bench_molnet", "MolNetBenchmark"),
 ]
 
 _TIER_2 = [
