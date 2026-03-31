@@ -5,6 +5,7 @@ for bioinformatics and drug discovery applications.
 
 Sources:
     AnnDataSource: AnnData (.h5ad) file reading for single-cell data
+    ENCODEPeakSource: ENCODE narrowPeak BED file reading for ChIP-seq peaks
     IndexedViewSource: Lazy-loading view into a data source using index mapping
     MolNetSource: MoleculeNet benchmark datasets for drug discovery
     BAMSource: BAM/CRAM file reading for aligned sequencing reads
@@ -18,6 +19,7 @@ Interop:
 from diffbio.sources.anndata_interop import from_anndata, to_anndata
 from diffbio.sources.anndata_source import AnnDataSource, AnnDataSourceConfig
 from diffbio.sources.bam import BAMSource, BAMSourceConfig
+from diffbio.sources.encode_peaks import ENCODEPeakConfig, ENCODEPeakSource
 from diffbio.sources.fasta import FastaSource, FastaSourceConfig
 from diffbio.sources.indexed_view import IndexedViewSource, IndexedViewSourceConfig
 from diffbio.sources.molnet import MolNetSource, MolNetSourceConfig
@@ -39,6 +41,8 @@ __all__ = [
     "AnnDataSourceConfig",
     "BAMSource",
     "BAMSourceConfig",
+    "ENCODEPeakConfig",
+    "ENCODEPeakSource",
     "FastaSource",
     "FastaSourceConfig",
     "IndexedViewSource",

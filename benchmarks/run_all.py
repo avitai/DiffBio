@@ -45,6 +45,8 @@ _TIER_2 = [
 
 _TIER_3 = [
     ("statistical", "benchmarks.statistical.bench_de", "DEBenchmark"),
+    ("multiomics", "benchmarks.multiomics.bench_spatial_deconv", "SpatialDeconvBenchmark"),
+    ("epigenomics", "benchmarks.epigenomics.bench_peak_calling", "PeakCallingBenchmark"),
 ]
 
 _TIERS = {
