@@ -28,6 +28,10 @@ from diffbio.operators.foundation_models.contracts import (
     get_foundation_model_cls,
     register_foundation_model,
 )
+from diffbio.operators.foundation_models.embedding_probe import (
+    EmbeddingProbeConfig,
+    LinearEmbeddingProbe,
+)
 from diffbio.operators.foundation_models.foundation_model import (
     DifferentiableFoundationModel,
     FoundationModelConfig,
@@ -42,8 +46,10 @@ from diffbio.operators.foundation_models.transformer_encoder import (
 
 __all__ = [
     "DifferentiableFoundationModel",
+    "EmbeddingProbeConfig",
     "FoundationModelConfig",
     "GeneTokenizer",
+    "LinearEmbeddingProbe",
     "AdapterMode",
     "FoundationArtifactSpec",
     "FoundationEmbeddingMixin",
