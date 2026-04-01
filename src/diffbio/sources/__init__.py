@@ -36,6 +36,11 @@ from diffbio.sources.perturbation import (
     RandomControlMapping,
     load_experiment_config,
 )
+from diffbio.sources.singlecell_foundation import (
+    SingleCellEmbeddingArtifact,
+    align_singlecell_embeddings,
+    load_singlecell_embedding_artifact,
+)
 
 __all__ = [
     "AnnDataSource",
@@ -64,4 +69,7 @@ __all__ = [
     "PerturbationSourceConfig",
     "RandomControlMapping",
     "load_experiment_config",
+    "SingleCellEmbeddingArtifact",
+    "align_singlecell_embeddings",
+    "load_singlecell_embedding_artifact",
 ]

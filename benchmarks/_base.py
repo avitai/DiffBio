@@ -32,7 +32,7 @@ _FOUNDATION_TAG_KEYS = (
     "artifact_id",
     "preprocessing_version",
 )
-_FOUNDATION_METADATA_KEYS = _FOUNDATION_TAG_KEYS + ("pooling_strategy",)
+_FOUNDATION_METADATA_KEYS = (*_FOUNDATION_TAG_KEYS, "pooling_strategy")
 _FOUNDATION_COMPARISON_AXES = [
     "dataset",
     "task",

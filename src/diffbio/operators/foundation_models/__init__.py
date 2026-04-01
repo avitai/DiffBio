@@ -37,6 +37,10 @@ from diffbio.operators.foundation_models.foundation_model import (
     FoundationModelConfig,
     GeneTokenizer,
 )
+from diffbio.operators.foundation_models.precomputed import (
+    GeneformerPrecomputedAdapter,
+    SingleCellPrecomputedAdapter,
+)
 from diffbio.operators.foundation_models.transformer_encoder import (
     TransformerSequenceEncoder,
     TransformerSequenceEncoderConfig,
@@ -49,6 +53,7 @@ __all__ = [
     "EmbeddingProbeConfig",
     "FoundationModelConfig",
     "GeneTokenizer",
+    "GeneformerPrecomputedAdapter",
     "LinearEmbeddingProbe",
     "AdapterMode",
     "FoundationArtifactSpec",
@@ -56,6 +61,7 @@ __all__ = [
     "FoundationEmbeddingOperatorConfig",
     "FoundationModelKind",
     "PoolingStrategy",
+    "SingleCellPrecomputedAdapter",
     "TransformerSequenceEncoder",
     "TransformerSequenceEncoderConfig",
     "build_foundation_model_metadata",

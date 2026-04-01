@@ -109,13 +109,9 @@ def build_foundation_model_metadata(
     return {
         "model_family": encode_foundation_text(artifact_spec.model_family.value),
         "artifact_id": encode_foundation_text(artifact_spec.artifact_id),
-        "preprocessing_version": encode_foundation_text(
-            artifact_spec.preprocessing_version
-        ),
+        "preprocessing_version": encode_foundation_text(artifact_spec.preprocessing_version),
         "adapter_mode": encode_foundation_text(artifact_spec.adapter_mode.value),
-        "pooling_strategy": encode_foundation_text(
-            artifact_spec.pooling_strategy.value
-        ),
+        "pooling_strategy": encode_foundation_text(artifact_spec.pooling_strategy.value),
     }
 
 
@@ -151,9 +147,7 @@ class FoundationEmbeddingMixin:
         transformed_data = {
             **data,
             "embeddings": embeddings,
-            "foundation_model": build_foundation_model_metadata(
-                self.foundation_artifact_spec()
-            ),
+            "foundation_model": build_foundation_model_metadata(self.foundation_artifact_spec()),
         }
 
         if token_embeddings is not None:
@@ -162,9 +156,7 @@ class FoundationEmbeddingMixin:
         if extra_outputs:
             for key in ("embeddings", "token_embeddings", "foundation_model"):
                 if key in extra_outputs:
-                    raise ValueError(
-                        f"extra_outputs cannot override canonical key {key!r}."
-                    )
+                    raise ValueError(f"extra_outputs cannot override canonical key {key!r}.")
             transformed_data.update(extra_outputs)
 
         return transformed_data

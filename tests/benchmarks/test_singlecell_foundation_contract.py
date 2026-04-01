@@ -1,98 +1,77 @@
-"""Tests for the single-cell foundation-model benchmark contract."""
+"""Tests for single-cell foundation benchmark helper contracts."""
 
 from __future__ import annotations
-
-from pathlib import Path
 
 import numpy as np
 import pytest
 
 from benchmarks.singlecell._foundation import (
-    align_singlecell_embeddings,
-    load_singlecell_embedding_artifact,
+    SINGLECELL_FOUNDATION_DATASET_CONTRACT_KEYS,
+    SINGLECELL_FOUNDATION_SUITE_SCENARIOS,
+    compute_annotation_metrics,
+    stratified_cell_annotation_split,
 )
 
 
-class TestLoadSingleCellEmbeddingArtifact:
-    """Tests for loading single-cell embedding artifacts."""
+class TestSingleCellFoundationConstants:
+    """Tests for the declared single-cell benchmark contract."""
 
-    def test_load_npz_with_cell_ids(self, tmp_path: Path) -> None:
-        embeddings = np.arange(12, dtype=np.float32).reshape(3, 4)
-        cell_ids = np.array(["cell_a", "cell_b", "cell_c"])
-        path = tmp_path / "artifact.npz"
-        np.savez(path, embeddings=embeddings, cell_ids=cell_ids)
+    def test_suite_scenarios_cover_planned_tasks(self) -> None:
+        assert SINGLECELL_FOUNDATION_SUITE_SCENARIOS == {
+            "cell_annotation": "singlecell/foundation_annotation",
+            "batch_correction": "singlecell/batch_correction",
+            "grn_transfer": "singlecell/grn",
+        }
 
-        artifact = load_singlecell_embedding_artifact(path)
-
-        np.testing.assert_allclose(np.asarray(artifact.embeddings), embeddings)
-        assert artifact.cell_ids == ("cell_a", "cell_b", "cell_c")
-
-
-class TestAlignSingleCellEmbeddings:
-    """Tests for strict cell-level embedding alignment."""
-
-    def test_reorders_embeddings_to_reference_cell_order(self, tmp_path: Path) -> None:
-        embeddings = np.array(
-            [
-                [30.0, 31.0],
-                [10.0, 11.0],
-                [20.0, 21.0],
-            ],
-            dtype=np.float32,
-        )
-        cell_ids = np.array(["cell_c", "cell_a", "cell_b"])
-        path = tmp_path / "shuffled_embeddings.npz"
-        np.savez(path, embeddings=embeddings, cell_ids=cell_ids)
-
-        aligned = align_singlecell_embeddings(
-            reference_cell_ids=["cell_a", "cell_b", "cell_c"],
-            artifact_path=path,
+    def test_dataset_contract_requires_explicit_cell_ids(self) -> None:
+        assert SINGLECELL_FOUNDATION_DATASET_CONTRACT_KEYS == (
+            "counts",
+            "batch_labels",
+            "cell_type_labels",
+            "cell_ids",
+            "embeddings",
+            "gene_names",
         )
 
-        np.testing.assert_allclose(
-            np.asarray(aligned),
-            np.array(
-                [
-                    [10.0, 11.0],
-                    [20.0, 21.0],
-                    [30.0, 31.0],
-                ],
-                dtype=np.float32,
-            ),
-        )
 
-    def test_requires_cell_ids_by_default(self, tmp_path: Path) -> None:
-        embeddings = np.arange(6, dtype=np.float32).reshape(3, 2)
-        path = tmp_path / "embeddings.npy"
-        np.save(path, embeddings)
+class TestStratifiedCellAnnotationSplit:
+    """Tests for deterministic annotation splitting."""
 
-        with pytest.raises(ValueError, match="must include cell_ids"):
-            align_singlecell_embeddings(
-                reference_cell_ids=["cell_a", "cell_b", "cell_c"],
-                artifact_path=path,
+    def test_split_is_deterministic_and_label_stratified(self) -> None:
+        labels = np.repeat(np.arange(3, dtype=np.int32), 5)
+
+        train_a, test_a = stratified_cell_annotation_split(labels, train_fraction=0.6, seed=7)
+        train_b, test_b = stratified_cell_annotation_split(labels, train_fraction=0.6, seed=7)
+
+        np.testing.assert_array_equal(train_a, train_b)
+        np.testing.assert_array_equal(test_a, test_b)
+
+        for label in np.unique(labels):
+            assert np.sum(labels[train_a] == label) == 3
+            assert np.sum(labels[test_a] == label) == 2
+
+    def test_split_rejects_singleton_label(self) -> None:
+        labels = np.array([0, 0, 1], dtype=np.int32)
+
+        with pytest.raises(ValueError, match="at least two cells"):
+            stratified_cell_annotation_split(labels)
+
+
+class TestComputeAnnotationMetrics:
+    """Tests for cell-annotation metric computation."""
+
+    def test_metrics_match_expected_accuracy_and_macro_f1(self) -> None:
+        true_labels = np.array([0, 0, 1, 1, 2, 2], dtype=np.int32)
+        predicted_labels = np.array([0, 1, 1, 1, 2, 0], dtype=np.int32)
+
+        metrics = compute_annotation_metrics(true_labels, predicted_labels)
+
+        assert metrics["accuracy"] == pytest.approx(4 / 6)
+        assert metrics["macro_f1"] == pytest.approx((0.5 + 0.8 + 2 / 3) / 3)
+
+    def test_metrics_require_matching_shapes(self) -> None:
+        with pytest.raises(ValueError, match="identical shapes"):
+            compute_annotation_metrics(
+                np.array([0, 1], dtype=np.int32),
+                np.array([0], dtype=np.int32),
             )
-
-    def test_rejects_mismatched_cell_id_sets(self, tmp_path: Path) -> None:
-        embeddings = np.arange(6, dtype=np.float32).reshape(3, 2)
-        cell_ids = np.array(["cell_a", "cell_b", "cell_extra"])
-        path = tmp_path / "mismatch.npz"
-        np.savez(path, embeddings=embeddings, cell_ids=cell_ids)
-
-        with pytest.raises(ValueError, match="Cell ID mismatch"):
-            align_singlecell_embeddings(
-                reference_cell_ids=["cell_a", "cell_b", "cell_c"],
-                artifact_path=path,
-            )
-
-    def test_allows_positional_alignment_only_when_explicit(self, tmp_path: Path) -> None:
-        embeddings = np.arange(6, dtype=np.float32).reshape(3, 2)
-        path = tmp_path / "embeddings.npy"
-        np.save(path, embeddings)
-
-        aligned = align_singlecell_embeddings(
-            reference_cell_ids=["cell_a", "cell_b", "cell_c"],
-            artifact_path=path,
-            require_cell_ids=False,
-        )
-
-        np.testing.assert_allclose(np.asarray(aligned), embeddings)

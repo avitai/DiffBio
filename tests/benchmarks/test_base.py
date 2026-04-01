@@ -61,9 +61,7 @@ class _DummyBenchmark(DiffBioBenchmark):
             "loss_fn": lambda model, data: 0.0,
             "n_items": 4,
             "iterate_fn": lambda: None,
-            "result_data": {
-                "foundation_model": build_foundation_model_metadata(foundation_spec)
-            },
+            "result_data": {"foundation_model": build_foundation_model_metadata(foundation_spec)},
             "operator_name": "DummyOperator",
             "dataset_name": "dummy_dataset",
         }

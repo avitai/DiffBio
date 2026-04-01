@@ -16,7 +16,8 @@ Usage:
 from __future__ import annotations
 
 import logging
-from typing import Any
+from collections.abc import Callable
+from typing import Any, Protocol
 
 import jax.numpy as jnp
 import numpy as np
@@ -25,6 +26,7 @@ from flax import nnx
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.scib import INTEGRATION_BASELINES
 from benchmarks._metrics.scib_bridge import evaluate_integration
+from diffbio.operators.foundation_models import SingleCellPrecomputedAdapter
 from diffbio.operators.singlecell import (
     BatchCorrectionConfig,
     DifferentiableHarmony,
@@ -43,6 +45,14 @@ _CONFIG = DiffBioBenchmarkConfig(
 )
 
 
+class _SingleCellSource(Protocol):
+    """Protocol for benchmark data loading."""
+
+    def load(self) -> dict[str, Any]:
+        """Load the dataset payload for the benchmark."""
+        ...
+
+
 class BatchCorrectionBenchmark(DiffBioBenchmark):
     """Evaluate DifferentiableHarmony on immune_human dataset."""
 
@@ -52,8 +62,16 @@ class BatchCorrectionBenchmark(DiffBioBenchmark):
         *,
         quick: bool = False,
         data_dir: str = "/media/mahdi/ssd23/Data/scib",
+        source_factory: Callable[[int | None], _SingleCellSource] | None = None,
+        embedding_adapter: SingleCellPrecomputedAdapter | None = None,
     ) -> None:
         super().__init__(config, quick=quick, data_dir=data_dir)
+        self._source_factory = source_factory or self._default_source_factory
+        self.embedding_adapter = embedding_adapter
+
+    def _default_source_factory(self, subsample: int | None) -> ImmuneHumanSource:
+        """Create the default immune_human source."""
+        return ImmuneHumanSource(ImmuneHumanConfig(data_dir=self.data_dir, subsample=subsample))
 
     def _run_core(self) -> dict[str, Any]:
         """Load immune_human, run Harmony, compute scib-metrics."""
@@ -61,11 +79,20 @@ class BatchCorrectionBenchmark(DiffBioBenchmark):
 
         # 1. Load dataset
         logger.info("Loading immune_human dataset...")
-        source = ImmuneHumanSource(ImmuneHumanConfig(data_dir=self.data_dir, subsample=subsample))
+        source = self._source_factory(subsample)
         data = source.load()
         n_cells = data["n_cells"]
         n_batches = data["n_batches"]
-        embeddings = data["embeddings"]
+        if self.embedding_adapter is None:
+            embeddings = data["embeddings"]
+            embedding_source = "dataset_embeddings"
+            result_data: dict[str, Any] = {}
+        else:
+            embeddings = self.embedding_adapter.load_aligned_embeddings(
+                reference_cell_ids=data["cell_ids"],
+            )
+            embedding_source = "external_artifact"
+            result_data = self.embedding_adapter.result_data()
         batch_labels = data["batch_labels"]
         cell_type_labels = data["cell_type_labels"]
 
@@ -134,6 +161,15 @@ class BatchCorrectionBenchmark(DiffBioBenchmark):
             },
             "operator_name": "DifferentiableHarmony",
             "dataset_name": "immune_human",
+            "result_data": result_data,
+            "benchmark_metadata": {
+                "embedding_source": embedding_source,
+                **(
+                    self.embedding_adapter.benchmark_metadata()
+                    if self.embedding_adapter is not None
+                    else {}
+                ),
+            },
         }
 
 

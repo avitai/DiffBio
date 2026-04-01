@@ -2,111 +2,84 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
-
-import jax.numpy as jnp
 import numpy as np
 
-from diffbio.sources.embeddings import load_embedding_array
+SINGLECELL_FOUNDATION_SUITE_SCENARIOS = {
+    "cell_annotation": "singlecell/foundation_annotation",
+    "batch_correction": "singlecell/batch_correction",
+    "grn_transfer": "singlecell/grn",
+}
+SINGLECELL_FOUNDATION_DATASET_CONTRACT_KEYS = (
+    "counts",
+    "batch_labels",
+    "cell_type_labels",
+    "cell_ids",
+    "embeddings",
+    "gene_names",
+)
 
 
-@dataclass(frozen=True)
-class SingleCellEmbeddingArtifact:
-    """External single-cell embedding artifact plus optional row identities."""
-
-    embeddings: jnp.ndarray
-    cell_ids: tuple[str, ...] | None = None
-
-
-def load_singlecell_embedding_artifact(path: Path | str) -> SingleCellEmbeddingArtifact:
-    """Load a single-cell embedding artifact.
-
-    For ``.npz`` artifacts, this loader reads the canonical ``embeddings`` array
-    and an optional ``cell_ids`` array for row-level alignment. Other supported
-    embedding formats reuse the generic embedding loader and carry no cell IDs.
-    """
-    resolved_path = Path(path)
-    if resolved_path.suffix.lower() == ".npz":
-        with np.load(resolved_path, allow_pickle=False) as archive:
-            if "embeddings" in archive:
-                embeddings = np.asarray(archive["embeddings"], dtype=np.float32)
-            else:
-                first_key = next(iter(archive.files), None)
-                if first_key is None:
-                    raise ValueError(f"Embedding archive is empty: {resolved_path}")
-                embeddings = np.asarray(archive[first_key], dtype=np.float32)
-
-            cell_ids: tuple[str, ...] | None = None
-            if "cell_ids" in archive:
-                cell_ids = tuple(str(item) for item in np.asarray(archive["cell_ids"]))
-
-        return SingleCellEmbeddingArtifact(
-            embeddings=jnp.asarray(embeddings, dtype=jnp.float32),
-            cell_ids=cell_ids,
-        )
-
-    return SingleCellEmbeddingArtifact(embeddings=load_embedding_array(resolved_path))
-
-
-def align_singlecell_embeddings(
+def stratified_cell_annotation_split(
+    labels: np.ndarray,
     *,
-    reference_cell_ids: list[str] | tuple[str, ...],
-    artifact_path: Path | str,
-    require_cell_ids: bool = True,
-) -> jnp.ndarray:
-    """Align external embeddings to the benchmark cell order.
+    train_fraction: float = 0.8,
+    seed: int = 42,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Create a deterministic stratified train/test split for cell labels."""
+    if labels.ndim != 1:
+        raise ValueError("Cell annotation labels must be a rank-1 array.")
+    if not 0.0 < train_fraction < 1.0:
+        raise ValueError("train_fraction must be strictly between 0 and 1.")
 
-    Args:
-        reference_cell_ids: Canonical cell order from the benchmark dataset.
-        artifact_path: Path to the external embedding artifact.
-        require_cell_ids: Whether artifacts must carry explicit row identities.
+    rng = np.random.default_rng(seed)
+    train_indices: list[int] = []
+    test_indices: list[int] = []
 
-    Returns:
-        Embeddings reordered to match ``reference_cell_ids``.
-
-    Raises:
-        ValueError: If the artifact is missing ``cell_ids`` when required, if
-            the row counts disagree for positional alignment, or if the cell-ID
-            sets do not match exactly.
-    """
-    artifact = load_singlecell_embedding_artifact(artifact_path)
-    reference_ids = tuple(str(cell_id) for cell_id in reference_cell_ids)
-
-    if artifact.embeddings.ndim != 2:
-        raise ValueError(
-            "Single-cell embedding artifacts must be rank-2 matrices "
-            f"(received shape {artifact.embeddings.shape})."
-        )
-
-    if artifact.cell_ids is None:
-        if require_cell_ids:
+    for label in np.unique(labels):
+        label_indices = np.flatnonzero(labels == label)
+        if label_indices.size < 2:
             raise ValueError(
-                "Single-cell embedding artifacts must include cell_ids for strict alignment."
+                "Each cell type must have at least two cells for stratified annotation "
+                f"splitting; label {label} has {label_indices.size}."
             )
-        if artifact.embeddings.shape[0] != len(reference_ids):
-            raise ValueError(
-                "Positional single-cell embedding alignment requires the same number of rows "
-                f"as reference cells ({artifact.embeddings.shape[0]} vs {len(reference_ids)})."
-            )
-        return artifact.embeddings
 
-    if len(set(reference_ids)) != len(reference_ids):
-        raise ValueError("Reference cell IDs must be unique.")
-    if len(set(artifact.cell_ids)) != len(artifact.cell_ids):
-        raise ValueError("Embedding artifact cell_ids must be unique.")
+        shuffled = np.array(label_indices, copy=True)
+        rng.shuffle(shuffled)
+        n_train = int(np.floor(shuffled.size * train_fraction))
+        n_train = min(shuffled.size - 1, max(1, n_train))
 
-    reference_set = set(reference_ids)
-    artifact_set = set(artifact.cell_ids)
-    if reference_set != artifact_set:
-        missing = sorted(reference_set - artifact_set)
-        extra = sorted(artifact_set - reference_set)
-        raise ValueError(
-            "Cell ID mismatch between reference dataset and embedding artifact. "
-            f"Missing: {missing}. Extra: {extra}."
-        )
+        train_indices.extend(int(index) for index in shuffled[:n_train])
+        test_indices.extend(int(index) for index in shuffled[n_train:])
 
-    index_by_cell_id = {cell_id: index for index, cell_id in enumerate(artifact.cell_ids)}
-    row_indices = [index_by_cell_id[cell_id] for cell_id in reference_ids]
-    reordered = np.asarray(artifact.embeddings)[row_indices]
-    return jnp.asarray(reordered, dtype=jnp.float32)
+    train = np.asarray(sorted(train_indices), dtype=np.int32)
+    test = np.asarray(sorted(test_indices), dtype=np.int32)
+    return train, test
+
+
+def compute_annotation_metrics(
+    true_labels: np.ndarray,
+    predicted_labels: np.ndarray,
+) -> dict[str, float]:
+    """Compute accuracy and macro-F1 for cell annotation."""
+    if true_labels.shape != predicted_labels.shape:
+        raise ValueError("True and predicted label arrays must have identical shapes.")
+
+    accuracy = float(np.mean(true_labels == predicted_labels))
+
+    f1_scores: list[float] = []
+    for label in np.unique(true_labels):
+        true_positive = np.sum((true_labels == label) & (predicted_labels == label))
+        false_positive = np.sum((true_labels != label) & (predicted_labels == label))
+        false_negative = np.sum((true_labels == label) & (predicted_labels != label))
+
+        precision = true_positive / max(true_positive + false_positive, 1)
+        recall = true_positive / max(true_positive + false_negative, 1)
+        if precision + recall == 0:
+            f1_scores.append(0.0)
+        else:
+            f1_scores.append(float(2 * precision * recall / (precision + recall)))
+
+    return {
+        "accuracy": accuracy,
+        "macro_f1": float(np.mean(f1_scores)) if f1_scores else 0.0,
+    }
