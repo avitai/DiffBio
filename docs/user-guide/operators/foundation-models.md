@@ -23,6 +23,8 @@ profiles into dense embeddings using transformer architectures:
   Geneformer embeddings with explicit cell-order alignment
 - **SequencePrecomputedAdapter**: strict base contract for imported sequence
   embedding artifacts with explicit sequence-order alignment
+- **FrozenSequenceEncoderAdapter**: in-process benchmark adapter for a frozen
+  DiffBio sequence encoder using the shared sequence adapter contract
 - **DNABERT2PrecomputedAdapter**: strict adapter for precomputed DNABERT-2
   sequence embeddings
 - **NucleotideTransformerPrecomputedAdapter**: strict adapter for precomputed
@@ -83,19 +85,28 @@ The artifact metadata stays explicit:
 
 ## Imported Sequence Workflows
 
-DiffBio now also exposes sequence-level precomputed adapters through
-`SequencePrecomputedAdapter`, `DNABERT2PrecomputedAdapter`, and
-`NucleotideTransformerPrecomputedAdapter`. The current stable promise is still
-narrow:
+DiffBio now also exposes a shared sequence benchmark adapter contract. The
+stable sequence integrations today are:
+
+- `SequencePrecomputedAdapter` for aligned imported artifacts
+- `DNABERT2PrecomputedAdapter` for DNABERT-2-style exported embeddings
+- `NucleotideTransformerPrecomputedAdapter` for exported Nucleotide
+  Transformer embeddings
+- `FrozenSequenceEncoderAdapter` for in-process DiffBio sequence encoders that
+  must be benchmarked as frozen feature extractors
+
+The current stable promise is still narrow:
 
 1. an upstream sequence model exports a rank-2 embedding matrix
 2. the artifact optionally stores `sequence_ids`
-3. DiffBio aligns rows to the benchmark sequence order
-4. downstream genomics benchmarks consume those aligned embeddings
+3. DiffBio aligns rows to the benchmark sequence order or runs a frozen
+   in-process sequence encoder through the same contract
+4. downstream genomics benchmarks consume those sequence embeddings
 
 This does **not** mean arbitrary DNABERT-2 or Nucleotide Transformer
 checkpoints are already supported in-process. The stable surface today is
-precomputed artifact integration only.
+precomputed artifact integration plus DiffBio-native frozen in-process sequence
+encoders. External frozen checkpoint import remains out of stable scope.
 
 The expected artifact shape is:
 
@@ -156,9 +167,9 @@ context contract.
 
 For genomics, DiffBio now provides a three-task quick suite scaffold covering
 promoter classification, TFBS classification, and splice-site classification.
-That suite can run the native DiffBio sequence encoder plus the current
-precomputed DNABERT-2 and Nucleotide Transformer adapters through the same
-deterministic reporting layer.
+That suite can run the native DiffBio sequence encoder, a frozen in-process
+DiffBio sequence encoder, and the current precomputed DNABERT-2 and Nucleotide
+Transformer adapters through the same deterministic reporting layer.
 
 ## TransformerSequenceEncoder
 

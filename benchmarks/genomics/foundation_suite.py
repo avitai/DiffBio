@@ -20,7 +20,7 @@ from benchmarks.genomics.bench_tfbs import (
     build_foundation_tfbs_report,
     run_foundation_tfbs_suite,
 )
-from diffbio.operators.foundation_models import SequencePrecomputedAdapter
+from diffbio.operators.foundation_models import SequenceFoundationAdapter
 
 _TASK_ORDER = ("promoter", "tfbs", "splice_site")
 
@@ -29,7 +29,7 @@ def run_genomics_foundation_suite(
     *,
     quick: bool = False,
     source_factories: dict[str, Callable[[int | None], Any]] | None = None,
-    adapters: dict[str, SequencePrecomputedAdapter] | None = None,
+    adapters: dict[str, SequenceFoundationAdapter] | None = None,
 ) -> dict[str, dict[str, BenchmarkResult]]:
     """Run the quick genomics suite across native and imported embeddings."""
     source_factories = {} if source_factories is None else dict(source_factories)

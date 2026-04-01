@@ -1,1 +1,1 @@
-"""Drug discovery benchmarks for molecular property prediction."""
+"""Drug discovery benchmarks for property prediction and DTI scaffolds."""

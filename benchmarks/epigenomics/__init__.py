@@ -1,1 +1,1 @@
-"""Epigenomics benchmarks for ChIP-seq and ATAC-seq peak calling."""
+"""Epigenomics benchmarks for peak calling and contextual ablation suites."""

@@ -2,6 +2,7 @@
 
 GENOMICS_FOUNDATION_BASELINE_FAMILIES = (
     "diffbio_native",
+    "diffbio_frozen_encoder",
     "dnabert2_precomputed",
     "nucleotide_transformer_precomputed",
 )

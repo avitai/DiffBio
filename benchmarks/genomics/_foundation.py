@@ -19,7 +19,7 @@ from benchmarks._foundation_models import (
     build_foundation_task_report,
     run_foundation_benchmark_suite,
 )
-from diffbio.operators.foundation_models import SequencePrecomputedAdapter
+from diffbio.operators.foundation_models import SequenceFoundationAdapter
 
 GENOMICS_FOUNDATION_SUITE_SCENARIOS = {
     "promoter": "genomics/promoter",
@@ -63,8 +63,8 @@ def compute_sequence_classification_metrics(
 
 def run_genomics_foundation_benchmark_suite(
     *,
-    benchmark_factory: Callable[[SequencePrecomputedAdapter | None], Any],
-    adapters: dict[str, SequencePrecomputedAdapter] | None = None,
+    benchmark_factory: Callable[[SequenceFoundationAdapter | None], Any],
+    adapters: dict[str, SequenceFoundationAdapter] | None = None,
 ) -> dict[str, BenchmarkResult]:
     """Run one genomics benchmark across native and imported model families."""
     return run_foundation_benchmark_suite(

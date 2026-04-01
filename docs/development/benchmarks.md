@@ -44,9 +44,25 @@ uv run python benchmarks/singlecell/bench_batch_correction.py --quick
 
 | Benchmark | Operator | Dataset | Metrics | Baselines |
 |-----------|----------|---------|---------|-----------|
-| Promoter Classification | LinearEmbeddingProbe on native or imported sequence embeddings | synthetic_genomics scaffold | Accuracy, macro-F1, train loss | DiffBio native, sequence precomputed adapters |
-| TFBS Classification | LinearEmbeddingProbe on native or imported sequence embeddings | synthetic_genomics scaffold | Accuracy, macro-F1, train loss | DiffBio native, sequence precomputed adapters |
-| Splice-Site Classification | LinearEmbeddingProbe on native or imported sequence embeddings | synthetic_genomics scaffold | Accuracy, macro-F1, train loss | DiffBio native, sequence precomputed adapters |
+| Promoter Classification | LinearEmbeddingProbe on native, frozen, or imported sequence embeddings | synthetic_genomics scaffold | Accuracy, macro-F1, train loss | DiffBio native, DiffBio frozen encoder, sequence precomputed adapters |
+| TFBS Classification | LinearEmbeddingProbe on native, frozen, or imported sequence embeddings | synthetic_genomics scaffold | Accuracy, macro-F1, train loss | DiffBio native, DiffBio frozen encoder, sequence precomputed adapters |
+| Splice-Site Classification | LinearEmbeddingProbe on native, frozen, or imported sequence embeddings | synthetic_genomics scaffold | Accuracy, macro-F1, train loss | DiffBio native, DiffBio frozen encoder, sequence precomputed adapters |
+
+### Drug Discovery (3 benchmarks)
+
+| Benchmark | Operator | Dataset | Metrics | Baselines |
+|-----------|----------|---------|---------|-----------|
+| MolNet BBBP | CircularFingerprintOperator + MLP | bbbp | Test ROC-AUC, train ROC-AUC | GCN, AttentiveFP, D-MPNN |
+| Davis DTI Scaffold | DTIFeatureProbe on paired contract features | davis | RMSE, Pearson, Spearman | non-differentiable fingerprint, differentiable drug encoder |
+| BioSNAP DTI Scaffold | DTIFeatureProbe on paired contract features | biosnap | ROC-AUC, PR-AUC, MRR, Recall@1, Recall@5 | non-differentiable fingerprint, differentiable drug encoder |
+
+### Epigenomics (3 benchmarks)
+
+| Benchmark | Operator | Dataset | Metrics | Baselines |
+|-----------|----------|---------|---------|-----------|
+| Peak Calling | DifferentiablePeakCaller | ENCODE_CTCF_K562 | Precision, recall, F1, Jaccard | MACS2, HOMER, Genrich |
+| Contextual Peak Calling | ContextualEpigenomicsOperator ablation suite | synthetic_contextual_epigenomics | Precision, recall, F1, chromatin consistency | sequence-only, `+TF`, `+TF+chromatin` |
+| Chromatin-State Prediction | ContextualEpigenomicsOperator ablation suite | synthetic_contextual_epigenomics | Accuracy, chromatin consistency | sequence-only, `+TF`, `+TF+chromatin` |
 
 ### Alignment (2 benchmarks)
 
@@ -73,37 +89,6 @@ uv run python benchmarks/singlecell/bench_batch_correction.py --quick
 | Benchmark | Operator | Dataset | Metrics | Baselines |
 |-----------|----------|---------|---------|-----------|
 | DE Analysis | DifferentiableNBGLM | immune_human (2 cell types) | Concordance with t-test | DESeq2, edgeR, Wilcoxon |
-
----
-
-## scBench / spatialBench Context
-
-DiffBio operators cover all evaluation task types from
-[scBench](https://github.com/your-org/scbench) (394 single-cell evaluations)
-and [spatialBench](https://github.com/your-org/spatialbench) (146 spatial
-evaluations).
-
-### scBench Leaderboard (by task category)
-
-| Task | Best Model | Accuracy | DiffBio Operator |
-|------|-----------|----------|-----------------|
-| QC | Claude Opus 4.5 | 63.9% | DifferentiableQualityFilter |
-| Normalization | Claude Opus 4.5 | 83.8% | VAENormalizer |
-| Clustering | Claude Opus 4.6 | 52.7% | SoftKMeansClustering |
-| Cell Typing | Claude Opus 4.6 | 48.2% | CellAnnotator |
-| Diff. Expression | Claude Opus 4.6 | 41.4% | NB-GLM, DE Pipeline |
-| Trajectory | Claude Opus 4.5 | 61.9% | Pseudotime |
-
-### spatialBench Leaderboard (by task category)
-
-| Task | Best Model | Accuracy | DiffBio Operator |
-|------|-----------|----------|-----------------|
-| Normalization | GPT-5.2 | 76.2% | VAENormalizer |
-| Clustering | Claude Opus 4.5 (CC) | 60.3% | SoftKMeansClustering |
-| Spatial Analysis | Claude Opus 4.5 (CC) | 66.7% | SpatialDomain |
-| Diff. Expression | Claude Opus 4.5 (CC) | 46.2% | NB-GLM |
-
-*Source: scBench and spatialBench published results (3 runs per model, 95% CI).*
 
 ---
 
@@ -214,13 +199,30 @@ checkpoint support:
   `requires_batch_context`, `batch_key`, and `context_version`
 - supported: a shared `SequencePrecomputedAdapter` contract plus a genomics
   quick-suite scaffold for promoter, TFBS, and splice-site tasks
+- supported: `FrozenSequenceEncoderAdapter` for in-process frozen sequence
+  encoder benchmarking under `adapter_mode=frozen_encoder`
 - supported: `DNABERT2PrecomputedAdapter` and
   `NucleotideTransformerPrecomputedAdapter` for aligned precomputed genomics
   artifacts
+- supported: deterministic DTI source contracts for Davis affinity regression
+  and BioSNAP binary interaction scaffolds, including paired-input batching and
+  metric packaging for regression, classification, and ranking
+- supported: a shared contextual epigenomics source contract with canonical
+  `sequence`, `tf_context`, `chromatin_contacts`, and `targets` keys
+- supported: `ContextualEpigenomicsOperator` with one configurable code path
+  for sequence-only, `+TF`, and `+TF+chromatin` modes, backed by an
+  Artifex transformer and an optional structured chromatin-guidance loss
+- supported: deterministic contextual epigenomics ablation benchmarks and
+  suite reports for peak calling and chromatin-state prediction across
+  `sequence_only`, `tf_context`, and `tf_plus_chromatin`
 - not yet supported: arbitrary Geneformer checkpoint loading into DiffBio
-- not yet supported: frozen in-process DNABERT-2 or Nucleotide Transformer
-  encoder imports in stable APIs
+- not yet supported: external frozen DNABERT-2 or Nucleotide Transformer
+  checkpoint imports in stable APIs
 - not yet supported: tokenizer interchangeability claims across upstream models
+- not yet supported: protein-LM and differentiable drug-encoder integration in
+  the DTI benchmark family
+- not yet supported: real cell-type-resolved epigenomics datasets for the
+  contextual benchmark family
 
 > **Important**: Operators with learnable parameters (neural networks,
 > learnable centroids, GLM coefficients) must be trained before

@@ -28,6 +28,10 @@ from diffbio.operators.foundation_models.contracts import (
     get_foundation_model_cls,
     register_foundation_model,
 )
+from diffbio.operators.foundation_models.adapters import (
+    FoundationBenchmarkAdapter,
+    SequenceFoundationAdapter,
+)
 from diffbio.operators.foundation_models.embedding_probe import (
     EmbeddingProbeConfig,
     LinearEmbeddingProbe,
@@ -45,6 +49,7 @@ from diffbio.operators.foundation_models.precomputed import (
     SequencePrecomputedAdapter,
     SingleCellPrecomputedAdapter,
 )
+from diffbio.operators.foundation_models.frozen import FrozenSequenceEncoderAdapter
 from diffbio.operators.foundation_models.transformer_encoder import (
     TransformerSequenceEncoder,
     TransformerSequenceEncoderConfig,
@@ -56,12 +61,15 @@ __all__ = [
     "DifferentiableFoundationModel",
     "DNABERT2PrecomputedAdapter",
     "EmbeddingProbeConfig",
+    "FoundationBenchmarkAdapter",
     "FoundationModelConfig",
     "GeneTokenizer",
     "GeneformerPrecomputedAdapter",
+    "FrozenSequenceEncoderAdapter",
     "LinearEmbeddingProbe",
     "NucleotideTransformerPrecomputedAdapter",
     "ScGPTPrecomputedAdapter",
+    "SequenceFoundationAdapter",
     "SequencePrecomputedAdapter",
     "AdapterMode",
     "FoundationArtifactSpec",

@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 from pathlib import Path
+from collections.abc import Sequence
 from typing import Any
 
 import jax.numpy as jnp
 
+from diffbio.operators.foundation_models.adapters import (
+    FoundationBenchmarkAdapterBase,
+)
 from diffbio.operators.foundation_models.contracts import (
     AdapterMode,
     FoundationArtifactSpec,
     FoundationModelKind,
     PoolingStrategy,
-    build_foundation_model_metadata,
 )
 from diffbio.sources.sequence_foundation import align_sequence_embeddings
 from diffbio.sources.singlecell_foundation import align_singlecell_embeddings
@@ -50,7 +53,7 @@ def _sequence_precomputed_spec(
     )
 
 
-class _ArtifactBackedFoundationAdapter:
+class _ArtifactBackedFoundationAdapter(FoundationBenchmarkAdapterBase):
     """Shared base for artifact-backed imported foundation-model adapters."""
 
     def __init__(
@@ -61,10 +64,13 @@ class _ArtifactBackedFoundationAdapter:
         source_name: str,
         extra_metadata: dict[str, Any] | None = None,
     ) -> None:
+        super().__init__(
+            artifact_spec=artifact_spec,
+            source_name=source_name,
+            embedding_source="external_artifact",
+            extra_metadata=extra_metadata,
+        )
         self.artifact_path = Path(artifact_path)
-        self.artifact_spec = artifact_spec
-        self.source_name = source_name
-        self.extra_metadata = {} if extra_metadata is None else dict(sorted(extra_metadata.items()))
 
     def load_aligned_embeddings(
         self,
@@ -78,19 +84,6 @@ class _ArtifactBackedFoundationAdapter:
             artifact_path=self.artifact_path,
             require_cell_ids=require_cell_ids,
         )
-
-    def result_data(self) -> dict[str, Any]:
-        """Return benchmark-ready foundation-model metadata."""
-        return {"foundation_model": build_foundation_model_metadata(self.artifact_spec)}
-
-    def benchmark_metadata(self) -> dict[str, Any]:
-        """Return benchmark metadata describing the artifact source."""
-        metadata: dict[str, Any] = {
-            "embedding_source": "external_artifact",
-            "foundation_source_name": self.source_name,
-        }
-        metadata.update(self.extra_metadata)
-        return metadata
 
 
 class SingleCellPrecomputedAdapter(_ArtifactBackedFoundationAdapter):
@@ -124,6 +117,24 @@ class SequencePrecomputedAdapter(_ArtifactBackedFoundationAdapter):
             reference_sequence_ids=reference_sequence_ids,
             artifact_path=self.artifact_path,
             require_sequence_ids=require_sequence_ids,
+        )
+
+    def load_dataset_embeddings(
+        self,
+        *,
+        reference_sequence_ids: Sequence[str],
+        one_hot_sequences: Any,
+    ) -> jnp.ndarray:
+        """Load embeddings for a sequence benchmark dataset."""
+        n_sequences = int(jnp.asarray(one_hot_sequences).shape[0])
+        if n_sequences != len(reference_sequence_ids):
+            raise ValueError(
+                "reference_sequence_ids and one_hot_sequences "
+                "must share the same leading dimension."
+            )
+        return self.load_aligned_embeddings(
+            reference_sequence_ids=list(reference_sequence_ids),
+            require_sequence_ids=True,
         )
 
 

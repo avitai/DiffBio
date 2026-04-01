@@ -46,7 +46,19 @@ _TIER_2 = [
 _TIER_3 = [
     ("statistical", "benchmarks.statistical.bench_de", "DEBenchmark"),
     ("multiomics", "benchmarks.multiomics.bench_spatial_deconv", "SpatialDeconvBenchmark"),
+    ("drug_discovery", "benchmarks.drug_discovery.bench_dti", "DavisDTIBenchmark"),
+    ("drug_discovery", "benchmarks.drug_discovery.bench_dti", "BioSNAPDTIBenchmark"),
     ("epigenomics", "benchmarks.epigenomics.bench_peak_calling", "PeakCallingBenchmark"),
+    (
+        "epigenomics",
+        "benchmarks.epigenomics.bench_contextual_peak_calling",
+        "ContextualPeakCallingBenchmark",
+    ),
+    (
+        "epigenomics",
+        "benchmarks.epigenomics.bench_chromatin_state_prediction",
+        "ChromatinStatePredictionBenchmark",
+    ),
 ]
 
 _TIERS = {

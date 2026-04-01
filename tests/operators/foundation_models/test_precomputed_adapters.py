@@ -8,9 +8,14 @@ import numpy as np
 
 from diffbio.operators.foundation_models import (
     DNABERT2PrecomputedAdapter,
+    FoundationArtifactSpec,
+    FoundationModelKind,
     GeneformerPrecomputedAdapter,
     NucleotideTransformerPrecomputedAdapter,
+    PoolingStrategy,
     ScGPTPrecomputedAdapter,
+    SequencePrecomputedAdapter,
+    AdapterMode,
     decode_foundation_text,
 )
 
@@ -160,6 +165,25 @@ class TestDNABERT2PrecomputedAdapter:
             np.array([[10.0, 11.0], [20.0, 21.0], [30.0, 31.0]], dtype=np.float32),
         )
 
+    def test_load_dataset_embeddings_uses_shared_sequence_contract(self, tmp_path: Path) -> None:
+        artifact_path = tmp_path / "dnabert2_embeddings.npz"
+        np.savez(
+            artifact_path,
+            embeddings=np.array([[30.0, 31.0], [10.0, 11.0], [20.0, 21.0]], dtype=np.float32),
+            sequence_ids=np.array(["seq_c", "seq_a", "seq_b"]),
+        )
+        adapter = DNABERT2PrecomputedAdapter(artifact_path=artifact_path)
+
+        aligned = adapter.load_dataset_embeddings(
+            reference_sequence_ids=["seq_a", "seq_b", "seq_c"],
+            one_hot_sequences=np.zeros((3, 8, 4), dtype=np.float32),
+        )
+
+        np.testing.assert_allclose(
+            np.asarray(aligned),
+            np.array([[10.0, 11.0], [20.0, 21.0], [30.0, 31.0]], dtype=np.float32),
+        )
+
 
 class TestNucleotideTransformerPrecomputedAdapter:
     """Tests for the Nucleotide Transformer precomputed adapter."""
@@ -180,3 +204,34 @@ class TestNucleotideTransformerPrecomputedAdapter:
         assert decode_foundation_text(metadata["artifact_id"]) == "nucleotide_transformer.v1"
         assert decode_foundation_text(metadata["preprocessing_version"]) == "bpe_v1"
         assert decode_foundation_text(metadata["pooling_strategy"]) == "mean"
+
+
+class TestSequencePrecomputedAdapter:
+    """Tests for the shared sequence adapter benchmark contract."""
+
+    def test_benchmark_metadata_is_stable_for_shared_sequence_contract(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        artifact_path = tmp_path / "sequence_embeddings.npz"
+        np.savez(
+            artifact_path,
+            embeddings=np.ones((2, 4), dtype=np.float32),
+            sequence_ids=np.array(["seq_a", "seq_b"]),
+        )
+        adapter = SequencePrecomputedAdapter(
+            artifact_path=artifact_path,
+            artifact_spec=FoundationArtifactSpec(
+                model_family=FoundationModelKind.SEQUENCE_TRANSFORMER,
+                artifact_id="sequence.contract.v1",
+                preprocessing_version="one_hot_v1",
+                adapter_mode=AdapterMode.PRECOMPUTED,
+                pooling_strategy=PoolingStrategy.MEAN,
+            ),
+            source_name="sequence_precomputed",
+        )
+
+        assert adapter.benchmark_metadata() == {
+            "embedding_source": "external_artifact",
+            "foundation_source_name": "sequence_precomputed",
+        }

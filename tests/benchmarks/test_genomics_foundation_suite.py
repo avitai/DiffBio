@@ -7,14 +7,18 @@ from typing import Any
 
 import jax.numpy as jnp
 import numpy as np
+from flax import nnx
 
 from benchmarks.genomics.foundation_suite import (
     build_genomics_foundation_suite_report,
     run_genomics_foundation_suite,
 )
 from diffbio.operators.foundation_models import (
+    AdapterMode,
     DNABERT2PrecomputedAdapter,
+    FrozenSequenceEncoderAdapter,
     NucleotideTransformerPrecomputedAdapter,
+    TransformerSequenceEncoderConfig,
 )
 from diffbio.sequences.dna import encode_dna_string
 
@@ -86,6 +90,21 @@ class TestGenomicsFoundationSuiteHarness:
         )
 
         adapters = {
+            "diffbio_frozen_encoder": FrozenSequenceEncoderAdapter(
+                config=TransformerSequenceEncoderConfig(
+                    hidden_dim=8,
+                    num_layers=1,
+                    num_heads=2,
+                    intermediate_dim=16,
+                    max_length=10,
+                    dropout_rate=0.0,
+                    pooling="mean",
+                    artifact_id="diffbio.sequence_frozen_encoder",
+                    preprocessing_version="one_hot_v1",
+                    adapter_mode=AdapterMode.FROZEN_ENCODER,
+                ),
+                rngs=nnx.Rngs(42),
+            ),
             "dnabert2_precomputed": DNABERT2PrecomputedAdapter(
                 artifact_path=dnabert2_path,
             ),
@@ -118,10 +137,23 @@ class TestGenomicsFoundationSuiteHarness:
         for task_name in ("promoter", "tfbs", "splice_site"):
             assert tuple(report_a["tasks"][task_name]["model_order"]) == (
                 "diffbio_native",
+                "diffbio_frozen_encoder",
                 "dnabert2_precomputed",
                 "nucleotide_transformer_precomputed",
             )
 
+        assert (
+            report_a["tasks"]["promoter"]["models"]["diffbio_frozen_encoder"]["tags"][
+                "adapter_mode"
+            ]
+            == "frozen_encoder"
+        )
+        assert (
+            report_a["tasks"]["promoter"]["models"]["diffbio_frozen_encoder"]["metadata"][
+                "embedding_source"
+            ]
+            == "in_process_operator"
+        )
         assert (
             report_a["tasks"]["promoter"]["models"]["dnabert2_precomputed"]["tags"]["artifact_id"]
             == "dnabert2.v1"

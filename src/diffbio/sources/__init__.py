@@ -9,6 +9,8 @@ Sources:
     IndexedViewSource: Lazy-loading view into a data source using index mapping
     MolNetSource: MoleculeNet benchmark datasets for drug discovery
     BAMSource: BAM/CRAM file reading for aligned sequencing reads
+    BioSNAPDTISource: Deterministic binary DTI benchmark source
+    DavisDTISource: Deterministic affinity DTI benchmark source
     FastaSource: FASTA file reading for DNA/RNA sequences
 
 Interop:
@@ -19,6 +21,21 @@ Interop:
 from diffbio.sources.anndata_interop import from_anndata, to_anndata
 from diffbio.sources.anndata_source import AnnDataSource, AnnDataSourceConfig
 from diffbio.sources.bam import BAMSource, BAMSourceConfig
+from diffbio.sources.contextual_epigenomics import (
+    CONTEXTUAL_EPIGENOMICS_DATASET_CONTRACT_KEYS,
+    CONTEXTUAL_TARGET_SEMANTICS,
+    build_synthetic_contextual_epigenomics_dataset,
+    validate_contextual_epigenomics_dataset,
+)
+from diffbio.sources.dti import (
+    DTI_DATASET_CONTRACT_KEYS,
+    BioSNAPDTISource,
+    DTISourceConfig,
+    DavisDTISource,
+    build_paired_dti_batch,
+    deterministic_dti_split,
+    validate_dti_dataset,
+)
 from diffbio.sources.embeddings import load_embedding_array
 from diffbio.sources.encode_peaks import ENCODEPeakConfig, ENCODEPeakSource
 from diffbio.sources.fasta import FastaSource, FastaSourceConfig
@@ -52,6 +69,12 @@ __all__ = [
     "AnnDataSourceConfig",
     "BAMSource",
     "BAMSourceConfig",
+    "BioSNAPDTISource",
+    "CONTEXTUAL_EPIGENOMICS_DATASET_CONTRACT_KEYS",
+    "CONTEXTUAL_TARGET_SEMANTICS",
+    "DTI_DATASET_CONTRACT_KEYS",
+    "DTISourceConfig",
+    "DavisDTISource",
     "ENCODEPeakConfig",
     "ENCODEPeakSource",
     "FastaSource",
@@ -73,6 +96,11 @@ __all__ = [
     "PerturbationConcatSource",
     "PerturbationSourceConfig",
     "RandomControlMapping",
+    "build_synthetic_contextual_epigenomics_dataset",
+    "build_paired_dti_batch",
+    "deterministic_dti_split",
+    "validate_dti_dataset",
+    "validate_contextual_epigenomics_dataset",
     "load_experiment_config",
     "SequenceEmbeddingArtifact",
     "align_sequence_embeddings",

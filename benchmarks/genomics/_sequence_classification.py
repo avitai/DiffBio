@@ -24,7 +24,7 @@ from benchmarks.genomics._foundation import (
 from diffbio.operators.foundation_models import (
     EmbeddingProbeConfig,
     LinearEmbeddingProbe,
-    SequencePrecomputedAdapter,
+    SequenceFoundationAdapter,
     TransformerSequenceEncoder,
     TransformerSequenceEncoderConfig,
 )
@@ -166,7 +166,7 @@ class SequenceClassificationBenchmark(DiffBioBenchmark):
         task_spec: SequenceTaskSpec,
         quick: bool = False,
         source_factory: Callable[[int | None], _SequenceSource] | None = None,
-        embedding_adapter: SequencePrecomputedAdapter | None = None,
+        embedding_adapter: SequenceFoundationAdapter | None = None,
     ) -> None:
         super().__init__(config, quick=quick, data_dir="")
         self.task_spec = task_spec
@@ -235,12 +235,12 @@ class SequenceClassificationBenchmark(DiffBioBenchmark):
             )
             embedding_source = "native_sequence_encoder"
         else:
-            embeddings = self.embedding_adapter.load_aligned_embeddings(
+            embeddings = self.embedding_adapter.load_dataset_embeddings(
                 reference_sequence_ids=data["sequence_ids"],
-                require_sequence_ids=True,
+                one_hot_sequences=jnp.asarray(data["one_hot_sequences"], dtype=jnp.float32),
             )
             result_data = self.embedding_adapter.result_data()
-            embedding_source = "external_artifact"
+            embedding_source = self.embedding_adapter.benchmark_metadata()["embedding_source"]
 
         train_embeddings = embeddings[train_indices]
         test_embeddings = embeddings[test_indices]
