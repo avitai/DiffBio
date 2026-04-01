@@ -64,6 +64,7 @@ class TestImmuneHumanSource:
             "counts",
             "batch_labels",
             "cell_type_labels",
+            "cell_ids",
             "embeddings",
             "gene_names",
         }
@@ -93,6 +94,17 @@ class TestImmuneHumanSource:
         data = source.load()
         assert isinstance(data["gene_names"], list)
         assert all(isinstance(g, str) for g in data["gene_names"])
+
+    def test_cell_ids_are_strings(self, source: ImmuneHumanSource) -> None:
+        data = source.load()
+        assert isinstance(data["cell_ids"], list)
+        assert len(data["cell_ids"]) == 500
+        assert all(isinstance(cell_id, str) for cell_id in data["cell_ids"])
+
+    def test_cell_ids_match_row_count(self, source: ImmuneHumanSource) -> None:
+        data = source.load()
+        assert len(data["cell_ids"]) == data["counts"].shape[0]
+        assert len(data["cell_ids"]) == data["embeddings"].shape[0]
 
     def test_counts_nonnegative(self, source: ImmuneHumanSource) -> None:
         data = source.load()

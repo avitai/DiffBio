@@ -150,11 +150,13 @@ class ImmuneHumanSource(DataSourceModule):
             embeddings = self._compute_pca(counts, n_components=50)
 
         gene_names = list(adata.var_names)
+        cell_ids = [str(cell_id) for cell_id in adata.obs_names]
 
         return {
             "counts": counts,
             "batch_labels": batch_labels,
             "cell_type_labels": cell_type_labels,
+            "cell_ids": cell_ids,
             "embeddings": embeddings,
             "gene_names": gene_names,
             "n_cells": adata.n_obs,
@@ -198,7 +200,8 @@ class ImmuneHumanSource(DataSourceModule):
 
         Returns:
             Dict with keys: counts, batch_labels, cell_type_labels,
-            embeddings, gene_names, n_cells, n_genes, n_batches, n_types.
+            cell_ids, embeddings, gene_names, n_cells, n_genes,
+            n_batches, n_types.
         """
         return self.data
 
