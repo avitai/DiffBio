@@ -21,11 +21,16 @@ from typing import Any, Protocol
 
 import jax.numpy as jnp
 import numpy as np
+from calibrax.core.result import BenchmarkResult
 from flax import nnx
 
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.scib import INTEGRATION_BASELINES
 from benchmarks._metrics.scib_bridge import evaluate_integration
+from benchmarks.singlecell._foundation import (
+    build_singlecell_foundation_task_report,
+    run_singlecell_foundation_benchmark_suite,
+)
 from diffbio.operators.foundation_models import SingleCellPrecomputedAdapter
 from diffbio.operators.singlecell import (
     BatchCorrectionConfig,
@@ -179,6 +184,48 @@ def main() -> None:
         BatchCorrectionBenchmark,
         _CONFIG,
         data_dir="/media/mahdi/ssd23/Data/scib",
+    )
+
+
+def run_foundation_batch_correction_suite(
+    *,
+    quick: bool = False,
+    data_dir: str = "/media/mahdi/ssd23/Data/scib",
+    source_factory: Callable[[int | None], _SingleCellSource] | None = None,
+    adapters: dict[str, SingleCellPrecomputedAdapter] | None = None,
+) -> dict[str, BenchmarkResult]:
+    """Run the native and imported batch-correction benchmarks under one harness."""
+    return run_singlecell_foundation_benchmark_suite(
+        benchmark_factory=lambda embedding_adapter: BatchCorrectionBenchmark(
+            quick=quick,
+            data_dir=data_dir,
+            source_factory=source_factory,
+            embedding_adapter=embedding_adapter,
+        ),
+        adapters=adapters,
+    )
+
+
+def build_foundation_batch_correction_report(
+    results: dict[str, BenchmarkResult],
+) -> dict[str, Any]:
+    """Build a deterministic comparison report for batch-correction runs."""
+    return build_singlecell_foundation_task_report(
+        benchmark_name=_CONFIG.name,
+        results=results,
+        metric_keys=(
+            "aggregate_score",
+            "silhouette_label",
+            "nmi_kmeans",
+            "ari_kmeans",
+            "clisi",
+            "isolated_labels",
+            "silhouette_batch",
+            "ilisi",
+            "graph_connectivity",
+            "bio_score",
+            "batch_score",
+        ),
     )
 
 

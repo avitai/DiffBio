@@ -40,6 +40,14 @@ uv run python benchmarks/singlecell/bench_batch_correction.py --quick
 | Trajectory | Pseudotime + Velocity | pancreas (3.7K cells) | Pseudotime range, velocity shape | scVelo, DPT, Monocle3 |
 | GRN Inference | DifferentiableGRN | benGRN mESC (11.6K edges) | AUPRC, precision, recall | GENIE3, GRNBoost2, pySCENIC |
 
+### Genomics (3 scaffold benchmarks)
+
+| Benchmark | Operator | Dataset | Metrics | Baselines |
+|-----------|----------|---------|---------|-----------|
+| Promoter Classification | LinearEmbeddingProbe on native or imported sequence embeddings | synthetic_genomics scaffold | Accuracy, macro-F1, train loss | DiffBio native, sequence precomputed adapters |
+| TFBS Classification | LinearEmbeddingProbe on native or imported sequence embeddings | synthetic_genomics scaffold | Accuracy, macro-F1, train loss | DiffBio native, sequence precomputed adapters |
+| Splice-Site Classification | LinearEmbeddingProbe on native or imported sequence embeddings | synthetic_genomics scaffold | Accuracy, macro-F1, train loss | DiffBio native, sequence precomputed adapters |
+
 ### Alignment (2 benchmarks)
 
 | Benchmark | Operator | Dataset | Metrics | Baselines |
@@ -200,9 +208,18 @@ checkpoint support:
 - supported: external embedding artifacts with explicit `cell_ids`
 - supported: benchmark tagging by `model_family`, `adapter_mode`,
   `artifact_id`, and `preprocessing_version`
-- supported: deterministic annotation comparison reports across native DiffBio,
-  Geneformer, and scGPT adapters
+- supported: deterministic single-cell quick-suite reports across native
+  DiffBio, Geneformer, and scGPT adapters for annotation and batch correction
+- supported: explicit scGPT batch-context metadata in comparison reports via
+  `requires_batch_context`, `batch_key`, and `context_version`
+- supported: a shared `SequencePrecomputedAdapter` contract plus a genomics
+  quick-suite scaffold for promoter, TFBS, and splice-site tasks
+- supported: `DNABERT2PrecomputedAdapter` and
+  `NucleotideTransformerPrecomputedAdapter` for aligned precomputed genomics
+  artifacts
 - not yet supported: arbitrary Geneformer checkpoint loading into DiffBio
+- not yet supported: frozen in-process DNABERT-2 or Nucleotide Transformer
+  encoder imports in stable APIs
 - not yet supported: tokenizer interchangeability claims across upstream models
 
 > **Important**: Operators with learnable parameters (neural networks,

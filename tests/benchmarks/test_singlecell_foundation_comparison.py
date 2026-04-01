@@ -117,8 +117,7 @@ class TestSingleCellFoundationComparisonHarness:
             "scgpt_precomputed",
         )
         assert (
-            report_a["models"]["geneformer_precomputed"]["tags"]["artifact_id"]
-            == "geneformer.v1"
+            report_a["models"]["geneformer_precomputed"]["tags"]["artifact_id"] == "geneformer.v1"
         )
         assert report_a["models"]["scgpt_precomputed"]["tags"]["artifact_id"] == "scgpt.v1"
         assert report_a["models"]["scgpt_precomputed"]["tags"]["preprocessing_version"] == (

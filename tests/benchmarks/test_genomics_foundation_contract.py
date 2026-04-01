@@ -1,0 +1,83 @@
+"""Tests for genomics foundation benchmark helper contracts."""
+
+from __future__ import annotations
+
+import numpy as np
+import pytest
+
+from benchmarks.genomics._foundation import (
+    GENOMICS_FOUNDATION_DATASET_CONTRACT_KEYS,
+    GENOMICS_FOUNDATION_SUITE_SCENARIOS,
+    compute_sequence_classification_metrics,
+    stratified_sequence_classification_split,
+)
+
+
+class TestGenomicsFoundationConstants:
+    """Tests for the declared genomics benchmark contract."""
+
+    def test_suite_scenarios_cover_planned_tasks(self) -> None:
+        assert GENOMICS_FOUNDATION_SUITE_SCENARIOS == {
+            "promoter": "genomics/promoter",
+            "tfbs": "genomics/tfbs",
+            "splice_site": "genomics/splice_site",
+        }
+
+    def test_dataset_contract_requires_explicit_sequence_ids(self) -> None:
+        assert GENOMICS_FOUNDATION_DATASET_CONTRACT_KEYS == (
+            "sequence_ids",
+            "sequences",
+            "one_hot_sequences",
+            "labels",
+        )
+
+
+class TestStratifiedSequenceClassificationSplit:
+    """Tests for deterministic genomics task splitting."""
+
+    def test_split_is_deterministic_and_label_stratified(self) -> None:
+        labels = np.repeat(np.arange(3, dtype=np.int32), 5)
+
+        train_a, test_a = stratified_sequence_classification_split(
+            labels,
+            train_fraction=0.6,
+            seed=11,
+        )
+        train_b, test_b = stratified_sequence_classification_split(
+            labels,
+            train_fraction=0.6,
+            seed=11,
+        )
+
+        np.testing.assert_array_equal(train_a, train_b)
+        np.testing.assert_array_equal(test_a, test_b)
+
+        for label in np.unique(labels):
+            assert np.sum(labels[train_a] == label) == 3
+            assert np.sum(labels[test_a] == label) == 2
+
+    def test_split_rejects_singleton_label(self) -> None:
+        labels = np.array([0, 0, 1], dtype=np.int32)
+
+        with pytest.raises(ValueError, match="at least two sequences"):
+            stratified_sequence_classification_split(labels)
+
+
+class TestComputeSequenceClassificationMetrics:
+    """Tests for genomics classification metric computation."""
+
+    def test_metrics_match_expected_accuracy_and_macro_f1(self) -> None:
+        true_labels = np.array([0, 0, 1, 1, 2, 2], dtype=np.int32)
+        predicted_labels = np.array([0, 1, 1, 1, 2, 0], dtype=np.int32)
+
+        metrics = compute_sequence_classification_metrics(true_labels, predicted_labels)
+
+        assert metrics["accuracy"] == pytest.approx(4 / 6)
+        assert metrics["macro_f1"] == pytest.approx((0.5 + 0.8 + 2 / 3) / 3)
+
+    def test_metrics_require_matching_shapes(self) -> None:
+        with pytest.raises(ValueError, match="identical shapes"):
+            compute_sequence_classification_metrics(
+                np.array([0, 1], dtype=np.int32),
+                np.array([0], dtype=np.int32),
+            )

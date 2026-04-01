@@ -17,15 +17,18 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
-from flax import nnx
 from calibrax.core.result import BenchmarkResult
+from flax import nnx
 
+from benchmarks._classification import create_embedding_probe_train_step
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.singlecell_foundation import (
     SINGLECELL_FOUNDATION_BASELINE_FAMILIES,
 )
 from benchmarks.singlecell._foundation import (
+    build_singlecell_foundation_task_report,
     compute_annotation_metrics,
+    run_singlecell_foundation_benchmark_suite,
     SINGLECELL_FOUNDATION_DATASET_CONTRACT_KEYS,
     SINGLECELL_FOUNDATION_SUITE_SCENARIOS,
     stratified_cell_annotation_split,
@@ -59,28 +62,6 @@ class _SingleCellSource(Protocol):
     def load(self) -> dict[str, Any]:
         """Load the dataset payload for the benchmark."""
         ...
-
-
-def _create_probe_train_step() -> Any:
-    """Create a JIT-compiled training step for the embedding probe."""
-
-    @nnx.jit
-    def train_step(
-        probe: LinearEmbeddingProbe,
-        opt: nnx.Optimizer,
-        embeddings: jax.Array,
-        labels: jax.Array,
-    ) -> jax.Array:
-        def loss_fn(model_inner: LinearEmbeddingProbe) -> jax.Array:
-            result, _, _ = model_inner.apply({"embeddings": embeddings}, {}, None)
-            log_probs = jax.nn.log_softmax(result["logits"], axis=-1)
-            return -jnp.mean(log_probs[jnp.arange(labels.shape[0]), labels])
-
-        loss, grads = nnx.value_and_grad(loss_fn, argnums=nnx.DiffState(0, nnx.Param))(probe)
-        opt.update(probe, grads)
-        return loss
-
-    return train_step
 
 
 class SingleCellFoundationAnnotationBenchmark(DiffBioBenchmark):
@@ -147,7 +128,7 @@ class SingleCellFoundationAnnotationBenchmark(DiffBioBenchmark):
         )
         probe = LinearEmbeddingProbe(probe_config, rngs=nnx.Rngs(42))
         optimizer = nnx.Optimizer(probe, optax.adam(_LEARNING_RATE), wrt=nnx.Param)
-        train_step = _create_probe_train_step()
+        train_step = create_embedding_probe_train_step()
 
         logger.info("Training embedding probe (%d steps)...", n_train_steps)
         train_loss = jnp.array(0.0, dtype=jnp.float32)
@@ -226,77 +207,26 @@ def run_foundation_annotation_suite(
     adapters: dict[str, SingleCellPrecomputedAdapter] | None = None,
 ) -> dict[str, BenchmarkResult]:
     """Run the native and imported annotation benchmarks under one harness."""
-    results = {
-        "diffbio_native": SingleCellFoundationAnnotationBenchmark(
+    return run_singlecell_foundation_benchmark_suite(
+        benchmark_factory=lambda embedding_adapter: SingleCellFoundationAnnotationBenchmark(
             quick=quick,
             data_dir=data_dir,
             source_factory=source_factory,
-        ).run()
-    }
-
-    for baseline_name in SINGLECELL_FOUNDATION_BASELINE_FAMILIES:
-        if baseline_name == "diffbio_native":
-            continue
-        if adapters is None or baseline_name not in adapters:
-            continue
-
-        results[baseline_name] = SingleCellFoundationAnnotationBenchmark(
-            quick=quick,
-            data_dir=data_dir,
-            source_factory=source_factory,
-            embedding_adapter=adapters[baseline_name],
-        ).run()
-
-    return results
+            embedding_adapter=embedding_adapter,
+        ),
+        adapters=adapters,
+    )
 
 
 def build_foundation_annotation_report(
     results: dict[str, BenchmarkResult],
 ) -> dict[str, Any]:
     """Build a deterministic comparison report for annotation benchmark runs."""
-    model_order = [name for name in SINGLECELL_FOUNDATION_BASELINE_FAMILIES if name in results]
-    models: dict[str, Any] = {}
-    stable_metric_keys = ("accuracy", "macro_f1", "train_loss")
-    stable_tag_keys = (
-        "dataset",
-        "task",
-        "model_family",
-        "adapter_mode",
-        "artifact_id",
-        "preprocessing_version",
+    return build_singlecell_foundation_task_report(
+        benchmark_name=_CONFIG.name,
+        results=results,
+        metric_keys=("accuracy", "macro_f1", "train_loss"),
     )
-    stable_metadata_keys = ("embedding_source", "foundation_source_name")
-
-    for model_name in model_order:
-        result = results[model_name]
-        models[model_name] = {
-            "metrics": {
-                key: float(result.metrics[key].value)
-                for key in stable_metric_keys
-                if key in result.metrics
-            },
-            "tags": {
-                key: result.tags[key]
-                for key in stable_tag_keys
-                if key in result.tags
-            },
-            "metadata": {
-                key: result.metadata[key]
-                for key in stable_metadata_keys
-                if key in result.metadata
-            },
-        }
-
-    dataset = next(iter(results.values())).tags["dataset"]
-    task = next(iter(results.values())).tags["task"]
-
-    return {
-        "benchmark": _CONFIG.name,
-        "dataset": dataset,
-        "task": task,
-        "model_order": model_order,
-        "models": models,
-    }
 
 
 if __name__ == "__main__":

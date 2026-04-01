@@ -21,6 +21,12 @@ profiles into dense embeddings using transformer architectures:
 - **GeneTokenizer**: Geneformer-style rank-value gene tokenization via soft sorting
 - **GeneformerPrecomputedAdapter**: strict adapter for externally generated
   Geneformer embeddings with explicit cell-order alignment
+- **SequencePrecomputedAdapter**: strict base contract for imported sequence
+  embedding artifacts with explicit sequence-order alignment
+- **DNABERT2PrecomputedAdapter**: strict adapter for precomputed DNABERT-2
+  sequence embeddings
+- **NucleotideTransformerPrecomputedAdapter**: strict adapter for precomputed
+  Nucleotide Transformer sequence embeddings
 
 ## Imported Single-Cell Workflows
 
@@ -75,6 +81,27 @@ The artifact metadata stays explicit:
 - `preprocessing_version`: tokenizer or preprocessing version used upstream
 - `pooling_strategy`: pooling used to generate the exported embedding
 
+## Imported Sequence Workflows
+
+DiffBio now also exposes sequence-level precomputed adapters through
+`SequencePrecomputedAdapter`, `DNABERT2PrecomputedAdapter`, and
+`NucleotideTransformerPrecomputedAdapter`. The current stable promise is still
+narrow:
+
+1. an upstream sequence model exports a rank-2 embedding matrix
+2. the artifact optionally stores `sequence_ids`
+3. DiffBio aligns rows to the benchmark sequence order
+4. downstream genomics benchmarks consume those aligned embeddings
+
+This does **not** mean arbitrary DNABERT-2 or Nucleotide Transformer
+checkpoints are already supported in-process. The stable surface today is
+precomputed artifact integration only.
+
+The expected artifact shape is:
+
+- `embeddings`: `(n_sequences, embedding_dim)`
+- `sequence_ids`: optional row identities for strict alignment
+
 ### Benchmark Usage
 
 The single-cell foundation annotation and batch-correction benchmarks can both
@@ -101,10 +128,37 @@ Both benchmarks emit the shared `foundation_model` metadata and promote the
 canonical artifact fields into Calibrax tags for comparison and regression
 tracking.
 
-For annotation-specific transfer comparisons, DiffBio also provides a shared
-comparison harness that runs the native DiffBio embeddings, Geneformer
-artifacts, and scGPT artifacts through the same benchmark contract and builds a
-deterministic report from the stable metrics and artifact-aware tags.
+For suite-level transfer comparisons, DiffBio also provides a shared harness
+that runs native DiffBio embeddings, Geneformer artifacts, and scGPT artifacts
+through the same annotation and batch-correction contracts and builds a
+deterministic report from stable metrics and artifact-aware tags:
+
+```python
+from benchmarks.singlecell.foundation_suite import (
+    build_singlecell_foundation_suite_report,
+    run_singlecell_foundation_suite,
+)
+
+results = run_singlecell_foundation_suite(
+    quick=True,
+    adapters={
+        "geneformer_precomputed": geneformer_adapter,
+        "scgpt_precomputed": scgpt_adapter,
+    },
+)
+report = build_singlecell_foundation_suite_report(results)
+```
+
+When scGPT artifacts depend on explicit batch context, that requirement is
+carried in benchmark metadata through `requires_batch_context`, `batch_key`,
+and `context_version` so the comparison report stays explicit about the upstream
+context contract.
+
+For genomics, DiffBio now provides a three-task quick suite scaffold covering
+promoter classification, TFBS classification, and splice-site classification.
+That suite can run the native DiffBio sequence encoder plus the current
+precomputed DNABERT-2 and Nucleotide Transformer adapters through the same
+deterministic reporting layer.
 
 ## TransformerSequenceEncoder
 

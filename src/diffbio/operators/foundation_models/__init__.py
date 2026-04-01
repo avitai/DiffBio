@@ -38,8 +38,11 @@ from diffbio.operators.foundation_models.foundation_model import (
     GeneTokenizer,
 )
 from diffbio.operators.foundation_models.precomputed import (
+    DNABERT2PrecomputedAdapter,
     GeneformerPrecomputedAdapter,
+    NucleotideTransformerPrecomputedAdapter,
     ScGPTPrecomputedAdapter,
+    SequencePrecomputedAdapter,
     SingleCellPrecomputedAdapter,
 )
 from diffbio.operators.foundation_models.transformer_encoder import (
@@ -51,12 +54,15 @@ from diffbio.operators.foundation_models.transformer_encoder import (
 
 __all__ = [
     "DifferentiableFoundationModel",
+    "DNABERT2PrecomputedAdapter",
     "EmbeddingProbeConfig",
     "FoundationModelConfig",
     "GeneTokenizer",
     "GeneformerPrecomputedAdapter",
     "LinearEmbeddingProbe",
+    "NucleotideTransformerPrecomputedAdapter",
     "ScGPTPrecomputedAdapter",
+    "SequencePrecomputedAdapter",
     "AdapterMode",
     "FoundationArtifactSpec",
     "FoundationEmbeddingMixin",
