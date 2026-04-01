@@ -19,6 +19,92 @@ profiles into dense embeddings using transformer architectures:
 - **TransformerSequenceEncoder**: BERT-style transformer for DNA/RNA sequence embedding
 - **DifferentiableFoundationModel**: Geneformer/scGPT-style masked gene expression model
 - **GeneTokenizer**: Geneformer-style rank-value gene tokenization via soft sorting
+- **GeneformerPrecomputedAdapter**: strict adapter for externally generated
+  Geneformer embeddings with explicit cell-order alignment
+
+## Imported Single-Cell Workflows
+
+DiffBio's current stable imported single-cell foundation-model workflow is
+**precomputed artifact integration**. The supported adapters today are
+`GeneformerPrecomputedAdapter` and `ScGPTPrecomputedAdapter`, which load saved
+embedding matrices and align them to benchmark or dataset cell IDs before
+downstream evaluation.
+
+This intentionally does **not** claim generic Geneformer checkpoint loading,
+tokenizer interchangeability, or arbitrary fine-tuning support. The stable
+contract today is:
+
+1. upstream model produces a cell embedding artifact
+2. artifact stores `embeddings` and `cell_ids`
+3. DiffBio aligns rows to the dataset order
+4. downstream DiffBio operators and benchmarks consume the aligned embeddings
+
+### Precomputed Adapter Examples
+
+```python
+from pathlib import Path
+
+from diffbio.operators.foundation_models import (
+    GeneformerPrecomputedAdapter,
+    ScGPTPrecomputedAdapter,
+)
+
+geneformer_adapter = GeneformerPrecomputedAdapter(
+    artifact_path=Path("geneformer_embeddings.npz"),
+    artifact_id="geneformer.v1",
+    preprocessing_version="rank_value_v1",
+)
+
+scgpt_adapter = ScGPTPrecomputedAdapter(
+    artifact_path=Path("scgpt_embeddings.npz"),
+    artifact_id="scgpt.v1",
+    preprocessing_version="gene_vocab_v1",
+)
+
+aligned_embeddings = geneformer_adapter.load_aligned_embeddings(
+    reference_cell_ids=dataset_cell_ids,
+)
+metadata = scgpt_adapter.result_data()["foundation_model"]
+```
+
+The artifact metadata stays explicit:
+
+- `model_family`: `single_cell_transformer`
+- `adapter_mode`: `precomputed`
+- `artifact_id`: upstream artifact/version identifier
+- `preprocessing_version`: tokenizer or preprocessing version used upstream
+- `pooling_strategy`: pooling used to generate the exported embedding
+
+### Benchmark Usage
+
+The single-cell foundation annotation and batch-correction benchmarks can both
+consume the same adapter:
+
+```python
+from benchmarks.singlecell.bench_batch_correction import BatchCorrectionBenchmark
+from benchmarks.singlecell.bench_foundation_annotation import (
+    SingleCellFoundationAnnotationBenchmark,
+)
+
+annotation_result = SingleCellFoundationAnnotationBenchmark(
+    quick=True,
+    embedding_adapter=geneformer_adapter,
+).run()
+
+integration_result = BatchCorrectionBenchmark(
+    quick=True,
+    embedding_adapter=scgpt_adapter,
+).run()
+```
+
+Both benchmarks emit the shared `foundation_model` metadata and promote the
+canonical artifact fields into Calibrax tags for comparison and regression
+tracking.
+
+For annotation-specific transfer comparisons, DiffBio also provides a shared
+comparison harness that runs the native DiffBio embeddings, Geneformer
+artifacts, and scGPT artifacts through the same benchmark contract and builds a
+deterministic report from the stable metrics and artifact-aware tags.
 
 ## TransformerSequenceEncoder
 

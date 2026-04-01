@@ -39,6 +39,7 @@ from diffbio.operators.foundation_models.foundation_model import (
 )
 from diffbio.operators.foundation_models.precomputed import (
     GeneformerPrecomputedAdapter,
+    ScGPTPrecomputedAdapter,
     SingleCellPrecomputedAdapter,
 )
 from diffbio.operators.foundation_models.transformer_encoder import (
@@ -55,6 +56,7 @@ __all__ = [
     "GeneTokenizer",
     "GeneformerPrecomputedAdapter",
     "LinearEmbeddingProbe",
+    "ScGPTPrecomputedAdapter",
     "AdapterMode",
     "FoundationArtifactSpec",
     "FoundationEmbeddingMixin",

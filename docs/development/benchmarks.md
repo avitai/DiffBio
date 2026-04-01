@@ -29,10 +29,11 @@ uv run python benchmarks/singlecell/bench_batch_correction.py --quick
 
 ## Benchmark Suite
 
-### Single-Cell (5 benchmarks)
+### Single-Cell (6 benchmarks)
 
 | Benchmark | Operator | Dataset | Metrics | Baselines |
 |-----------|----------|---------|---------|-----------|
+| Foundation Annotation | LinearEmbeddingProbe on native or imported embeddings | immune_human | Accuracy, macro-F1, train loss | DiffBio native, Geneformer precomputed, scGPT precomputed |
 | Batch Correction | DifferentiableHarmony | immune_human (33K cells, 10 batches) | Full scib-metrics (aggregate, silhouette, NMI, ARI, iLISI, cLISI) | scVI, Harmony (R), Scanorama, BBKNN |
 | Clustering | SoftKMeansClustering | immune_human (16 cell types) | ARI, NMI, silhouette | Leiden, Louvain, sklearn k-means |
 | VAE Integration | VAENormalizer (ZINB) | immune_human | ELBO + scib-metrics suite | scVI, scANVI |
@@ -184,6 +185,25 @@ stored once in the shared benchmark layer. The corresponding result metadata
 also includes `foundation_model` and `comparison_axes` so regression and
 comparison tooling can group by dataset, task, and artifact identity without
 benchmark-specific code.
+
+### Imported Foundation-Model Benchmarks
+
+The current stable imported-model path is **precomputed embeddings**. For
+single-cell workloads, benchmarks consume a `SingleCellPrecomputedAdapter`
+implementation, align artifact rows by `cell_ids`, and then run the normal
+DiffBio downstream benchmark.
+
+The first supported imported adapters are `GeneformerPrecomputedAdapter` and
+`ScGPTPrecomputedAdapter`. This remains deliberately narrower than generic
+checkpoint support:
+
+- supported: external embedding artifacts with explicit `cell_ids`
+- supported: benchmark tagging by `model_family`, `adapter_mode`,
+  `artifact_id`, and `preprocessing_version`
+- supported: deterministic annotation comparison reports across native DiffBio,
+  Geneformer, and scGPT adapters
+- not yet supported: arbitrary Geneformer checkpoint loading into DiffBio
+- not yet supported: tokenizer interchangeability claims across upstream models
 
 > **Important**: Operators with learnable parameters (neural networks,
 > learnable centroids, GLM coefficients) must be trained before

@@ -17,6 +17,22 @@ from diffbio.operators.foundation_models.contracts import (
 from diffbio.sources.singlecell_foundation import align_singlecell_embeddings
 
 
+def _singlecell_precomputed_spec(
+    *,
+    artifact_id: str,
+    preprocessing_version: str,
+    pooling_strategy: PoolingStrategy,
+) -> FoundationArtifactSpec:
+    """Build the canonical artifact spec for imported single-cell embeddings."""
+    return FoundationArtifactSpec(
+        model_family=FoundationModelKind.SINGLE_CELL_TRANSFORMER,
+        artifact_id=artifact_id,
+        preprocessing_version=preprocessing_version,
+        adapter_mode=AdapterMode.PRECOMPUTED,
+        pooling_strategy=pooling_strategy,
+    )
+
+
 class SingleCellPrecomputedAdapter:
     """Base adapter for precomputed single-cell embedding artifacts."""
 
@@ -69,12 +85,32 @@ class GeneformerPrecomputedAdapter(SingleCellPrecomputedAdapter):
     ) -> None:
         super().__init__(
             artifact_path=artifact_path,
-            artifact_spec=FoundationArtifactSpec(
-                model_family=FoundationModelKind.SINGLE_CELL_TRANSFORMER,
+            artifact_spec=_singlecell_precomputed_spec(
                 artifact_id=artifact_id,
                 preprocessing_version=preprocessing_version,
-                adapter_mode=AdapterMode.PRECOMPUTED,
                 pooling_strategy=pooling_strategy,
             ),
             source_name="geneformer_precomputed",
+        )
+
+
+class ScGPTPrecomputedAdapter(SingleCellPrecomputedAdapter):
+    """Precomputed embedding adapter for scGPT artifacts."""
+
+    def __init__(
+        self,
+        *,
+        artifact_path: Path | str,
+        artifact_id: str = "scgpt.v1",
+        preprocessing_version: str = "gene_vocab_v1",
+        pooling_strategy: PoolingStrategy = PoolingStrategy.MEAN,
+    ) -> None:
+        super().__init__(
+            artifact_path=artifact_path,
+            artifact_spec=_singlecell_precomputed_spec(
+                artifact_id=artifact_id,
+                preprocessing_version=preprocessing_version,
+                pooling_strategy=pooling_strategy,
+            ),
+            source_name="scgpt_precomputed",
         )

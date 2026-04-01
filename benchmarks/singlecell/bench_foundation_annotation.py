@@ -18,6 +18,7 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 from flax import nnx
+from calibrax.core.result import BenchmarkResult
 
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.singlecell_foundation import (
@@ -215,6 +216,87 @@ def main() -> None:
         _CONFIG,
         data_dir="/media/mahdi/ssd23/Data/scib",
     )
+
+
+def run_foundation_annotation_suite(
+    *,
+    quick: bool = False,
+    data_dir: str = "/media/mahdi/ssd23/Data/scib",
+    source_factory: Callable[[int | None], _SingleCellSource] | None = None,
+    adapters: dict[str, SingleCellPrecomputedAdapter] | None = None,
+) -> dict[str, BenchmarkResult]:
+    """Run the native and imported annotation benchmarks under one harness."""
+    results = {
+        "diffbio_native": SingleCellFoundationAnnotationBenchmark(
+            quick=quick,
+            data_dir=data_dir,
+            source_factory=source_factory,
+        ).run()
+    }
+
+    for baseline_name in SINGLECELL_FOUNDATION_BASELINE_FAMILIES:
+        if baseline_name == "diffbio_native":
+            continue
+        if adapters is None or baseline_name not in adapters:
+            continue
+
+        results[baseline_name] = SingleCellFoundationAnnotationBenchmark(
+            quick=quick,
+            data_dir=data_dir,
+            source_factory=source_factory,
+            embedding_adapter=adapters[baseline_name],
+        ).run()
+
+    return results
+
+
+def build_foundation_annotation_report(
+    results: dict[str, BenchmarkResult],
+) -> dict[str, Any]:
+    """Build a deterministic comparison report for annotation benchmark runs."""
+    model_order = [name for name in SINGLECELL_FOUNDATION_BASELINE_FAMILIES if name in results]
+    models: dict[str, Any] = {}
+    stable_metric_keys = ("accuracy", "macro_f1", "train_loss")
+    stable_tag_keys = (
+        "dataset",
+        "task",
+        "model_family",
+        "adapter_mode",
+        "artifact_id",
+        "preprocessing_version",
+    )
+    stable_metadata_keys = ("embedding_source", "foundation_source_name")
+
+    for model_name in model_order:
+        result = results[model_name]
+        models[model_name] = {
+            "metrics": {
+                key: float(result.metrics[key].value)
+                for key in stable_metric_keys
+                if key in result.metrics
+            },
+            "tags": {
+                key: result.tags[key]
+                for key in stable_tag_keys
+                if key in result.tags
+            },
+            "metadata": {
+                key: result.metadata[key]
+                for key in stable_metadata_keys
+                if key in result.metadata
+            },
+        }
+
+    dataset = next(iter(results.values())).tags["dataset"]
+    task = next(iter(results.values())).tags["task"]
+
+    return {
+        "benchmark": _CONFIG.name,
+        "dataset": dataset,
+        "task": task,
+        "model_order": model_order,
+        "models": models,
+    }
 
 
 if __name__ == "__main__":
