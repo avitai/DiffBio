@@ -22,8 +22,25 @@ from calibrax.core.result import BenchmarkResult
 from calibrax.profiling.timing import TimingCollector
 
 from benchmarks._gradient import GradientFlowResult, check_gradient_flow
+from diffbio.operators.foundation_models.contracts import decode_foundation_text
 
 logger = logging.getLogger(__name__)
+
+_FOUNDATION_TAG_KEYS = (
+    "model_family",
+    "adapter_mode",
+    "artifact_id",
+    "preprocessing_version",
+)
+_FOUNDATION_METADATA_KEYS = _FOUNDATION_TAG_KEYS + ("pooling_strategy",)
+_FOUNDATION_COMPARISON_AXES = [
+    "dataset",
+    "task",
+    "model_family",
+    "adapter_mode",
+    "artifact_id",
+    "preprocessing_version",
+]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -91,6 +108,10 @@ class DiffBioBenchmark(ABC):
             - ``baselines``: dict[str, Point] for comparison table
             - ``dataset_info``: dict with dataset metadata
             - ``operator_config``: dict with operator config values
+            - ``task_name``: override for the benchmark task tag
+            - ``result_data``: raw operator output for metadata extraction
+            - ``benchmark_tags``: extra string tags merged into BenchmarkResult.tags
+            - ``benchmark_metadata``: extra metadata merged into BenchmarkResult.metadata
         """
 
     def run(self) -> BenchmarkResult:
@@ -113,6 +134,11 @@ class DiffBioBenchmark(ABC):
         operator_config = core.get("operator_config", {})
         operator_name = core.get("operator_name", "Unknown")
         dataset_name = core.get("dataset_name", "unknown")
+        task_name = core.get("task_name", self.config.name.rsplit("/", 1)[-1])
+        benchmark_tags = core.get("benchmark_tags", {})
+        benchmark_metadata = core.get("benchmark_metadata", {})
+        result_data = core.get("result_data", {})
+        foundation_metadata = self._extract_foundation_metadata(result_data)
 
         # Gradient flow check
         logger.info("Checking gradient flow...")
@@ -140,24 +166,39 @@ class DiffBioBenchmark(ABC):
         if baselines:
             self._print_comparison(metrics, baselines)
 
+        tags = {
+            "operator": operator_name,
+            "dataset": dataset_name,
+            "framework": "diffbio",
+            "task": task_name,
+        }
+        for key in _FOUNDATION_TAG_KEYS:
+            if key in foundation_metadata:
+                tags[key] = foundation_metadata[key]
+        tags.update(benchmark_tags)
+
+        metadata = {
+            "dataset_info": dataset_info,
+            "baselines": {k: p.to_dict() for k, p in baselines.items()},
+            "comparison_axes": (
+                _FOUNDATION_COMPARISON_AXES if foundation_metadata else ["dataset", "task"]
+            ),
+        }
+        if foundation_metadata:
+            metadata["foundation_model"] = foundation_metadata
+        metadata.update(benchmark_metadata)
+
         return BenchmarkResult(
             name=self.config.name,
             domain="diffbio_benchmarks",
-            tags={
-                "operator": operator_name,
-                "dataset": dataset_name,
-                "framework": "diffbio",
-            },
+            tags=tags,
             timing=timing,
             metrics=calibrax_metrics,
             config={
                 **operator_config,
                 "quick": self.quick,
             },
-            metadata={
-                "dataset_info": dataset_info,
-                "baselines": {k: p.to_dict() for k, p in baselines.items()},
-            },
+            metadata=metadata,
         )
 
     @staticmethod
@@ -228,6 +269,27 @@ class DiffBioBenchmark(ABC):
                 val = point.metrics.get(k, Metric(value=0)).value
                 row += f" {val:>12.4f}"
             logger.info("%s", row)
+
+    @staticmethod
+    def _extract_foundation_metadata(result_data: Any) -> dict[str, str]:
+        """Decode optional foundation-model metadata from operator outputs."""
+        if not isinstance(result_data, dict):
+            return {}
+
+        raw_metadata = result_data.get("foundation_model")
+        if not isinstance(raw_metadata, dict):
+            return {}
+
+        decoded: dict[str, str] = {}
+        for key in _FOUNDATION_METADATA_KEYS:
+            value = raw_metadata.get(key)
+            if value is None:
+                continue
+            if isinstance(value, str):
+                decoded[key] = value
+                continue
+            decoded[key] = decode_foundation_text(value)
+        return decoded
 
     @classmethod
     def cli_main(

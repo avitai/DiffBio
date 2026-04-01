@@ -242,6 +242,7 @@ def assert_valid_benchmark_result(
     # Tags
     assert "operator" in result.tags
     assert "dataset" in result.tags
+    assert "task" in result.tags
     assert result.tags.get("framework") == "diffbio"
 
     # Timing

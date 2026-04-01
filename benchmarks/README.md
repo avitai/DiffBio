@@ -66,6 +66,24 @@ Every benchmark:
 4. Compares against published SOTA baselines (calibrax `Point` objects)
 5. Returns a `calibrax.core.result.BenchmarkResult`
 
+Shared result tags emitted by the base class:
+
+- `framework`
+- `operator`
+- `dataset`
+- `task`
+
+Foundation-model benchmarks can additionally surface:
+
+- `model_family`
+- `adapter_mode`
+- `artifact_id`
+- `preprocessing_version`
+
+Those foundation tags are decoded from the operator result's
+`foundation_model` metadata through the shared benchmark base class so
+comparison and regression code can group runs by artifact identity.
+
 ## Datasets
 
 Download datasets before running:

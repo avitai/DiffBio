@@ -161,6 +161,30 @@ class MyBenchmark(DiffBioBenchmark):
 The base class handles: gradient flow check, throughput measurement,
 comparison table printing, `BenchmarkResult` construction, and CLI.
 
+### Standard Benchmark Tags
+
+Every `DiffBioBenchmark` result emits these baseline Calibrax tags:
+
+- `framework`: always `diffbio`
+- `operator`: operator or pipeline name
+- `dataset`: dataset identifier used by the benchmark
+- `task`: canonical task slug derived from the benchmark name unless overridden
+
+When a benchmark's `_run_core()` returns raw operator output under
+`result_data`, the base class also promotes canonical foundation-model metadata
+into Calibrax tags and result metadata:
+
+- `model_family`
+- `adapter_mode`
+- `artifact_id`
+- `preprocessing_version`
+
+These values are decoded from the operator's `foundation_model` payload and
+stored once in the shared benchmark layer. The corresponding result metadata
+also includes `foundation_model` and `comparison_axes` so regression and
+comparison tooling can group by dataset, task, and artifact identity without
+benchmark-specific code.
+
 > **Important**: Operators with learnable parameters (neural networks,
 > learnable centroids, GLM coefficients) must be trained before
 > evaluation. Comparing untrained random weights against optimised
