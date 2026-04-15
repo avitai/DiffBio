@@ -24,6 +24,11 @@ from typing import TYPE_CHECKING, Any
 import jax.numpy as jnp
 import numpy as np
 
+from diffbio.sources._anndata_shared import (
+    build_anndata_data,
+    extract_anndata_annotations,
+    to_dense_array,
+)
 from diffbio.sources._utils import _require_anndata
 
 logger = logging.getLogger(__name__)
@@ -49,26 +54,6 @@ def _require_pandas() -> Any:
         raise ImportError(
             "pandas is required for AnnData interop. Install with: uv pip install pandas"
         ) from err
-
-
-def _to_dense_numpy(matrix: Any) -> np.ndarray:
-    """Convert a matrix (dense, JAX, or sparse) to a dense numpy array.
-
-    Args:
-        matrix: A numpy array, JAX array, or scipy sparse matrix.
-
-    Returns:
-        Dense numpy array with float32 dtype.
-    """
-    try:
-        import scipy.sparse  # noqa: PLC0415
-
-        if scipy.sparse.issparse(matrix):
-            return np.asarray(matrix.toarray(), dtype=np.float32)
-    except ImportError:
-        pass
-
-    return np.asarray(matrix, dtype=np.float32)
 
 
 def to_anndata(data_dict: dict[str, Any]) -> anndata.AnnData:
@@ -99,7 +84,7 @@ def to_anndata(data_dict: dict[str, Any]) -> anndata.AnnData:
     ad = _require_anndata()
     pd = _require_pandas()
 
-    counts_np = _to_dense_numpy(data_dict["counts"])
+    counts_np = to_dense_array(data_dict["counts"])
 
     obs_df = pd.DataFrame(data_dict.get("obs", {}))
     var_df = pd.DataFrame(data_dict.get("var", {}))
@@ -133,22 +118,10 @@ def from_anndata(adata: anndata.AnnData) -> dict[str, Any]:
             - ``var``: Dict mapping column names to numpy arrays.
             - ``obsm``: Dict mapping embedding names to JAX arrays.
     """
-    counts = jnp.array(_to_dense_numpy(adata.X))
+    counts = jnp.array(to_dense_array(adata.X))
+    obs, var, obsm = extract_anndata_annotations(adata)
 
-    obs: dict[str, Any] = {col: np.asarray(adata.obs[col]) for col in adata.obs.columns}
-    var: dict[str, Any] = {col: np.asarray(adata.var[col]) for col in adata.var.columns}
-
-    obsm: dict[str, jnp.ndarray] = {}
-    if adata.obsm is not None and len(adata.obsm) > 0:
-        for key in adata.obsm.keys():
-            obsm[key] = jnp.array(np.asarray(adata.obsm[key], dtype=np.float32))
-
-    return {
-        "counts": counts,
-        "obs": obs,
-        "var": var,
-        "obsm": obsm,
-    }
+    return build_anndata_data(counts=counts, obs=obs, var=var, obsm=obsm)
 
 
 # ---------------------------------------------------------------------------
@@ -200,7 +173,7 @@ def from_anndata_to_operator_input(
             f"Unknown task_type {task_type!r}. Supported: {sorted(_TASK_TYPE_BUILDERS)}"
         )
 
-    counts = jnp.array(_to_dense_numpy(adata.X))
+    counts = jnp.array(to_dense_array(adata.X))
 
     if strategy == "counts":
         library_size = jnp.sum(counts, axis=1, keepdims=True)
