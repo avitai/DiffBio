@@ -22,15 +22,13 @@ import jax.numpy as jnp
 import numpy as np
 from flax import nnx
 
-from datarax.sources._eager_source_ops import eager_get_batch, eager_iter
-
-from diffbio.sources._utils import _require_anndata
-from diffbio.sources.anndata_source import (
-    AnnDataSource,
-    AnnDataSourceConfig,
-    _load_obsm,
-    _to_dense_array,
+from diffbio.sources._anndata_shared import (
+    build_anndata_data,
+    extract_anndata_annotations,
+    read_h5ad,
+    to_dense_array,
 )
+from diffbio.sources.anndata_source import AnnDataSource, AnnDataSourceConfig
 from diffbio.sources.perturbation._types import OutputSpaceMode
 from diffbio.sources.perturbation.output_space import select_output_counts
 
@@ -124,16 +122,10 @@ class PerturbationAnnDataSource(AnnDataSource):
 
         DataSourceModule.__init__(self, config, rngs=rngs, name=name)
 
-        anndata_mod = _require_anndata()
-
-        file_path = Path(str(config.file_path))
-        if not file_path.exists():
-            raise FileNotFoundError(f"AnnData file not found: {file_path}")
-
-        adata = anndata_mod.read_h5ad(file_path, backed="r" if config.backed else None)
+        adata = read_h5ad(config)
 
         # -- Count matrix --
-        full_counts = jnp.array(_to_dense_array(adata.X))
+        full_counts = jnp.array(to_dense_array(adata.X))
 
         # -- HVG indices --
         hvg_indices: np.ndarray | None = None
@@ -145,14 +137,7 @@ class PerturbationAnnDataSource(AnnDataSource):
             full_counts, hvg_indices, OutputSpaceMode(config.output_space)
         )
 
-        # -- Obs metadata --
-        obs: dict[str, Any] = {col: np.asarray(adata.obs[col]) for col in adata.obs.columns}
-
-        # -- Var metadata --
-        var: dict[str, Any] = {col: np.asarray(adata.var[col]) for col in adata.var.columns}
-
-        # -- Obsm embeddings --
-        obsm = _load_obsm(adata)
+        obs, var, obsm = extract_anndata_annotations(adata)
 
         # -- Perturbation metadata --
         pert_labels = np.asarray(adata.obs[config.pert_col])
@@ -205,25 +190,14 @@ class PerturbationAnnDataSource(AnnDataSource):
             visible_indices = np.where(~control_mask)[0].astype(np.int64)
 
         # -- Store all data --
-        self.data = {
-            "counts": counts,
-            "obs": obs,
-            "var": var,
-            "obsm": obsm,
-        }
-        self.length: int = len(visible_indices)
+        self._initialize_loaded_source(
+            config=config,
+            adata=adata,
+            data=build_anndata_data(counts=counts, obs=obs, var=var, obsm=obsm),
+            length=len(visible_indices),
+        )
         self._full_length: int = adata.n_obs
         self._visible_indices = visible_indices
-        self.index = nnx.Variable(0)
-        self.epoch = nnx.Variable(0)
-        self._seed: int = config.seed
-        self.shuffle: bool = config.shuffle
-        self.dataset_name: str | None = str(config.file_path)
-        self.split_name: str | None = config.split
-        self._dataset_info: dict[str, int] = {
-            "n_genes": adata.n_vars,
-            "n_cells": adata.n_obs,
-        }
 
         # Perturbation-specific attributes (all plain Python / numpy scalars)
         # Stored as plain types that NNX pytree walker won't inspect
@@ -273,15 +247,7 @@ class PerturbationAnnDataSource(AnnDataSource):
 
     def __iter__(self) -> Iterator[dict[str, Any]]:
         """Iterate over visible cells with optional shuffling."""
-        return eager_iter(
-            self.data,
-            self.length,
-            self.index,
-            self.epoch,
-            self.shuffle,
-            self._seed,
-            self._build_visible_element,
-        )
+        return self._iter_with_builder(self._build_visible_element)
 
     def get_batch(self, batch_size: int, key: jax.Array | None = None) -> dict[str, Any]:
         """Get a batch of cells with perturbation metadata.
@@ -298,17 +264,7 @@ class PerturbationAnnDataSource(AnnDataSource):
             np_indices = np.array(indices)
             return self._build_batch_element(np_indices)
 
-        return eager_get_batch(
-            self.data,
-            self.length,
-            self.index,
-            self.epoch,
-            self.shuffle,
-            self._seed,
-            batch_size,
-            key,
-            _gather,
-        )
+        return self._get_batch_with_gather(batch_size, key, _gather)
 
     # =================================================================
     # Perturbation-specific public API

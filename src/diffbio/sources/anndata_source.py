@@ -22,9 +22,8 @@ References:
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 import jax
@@ -36,25 +35,15 @@ from datarax.core.config import StructuralConfig
 from datarax.core.data_source import DataSourceModule
 from datarax.sources._eager_source_ops import eager_get_batch, eager_iter, eager_reset
 
-from diffbio.sources._utils import _require_anndata
+from diffbio.sources._anndata_shared import (
+    build_anndata_data,
+    extract_anndata_annotations,
+    initialize_eager_source_state,
+    read_h5ad,
+    to_dense_array,
+)
 
 logger = logging.getLogger(__name__)
-
-
-def _to_dense_array(matrix: Any) -> np.ndarray:
-    """Convert a matrix (dense or sparse) to a dense numpy array.
-
-    Args:
-        matrix: A numpy array or scipy sparse matrix.
-
-    Returns:
-        Dense numpy array with float32 dtype.
-    """
-    import scipy.sparse  # noqa: PLC0415
-
-    if scipy.sparse.issparse(matrix):
-        return np.asarray(matrix.toarray(), dtype=np.float32)
-    return np.asarray(matrix, dtype=np.float32)
 
 
 @dataclass(frozen=True)
@@ -154,44 +143,18 @@ class AnnDataSource(DataSourceModule):
             name = f"AnnDataSource({config.file_path})"
         super().__init__(config, rngs=rngs, name=name)
 
-        anndata_mod = _require_anndata()
-
-        file_path = Path(str(config.file_path))
-        if not file_path.exists():
-            raise FileNotFoundError(f"AnnData file not found: {file_path}")
-
-        adata = anndata_mod.read_h5ad(file_path, backed="r" if config.backed else None)
+        adata = read_h5ad(config)
 
         # Convert count matrix to JAX array
-        counts = jnp.array(_to_dense_array(adata.X))
+        counts = jnp.array(to_dense_array(adata.X))
+        obs, var, obsm = extract_anndata_annotations(adata)
 
-        # Extract obs metadata as numpy arrays
-        obs: dict[str, Any] = {col: np.asarray(adata.obs[col]) for col in adata.obs.columns}
-
-        # Extract var metadata as numpy arrays
-        var: dict[str, Any] = {col: np.asarray(adata.var[col]) for col in adata.var.columns}
-
-        # Extract obsm embeddings as JAX arrays
-        obsm = _load_obsm(adata)
-
-        # Set required eager source attributes
-        self.data = {
-            "counts": counts,
-            "obs": obs,
-            "var": var,
-            "obsm": obsm,
-        }
-        self.length: int = adata.n_obs
-        self.index = nnx.Variable(0)
-        self.epoch = nnx.Variable(0)
-        self._seed: int = config.seed
-        self.shuffle: bool = config.shuffle
-        self.dataset_name: str | None = str(config.file_path)
-        self.split_name: str | None = config.split
-        self._dataset_info: dict[str, int] = {
-            "n_genes": adata.n_vars,
-            "n_cells": adata.n_obs,
-        }
+        self._initialize_loaded_source(
+            config=config,
+            adata=adata,
+            data=build_anndata_data(counts=counts, obs=obs, var=var, obsm=obsm),
+            length=adata.n_obs,
+        )
 
     # =================================================================
     # Public API: load / info
@@ -213,6 +176,63 @@ class AnnDataSource(DataSourceModule):
         """
         return self._dataset_info
 
+    def _initialize_loaded_source(
+        self,
+        *,
+        config: AnnDataSourceConfig,
+        adata: Any,
+        data: dict[str, Any],
+        length: int,
+    ) -> None:
+        """Initialize common eager-source state after AnnData loading."""
+        initialize_eager_source_state(
+            self,
+            data=data,
+            length=length,
+            seed=config.seed,
+            shuffle=config.shuffle,
+            dataset_name=str(config.file_path),
+            split_name=config.split,
+            dataset_info={
+                "n_genes": adata.n_vars,
+                "n_cells": adata.n_obs,
+            },
+        )
+
+    def _iter_with_builder(
+        self,
+        build_element: Callable[[dict[str, Any], int], dict[str, Any]],
+    ) -> Iterator[dict[str, Any]]:
+        """Iterate using the standard eager-source bookkeeping state."""
+        return eager_iter(
+            self.data,
+            self.length,
+            self.index,
+            self.epoch,
+            self.shuffle,
+            self._seed,
+            build_element,
+        )
+
+    def _get_batch_with_gather(
+        self,
+        batch_size: int,
+        key: jax.Array | None,
+        gather_fn: Callable[[dict[str, Any], Any], dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Collect a batch using the standard eager-source bookkeeping state."""
+        return eager_get_batch(
+            self.data,
+            self.length,
+            self.index,
+            self.epoch,
+            self.shuffle,
+            self._seed,
+            batch_size,
+            key,
+            gather_fn,
+        )
+
     # =================================================================
     # DataSourceModule protocol: __len__, __iter__, __next__, __getitem__
     # =================================================================
@@ -227,15 +247,7 @@ class AnnDataSource(DataSourceModule):
         Yields:
             Per-cell dictionaries with ``counts``, ``obs``, ``obsm`` keys.
         """
-        return eager_iter(
-            self.data,
-            self.length,
-            self.index,
-            self.epoch,
-            self.shuffle,
-            self._seed,
-            _build_cell_element,
-        )
+        return self._iter_with_builder(_build_cell_element)
 
     def __next__(self) -> dict[str, Any]:
         """Get the next cell element (required by DataSourceModule).
@@ -291,17 +303,7 @@ class AnnDataSource(DataSourceModule):
                 obsm[emb_name] = emb_arr[indices]
             return {"counts": counts, "obs": obs, "obsm": obsm}
 
-        return eager_get_batch(
-            self.data,
-            self.length,
-            self.index,
-            self.epoch,
-            self.shuffle,
-            self._seed,
-            batch_size,
-            key,
-            _gather,
-        )
+        return self._get_batch_with_gather(batch_size, key, _gather)
 
     # =================================================================
     # State management
@@ -338,24 +340,6 @@ class AnnDataSource(DataSourceModule):
 # =====================================================================
 # Module-level helpers (kept outside the class)
 # =====================================================================
-
-
-def _load_obsm(adata: Any) -> dict[str, jnp.ndarray]:
-    """Load obsm embeddings as a dict of JAX arrays.
-
-    Args:
-        adata: AnnData object.
-
-    Returns:
-        Dict mapping embedding names to JAX arrays,
-        or empty dict if no obsm data exists.
-    """
-    if adata.obsm is None or len(adata.obsm) == 0:
-        return {}
-
-    return {
-        key: jnp.array(np.asarray(adata.obsm[key], dtype=np.float32)) for key in adata.obsm.keys()
-    }
 
 
 def _build_cell_element(data: dict[str, Any], idx: int) -> dict[str, Any]:
