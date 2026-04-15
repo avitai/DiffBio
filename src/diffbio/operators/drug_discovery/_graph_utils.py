@@ -37,6 +37,15 @@ def build_encoder(
     return StackedMessagePassing(**encoder_kwargs)
 
 
+def _require_config_attr(config: Any, attr: str) -> Any:
+    """Read a required config attribute with a clear error message."""
+    if not hasattr(config, attr):
+        raise AttributeError(
+            f"{type(config).__name__} must define '{attr}' for graph encoder initialization."
+        )
+    return getattr(config, attr)
+
+
 def initialize_graph_encoder(
     module: Any,
     *,
@@ -62,6 +71,41 @@ def initialize_graph_encoder(
         ),
     )
     return resolved_rngs
+
+
+def initialize_graph_encoder_from_config(
+    module: Any,
+    config: Any,
+    *,
+    rngs: nnx.Rngs | None,
+    num_layers_attr: str = "num_message_passing_steps",
+    hidden_dim_attr: str = "hidden_dim",
+    in_features_attr: str = "in_features",
+    num_edge_features_attr: str = "num_edge_features",
+    attr: str = "encoder",
+) -> nnx.Rngs:
+    """Initialize a standard graph encoder from a config object."""
+    hidden_dim = _require_config_attr(config, hidden_dim_attr)
+    num_layers = _require_config_attr(config, num_layers_attr)
+    in_features = _require_config_attr(config, in_features_attr)
+    num_edge_features = getattr(config, num_edge_features_attr, None)
+
+    return initialize_graph_encoder(
+        module,
+        rngs=rngs,
+        hidden_dim=hidden_dim,
+        num_layers=num_layers,
+        in_features=in_features,
+        num_edge_features=num_edge_features,
+        attr=attr,
+    )
+
+
+def build_optional_dropout(rate: float, *, rngs: nnx.Rngs) -> nnx.Dropout | None:
+    """Create a dropout module only when the configured rate is positive."""
+    if rate <= 0:
+        return None
+    return nnx.Dropout(rate=rate, rngs=rngs)
 
 
 def unpack_graph_inputs(data: Mapping[str, Any]) -> tuple[Any, Any, Any, Any]:

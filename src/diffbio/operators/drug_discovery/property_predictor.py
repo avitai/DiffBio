@@ -13,8 +13,9 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 
 from diffbio.operators.drug_discovery._graph_utils import (
+    build_optional_dropout,
     graph_sum_readout,
-    initialize_graph_encoder,
+    initialize_graph_encoder_from_config,
 )
 
 logger = logging.getLogger(__name__)
@@ -75,14 +76,7 @@ class MolecularPropertyPredictor(OperatorModule):
         """
         super().__init__(config, rngs=rngs)
 
-        rngs = initialize_graph_encoder(
-            self,
-            rngs=rngs,
-            hidden_dim=config.hidden_dim,
-            num_layers=config.num_message_passing_steps,
-            in_features=config.in_features,
-            num_edge_features=config.num_edge_features,
-        )
+        rngs = initialize_graph_encoder_from_config(self, config, rngs=rngs)
 
         # Feed-forward network for prediction
         self.ffn = nnx.Sequential(
@@ -90,11 +84,7 @@ class MolecularPropertyPredictor(OperatorModule):
             nnx.Linear(config.hidden_dim, config.num_output_tasks, rngs=rngs),
         )
 
-        # Dropout for regularization
-        if config.dropout_rate > 0:
-            self.dropout = nnx.Dropout(rate=config.dropout_rate, rngs=rngs)
-        else:
-            self.dropout = None
+        self.dropout = build_optional_dropout(config.dropout_rate, rngs=rngs)
 
     def apply(
         self,

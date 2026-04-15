@@ -22,8 +22,9 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 
 from diffbio.operators.drug_discovery._graph_utils import (
+    build_optional_dropout,
     graph_sum_readout,
-    initialize_graph_encoder,
+    initialize_graph_encoder_from_config,
 )
 
 logger = logging.getLogger(__name__)
@@ -169,14 +170,7 @@ class ADMETPredictor(OperatorModule):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        rngs = initialize_graph_encoder(
-            self,
-            rngs=rngs,
-            hidden_dim=config.hidden_dim,
-            num_layers=config.num_message_passing_steps,
-            in_features=config.in_features,
-            num_edge_features=config.num_edge_features,
-        )
+        rngs = initialize_graph_encoder_from_config(self, config, rngs=rngs)
 
         # FFN hidden dim defaults to hidden_dim
         ffn_hidden = config.ffn_hidden_dim or config.hidden_dim
@@ -194,9 +188,7 @@ class ADMETPredictor(OperatorModule):
         self.task_heads = nnx.List(task_heads)
 
         # Dropout
-        self.dropout: nnx.Dropout | None = None
-        if config.dropout_rate > 0:
-            self.dropout = nnx.Dropout(rate=config.dropout_rate, rngs=rngs)
+        self.dropout = build_optional_dropout(config.dropout_rate, rngs=rngs)
 
     def apply(
         self,
