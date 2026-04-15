@@ -42,6 +42,16 @@ def ensure_float(x: float | Array | jnp.ndarray) -> jnp.ndarray:
     return x.astype(jnp.result_type(float))
 
 
+def normalize_axis_argument(
+    x: jnp.ndarray,
+    axis: int | None,
+) -> tuple[jnp.ndarray, int]:
+    """Flatten when ``axis`` is None, otherwise canonicalize the axis."""
+    if axis is None:
+        return jnp.ravel(x), 0
+    return x, canonicalize_axis(axis, x.ndim)
+
+
 @overload
 def standardize_and_squash(
     x: jnp.ndarray,

@@ -6,14 +6,13 @@ or :func:`~diffbio.core.soft_ops.sorting.sort`, with interpolation
 following the same methods as ``jax.numpy.quantile``.
 """
 
-from typing import Literal
+from typing import Literal, cast
 
 import jax
 import jax.numpy as jnp
 from jax import Array
 
-from diffbio.core.soft_ops._projections_simplex import proj_simplex
-from diffbio.core.soft_ops._sorting_network import argsort_via_sorting_network
+from diffbio.core.soft_ops._projections_simplex import SimplexMode, proj_simplex
 from diffbio.core.soft_ops._types import SoftIndex
 from diffbio.core.soft_ops._utils import (
     canonicalize_axis,
@@ -24,10 +23,35 @@ from diffbio.core.soft_ops._utils import (
 from diffbio.core.soft_ops.selection import take_along_axis
 from diffbio.core.soft_ops.sorting import (
     _neuralsort_a_sum,
+    _sorting_network_permutation,
 )
 
 Mode = Literal["hard", "smooth", "c0", "c1", "c2"]
 ArgMethod = Literal["softsort", "neuralsort", "sorting_network"]
+
+
+def _sorting_network_quantile_index(
+    x_last: Array,
+    softness: float | Array,
+    mode: Mode,
+    *,
+    standardize: bool,
+    take_next: bool,
+    a_b: Array,
+    k: Array,
+    kp1: Array,
+) -> Array:
+    """Return the soft quantile index from the sorting-network backend."""
+    perm = _sorting_network_permutation(
+        x_last,
+        softness,
+        cast(SimplexMode, mode),
+        descending=False,
+        standardized=standardize,
+    )
+    if take_next:
+        return (1.0 - a_b) * perm[..., k, :] + a_b * perm[..., kp1, :]
+    return perm[..., k, :]
 
 
 def argquantile(
@@ -164,17 +188,16 @@ def argquantile(
                 mode=mode,
             )[..., 0, :]
     elif method == "sorting_network":
-        perm = argsort_via_sorting_network(
+        soft_index = _sorting_network_quantile_index(
             x_last,
             softness,
             mode,
-            descending=False,
-            standardized=standardize,
+            standardize=standardize,
+            take_next=take_next,
+            a_b=a_b,
+            k=k,
+            kp1=kp1,
         )
-        if take_next:
-            soft_index = (1.0 - a_b) * perm[..., k, :] + a_b * perm[..., kp1, :]
-        else:
-            soft_index = perm[..., k, :]
     else:
         msg = f"Invalid method: {method!r}"
         raise ValueError(msg)

@@ -29,6 +29,11 @@ from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.core import soft_ops
+from diffbio.operators._masked_gene_transformer import (
+    MaskedGeneTransformerConfigBase,
+    MaskedGeneTransformerOperatorMixin,
+    build_masked_gene_transformer_encoder,
+)
 from diffbio.operators.foundation_models.contracts import (
     FoundationEmbeddingMixin,
     FoundationEmbeddingOperatorConfig,
@@ -37,45 +42,24 @@ from diffbio.operators.foundation_models.contracts import (
     register_foundation_model,
 )
 
-from diffbio.operators.foundation_models.transformer_encoder import (
-    TransformerSequenceEncoder,
-    TransformerSequenceEncoderConfig,
-)
-
 logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class FoundationModelConfig(FoundationEmbeddingOperatorConfig):
+class FoundationModelConfig(
+    FoundationEmbeddingOperatorConfig,
+    MaskedGeneTransformerConfigBase,
+):
     """Configuration for DifferentiableFoundationModel.
 
     Attributes:
-        n_genes: Number of genes in the vocabulary.
-        hidden_dim: Dimension of hidden states and embeddings.
-        num_layers: Number of transformer encoder layers.
-        num_heads: Number of attention heads.
-        mask_ratio: Fraction of genes to mask during training (scGPT default 0.15).
-        dropout_rate: Dropout rate for regularization.
         adapter_mode: Integration mode for the model artifact.
         artifact_id: Identifier for the model artifact/version.
         preprocessing_version: Version tag for count/gene-ID preprocessing.
     """
 
-    n_genes: int = 2000
-    hidden_dim: int = 128
-    num_layers: int = 2
-    num_heads: int = 4
-    mask_ratio: float = 0.15
-    dropout_rate: float = 0.1
     artifact_id: str = "diffbio.differentiable_foundation_model"
     preprocessing_version: str = "counts_gene_ids_v1"
-
-    def __post_init__(self) -> None:
-        """Set stochastic defaults for masking and validate."""
-        object.__setattr__(self, "stochastic", True)
-        if self.stream_name is None:
-            object.__setattr__(self, "stream_name", "sample")
-        super().__post_init__()
 
 
 class GeneTokenizer(nnx.Module):
@@ -154,7 +138,11 @@ def _soft_sort_permutation(
     return soft_ops.argsort(values, axis=0, descending=True, softness=temperature)
 
 
-class DifferentiableFoundationModel(FoundationEmbeddingMixin, OperatorModule):
+class DifferentiableFoundationModel(
+    FoundationEmbeddingMixin,
+    MaskedGeneTransformerOperatorMixin,
+    OperatorModule,
+):
     """Differentiable single-cell foundation model operator.
 
     Implements a masked gene expression prediction model inspired by
@@ -214,19 +202,8 @@ class DifferentiableFoundationModel(FoundationEmbeddingMixin, OperatorModule):
         # Gene tokenizer for rank-value encoding
         self.tokenizer = GeneTokenizer(config.n_genes, rngs=rngs)
 
-        # Reuse TransformerSequenceEncoder in token_embedding mode (DRY)
-        encoder_config = TransformerSequenceEncoderConfig(
-            hidden_dim=config.hidden_dim,
-            num_layers=config.num_layers,
-            num_heads=config.num_heads,
-            intermediate_dim=4 * config.hidden_dim,
-            max_length=config.n_genes,
-            input_embedding_type="token_embedding",
-            vocab_size=config.n_genes,
-            dropout_rate=config.dropout_rate,
-            pooling="mean",
-        )
-        self.encoder = TransformerSequenceEncoder(encoder_config, rngs=rngs)
+        # Reuse the shared masked-gene token encoder contract.
+        self.encoder = build_masked_gene_transformer_encoder(config, rngs=rngs)
 
         # Expression value projection: scalar -> hidden_dim (scGPT ContinuousValueEncoder)
         self.expression_projection = nnx.Sequential(
@@ -243,22 +220,6 @@ class DifferentiableFoundationModel(FoundationEmbeddingMixin, OperatorModule):
     def foundation_pooling_strategy(self) -> PoolingStrategy:
         """Return the pooling strategy for cell-level embeddings."""
         return PoolingStrategy.MEAN
-
-    def generate_random_params(
-        self,
-        rng: jax.Array,
-        data_shapes: PyTree,
-    ) -> jax.Array:
-        """Generate random parameters for gene masking.
-
-        Args:
-            rng: JAX random key.
-            data_shapes: PyTree with shapes (unused beyond API contract).
-
-        Returns:
-            A JAX random key for reproducible mask generation inside apply.
-        """
-        return rng
 
     def _process_single_cell(
         self,
@@ -344,19 +305,7 @@ class DifferentiableFoundationModel(FoundationEmbeddingMixin, OperatorModule):
                 - state is passed through unchanged
                 - metadata is passed through unchanged
         """
-        counts = data["counts"]
-        gene_ids = data["gene_ids"]
-        n_genes = counts.shape[1]
-
-        # Generate mask from random_params
-        if random_params is not None and self.config.mask_ratio > 0:
-            noise = jax.random.uniform(random_params, (n_genes,))
-            mask = (noise < self.config.mask_ratio).astype(jnp.float32)
-        else:
-            mask = jnp.zeros(n_genes, dtype=jnp.float32)
-
-        # Ensure gene_ids are integer type for embedding lookup
-        gene_ids_int = gene_ids.astype(jnp.int32)
+        counts, gene_ids_int, mask = self.prepare_masked_gene_batch(data, random_params)
 
         # Process each cell independently via vmap
         gene_reps, embeddings, predicted = jax.vmap(

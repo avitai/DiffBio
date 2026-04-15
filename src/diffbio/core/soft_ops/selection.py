@@ -17,7 +17,7 @@ import jax.numpy as jnp
 from jax import Array
 
 from diffbio.core.soft_ops._types import SoftBool, SoftIndex
-from diffbio.core.soft_ops._utils import canonicalize_axis
+from diffbio.core.soft_ops._utils import canonicalize_axis, normalize_axis_argument
 
 
 def where(condition: SoftBool, x: Array, y: Array) -> Array:
@@ -57,11 +57,7 @@ def take_along_axis(
     Returns:
         Array of shape ``(..., k, ...)``.
     """
-    if axis is None:
-        x = jnp.ravel(x)
-        axis = 0
-    else:
-        axis = canonicalize_axis(axis, x.ndim)
+    x, axis = normalize_axis_argument(x, axis)
     if x.ndim + 1 != soft_index.ndim:
         msg = (
             f"x.ndim + 1 == soft_index.ndim required, "
@@ -95,11 +91,8 @@ def take(
     if soft_index.ndim != 2:
         msg = f"soft_index must be (k, [n]), got shape {soft_index.shape}"
         raise ValueError(msg)
-    if axis is None:
-        x = jnp.ravel(x)
-        axis = 0
-    else:
-        axis = canonicalize_axis(axis, x.ndim)
+    x, axis = normalize_axis_argument(x, axis)
+    if axis != x.ndim - 1:
         x = jnp.moveaxis(x, axis, -1)
     soft_index = jnp.reshape(
         soft_index,

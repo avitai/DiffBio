@@ -34,9 +34,10 @@ from diffbio.core.graph_utils import (
     compute_pairwise_distances,
     symmetrize_graph,
 )
-from diffbio.operators.foundation_models.transformer_encoder import (
-    TransformerSequenceEncoder,
-    TransformerSequenceEncoderConfig,
+from diffbio.operators._masked_gene_transformer import (
+    MaskedGeneTransformerConfigBase,
+    MaskedGeneTransformerOperatorMixin,
+    build_masked_gene_transformer_encoder,
 )
 
 logger = logging.getLogger(__name__)
@@ -262,38 +263,19 @@ class DifferentiableDiffusionImputer(OperatorModule):
 
 
 @dataclass(frozen=True)
-class TransformerDenoiserConfig(OperatorConfig):
+class TransformerDenoiserConfig(MaskedGeneTransformerConfigBase):
     """Configuration for transformer-based gene denoising.
 
     The denoiser treats genes as tokens: each gene has an expression value and
     a gene ID.  A random fraction of genes is masked (expression zeroed) and the
     transformer predicts the original expression from the unmasked context.
-
-    Attributes:
-        n_genes: Number of genes in the input expression profile.
-        hidden_dim: Dimension of hidden states and embeddings.
-        num_layers: Number of transformer encoder layers.
-        num_heads: Number of attention heads.
-        mask_ratio: Fraction of genes to mask during training.
-        dropout_rate: Dropout rate for regularisation.
     """
 
-    n_genes: int = 2000
-    hidden_dim: int = 128
-    num_layers: int = 2
-    num_heads: int = 4
-    mask_ratio: float = 0.15
-    dropout_rate: float = 0.1
 
-    def __post_init__(self) -> None:
-        """Set stochastic defaults and validate."""
-        object.__setattr__(self, "stochastic", True)
-        if self.stream_name is None:
-            object.__setattr__(self, "stream_name", "sample")
-        super().__post_init__()
-
-
-class DifferentiableTransformerDenoiser(OperatorModule):
+class DifferentiableTransformerDenoiser(
+    MaskedGeneTransformerOperatorMixin,
+    OperatorModule,
+):
     """Transformer-based gene denoiser for single-cell expression data.
 
     Genes are treated as tokens in a sequence.  For each cell the operator:
@@ -347,41 +329,14 @@ class DifferentiableTransformerDenoiser(OperatorModule):
         if rngs is None:
             rngs = nnx.Rngs(params=0, sample=1, dropout=2)
 
-        # Reuse TransformerSequenceEncoder in token_embedding mode (DRY)
-        encoder_config = TransformerSequenceEncoderConfig(
-            hidden_dim=config.hidden_dim,
-            num_layers=config.num_layers,
-            num_heads=config.num_heads,
-            intermediate_dim=4 * config.hidden_dim,
-            max_length=config.n_genes,
-            input_embedding_type="token_embedding",
-            vocab_size=config.n_genes,
-            dropout_rate=config.dropout_rate,
-            pooling="mean",
-        )
-        self.encoder = TransformerSequenceEncoder(encoder_config, rngs=rngs)
+        # Reuse the shared masked-gene token encoder contract.
+        self.encoder = build_masked_gene_transformer_encoder(config, rngs=rngs)
 
         # Learned projection from scalar expression value to hidden_dim
         self.expression_projection = nnx.Linear(1, config.hidden_dim, rngs=rngs)
 
         # Output head: hidden_dim -> 1 (predict scalar expression per gene)
         self.output_head = nnx.Linear(config.hidden_dim, 1, rngs=rngs)
-
-    def generate_random_params(
-        self,
-        rng: jax.Array,
-        data_shapes: PyTree,
-    ) -> jax.Array:
-        """Generate random parameters for gene masking.
-
-        Args:
-            rng: JAX random key.
-            data_shapes: PyTree with shapes (unused beyond API contract).
-
-        Returns:
-            A JAX random key for reproducible mask generation inside apply.
-        """
-        return rng
 
     def _impute_single_cell(
         self,
@@ -457,19 +412,7 @@ class DifferentiableTransformerDenoiser(OperatorModule):
                 - state is passed through unchanged
                 - metadata is passed through unchanged
         """
-        counts = data["counts"]
-        gene_ids = data["gene_ids"]
-        n_genes = counts.shape[1]
-
-        # Generate mask from random_params
-        if random_params is not None and self.config.mask_ratio > 0:
-            noise = jax.random.uniform(random_params, (n_genes,))
-            mask = (noise < self.config.mask_ratio).astype(jnp.float32)
-        else:
-            mask = jnp.zeros(n_genes, dtype=jnp.float32)
-
-        # Ensure gene_ids are integer type for embedding lookup
-        gene_ids_int = gene_ids.astype(jnp.int32)
+        counts, gene_ids_int, mask = self.prepare_masked_gene_batch(data, random_params)
 
         # Process each cell independently via vmap
         imputed = jax.vmap(

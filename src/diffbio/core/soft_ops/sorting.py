@@ -32,6 +32,7 @@ from diffbio.core.soft_ops._utils import (
     canonicalize_axis,
     ensure_float,
     map_in_chunks,
+    normalize_axis_argument,
     reduce_in_chunks,
     standardize_and_squash,
     unsquash_and_destandardize,
@@ -112,6 +113,42 @@ def _neuralsort_a_sum(
         return map_in_chunks(f=_chunk_fn, xs=x_row, chunk_size=128)
 
     return jax.vmap(_single)(x_flat).reshape(x_last.shape)
+
+
+def _sorting_network_permutation(
+    x_last: Array,
+    softness: float | Array,
+    mode: SimplexMode,
+    *,
+    descending: bool,
+    standardized: bool,
+) -> Array:
+    """Return the differentiable permutation from the sorting-network backend."""
+    return argsort_via_sorting_network(
+        x_last,
+        softness,
+        mode,
+        descending=descending,
+        standardized=standardized,
+    )
+
+
+def _sorting_network_argmax_index(
+    x_last: Array,
+    softness: float | Array,
+    mode: SimplexMode,
+    *,
+    standardize: bool,
+) -> Array:
+    """Return the soft argmax index from the sorting-network backend."""
+    perm = _sorting_network_permutation(
+        x_last,
+        softness,
+        mode,
+        descending=True,
+        standardized=standardize,
+    )
+    return perm[..., 0, :]
 
 
 def _softsort_fused_sort(
@@ -342,14 +379,12 @@ def argmax(
         z = (n - 1) * x_last - a_sum
         soft_index = proj_simplex(z, axis=-1, softness=softness, mode=mode)
     elif method == "sorting_network":
-        perm = argsort_via_sorting_network(
+        soft_index = _sorting_network_argmax_index(
             x_last,
             softness,
             mode,
-            descending=True,
-            standardized=standardize,
+            standardize=standardize,
         )
-        soft_index = perm[..., 0, :]
     elif method == "ot":
         _proj_tp = _get_proj_transport_polytope()
         anchors = jnp.array([0.0, 1.0], dtype=x.dtype)
@@ -541,11 +576,7 @@ def argsort(
         return jax.nn.one_hot(indices, num_classes=num_classes, axis=-1)
 
     x = ensure_float(x)
-    if axis is None:
-        x = jnp.ravel(x)
-        axis = 0
-    else:
-        axis = canonicalize_axis(axis, x.ndim)
+    x, axis = normalize_axis_argument(x, axis)
 
     if standardize:
         x = standardize_and_squash(x, axis=axis)
@@ -567,11 +598,11 @@ def argsort(
         z = -(coef[..., :, None] * x_last[..., None, :] + a_sum[..., None, :])
         soft_index = proj_simplex(z, axis=-1, softness=softness, mode=mode)
     elif method == "sorting_network":
-        soft_index = argsort_via_sorting_network(
+        soft_index = _sorting_network_permutation(
             x_last,
             softness,
             mode,
-            descending,
+            descending=descending,
             standardized=standardize,
         )
     elif method == "ot":
@@ -632,11 +663,7 @@ def sort(
         return jnp.sort(x, axis=axis, descending=descending)
 
     x = ensure_float(x)
-    if axis is None:
-        x = jnp.ravel(x)
-        axis = 0
-    else:
-        axis = canonicalize_axis(axis, x.ndim)
+    x, axis = normalize_axis_argument(x, axis)
 
     if method == "sorting_network":
         if standardize:
@@ -788,11 +815,7 @@ def rank(
         return ranks
 
     x = ensure_float(x)
-    if axis is None:
-        x = jnp.ravel(x)
-        axis = 0
-    else:
-        axis = canonicalize_axis(axis, x.ndim)
+    x, axis = normalize_axis_argument(x, axis)
 
     if standardize:
         x = standardize_and_squash(x, axis=axis)

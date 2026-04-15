@@ -284,3 +284,25 @@ class TestCanonicalizeAxis:
 
         with pytest.raises(ValueError, match="must be specified"):
             canonicalize_axis(None, 3)
+
+
+class TestNormalizeAxisArgument:
+    """Test flatten-or-canonicalize axis normalization helper."""
+
+    def test_none_axis_flattens_input(self) -> None:
+        from diffbio.core.soft_ops._utils import normalize_axis_argument
+
+        x = jnp.arange(6, dtype=jnp.float32).reshape(2, 3)
+        normalized_x, axis = normalize_axis_argument(x, None)
+
+        assert normalized_x.shape == (6,)
+        assert axis == 0
+
+    def test_explicit_axis_is_canonicalized_without_reshaping(self) -> None:
+        from diffbio.core.soft_ops._utils import normalize_axis_argument
+
+        x = jnp.arange(6, dtype=jnp.float32).reshape(2, 3)
+        normalized_x, axis = normalize_axis_argument(x, -1)
+
+        assert normalized_x.shape == (2, 3)
+        assert axis == 1
