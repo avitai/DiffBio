@@ -21,14 +21,14 @@ Drug discovery operators enable gradient-based optimization for chemoinformatics
 The current benchmarked drug-discovery surface has two layers:
 
 - stable property-prediction benchmarking via MoleculeNet BBBP
-- Wave 6.1 DTI contract scaffolds for Davis and BioSNAP, using deterministic
+- Phase 6 Task 6.1 DTI contract scaffolds for Davis and BioSNAP, using deterministic
   paired protein-plus-drug sources and a lightweight probe over shared
   contract features
 
 These DTI benchmarks are intentionally contract-first. They validate paired
 batch assembly plus regression, classification, and ranking metric packaging
 before the protein-embedding and differentiable drug-encoder integrations land
-in the next wave.
+in a later Phase 6 task.
 
 ## Architecture
 

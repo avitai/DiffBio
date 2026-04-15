@@ -54,6 +54,28 @@ uv run pytest -vv \
   --cov-report=term-missing
 ```
 
+### Runtime Alignment Checks
+
+Before debugging a dependency-sensitive failure, verify the active installed
+ecosystem first:
+
+```bash
+uv run python scripts/verify_dependency_runtime.py
+```
+
+Then rerun the dependency-sensitive smoke tests:
+
+```bash
+uv run pytest tests/operators/epigenomics/test_fno_peak_calling.py -q
+uv run pytest tests/benchmarks/test_singlecell_foundation_suite.py -q
+uv run pytest tests/benchmarks/test_genomics_foundation_suite.py -q
+```
+
+These targeted commands still inherit the repo-wide coverage threshold from
+`pyproject.toml`. If pytest reports `N passed` and then exits non-zero because
+total coverage is below `80%`, treat that as a functional pass with an
+incomplete audit closure, not as a behavioral regression in the targeted suite.
+
 ---
 
 ## Test Directory Structure

@@ -98,6 +98,8 @@ class FNOPeakCaller(OperatorModule):
             hidden_channels=config.hidden_channels,
             modes=config.modes,
             num_layers=config.num_layers,
+            # Opifex now defaults FNOs to 2D spectral layers; this operator is 1D.
+            spatial_dims=1,
             rngs=rngs,
         )
 

@@ -1,8 +1,10 @@
 # DNA/RNA Foundation Model Operators
 
 DiffBio provides differentiable foundation-model operators for DNA/RNA
-sequences and single-cell expression, following DNABERT, RNA-FM, Geneformer,
-and scGPT architecture patterns.
+sequences and single-cell expression. The current stable imported-model
+surface is intentionally narrow: precomputed artifacts plus the first
+benchmark-facing frozen adapters, alongside DiffBio-native sequence and
+single-cell transformer operators.
 
 These operators sit in DiffBio's biology-specific layer and reuse the wider
 ecosystem stack: Datarax for operator contracts, Artifex for transformer/model
@@ -173,7 +175,9 @@ Transformer adapters through the same deterministic reporting layer.
 
 ## TransformerSequenceEncoder
 
-Differentiable transformer encoder following DNABERT/RNA-FM patterns. Converts one-hot encoded nucleotide sequences into dense embeddings suitable for downstream bioinformatics tasks.
+Differentiable transformer encoder for nucleotide sequences. It converts
+one-hot encoded DNA or RNA inputs into dense embeddings for downstream
+bioinformatics tasks and the shared frozen-adapter benchmark path.
 
 The encoder reuses Artifex's transformer core rather than maintaining a
 parallel generic transformer implementation inside DiffBio.
@@ -280,9 +284,9 @@ dna_encoder = create_dna_encoder(
 
 # RNA encoder (A, C, G, U)
 rna_encoder = create_rna_encoder(
-    hidden_dim=640,  # RNA-FM style
-    num_layers=12,
-    num_heads=20,
+    hidden_dim=512,
+    num_layers=8,
+    num_heads=8,
     pooling="cls",
 )
 ```
@@ -365,13 +369,13 @@ soft_sequence = jax.nn.softmax(logits, axis=-1)
 grads = jax.grad(embedding_loss)(soft_sequence)
 ```
 
-### Reference Architectures
+### Illustrative Configuration Scales
 
 | Model | hidden_dim | num_layers | num_heads | intermediate_dim |
 |-------|------------|------------|-----------|------------------|
-| DNABERT | 768 | 12 | 12 | 3072 |
-| RNA-FM | 640 | 12 | 20 | 5120 |
 | Small (default) | 256 | 4 | 4 | 1024 |
+| Medium | 512 | 8 | 8 | 2048 |
+| Large | 768 | 12 | 12 | 3072 |
 
 ## DifferentiableFoundationModel
 
@@ -461,9 +465,7 @@ At low temperature the soft permutation approaches the hard argsort. The key ins
 
 1. Ji, Y. et al. (2021). "DNABERT: pre-trained Bidirectional Encoder Representations from Transformers model for DNA-language in genome." *Bioinformatics* 37, 2112-2120.
 
-2. Chen, J. et al. (2022). "Interpretable RNA Foundation Model from Unannotated Data for Highly Accurate RNA Structure and Function Predictions." *Nature Methods*.
-
-3. Zhou, Z. et al. (2023). "DNABERT-2: Efficient Foundation Model and Benchmark For Multi-Species Genome." arXiv:2306.15006.
+2. Zhou, Z. et al. (2023). "DNABERT-2: Efficient Foundation Model and Benchmark For Multi-Species Genome." arXiv:2306.15006.
 
 ## Next Steps
 

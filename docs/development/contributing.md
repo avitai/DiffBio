@@ -18,6 +18,43 @@ The setup script creates a virtual environment, installs all dependencies
 via `uv`, and configures GPU detection. Always activate with `source ./activate.sh`
 before running any commands.
 
+### Dependency Runtime Contract
+
+DiffBio's canonical ecosystem runtime is the active installed environment, not
+whatever sibling checkouts happen to exist next to the repo. In practice that
+means `datarax`, `artifex`, `opifex`, and `calibrax` must resolve from the
+activated `.venv`, with the exact Git snapshots pinned in `uv.lock`.
+
+When you need the latest GitHub-backed ecosystem state in the current
+environment, refresh both the lockfile and the installed toolchain:
+
+```bash
+source ./activate.sh
+uv lock --upgrade-package datarax --upgrade-package artifex --upgrade-package opifex --upgrade-package calibrax
+uv sync --all-extras --all-groups
+```
+
+Verify the runtime contract immediately after syncing:
+
+```bash
+uv run python scripts/verify_dependency_runtime.py
+```
+
+That command confirms:
+
+- each ecosystem package resolves from installed `site-packages`
+- the live `opifex.neural.operators.FourierNeuralOperator` constructor still
+  exposes `spatial_dims`
+
+Use these targeted smoke tests when checking the current foundation-model and
+epigenomics baseline after a dependency refresh:
+
+```bash
+uv run pytest tests/operators/epigenomics/test_fno_peak_calling.py -q
+uv run pytest tests/benchmarks/test_singlecell_foundation_suite.py -q
+uv run pytest tests/benchmarks/test_genomics_foundation_suite.py -q
+```
+
 ---
 
 ## Code Quality Tools

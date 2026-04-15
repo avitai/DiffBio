@@ -4,6 +4,14 @@ This module provides utility functions for I/O, encoding, training,
 neural network building, and other common operations in bioinformatics pipelines.
 """
 
+from diffbio.utils.dependency_runtime import (
+    ECOSYSTEM_PACKAGES,
+    DependencyRuntimeRecord,
+    FNOConstructorContract,
+    collect_dependency_runtime,
+    inspect_fno_constructor,
+    verify_canonical_dependency_runtime,
+)
 from diffbio.utils.quality import apply_quality_filter
 from diffbio.utils.nn_utils import (
     build_mlp_decoder,
@@ -26,6 +34,13 @@ from diffbio.utils.training import (
 )
 
 __all__ = [
+    # Dependency runtime utilities
+    "ECOSYSTEM_PACKAGES",
+    "DependencyRuntimeRecord",
+    "FNOConstructorContract",
+    "collect_dependency_runtime",
+    "inspect_fno_constructor",
+    "verify_canonical_dependency_runtime",
     # Training utilities
     "Trainer",
     "TrainingConfig",
