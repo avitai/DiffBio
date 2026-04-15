@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, Literal, cast
+
 import jax.numpy as jnp
 import optax
 import pytest
@@ -19,7 +21,7 @@ from diffbio.sources.contextual_epigenomics import (
 
 def _make_batch(
     *,
-    target_semantics: str = "binary_peak_mask",
+    target_semantics: Literal["binary_peak_mask", "chromatin_state_id"] = "binary_peak_mask",
     num_outputs: int = 1,
 ) -> dict[str, jnp.ndarray]:
     """Build a deterministic contextual epigenomics batch."""
@@ -251,6 +253,6 @@ class TestSyntheticContextualEpigenomicsDataset:
                 n_examples=2,
                 sequence_length=12,
                 num_tf_features=3,
-                target_semantics="unsupported",
+                target_semantics=cast(Any, "unsupported"),
                 num_output_classes=2,
             )

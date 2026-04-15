@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import jax.numpy as jnp
 import numpy as np
 import pytest
@@ -64,6 +66,8 @@ class TestSyntheticSequenceClassificationDataset:
 class TestSequenceDatasetValidation:
     """Tests for shared genomics dataset validation."""
 
+    DatasetMutator = Callable[[dict[str, object]], object]
+
     def test_accepts_valid_dataset(self) -> None:
         dataset = build_synthetic_sequence_classification_dataset(
             task_name="splice_site",
@@ -107,7 +111,11 @@ class TestSequenceDatasetValidation:
             ),
         ],
     )
-    def test_rejects_invalid_dataset_variants(self, mutator: object, message: str) -> None:
+    def test_rejects_invalid_dataset_variants(
+        self,
+        mutator: DatasetMutator,
+        message: str,
+    ) -> None:
         dataset = build_synthetic_sequence_classification_dataset(
             task_name="promoter",
             samples_per_class=2,
