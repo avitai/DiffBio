@@ -20,7 +20,6 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-import jax
 import jax.numpy as jnp
 from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
@@ -28,6 +27,7 @@ from jaxtyping import Array, Float, Int, PyTree
 from diffbio.configs import TemperatureConfig
 from diffbio.core import soft_ops
 from diffbio.core.base_operators import GraphOperator
+from diffbio.core.gnn_components import GraphAttentionBlock
 from diffbio.utils.nn_utils import init_learnable_param
 
 logger = logging.getLogger(__name__)
@@ -54,231 +54,6 @@ class GNNAssemblyNavigatorConfig(TemperatureConfig):
     edge_features: int = 8
     dropout_rate: float = 0.1
     temperature: float = 1.0
-
-
-class GraphAttentionLayer(nnx.Module):
-    """Graph attention layer for message passing.
-
-    Uses multi-head attention to aggregate neighbor messages.
-    """
-
-    def __init__(
-        self,
-        in_features: int,
-        out_features: int,
-        num_heads: int,
-        edge_features: int,
-        dropout_rate: float,
-        *,
-        rngs: nnx.Rngs,
-    ):
-        """Initialize the graph attention layer.
-
-        Args:
-            in_features: Input feature dimension.
-            out_features: Output feature dimension.
-            num_heads: Number of attention heads.
-            edge_features: Edge feature dimension.
-            dropout_rate: Dropout rate.
-            rngs: Random number generators.
-        """
-        super().__init__()
-
-        self.num_heads = num_heads
-        self.head_dim = out_features // num_heads
-        self.scale = self.head_dim**-0.5
-
-        # Node feature projections
-        self.query_proj = nnx.Linear(
-            in_features=in_features,
-            out_features=out_features,
-            rngs=rngs,
-        )
-        self.key_proj = nnx.Linear(
-            in_features=in_features,
-            out_features=out_features,
-            rngs=rngs,
-        )
-        self.value_proj = nnx.Linear(
-            in_features=in_features,
-            out_features=out_features,
-            rngs=rngs,
-        )
-
-        # Edge feature projection
-        self.edge_proj = nnx.Linear(
-            in_features=edge_features,
-            out_features=num_heads,
-            rngs=rngs,
-        )
-
-        # Output projection
-        self.output_proj = nnx.Linear(
-            in_features=out_features,
-            out_features=out_features,
-            rngs=rngs,
-        )
-
-        self.dropout = nnx.Dropout(rate=dropout_rate, rngs=rngs) if dropout_rate > 0 else None
-
-    def __call__(
-        self,
-        node_features: Float[Array, "n_nodes in_features"],
-        edge_index: Int[Array, "2 n_edges"],
-        edge_features: Float[Array, "n_edges edge_features"],
-        *,
-        deterministic: bool = True,
-    ) -> Float[Array, "n_nodes out_features"]:
-        """Run one graph-attention update step.
-
-        Args:
-            node_features: Node feature matrix.
-            edge_index: Edge indices (source, target).
-            edge_features: Edge feature matrix.
-            deterministic: Whether to disable stochastic dropout.
-
-        Returns:
-            Updated node features.
-        """
-        n_nodes = node_features.shape[0]
-        n_edges = edge_index.shape[1]
-
-        sources = edge_index[0]  # (n_edges,)
-        targets = edge_index[1]  # (n_edges,)
-
-        # Project all nodes
-        Q = self.query_proj(node_features)  # (n_nodes, out_features)
-        K = self.key_proj(node_features)
-        V = self.value_proj(node_features)
-
-        # Reshape for multi-head attention
-        Q = Q.reshape(n_nodes, self.num_heads, self.head_dim)
-        K = K.reshape(n_nodes, self.num_heads, self.head_dim)
-        V = V.reshape(n_nodes, self.num_heads, self.head_dim)
-
-        # Get source and target features for each edge
-        Q_targets = Q[targets]  # (n_edges, num_heads, head_dim)
-        K_sources = K[sources]  # (n_edges, num_heads, head_dim)
-        V_sources = V[sources]  # (n_edges, num_heads, head_dim)
-
-        # Compute attention scores
-        attn_scores = jnp.sum(Q_targets * K_sources, axis=-1) * self.scale  # (n_edges, num_heads)
-
-        # Add edge feature bias
-        edge_bias = self.edge_proj(edge_features)  # (n_edges, num_heads)
-        attn_scores = attn_scores + edge_bias
-
-        # Normalize attention per target node using segment_max/segment_sum
-        # This is equivalent to softmax over incoming edges per node
-        max_scores = jax.ops.segment_max(
-            attn_scores, targets, num_segments=n_nodes
-        )  # (n_nodes, num_heads)
-        attn_scores = attn_scores - max_scores[targets]  # Stability
-        attn_exp = jnp.exp(attn_scores)
-
-        # Sum of exp scores per target node
-        attn_sum = (
-            jax.ops.segment_sum(attn_exp, targets, num_segments=n_nodes) + 1e-10
-        )  # (n_nodes, num_heads)
-
-        # Normalize
-        attn_probs = attn_exp / attn_sum[targets]  # (n_edges, num_heads)
-
-        # Apply dropout
-        if self.dropout is not None and not deterministic:
-            attn_probs = self.dropout(attn_probs)
-
-        # Weighted sum of values
-        weighted_V = attn_probs[:, :, None] * V_sources  # (n_edges, num_heads, head_dim)
-
-        # Aggregate to target nodes
-        aggregated = jax.ops.segment_sum(
-            weighted_V.reshape(n_edges, -1), targets, num_segments=n_nodes
-        )  # (n_nodes, out_features)
-
-        # Output projection
-        output = self.output_proj(aggregated)
-
-        return output
-
-
-class GNNLayer(nnx.Module):
-    """Full GNN layer with attention, normalization, and feedforward."""
-
-    def __init__(
-        self,
-        hidden_dim: int,
-        num_heads: int,
-        edge_features: int,
-        dropout_rate: float,
-        *,
-        rngs: nnx.Rngs,
-    ):
-        """Initialize the GNN layer.
-
-        Args:
-            hidden_dim: Hidden dimension.
-            num_heads: Number of attention heads.
-            edge_features: Edge feature dimension.
-            dropout_rate: Dropout rate.
-            rngs: Random number generators.
-        """
-        super().__init__()
-
-        self.attention = GraphAttentionLayer(
-            in_features=hidden_dim,
-            out_features=hidden_dim,
-            num_heads=num_heads,
-            edge_features=edge_features,
-            dropout_rate=dropout_rate,
-            rngs=rngs,
-        )
-
-        self.layer_norm1 = nnx.LayerNorm(num_features=hidden_dim, rngs=rngs)
-        self.layer_norm2 = nnx.LayerNorm(num_features=hidden_dim, rngs=rngs)
-
-        # Feedforward
-        self.ff_linear1 = nnx.Linear(
-            in_features=hidden_dim,
-            out_features=hidden_dim * 4,
-            rngs=rngs,
-        )
-        self.ff_linear2 = nnx.Linear(
-            in_features=hidden_dim * 4,
-            out_features=hidden_dim,
-            rngs=rngs,
-        )
-
-    def __call__(
-        self,
-        node_features: Float[Array, "n_nodes hidden_dim"],
-        edge_index: Int[Array, "2 n_edges"],
-        edge_features: Float[Array, "n_edges edge_features"],
-        *,
-        deterministic: bool = True,
-    ) -> Float[Array, "n_nodes hidden_dim"]:
-        """Apply GNN layer.
-
-        Args:
-            node_features: Node features.
-            edge_index: Edge indices.
-            edge_features: Edge features.
-            deterministic: If True, disable dropout.
-
-        Returns:
-            Updated node features.
-        """
-        # Attention with residual
-        attended = self.attention(
-            node_features, edge_index, edge_features, deterministic=deterministic
-        )
-        x = self.layer_norm1(node_features + attended)
-
-        # Feedforward with residual
-        ff_out = self.ff_linear2(nnx.gelu(self.ff_linear1(x)))
-        x = self.layer_norm2(x + ff_out)
-
-        return x
 
 
 class GNNAssemblyNavigator(GraphOperator):
@@ -355,7 +130,7 @@ class GNNAssemblyNavigator(GraphOperator):
         # GNN layers
         self.gnn_layers = nnx.List(
             [
-                GNNLayer(
+                GraphAttentionBlock(
                     hidden_dim=config.hidden_dim,
                     num_heads=config.num_heads,
                     edge_features=config.edge_features,
