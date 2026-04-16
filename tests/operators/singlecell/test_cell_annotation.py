@@ -128,6 +128,61 @@ class TestCellAnnotatorConfig:
         assert config.annotation_mode == "cellassign"
         assert config.marker_matrix_shape == (10, 2000)
 
+    @pytest.mark.parametrize(
+        ("kwargs", "message"),
+        [
+            ({"n_cell_types": 0}, "n_cell_types"),
+            ({"n_genes": 0}, "n_genes"),
+            ({"latent_dim": 0}, "latent_dim"),
+            ({"hidden_dims": [32, 0]}, "hidden_dims"),
+        ],
+    )
+    def test_rejects_invalid_dimensions(self, kwargs, message) -> None:
+        """Shape-like config fields must fail fast on invalid values."""
+        with pytest.raises(ValueError, match=message):
+            CellAnnotatorConfig(**kwargs, stochastic=True, stream_name="sample")
+
+    def test_cellassign_requires_marker_matrix_shape(self) -> None:
+        """Cellassign mode should not leave marker shape unspecified."""
+        with pytest.raises(ValueError, match="marker_matrix_shape"):
+            CellAnnotatorConfig(
+                annotation_mode="cellassign",
+                stochastic=True,
+                stream_name="sample",
+            )
+
+    def test_cellassign_rejects_mismatched_marker_matrix_shape(self) -> None:
+        """Marker shape must match configured type and gene counts."""
+        with pytest.raises(ValueError, match="marker_matrix_shape"):
+            CellAnnotatorConfig(
+                annotation_mode="cellassign",
+                n_cell_types=5,
+                n_genes=50,
+                marker_matrix_shape=(4, 50),
+                stochastic=True,
+                stream_name="sample",
+            )
+
+    def test_non_cellassign_rejects_marker_matrix_shape(self) -> None:
+        """Marker shape is cellassign-specific and should fail otherwise."""
+        with pytest.raises(ValueError, match="marker_matrix_shape"):
+            CellAnnotatorConfig(
+                annotation_mode="celltypist",
+                marker_matrix_shape=(5, 50),
+                stochastic=True,
+                stream_name="sample",
+            )
+
+    def test_non_scanvi_rejects_nondefault_gene_likelihood(self) -> None:
+        """Only scanvi should accept an alternate reconstruction likelihood."""
+        with pytest.raises(ValueError, match="gene_likelihood"):
+            CellAnnotatorConfig(
+                annotation_mode="celltypist",
+                gene_likelihood="zinb",
+                stochastic=True,
+                stream_name="sample",
+            )
+
 
 # ===========================================================================
 # Celltypist mode tests

@@ -66,6 +66,37 @@ class CellAnnotatorConfig(OperatorConfig):
             object.__setattr__(self, "stream_name", "sample")
         super().__post_init__()
 
+        if self.n_cell_types <= 0:
+            raise ValueError(f"n_cell_types must be positive, got {self.n_cell_types}")
+        if self.n_genes <= 0:
+            raise ValueError(f"n_genes must be positive, got {self.n_genes}")
+        if self.latent_dim <= 0:
+            raise ValueError(f"latent_dim must be positive, got {self.latent_dim}")
+        if any(dim <= 0 for dim in self.hidden_dims):
+            raise ValueError(
+                f"hidden_dims must contain only positive values, got {self.hidden_dims}"
+            )
+
+        expected_marker_shape = (self.n_cell_types, self.n_genes)
+        if self.annotation_mode == "cellassign":
+            if self.marker_matrix_shape is None:
+                raise ValueError(
+                    "marker_matrix_shape must be provided for annotation_mode='cellassign'"
+                )
+            if self.marker_matrix_shape != expected_marker_shape:
+                raise ValueError(
+                    "marker_matrix_shape must match "
+                    f"(n_cell_types, n_genes)={expected_marker_shape}, "
+                    f"got {self.marker_matrix_shape}"
+                )
+        elif self.marker_matrix_shape is not None:
+            raise ValueError(
+                "marker_matrix_shape is only supported for annotation_mode='cellassign'"
+            )
+
+        if self.annotation_mode != "scanvi" and self.gene_likelihood != "poisson":
+            raise ValueError("gene_likelihood is only configurable for annotation_mode='scanvi'")
+
 
 class DifferentiableCellAnnotator(
     CountReconstructionMixin,
@@ -135,8 +166,6 @@ class DifferentiableCellAnnotator(
         super().__init__(config, rngs=rngs, name=name)
 
         rngs = self._init_count_vae_operator(config=config, rngs=rngs)
-        self.n_cell_types = config.n_cell_types
-        self.annotation_mode = nnx.static(config.annotation_mode)
 
         # --- mode-specific heads ---
         if config.annotation_mode in ("celltypist", "scanvi"):
@@ -154,8 +183,6 @@ class DifferentiableCellAnnotator(
                 jax.random.normal(params_key, (config.n_cell_types, config.latent_dim)) * 0.01
             )
             self.prior_logvars = nnx.Param(jnp.zeros((config.n_cell_types, config.latent_dim)))
-
-        self._use_zinb = nnx.static(config.gene_likelihood == "zinb")
 
         if config.annotation_mode == "scanvi" and config.gene_likelihood == "zinb":
             # ZINB decoder heads: log-dispersion and dropout logit
@@ -203,7 +230,7 @@ class DifferentiableCellAnnotator(
             "log_rate": self.fc_output(x),
         }
 
-        if self._use_zinb:
+        if self.config.gene_likelihood == "zinb":
             result["log_theta"] = self.fc_log_theta(x)
             result["pi_logit"] = self.fc_pi_logit(x)
 
@@ -351,7 +378,7 @@ class DifferentiableCellAnnotator(
             return probs
 
         # For labelled cells, set probabilities to one-hot of the known type.
-        one_hot_targets = jax.nn.one_hot(known_labels, self.n_cell_types)
+        one_hot_targets = jax.nn.one_hot(known_labels, self.config.n_cell_types)
         probs = probs.at[label_indices].set(one_hot_targets)
 
         return probs
@@ -398,13 +425,13 @@ class DifferentiableCellAnnotator(
         recon_loss = self.reconstruction_loss(counts, decode_output)
 
         # KL divergence -- type-conditioned for scanvi, standard otherwise
-        if self.annotation_mode == "scanvi":
+        if self.config.annotation_mode == "scanvi":
             logits = self.classifier_head(z)
             type_probs = jax.nn.softmax(logits, axis=-1)
 
             # For labelled cells, override predicted probs with known labels
             if known_labels is not None and label_indices is not None:
-                one_hot_known = jax.nn.one_hot(known_labels, self.n_cell_types)
+                one_hot_known = jax.nn.one_hot(known_labels, self.config.n_cell_types)
                 type_probs = type_probs.at[label_indices].set(one_hot_known)
 
             kl = self._type_conditioned_kl(mean, logvar, type_probs)
@@ -415,14 +442,14 @@ class DifferentiableCellAnnotator(
 
         # Cross-entropy on labelled cells (scanvi / celltypist)
         if (
-            self.annotation_mode in ("scanvi", "celltypist")
+            self.config.annotation_mode in ("scanvi", "celltypist")
             and known_labels is not None
             and label_indices is not None
         ):
             logits = self.classifier_head(z)
             log_probs = jax.nn.log_softmax(logits, axis=-1)
             labeled_log_probs = log_probs[label_indices]
-            one_hot = jax.nn.one_hot(known_labels, self.n_cell_types)
+            one_hot = jax.nn.one_hot(known_labels, self.config.n_cell_types)
             ce = -jnp.sum(one_hot * labeled_log_probs)
             loss = loss + ce
 
@@ -467,7 +494,7 @@ class DifferentiableCellAnnotator(
         z = self.reparameterize(mean, logvar)
 
         # Mode dispatch
-        mode = self.annotation_mode
+        mode = self.config.annotation_mode
         if mode == "celltypist":
             probs = self._annotate_celltypist(z)
         elif mode == "cellassign":
