@@ -248,7 +248,7 @@ class TestGradientFlow:
 
         loss, grads = loss_fn(op)
 
-        assert hasattr(grads, "encoder_layers")
+        assert hasattr(grads, "encoder_backbone")
 
     def test_decoder_is_learnable(self, rngs: nnx.Rngs) -> None:
         """Test that decoder parameters are learnable."""
@@ -267,7 +267,7 @@ class TestGradientFlow:
 
         loss, grads = loss_fn(op)
 
-        assert hasattr(grads, "decoder_layers")
+        assert hasattr(grads, "decoder_backbone")
 
 
 class TestJITCompatibility:
@@ -555,8 +555,8 @@ class TestZINBGradientFlow:
         _loss, grads = loss_fn(zinb_op)
 
         # Encoder, decoder, and ZINB heads all get gradients
-        assert hasattr(grads, "encoder_layers")
-        assert hasattr(grads, "decoder_layers")
+        assert hasattr(grads, "encoder_backbone")
+        assert hasattr(grads, "decoder_backbone")
         assert hasattr(grads, "fc_log_theta")
         assert hasattr(grads, "fc_pi_logit")
 

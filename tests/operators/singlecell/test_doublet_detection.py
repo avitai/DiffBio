@@ -546,7 +546,7 @@ class TestSoloGradientFlow:
         grads = nnx.grad(loss_fn)(op)
 
         # Encoder should have gradients
-        assert jnp.any(grads.encoder_layers[0].kernel[...] != 0.0)
+        assert jnp.any(grads.encoder_backbone.layers[0].kernel[...] != 0.0)
         # Classifier should have gradients
         assert jnp.any(grads.classifier_hidden.kernel[...] != 0.0)
         assert jnp.any(grads.classifier_output.kernel[...] != 0.0)
@@ -680,7 +680,7 @@ class TestSoloLoss:
         grads = nnx.grad(loss_fn)(op)
 
         # Encoder must receive gradients
-        assert jnp.any(grads.encoder_layers[0].kernel[...] != 0.0)
+        assert jnp.any(grads.encoder_backbone.layers[0].kernel[...] != 0.0)
         # Classifier must receive gradients
         assert jnp.any(grads.classifier_hidden.kernel[...] != 0.0)
         assert jnp.any(grads.classifier_output.kernel[...] != 0.0)

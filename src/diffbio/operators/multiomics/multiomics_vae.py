@@ -28,10 +28,9 @@ from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
-from opifex.core.physics.gradnorm import GradNormBalancer
-
 from diffbio.constants import EPSILON
 from diffbio.core.base_operators import EncoderDecoderOperator
+from diffbio.operators._loss_balancing import LossBalancingMixin
 from diffbio.utils.nn_utils import ensure_rngs
 
 logger = logging.getLogger(__name__)
@@ -174,7 +173,7 @@ class _ModalityDecoder(nnx.Module):
 # -------------------------------------------------------------------
 
 
-class DifferentiableMultiOmicsVAE(EncoderDecoderOperator):
+class DifferentiableMultiOmicsVAE(LossBalancingMixin, EncoderDecoderOperator):
     """Multi-omics VAE with Product-of-Experts latent fusion.
 
     For each modality a dedicated encoder produces (mu_m, logvar_m).
@@ -299,34 +298,6 @@ class DifferentiableMultiOmicsVAE(EncoderDecoderOperator):
         if self._weight_mode == "learnable":
             return jax.nn.softmax(self.log_modality_weights[...])
         return jnp.ones(n_modalities) / n_modalities
-
-    # ------------------------------------------------------------------
-    # Multi-task loss balancing
-    # ------------------------------------------------------------------
-
-    def compute_balanced_loss(
-        self,
-        losses: dict[str, Float[Array, ""]],
-    ) -> Float[Array, ""]:
-        """Combine multiple loss terms, optionally using GradNormBalancer.
-
-        When ``use_gradnorm`` is enabled in the config, uses
-        ``opifex.core.physics.gradnorm.GradNormBalancer`` to dynamically
-        weight the loss terms so that gradient magnitudes are balanced.
-        Otherwise, returns a simple sum of the losses.
-
-        Args:
-            losses: Mapping of loss name to scalar loss value, e.g.
-                ``{"recon_rna": ..., "recon_atac": ..., "kl": ...}``.
-
-        Returns:
-            Combined scalar loss.
-        """
-        loss_values = list(losses.values())
-        if self.config.use_gradnorm:
-            balancer = GradNormBalancer(num_losses=len(loss_values), rngs=nnx.Rngs(0))
-            return balancer(loss_values)
-        return sum(loss_values[1:], start=loss_values[0])
 
     # ------------------------------------------------------------------
     # Data key helpers

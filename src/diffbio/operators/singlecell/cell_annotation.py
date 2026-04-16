@@ -29,14 +29,8 @@ from jaxtyping import Array, Float, Int, PyTree
 from diffbio.constants import EPSILON
 
 from diffbio.core.base_operators import EncoderDecoderOperator
-from diffbio.losses.statistical_losses import zinb_negative_log_likelihood
-from diffbio.utils.nn_utils import (
-    build_mlp_decoder,
-    build_mlp_encoder,
-    ensure_rngs,
-    forward_mlp,
-    get_rng_key,
-)
+from diffbio.operators._count_vae import CountReconstructionMixin, CountVAEBackboneMixin
+from diffbio.utils.nn_utils import get_rng_key
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +67,11 @@ class CellAnnotatorConfig(OperatorConfig):
         super().__post_init__()
 
 
-class DifferentiableCellAnnotator(EncoderDecoderOperator):
+class DifferentiableCellAnnotator(
+    CountReconstructionMixin,
+    CountVAEBackboneMixin,
+    EncoderDecoderOperator,
+):
     """Differentiable cell type annotator with three annotation modes.
 
     Modes
@@ -136,15 +134,9 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        rngs = ensure_rngs(rngs)
-
-        self.n_genes = config.n_genes
+        rngs = self._init_count_vae_operator(config=config, rngs=rngs)
         self.n_cell_types = config.n_cell_types
         self.annotation_mode = nnx.static(config.annotation_mode)
-
-        # --- shared VAE encoder (celltypist & scanvi) ---
-        self._build_encoder(config, rngs)
-        self._build_decoder(config, rngs)
 
         # --- mode-specific heads ---
         if config.annotation_mode in ("celltypist", "scanvi"):
@@ -192,61 +184,6 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
                 )
             )
 
-    # ------------------------------------------------------------------
-    # Network builders (DRY: shared between modes)
-    # ------------------------------------------------------------------
-
-    def _build_encoder(self, config: CellAnnotatorConfig, rngs: nnx.Rngs) -> None:
-        """Build the VAE encoder layers.
-
-        Args:
-            config: Annotator configuration.
-            rngs: Random number generators.
-        """
-        self.encoder_layers = build_mlp_encoder(config.n_genes, config.hidden_dims, rngs=rngs)
-        encoder_out_dim = config.hidden_dims[-1] if config.hidden_dims else config.n_genes
-        self.fc_mean = nnx.Linear(
-            in_features=encoder_out_dim, out_features=config.latent_dim, rngs=rngs
-        )
-        self.fc_logvar = nnx.Linear(
-            in_features=encoder_out_dim, out_features=config.latent_dim, rngs=rngs
-        )
-
-    def _build_decoder(self, config: CellAnnotatorConfig, rngs: nnx.Rngs) -> None:
-        """Build the VAE decoder layers.
-
-        Args:
-            config: Annotator configuration.
-            rngs: Random number generators.
-        """
-        self.decoder_layers = build_mlp_decoder(config.latent_dim, config.hidden_dims, rngs=rngs)
-        decoder_out_dim = config.hidden_dims[0] if config.hidden_dims else config.latent_dim
-        self.fc_output = nnx.Linear(
-            in_features=decoder_out_dim, out_features=config.n_genes, rngs=rngs
-        )
-
-    # ------------------------------------------------------------------
-    # Encoder / decoder forward passes
-    # ------------------------------------------------------------------
-
-    def encode(
-        self,
-        counts: Float[Array, "batch n_genes"],
-    ) -> tuple[Float[Array, "batch latent_dim"], Float[Array, "batch latent_dim"]]:
-        """Encode count vectors to latent distribution parameters.
-
-        Args:
-            counts: Gene expression counts, shape ``(n, n_genes)``.
-
-        Returns:
-            Tuple of (mean, logvar) for the latent Gaussian.
-        """
-        x = jnp.log1p(counts)
-        x = forward_mlp(self.encoder_layers, x)
-        mean = self.fc_mean(x)
-        logvar = jnp.clip(self.fc_logvar(x), -10.0, 10.0)
-        return mean, logvar
-
     def decode(
         self,
         z: Float[Array, "batch latent_dim"],
@@ -260,7 +197,7 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
             Dictionary with ``"log_rate"`` (always present) and optionally
             ``"log_theta"`` and ``"pi_logit"`` when ZINB likelihood is active.
         """
-        x = forward_mlp(self.decoder_layers, z)
+        x = self.decode_hidden(z)
 
         result: dict[str, Float[Array, "batch n_genes"]] = {
             "log_rate": self.fc_output(x),
@@ -420,75 +357,6 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
         return probs
 
     # ------------------------------------------------------------------
-    # Reconstruction loss helpers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _poisson_nll(
-        counts: Float[Array, "batch n_genes"],
-        log_rate: Float[Array, "batch n_genes"],
-    ) -> Float[Array, ""]:
-        """Compute Poisson negative log-likelihood.
-
-        Args:
-            counts: Original counts.
-            log_rate: Log rates from decoder.
-
-        Returns:
-            Negative log-likelihood (scalar, summed over all elements).
-        """
-        rate = jnp.exp(log_rate)
-        return jnp.sum(rate - counts * log_rate)
-
-    @staticmethod
-    def _zinb_nll(
-        counts: Float[Array, "batch n_genes"],
-        log_rate: Float[Array, "batch n_genes"],
-        log_theta: Float[Array, "batch n_genes"],
-        pi_logit: Float[Array, "batch n_genes"],
-    ) -> Float[Array, ""]:
-        """Compute Zero-Inflated Negative Binomial negative log-likelihood.
-
-        Delegates to the shared ``zinb_negative_log_likelihood`` function
-        in ``diffbio.losses.statistical_losses``.
-
-        Args:
-            counts: Original counts.
-            log_rate: Log mean parameter from decoder.
-            log_theta: Log dispersion parameter.
-            pi_logit: Logit of zero-inflation probability.
-
-        Returns:
-            Negative log-likelihood (scalar, summed over all elements).
-        """
-        return zinb_negative_log_likelihood(counts, log_rate, log_theta, pi_logit)
-
-    def _reconstruction_loss(
-        self,
-        counts: Float[Array, "batch n_genes"],
-        decode_output: dict[str, Float[Array, "batch n_genes"]],
-    ) -> Float[Array, ""]:
-        """Compute reconstruction loss based on configured likelihood.
-
-        Args:
-            counts: Original counts.
-            decode_output: Dictionary from ``decode()`` containing
-                ``"log_rate"`` and optionally ``"log_theta"``, ``"pi_logit"``.
-
-        Returns:
-            Negative log-likelihood (scalar).
-        """
-        log_rate = decode_output["log_rate"]
-        if "log_theta" in decode_output:
-            return self._zinb_nll(
-                counts,
-                log_rate,
-                decode_output["log_theta"],
-                decode_output["pi_logit"],
-            )
-        return self._poisson_nll(counts, log_rate)
-
-    # ------------------------------------------------------------------
     # Training loss (scanvi ELBO)
     # ------------------------------------------------------------------
 
@@ -527,7 +395,7 @@ class DifferentiableCellAnnotator(EncoderDecoderOperator):
 
         # Reconstruction loss (Poisson or ZINB depending on config)
         decode_output = self.decode(z)
-        recon_loss = self._reconstruction_loss(counts, decode_output)
+        recon_loss = self.reconstruction_loss(counts, decode_output)
 
         # KL divergence -- type-conditioned for scanvi, standard otherwise
         if self.annotation_mode == "scanvi":

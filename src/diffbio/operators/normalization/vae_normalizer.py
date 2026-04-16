@@ -23,8 +23,7 @@ from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.base_operators import EncoderDecoderOperator
-from diffbio.losses.statistical_losses import zinb_negative_log_likelihood
-from diffbio.utils.nn_utils import build_mlp_decoder, build_mlp_encoder, forward_mlp
+from diffbio.operators._count_vae import CountReconstructionMixin, CountVAEBackboneMixin
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +56,7 @@ class VAENormalizerConfig(OperatorConfig):
         super().__post_init__()
 
 
-class VAENormalizer(EncoderDecoderOperator):
+class VAENormalizer(CountReconstructionMixin, CountVAEBackboneMixin, EncoderDecoderOperator):
     """Variational autoencoder for count normalization.
 
     This operator learns a low-dimensional latent representation of
@@ -109,71 +108,18 @@ class VAENormalizer(EncoderDecoderOperator):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
+        safe_rngs = self._init_count_vae_operator(config=config, rngs=rngs)
 
-        if rngs is None:
-            rngs = nnx.Rngs(0)
-
-        self.n_genes = config.n_genes
-        self.stream_name = nnx.static(config.stream_name)
-
-        # Build encoder layers
-        self.encoder_layers = build_mlp_encoder(config.n_genes, config.hidden_dims, rngs=rngs)
-        encoder_out_dim = config.hidden_dims[-1] if config.hidden_dims else config.n_genes
-
-        # Latent space projection (mean and logvar)
-        self.fc_mean = nnx.Linear(
-            in_features=encoder_out_dim, out_features=config.latent_dim, rngs=rngs
-        )
-        self.fc_logvar = nnx.Linear(
-            in_features=encoder_out_dim, out_features=config.latent_dim, rngs=rngs
-        )
-
-        # Build decoder layers
-        self.decoder_layers = build_mlp_decoder(config.latent_dim, config.hidden_dims, rngs=rngs)
         decoder_out_dim = config.hidden_dims[0] if config.hidden_dims else config.latent_dim
-
-        # Output layer (log rates)
-        self.fc_output = nnx.Linear(
-            in_features=decoder_out_dim, out_features=config.n_genes, rngs=rngs
-        )
 
         # ZINB-specific decoder heads
         if config.likelihood == "zinb":
             self.fc_log_theta = nnx.Linear(
-                in_features=decoder_out_dim, out_features=config.n_genes, rngs=rngs
+                in_features=decoder_out_dim, out_features=config.n_genes, rngs=safe_rngs
             )
             self.fc_pi_logit = nnx.Linear(
-                in_features=decoder_out_dim, out_features=config.n_genes, rngs=rngs
+                in_features=decoder_out_dim, out_features=config.n_genes, rngs=safe_rngs
             )
-
-    def encode(
-        self,
-        counts: Float[Array, "n_genes"],
-    ) -> tuple[Float[Array, "latent_dim"], Float[Array, "latent_dim"]]:
-        """Encode counts to latent distribution parameters.
-
-        Args:
-            counts: Gene expression counts.
-
-        Returns:
-            Tuple of (mean, logvar) for latent distribution.
-        """
-        # Log-transform counts for stability
-        x = jnp.log1p(counts)
-
-        # Pass through encoder layers
-        x = forward_mlp(self.encoder_layers, x)
-
-        # Project to latent space
-        mean = self.fc_mean(x)
-        logvar = self.fc_logvar(x)
-
-        # Clamp logvar for numerical stability
-        logvar = jnp.clip(logvar, -10.0, 10.0)
-
-        return mean, logvar
-
-    # reparameterize() is inherited from EncoderDecoderOperator
 
     def decode(
         self,
@@ -192,8 +138,7 @@ class VAENormalizer(EncoderDecoderOperator):
                 - 'log_theta': Log dispersion parameter (ZINB only).
                 - 'pi_logit': Dropout logit for zero inflation (ZINB only).
         """
-        # Pass through decoder layers
-        x = forward_mlp(self.decoder_layers, z)
+        x = self.decode_hidden(z)
 
         # Output layer (log rates, normalized by library size)
         log_rate = self.fc_output(x)
@@ -210,71 +155,6 @@ class VAENormalizer(EncoderDecoderOperator):
         result["log_rate"] = log_rate
 
         return result
-
-    def _poisson_nll(
-        self,
-        counts: Float[Array, "n_genes"],
-        log_rate: Float[Array, "n_genes"],
-    ) -> Float[Array, ""]:
-        """Compute Poisson negative log-likelihood.
-
-        Args:
-            counts: Original counts.
-            log_rate: Log rates from decoder.
-
-        Returns:
-            Negative log-likelihood (scalar).
-        """
-        rate = jnp.exp(log_rate)
-        return jnp.sum(rate - counts * log_rate)
-
-    def _zinb_nll(
-        self,
-        counts: Float[Array, "n_genes"],
-        log_rate: Float[Array, "n_genes"],
-        log_theta: Float[Array, "n_genes"],
-        pi_logit: Float[Array, "n_genes"],
-    ) -> Float[Array, ""]:
-        """Compute Zero-Inflated Negative Binomial negative log-likelihood.
-
-        Delegates to the shared ``zinb_negative_log_likelihood`` function
-        in ``diffbio.losses.statistical_losses``.
-
-        Args:
-            counts: Original counts.
-            log_rate: Log mean parameter from decoder.
-            log_theta: Log dispersion parameter.
-            pi_logit: Logit of zero-inflation probability.
-
-        Returns:
-            Negative log-likelihood (scalar).
-        """
-        return zinb_negative_log_likelihood(counts, log_rate, log_theta, pi_logit)
-
-    def reconstruction_loss(
-        self,
-        counts: Float[Array, "n_genes"],
-        decode_output: dict[str, jax.Array],
-    ) -> Float[Array, ""]:
-        """Compute reconstruction loss based on configured likelihood.
-
-        Args:
-            counts: Original counts.
-            decode_output: Dictionary from decode() containing 'log_rate'
-                and optionally 'log_theta', 'pi_logit' for ZINB.
-
-        Returns:
-            Negative log-likelihood (scalar).
-        """
-        log_rate = decode_output["log_rate"]
-        if self.config.likelihood == "zinb":
-            return self._zinb_nll(
-                counts,
-                log_rate,
-                decode_output["log_theta"],
-                decode_output["pi_logit"],
-            )
-        return self._poisson_nll(counts, log_rate)
 
     # kl_divergence() is inherited from EncoderDecoderOperator
 

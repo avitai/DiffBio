@@ -35,7 +35,7 @@ from diffbio.constants import DISTANCE_MASK_SENTINEL
 from diffbio.core import soft_ops
 from diffbio.core.base_operators import EncoderDecoderOperator
 from diffbio.core.graph_utils import compute_pairwise_distances
-from diffbio.utils.nn_utils import build_mlp_decoder, build_mlp_encoder, ensure_rngs, forward_mlp
+from diffbio.operators._count_vae import CountVAEBackboneMixin
 
 logger = logging.getLogger(__name__)
 
@@ -386,7 +386,7 @@ class SoloDetectorConfig(OperatorConfig):
         super().__post_init__()
 
 
-class DifferentiableSoloDetector(EncoderDecoderOperator):
+class DifferentiableSoloDetector(CountVAEBackboneMixin, EncoderDecoderOperator):
     """Solo-style VAE doublet detector.
 
     Detects doublets by encoding cells through a VAE, generating synthetic
@@ -437,32 +437,7 @@ class DifferentiableSoloDetector(EncoderDecoderOperator):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        safe_rngs = ensure_rngs(rngs)
-
-        self.n_genes = config.n_genes
-        self.stream_name = nnx.static(config.stream_name)
-
-        # --- VAE Encoder ---
-        self.encoder_layers = build_mlp_encoder(config.n_genes, config.hidden_dims, rngs=safe_rngs)
-        encoder_out_dim = config.hidden_dims[-1] if config.hidden_dims else config.n_genes
-
-        # Latent space projection
-        self.fc_mean = nnx.Linear(
-            in_features=encoder_out_dim, out_features=config.latent_dim, rngs=safe_rngs
-        )
-        self.fc_logvar = nnx.Linear(
-            in_features=encoder_out_dim, out_features=config.latent_dim, rngs=safe_rngs
-        )
-
-        # --- VAE Decoder ---
-        self.decoder_layers = build_mlp_decoder(
-            config.latent_dim, config.hidden_dims, rngs=safe_rngs
-        )
-        decoder_out_dim = config.hidden_dims[0] if config.hidden_dims else config.latent_dim
-
-        self.fc_output = nnx.Linear(
-            in_features=decoder_out_dim, out_features=config.n_genes, rngs=safe_rngs
-        )
+        safe_rngs = self._init_count_vae_operator(config=config, rngs=rngs)
 
         # --- Classifier (operates on latent z) ---
         self.classifier_hidden = nnx.Linear(
@@ -492,26 +467,6 @@ class DifferentiableSoloDetector(EncoderDecoderOperator):
         """
         return rng
 
-    def encode(
-        self,
-        counts: Float[Array, "batch n_genes"],
-    ) -> tuple[Float[Array, "batch latent_dim"], Float[Array, "batch latent_dim"]]:
-        """Encode counts to latent distribution parameters.
-
-        Args:
-            counts: Gene expression counts, shape ``(batch, n_genes)``.
-
-        Returns:
-            Tuple of (mean, logvar) for latent distribution.
-        """
-        x = jnp.log1p(counts)
-        x = forward_mlp(self.encoder_layers, x)
-
-        mean = self.fc_mean(x)
-        logvar = jnp.clip(self.fc_logvar(x), -10.0, 10.0)
-
-        return mean, logvar
-
     def decode(
         self,
         z: Float[Array, "batch latent_dim"],
@@ -524,8 +479,7 @@ class DifferentiableSoloDetector(EncoderDecoderOperator):
         Returns:
             Log rates for each gene, shape ``(batch, n_genes)``.
         """
-        x = forward_mlp(self.decoder_layers, z)
-        return self.fc_output(x)
+        return self.decode_rates(z)
 
     def classify(
         self,
