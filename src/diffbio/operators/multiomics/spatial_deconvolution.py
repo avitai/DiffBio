@@ -23,6 +23,7 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
+from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
@@ -54,6 +55,12 @@ class SpatialDeconvolutionConfig(OperatorConfig):
     dropout_rate: float = 0.1
     temperature: float = 1.0
 
+    def __post_init__(self) -> None:
+        """Validate spatial deconvolution configuration."""
+        super().__post_init__()
+        if self.num_layers < 1:
+            raise ValueError("SpatialDeconvolutionConfig.num_layers must be at least 1.")
+
 
 class SpotEncoder(nnx.Module):
     """Encoder for spatial spot expression profiles."""
@@ -75,16 +82,13 @@ class SpotEncoder(nnx.Module):
             rngs: Random number generators.
         """
         super().__init__()
-
-        layers = []
-        in_dim = n_genes
-        for _ in range(num_layers):
-            layers.append(nnx.Linear(in_features=in_dim, out_features=hidden_dim, rngs=rngs))
-            in_dim = hidden_dim
-
-        self.layers = nnx.List(layers)
-        self.layer_norms = nnx.List(
-            [nnx.LayerNorm(num_features=hidden_dim, rngs=rngs) for _ in range(num_layers)]
+        self.backbone = MLP(
+            hidden_dims=[hidden_dim] * num_layers,
+            in_features=n_genes,
+            activation="gelu",
+            output_activation="gelu",
+            use_batch_norm=False,
+            rngs=rngs,
         )
 
     def __call__(
@@ -99,10 +103,10 @@ class SpotEncoder(nnx.Module):
         Returns:
             Spot embeddings.
         """
-        x = expression
-        for linear, norm in zip(self.layers, self.layer_norms):
-            x = norm(nnx.gelu(linear(x)))
-        return x
+        backbone_output = self.backbone(expression)
+        if isinstance(backbone_output, tuple):
+            raise TypeError("Spatial deconvolution spot backbone must return a single tensor.")
+        return backbone_output
 
 
 class SpatialEncoder(nnx.Module):
@@ -121,9 +125,14 @@ class SpatialEncoder(nnx.Module):
             rngs: Random number generators.
         """
         super().__init__()
-
-        self.linear1 = nnx.Linear(in_features=2, out_features=hidden_dim, rngs=rngs)
-        self.linear2 = nnx.Linear(in_features=hidden_dim, out_features=hidden_dim, rngs=rngs)
+        self.backbone = MLP(
+            hidden_dims=[hidden_dim, hidden_dim],
+            in_features=2,
+            activation="gelu",
+            output_activation=None,
+            use_batch_norm=False,
+            rngs=rngs,
+        )
 
     def __call__(
         self,
@@ -137,9 +146,10 @@ class SpatialEncoder(nnx.Module):
         Returns:
             Spatial embeddings.
         """
-        x = nnx.gelu(self.linear1(coordinates))
-        x = self.linear2(x)
-        return x
+        backbone_output = self.backbone(coordinates)
+        if isinstance(backbone_output, tuple):
+            raise TypeError("Spatial deconvolution spatial backbone must return a single tensor.")
+        return backbone_output
 
 
 class SpatialDeconvolution(TemperatureOperator):

@@ -7,6 +7,7 @@ operator for differentiable cell type deconvolution of spatial transcriptomics.
 import jax
 import jax.numpy as jnp
 import pytest
+from artifex.generative_models.core.base import MLP
 from flax import nnx
 
 from diffbio.operators.multiomics.spatial_deconvolution import (
@@ -40,6 +41,11 @@ class TestSpatialDeconvolutionConfig:
         """Test custom hidden dimension."""
         config = SpatialDeconvolutionConfig(hidden_dim=256)
         assert config.hidden_dim == 256
+
+    def test_num_layers_must_be_positive(self):
+        """Spatial deconvolution should fail fast without spot encoder layers."""
+        with pytest.raises(ValueError, match="num_layers"):
+            SpatialDeconvolutionConfig(num_layers=0)
 
 
 class TestSpatialDeconvolution:
@@ -85,6 +91,10 @@ class TestSpatialDeconvolution:
         """Test operator initialization."""
         op = SpatialDeconvolution(small_config, rngs=rngs)
         assert op is not None
+        assert isinstance(op.spot_encoder.backbone, MLP)
+        assert isinstance(op.spatial_encoder.backbone, MLP)
+        assert len(op.spot_encoder.backbone.layers) == small_config.num_layers
+        assert len(op.spatial_encoder.backbone.layers) == 2
 
     def test_output_contains_cell_proportions(self, rngs, small_config, sample_data):
         """Test that output contains cell type proportions."""
@@ -174,7 +184,7 @@ class TestGradientFlow:
                 "coordinates": coords,
             }
             transformed, _, _ = op.apply(data, {}, None, None)
-            return transformed["cell_proportions"].sum()
+            return transformed["reconstructed_expression"].sum()
 
         grad = jax.grad(loss_fn)(spot_expr)
         assert grad is not None
@@ -207,12 +217,15 @@ class TestGradientFlow:
         @nnx.value_and_grad
         def loss_fn(model):
             transformed, _, _ = model.apply(data, state, None, None)
-            return transformed["cell_proportions"].sum()
+            return transformed["reconstructed_expression"].sum()
 
         loss, grads = loss_fn(op)
 
-        # Check encoder has gradients
+        assert loss is not None
         assert hasattr(grads, "spot_encoder")
+        assert hasattr(grads, "spatial_encoder")
+        assert jnp.any(grads.spot_encoder.backbone.layers[0].kernel[...] != 0.0)
+        assert jnp.any(grads.spatial_encoder.backbone.layers[0].kernel[...] != 0.0)
 
 
 class TestJITCompatibility:
