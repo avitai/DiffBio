@@ -13,6 +13,8 @@ from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 
+from diffbio.operators._transformer_validation import TransformerEncoderShapeValidationMixin
+
 
 @dataclass(frozen=True)
 class _ContextualEncoderConfig:
@@ -41,6 +43,7 @@ class _ContextualTaskConfig:
 class ContextualEpigenomicsConfig(
     _ContextualEncoderConfig,
     _ContextualTaskConfig,
+    TransformerEncoderShapeValidationMixin,
     OperatorConfig,
 ):
     """Configuration for the contextual epigenomics operator."""
@@ -48,20 +51,6 @@ class ContextualEpigenomicsConfig(
     def __post_init__(self) -> None:
         """Validate the operator configuration."""
         super().__post_init__()
-        if self.hidden_dim <= 0:
-            raise ValueError("hidden_dim must be positive.")
-        if self.num_layers <= 0:
-            raise ValueError("num_layers must be positive.")
-        if self.num_heads <= 0:
-            raise ValueError("num_heads must be positive.")
-        if self.hidden_dim % self.num_heads != 0:
-            raise ValueError("hidden_dim must be divisible by num_heads.")
-        if self.intermediate_dim <= 0:
-            raise ValueError("intermediate_dim must be positive.")
-        if self.max_length <= 0:
-            raise ValueError("max_length must be positive.")
-        if not 0.0 <= self.dropout_rate < 1.0:
-            raise ValueError("dropout_rate must be in [0.0, 1.0).")
         if self.num_outputs < 1:
             raise ValueError("num_outputs must be at least 1.")
         if self.num_tf_features < 1:

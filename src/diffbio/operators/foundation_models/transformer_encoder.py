@@ -29,6 +29,7 @@ from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.base_operators import SequenceOperator
+from diffbio.operators._transformer_validation import TransformerEncoderShapeValidationMixin
 from diffbio.operators.foundation_models.contracts import (
     FoundationEmbeddingMixin,
     FoundationEmbeddingOperatorConfig,
@@ -75,6 +76,7 @@ class TransformerSequenceEncoderConfig(
     _TransformerArchitectureConfig,
     _TransformerInputConfig,
     _TransformerOutputConfig,
+    TransformerEncoderShapeValidationMixin,
     FoundationEmbeddingOperatorConfig,
 ):
     """Configuration for TransformerSequenceEncoder."""
@@ -82,23 +84,8 @@ class TransformerSequenceEncoderConfig(
     def __post_init__(self) -> None:
         """Validate the transformer encoder configuration."""
         super().__post_init__()
-
-        if self.hidden_dim <= 0:
-            raise ValueError("hidden_dim must be positive.")
-        if self.num_layers <= 0:
-            raise ValueError("num_layers must be positive.")
-        if self.num_heads <= 0:
-            raise ValueError("num_heads must be positive.")
-        if self.hidden_dim % self.num_heads != 0:
-            raise ValueError("hidden_dim must be divisible by num_heads.")
-        if self.intermediate_dim <= 0:
-            raise ValueError("intermediate_dim must be positive.")
-        if self.max_length <= 0:
-            raise ValueError("max_length must be positive.")
         if self.alphabet_size <= 0:
             raise ValueError("alphabet_size must be positive.")
-        if not 0.0 <= self.dropout_rate < 1.0:
-            raise ValueError("dropout_rate must be in [0.0, 1.0).")
 
         try:
             PoolingStrategy(self.pooling)
