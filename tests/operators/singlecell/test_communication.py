@@ -326,6 +326,16 @@ class TestCellCommunicationConfig:
         config = CellCommunicationConfig(hidden_dim=128)
         assert config.hidden_dim == 128
 
+    def test_invalid_head_divisibility_rejected(self) -> None:
+        """hidden_dim must divide evenly across attention heads."""
+        with pytest.raises(ValueError, match="divisible"):
+            CellCommunicationConfig(hidden_dim=10, num_heads=3)
+
+    def test_invalid_dropout_rate_rejected(self) -> None:
+        """dropout_rate must be a valid probability."""
+        with pytest.raises(ValueError, match="dropout_rate"):
+            CellCommunicationConfig(dropout_rate=1.0)
+
 
 class TestDifferentiableCellCommunication:
     """Tests for DifferentiableCellCommunication operator outputs."""

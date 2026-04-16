@@ -305,29 +305,54 @@ class DifferentiableLigandReceptor(TemperatureOperator):
 
 
 @dataclass(frozen=True)
-class CellCommunicationConfig(OperatorConfig):
-    """Configuration for GNN-based cell-cell communication analysis.
-
-    Attributes:
-        n_genes: Number of genes in the expression matrix.
-        n_lr_pairs: Number of ligand-receptor pairs (determines edge feature
-            projection input dimension and communication score output width).
-        hidden_dim: Hidden dimension for GNN layers (must be divisible by num_heads).
-        num_heads: Number of attention heads in GATv2 layers.
-        edge_features_dim: Dimension of per-edge L-R features fed to GATv2.
-        num_gnn_layers: Number of stacked GATv2 layers.
-        n_pathways: Number of signaling pathways to infer.
-        dropout_rate: Dropout rate for regularization.
-    """
+class _CellCommunicationInputConfig:
+    """Input-space sizing for cell communication analysis."""
 
     n_genes: int = 2000
     n_lr_pairs: int = 10
+    edge_features_dim: int = 8
+
+
+@dataclass(frozen=True)
+class _CellCommunicationModelConfig:
+    """Graph-attention architecture for communication inference."""
+
     hidden_dim: int = 64
     num_heads: int = 4
-    edge_features_dim: int = 8
     num_gnn_layers: int = 2
     n_pathways: int = 20
     dropout_rate: float = 0.1
+
+
+@dataclass(frozen=True)
+class CellCommunicationConfig(
+    _CellCommunicationInputConfig,
+    _CellCommunicationModelConfig,
+    OperatorConfig,
+):
+    """Configuration for GNN-based cell-cell communication analysis."""
+
+    def __post_init__(self) -> None:
+        """Validate graph-attention communication configuration."""
+        if self.n_genes <= 0:
+            raise ValueError("n_genes must be positive")
+        if self.n_lr_pairs <= 0:
+            raise ValueError("n_lr_pairs must be positive")
+        if self.hidden_dim <= 0:
+            raise ValueError("hidden_dim must be positive")
+        if self.num_heads <= 0:
+            raise ValueError("num_heads must be positive")
+        if self.hidden_dim % self.num_heads != 0:
+            raise ValueError("hidden_dim must be divisible by num_heads")
+        if self.edge_features_dim <= 0:
+            raise ValueError("edge_features_dim must be positive")
+        if self.num_gnn_layers <= 0:
+            raise ValueError("num_gnn_layers must be positive")
+        if self.n_pathways <= 0:
+            raise ValueError("n_pathways must be positive")
+        if not 0.0 <= self.dropout_rate < 1.0:
+            raise ValueError("dropout_rate must be in [0, 1)")
+        super().__post_init__()
 
 
 class SpatialAttentionGNN(nnx.Module):
@@ -543,8 +568,6 @@ class DifferentiableCellCommunication(GraphOperator):
         super().__init__(config, rngs=rngs, name=name)
 
         rngs = ensure_rngs(rngs)
-
-        self.hidden_dim = config.hidden_dim
 
         # Node feature projection: n_genes -> hidden_dim
         self.node_proj = nnx.Linear(
