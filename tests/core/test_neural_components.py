@@ -9,6 +9,8 @@ These tests only cover DiffBio-specific components.
 
 import jax
 import jax.numpy as jnp
+import pytest
+from artifex.generative_models.core.base import MLP
 
 from diffbio.constants import DEFAULT_HIDDEN_DIM, DEFAULT_TEMPERATURE
 
@@ -105,6 +107,44 @@ class TestGraphMessagePassing:
             rngs=rngs,
         )
         assert layer is not None
+
+    def test_uses_direct_artifex_mlp_backbones(self, rngs):
+        """GraphMessagePassing should reuse Artifex MLP blocks directly."""
+        from diffbio.core.neural_components import GraphMessagePassing
+
+        layer = GraphMessagePassing(
+            node_features=32,
+            edge_features=8,
+            hidden_dim=DEFAULT_HIDDEN_DIM,
+            rngs=rngs,
+        )
+
+        assert isinstance(layer.message_mlp, MLP)
+        assert isinstance(layer.update_mlp, MLP)
+
+    @pytest.mark.parametrize(
+        ("kwargs", "message"),
+        [
+            ({"node_features": 0}, "node_features"),
+            ({"edge_features": 0}, "edge_features"),
+            ({"hidden_dim": 0}, "hidden_dim"),
+            ({"aggregation": "invalid"}, "Unknown aggregation"),
+        ],
+    )
+    def test_rejects_invalid_configuration(self, rngs, kwargs, message):
+        """Configuration should fail fast for invalid dimensions or aggregation."""
+        from diffbio.core.neural_components import GraphMessagePassing
+
+        config = {
+            "node_features": 32,
+            "edge_features": 8,
+            "hidden_dim": DEFAULT_HIDDEN_DIM,
+            "rngs": rngs,
+        }
+        config.update(kwargs)
+
+        with pytest.raises(ValueError, match=message):
+            GraphMessagePassing(**config)
 
     def test_forward_shape(self, rngs):
         """Test output shapes match expectations."""

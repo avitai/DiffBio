@@ -26,6 +26,7 @@ from typing import Literal
 
 import jax
 import jax.numpy as jnp
+from artifex.generative_models.core.base import MLP
 from flax import nnx
 from jaxtyping import Array, Float, Int
 
@@ -175,21 +176,29 @@ class GraphMessagePassing(nnx.Module):
             rngs: Random number generators.
         """
         super().__init__()
+        if node_features <= 0:
+            raise ValueError(f"node_features must be positive, got {node_features}")
+        if edge_features <= 0:
+            raise ValueError(f"edge_features must be positive, got {edge_features}")
+        if hidden_dim <= 0:
+            raise ValueError(f"hidden_dim must be positive, got {hidden_dim}")
+        if aggregation not in {"sum", "mean", "max"}:
+            raise ValueError(f"Unknown aggregation: {aggregation}")
 
-        self.node_features = node_features
-        self.edge_features = edge_features
-        self.hidden_dim = hidden_dim
-        self.aggregation = aggregation
-
-        # Message MLP: combines source node and edge features
-        message_input_dim = node_features + edge_features
-        self.message_linear1 = nnx.Linear(message_input_dim, hidden_dim, rngs=rngs)
-        self.message_linear2 = nnx.Linear(hidden_dim, hidden_dim, rngs=rngs)
-
-        # Update MLP: combines node features with aggregated messages
-        update_input_dim = node_features + hidden_dim
-        self.update_linear1 = nnx.Linear(update_input_dim, hidden_dim, rngs=rngs)
-        self.update_linear2 = nnx.Linear(hidden_dim, hidden_dim, rngs=rngs)
+        self.hidden_dim = nnx.static(hidden_dim)
+        self.aggregation = nnx.static(aggregation)
+        self.message_mlp = MLP(
+            [hidden_dim, hidden_dim],
+            in_features=node_features + edge_features,
+            activation=nnx.relu,
+            rngs=rngs,
+        )
+        self.update_mlp = MLP(
+            [hidden_dim, hidden_dim],
+            in_features=node_features + hidden_dim,
+            activation=nnx.relu,
+            rngs=rngs,
+        )
 
     def __call__(
         self,
@@ -213,14 +222,12 @@ class GraphMessagePassing(nnx.Module):
         # Handle empty graph case
         if num_edges == 0:
             # No messages, just transform node features
-            x = self.update_linear1(
-                jnp.concatenate(
-                    [node_features, jnp.zeros((num_nodes, self.hidden_dim))],
-                    axis=-1,
-                )
+            update_output = self.update_mlp(
+                jnp.concatenate([node_features, jnp.zeros((num_nodes, self.hidden_dim))], axis=-1)
             )
-            x = nnx.relu(x)
-            return self.update_linear2(x)
+            if isinstance(update_output, tuple):
+                return update_output[0]
+            return update_output
 
         # Extract source and destination node indices
         source_idx = edge_index[0]
@@ -231,9 +238,9 @@ class GraphMessagePassing(nnx.Module):
 
         # Compute messages: MLP(concat(source_features, edge_features))
         message_input = jnp.concatenate([source_features, edge_features], axis=-1)
-        messages = self.message_linear1(message_input)
-        messages = nnx.relu(messages)
-        messages = self.message_linear2(messages)  # (num_edges, hidden_dim)
+        messages = self.message_mlp(message_input)
+        if isinstance(messages, tuple):
+            messages = messages[0]
 
         # Aggregate messages at destination nodes
         if self.aggregation == "sum":
@@ -257,6 +264,7 @@ class GraphMessagePassing(nnx.Module):
 
         # Update node features: MLP(concat(node_features, aggregated))
         update_input = jnp.concatenate([node_features, aggregated], axis=-1)
-        x = self.update_linear1(update_input)
-        x = nnx.relu(x)
-        return self.update_linear2(x)
+        updated = self.update_mlp(update_input)
+        if isinstance(updated, tuple):
+            return updated[0]
+        return updated
