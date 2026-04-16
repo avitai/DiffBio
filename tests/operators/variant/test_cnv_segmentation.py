@@ -41,6 +41,24 @@ class TestCNVSegmentationConfig:
         config = CNVSegmentationConfig(hidden_dim=128)
         assert config.hidden_dim == 128
 
+    @pytest.mark.parametrize(
+        ("kwargs", "message"),
+        [
+            ({"max_segments": 0}, "max_segments"),
+            ({"hidden_dim": 0}, "hidden_dim"),
+            ({"attention_heads": 0}, "attention_heads"),
+            ({"temperature": 0.0}, "temperature"),
+            (
+                {"hidden_dim": 10, "attention_heads": 3},
+                "hidden_dim must be divisible by attention_heads",
+            ),
+        ],
+    )
+    def test_rejects_invalid_config(self, kwargs, message):
+        """Config should fail fast for invalid segmentation settings."""
+        with pytest.raises(ValueError, match=message):
+            CNVSegmentationConfig(**kwargs)
+
 
 class TestDifferentiableCNVSegmentation:
     """Tests for DifferentiableCNVSegmentation operator."""
@@ -320,6 +338,21 @@ class TestEnhancedCNVConfig:
         config = EnhancedCNVSegmentationConfig(n_copy_states=7)
         assert config.n_copy_states == 7
 
+    @pytest.mark.parametrize(
+        ("kwargs", "message"),
+        [
+            ({"baf_weight": -0.1}, "baf_weight"),
+            ({"baf_weight": 1.1}, "baf_weight"),
+            ({"smoothing_window": 0}, "smoothing_window"),
+            ({"threshold_scale": 0.0}, "threshold_scale"),
+            ({"n_copy_states": 1}, "n_copy_states"),
+        ],
+    )
+    def test_rejects_invalid_enhanced_config(self, kwargs, message) -> None:
+        """Enhanced config should fail fast for invalid settings."""
+        with pytest.raises(ValueError, match=message):
+            EnhancedCNVSegmentationConfig(**kwargs)
+
 
 class TestMultiSignalFusion:
     """Tests for multi-signal fusion: log-ratio + BAF + SNP density."""
@@ -402,6 +435,64 @@ class TestMultiSignalFusion:
         transformed, _, _ = op.apply(data, {}, None, None)
         assert "smoothed_coverage" in transformed
         assert jnp.isfinite(transformed["smoothed_coverage"]).all()
+
+    def test_zero_baf_weight_removes_baf_influence(
+        self,
+        rngs: nnx.Rngs,
+        multi_signal_data: dict[str, jax.Array],
+    ) -> None:
+        """A zero BAF weight should make BAF values inert in the fused signal."""
+        config = EnhancedCNVSegmentationConfig(
+            max_segments=10,
+            hidden_dim=16,
+            attention_heads=2,
+            use_baf=True,
+            baf_weight=0.0,
+            smoothing_window=21,
+            n_copy_states=5,
+        )
+        op = EnhancedCNVSegmentation(config, rngs=rngs)
+
+        zero_baf_data = {
+            **multi_signal_data,
+            "baf_signal": jnp.zeros_like(multi_signal_data["baf_signal"]),
+        }
+
+        transformed, _, _ = op.apply(multi_signal_data, {}, None, None)
+        transformed_zero, _, _ = op.apply(zero_baf_data, {}, None, None)
+
+        assert jnp.allclose(transformed["fused_signal"], transformed_zero["fused_signal"])
+
+    def test_baf_weight_changes_fused_signal(
+        self,
+        multi_signal_data: dict[str, jax.Array],
+    ) -> None:
+        """Changing BAF weight should change the initial fused signal."""
+        low_weight = EnhancedCNVSegmentationConfig(
+            max_segments=10,
+            hidden_dim=16,
+            attention_heads=2,
+            use_baf=True,
+            baf_weight=0.0,
+            smoothing_window=21,
+            n_copy_states=5,
+        )
+        high_weight = EnhancedCNVSegmentationConfig(
+            max_segments=10,
+            hidden_dim=16,
+            attention_heads=2,
+            use_baf=True,
+            baf_weight=1.0,
+            smoothing_window=21,
+            n_copy_states=5,
+        )
+        op_low = EnhancedCNVSegmentation(low_weight, rngs=nnx.Rngs(123))
+        op_high = EnhancedCNVSegmentation(high_weight, rngs=nnx.Rngs(123))
+
+        out_low, _, _ = op_low.apply(multi_signal_data, {}, None, None)
+        out_high, _, _ = op_high.apply(multi_signal_data, {}, None, None)
+
+        assert not jnp.allclose(out_low["fused_signal"], out_high["fused_signal"])
 
     def test_baf_integration_changes_output(
         self,

@@ -232,7 +232,7 @@ data = {
 result, state, metadata = enhanced_cnv.apply(data, {}, None)
 
 copy_states = result["copy_number_posteriors"]   # (n_positions, n_copy_states)
-smoothed = result["smoothed_signal"]             # (n_positions,)
+smoothed = result["smoothed_coverage"]           # (n_positions,)
 ```
 
 ### Configuration
@@ -244,7 +244,7 @@ smoothed = result["smoothed_signal"]             # (n_positions,)
 | `attention_heads` | int | 4 | Number of attention heads |
 | `temperature` | float | 1.0 | Softmax temperature |
 | `use_baf` | bool | False | Incorporate B-allele frequency |
-| `baf_weight` | float | 0.3 | Initial BAF signal fusion weight |
+| `baf_weight` | float | 0.3 | Initial scaling applied to BAF before learnable fusion |
 | `smoothing_window` | int | 100 | Pyramidal smoothing window size |
 | `threshold_scale` | float | 1.5 | STDDEV-based dynamic threshold multiplier |
 | `n_copy_states` | int | 5 | Discrete copy-number states (0-somy to 4-somy) |

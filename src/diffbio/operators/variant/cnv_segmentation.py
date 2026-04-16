@@ -18,7 +18,6 @@ Key techniques:
 Applications: CNV analysis, coverage depth segmentation, breakpoint detection.
 """
 
-import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -30,8 +29,6 @@ from jaxtyping import Array, Float, PyTree
 
 from diffbio.core import soft_ops
 from diffbio.core.base_operators import TemperatureOperator
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -49,6 +46,24 @@ class CNVSegmentationConfig(OperatorConfig):
     hidden_dim: int = 64
     attention_heads: int = 4
     temperature: float = 1.0
+
+    def __post_init__(self) -> None:
+        """Validate segmentation hyperparameters."""
+        super().__post_init__()
+
+        if self.max_segments <= 0:
+            raise ValueError(f"max_segments must be positive, got {self.max_segments}")
+        if self.hidden_dim <= 0:
+            raise ValueError(f"hidden_dim must be positive, got {self.hidden_dim}")
+        if self.attention_heads <= 0:
+            raise ValueError(f"attention_heads must be positive, got {self.attention_heads}")
+        if self.temperature <= 0.0:
+            raise ValueError(f"temperature must be positive, got {self.temperature}")
+        if self.hidden_dim % self.attention_heads != 0:
+            raise ValueError(
+                "hidden_dim must be divisible by attention_heads, got "
+                f"hidden_dim={self.hidden_dim}, attention_heads={self.attention_heads}"
+            )
 
 
 class DifferentiableCNVSegmentation(TemperatureOperator):
@@ -84,6 +99,8 @@ class DifferentiableCNVSegmentation(TemperatureOperator):
         ```
     """
 
+    config: CNVSegmentationConfig  # pyright: ignore[reportIncompatibleVariableOverride]
+
     def __init__(
         self,
         config: CNVSegmentationConfig,
@@ -102,11 +119,6 @@ class DifferentiableCNVSegmentation(TemperatureOperator):
 
         if rngs is None:
             rngs = nnx.Rngs(0)
-
-        self.max_segments = config.max_segments
-        self.hidden_dim = config.hidden_dim
-        self.attention_heads = config.attention_heads
-        # Temperature is now managed by TemperatureOperator via self._temperature
 
         # Input projection: coverage value -> hidden
         self.input_proj = nnx.Linear(1, config.hidden_dim, rngs=rngs)
@@ -172,13 +184,13 @@ class DifferentiableCNVSegmentation(TemperatureOperator):
         V = self.value_proj(embeddings)  # (n_positions, hidden_dim)
 
         # Compute attention scores
-        head_dim = self.hidden_dim // self.attention_heads
+        head_dim = self.config.hidden_dim // self.config.attention_heads
         scale = jnp.sqrt(head_dim).astype(embeddings.dtype)
 
         # Reshape for multi-head attention
-        Q = Q.reshape(n_positions, self.attention_heads, head_dim)
-        K = K.reshape(n_positions, self.attention_heads, head_dim)
-        V = V.reshape(n_positions, self.attention_heads, head_dim)
+        Q = Q.reshape(n_positions, self.config.attention_heads, head_dim)
+        K = K.reshape(n_positions, self.config.attention_heads, head_dim)
+        V = V.reshape(n_positions, self.config.attention_heads, head_dim)
 
         # Attention: (n_positions, n_heads, n_positions)
         attn_scores = jnp.einsum("nhd,mhd->nhm", Q, K) / scale
@@ -188,7 +200,7 @@ class DifferentiableCNVSegmentation(TemperatureOperator):
 
         # Attend to values
         attended = jnp.einsum("nhm,mhd->nhd", attn_weights, V)
-        attended = attended.reshape(n_positions, self.hidden_dim)
+        attended = attended.reshape(n_positions, self.config.hidden_dim)
 
         # Compute boundary probability from attended features
         # Look at how much attention pattern changes
@@ -332,7 +344,7 @@ class DifferentiableCNVSegmentation(TemperatureOperator):
 
 
 @dataclass(frozen=True)
-class EnhancedCNVSegmentationConfig(OperatorConfig):
+class EnhancedCNVSegmentationConfig(CNVSegmentationConfig):
     """Configuration for EnhancedCNVSegmentation.
 
     Extends the base CNV segmentation with multi-signal fusion, pyramidal
@@ -350,15 +362,24 @@ class EnhancedCNVSegmentationConfig(OperatorConfig):
         n_copy_states: Number of discrete copy-number states (0-somy to N-somy).
     """
 
-    max_segments: int = 100
-    hidden_dim: int = 64
-    attention_heads: int = 4
-    temperature: float = 1.0
     use_baf: bool = False
     baf_weight: float = 0.3
     smoothing_window: int = 100
     threshold_scale: float = 1.5
     n_copy_states: int = 5
+
+    def __post_init__(self) -> None:
+        """Validate enhanced segmentation hyperparameters."""
+        super().__post_init__()
+
+        if not 0.0 <= self.baf_weight <= 1.0:
+            raise ValueError(f"baf_weight must be in [0, 1], got {self.baf_weight}")
+        if self.smoothing_window <= 0:
+            raise ValueError(f"smoothing_window must be positive, got {self.smoothing_window}")
+        if self.threshold_scale <= 0.0:
+            raise ValueError(f"threshold_scale must be positive, got {self.threshold_scale}")
+        if self.n_copy_states <= 1:
+            raise ValueError(f"n_copy_states must be greater than 1, got {self.n_copy_states}")
 
 
 def _build_pyramidal_kernel(window_size: int) -> Float[Array, "window_size"]:
@@ -408,6 +429,8 @@ class EnhancedCNVSegmentation(DifferentiableCNVSegmentation):
         ```
     """
 
+    config: EnhancedCNVSegmentationConfig  # pyright: ignore[reportIncompatibleVariableOverride]
+
     def __init__(
         self,
         config: EnhancedCNVSegmentationConfig,
@@ -422,25 +445,10 @@ class EnhancedCNVSegmentation(DifferentiableCNVSegmentation):
             rngs: Random number generators for initialization.
             name: Optional operator name.
         """
-        # Build a base CNVSegmentationConfig for the parent.
-        base_config = CNVSegmentationConfig(
-            max_segments=config.max_segments,
-            hidden_dim=config.hidden_dim,
-            attention_heads=config.attention_heads,
-            temperature=config.temperature,
-        )
-        super().__init__(base_config, rngs=rngs, name=name)
-
-        # Store the full enhanced config for use in apply().
-        self._enhanced_config = config
+        super().__init__(config, rngs=rngs, name=name)
 
         if rngs is None:
             rngs = nnx.Rngs(0)
-
-        self.use_baf = nnx.static(config.use_baf)
-        self.smoothing_window = config.smoothing_window
-        self.threshold_scale = config.threshold_scale
-        self.n_copy_states = config.n_copy_states
 
         # --- Signal fusion ---
         # Number of input channels: coverage is always present.
@@ -477,11 +485,12 @@ class EnhancedCNVSegmentation(DifferentiableCNVSegmentation):
         """
         coverage = data["coverage"]
 
-        if self.use_baf:
+        if self.config.use_baf:
             baf = data.get("baf_signal", jnp.zeros_like(coverage))
             snp = data.get("snp_density", jnp.zeros_like(coverage))
+            baf_scaled = baf * self.config.baf_weight
             # Stack into (n_positions, 3)
-            stacked = jnp.stack([coverage, baf, snp], axis=-1)
+            stacked = jnp.stack([coverage, baf_scaled, snp], axis=-1)
         else:
             stacked = coverage[:, None]  # (n_positions, 1)
 
@@ -512,7 +521,7 @@ class EnhancedCNVSegmentation(DifferentiableCNVSegmentation):
         Returns:
             Smoothed signal of the same length.
         """
-        kernel = _build_pyramidal_kernel(self.smoothing_window)
+        kernel = _build_pyramidal_kernel(self.config.smoothing_window)
         # 'same' mode preserves signal length
         smoothed = jnp.convolve(signal, kernel, mode="same")
         return smoothed
@@ -537,7 +546,7 @@ class EnhancedCNVSegmentation(DifferentiableCNVSegmentation):
         Returns:
             Tuple of (filtered_signal, threshold_value).
         """
-        noise_threshold = self.threshold_scale * jnp.std(signal)
+        noise_threshold = self.config.threshold_scale * jnp.std(signal)
         # Soft gate: sigmoid((|x| - threshold) / temperature)
         # Outputs near 0 when |x| < threshold, near 1 when |x| > threshold
         gate = soft_ops.greater(
@@ -585,7 +594,7 @@ class EnhancedCNVSegmentation(DifferentiableCNVSegmentation):
         Returns:
             Expected copy number at each position.
         """
-        state_values = jnp.arange(self.n_copy_states, dtype=jnp.float32)
+        state_values = jnp.arange(self.config.n_copy_states, dtype=jnp.float32)
         return jnp.einsum("ns,s->n", posteriors, state_values)
 
     # -----------------------------------------------------------------
