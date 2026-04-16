@@ -45,6 +45,27 @@ class TestSecondaryStructureConfig:
         assert config.min_helix_length == 3
         assert config.temperature == 0.5
 
+    def test_invalid_margin_rejected(self):
+        """Margin must be positive."""
+        from diffbio.operators.protein import SecondaryStructureConfig
+
+        with pytest.raises(ValueError, match="margin"):
+            SecondaryStructureConfig(margin=0.0)
+
+    def test_invalid_min_helix_length_rejected(self):
+        """Minimum helix length must be positive."""
+        from diffbio.operators.protein import SecondaryStructureConfig
+
+        with pytest.raises(ValueError, match="min_helix_length"):
+            SecondaryStructureConfig(min_helix_length=0)
+
+    def test_invalid_constraint_weight_rejected(self):
+        """Constraint weights must be non-negative."""
+        from diffbio.operators.protein import SecondaryStructureConfig
+
+        with pytest.raises(ValueError, match="bond_length_weight"):
+            SecondaryStructureConfig(bond_length_weight=-0.1)
+
 
 class TestHydrogenBondEnergy:
     """Tests for hydrogen bond energy computation."""

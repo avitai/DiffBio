@@ -50,35 +50,47 @@ SS_STRAND = 2  # 'E' (beta-strand)
 
 
 @dataclass(frozen=True)
-class SecondaryStructureConfig(OperatorConfig):
-    """Configuration for DifferentiableSecondaryStructure.
-
-    Attributes:
-        margin: Smoothing margin for continuous H-bond matrix. Default 1.0.
-            Controls the sharpness of the sigmoid-like transformation.
-            Smaller values = sharper transitions.
-        cutoff: Hydrogen bond energy threshold in kcal/mol. Default -0.5.
-            Bonds with energy below this are considered hydrogen bonds.
-        min_helix_length: Minimum consecutive residues for helix assignment.
-            Default 4 (standard for alpha-helix i→i+4 pattern).
-        temperature: Temperature for soft secondary structure assignment.
-            Default 1.0. Lower = sharper assignments.
-        use_bond_length_constraint: Whether to add artifex bond length
-            regularisation to the output. Default False.
-        use_bond_angle_constraint: Whether to add artifex bond angle
-            regularisation to the output. Default False.
-        bond_length_weight: Weight for bond length constraint loss.
-        bond_angle_weight: Weight for bond angle constraint loss.
-    """
+class _SecondaryStructureCoreConfig:
+    """Core DSSP thresholding configuration."""
 
     margin: float = DEFAULT_MARGIN
     cutoff: float = DEFAULT_CUTOFF
     min_helix_length: int = 4
     temperature: float = 1.0
+
+
+@dataclass(frozen=True)
+class _SecondaryStructureConstraintConfig:
+    """Optional geometric regularization configuration."""
+
     use_bond_length_constraint: bool = False
     use_bond_angle_constraint: bool = False
     bond_length_weight: float = 0.1
     bond_angle_weight: float = 0.1
+
+
+@dataclass(frozen=True)
+class SecondaryStructureConfig(
+    _SecondaryStructureCoreConfig,
+    _SecondaryStructureConstraintConfig,
+    OperatorConfig,
+):
+    """Configuration for DifferentiableSecondaryStructure."""
+
+    def __post_init__(self) -> None:
+        """Validate the secondary-structure configuration."""
+        super().__post_init__()
+
+        if self.margin <= 0.0:
+            raise ValueError("margin must be positive.")
+        if self.min_helix_length <= 0:
+            raise ValueError("min_helix_length must be positive.")
+        if self.temperature <= 0.0:
+            raise ValueError("temperature must be positive.")
+        if self.bond_length_weight < 0.0:
+            raise ValueError("bond_length_weight must be non-negative.")
+        if self.bond_angle_weight < 0.0:
+            raise ValueError("bond_angle_weight must be non-negative.")
 
 
 def compute_hydrogen_position(
