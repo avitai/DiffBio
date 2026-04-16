@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import jax.numpy as jnp
+from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
@@ -71,16 +72,11 @@ class DifferentiableSpectralSimilarity(OperatorModule):
     2. Paired spectra input: Computes similarity between spectrum pairs
 
     Architecture:
-        Input (n_bins) -> Dense -> [BatchNorm] -> ReLU -> Dropout
-                      -> Dense -> [BatchNorm] -> ReLU -> Dropout
-                      -> Dense -> Embedding (embedding_dim)
+        Input (n_bins) -> shared encoder MLP -> Embedding (embedding_dim)
 
     Attributes:
         config: SpectralSimilarityConfig with hyperparameters.
-        encoder_layers: Dense layers for encoding spectra.
-        encoder_bn: Batch normalization layers.
-        encoder_dropout: Dropout layers for regularization.
-        embedding_layer: Final layer producing embeddings.
+        backbone: Shared Artifex encoder backbone producing spectral embeddings.
 
     Example:
         ```python
@@ -110,34 +106,15 @@ class DifferentiableSpectralSimilarity(OperatorModule):
         super().__init__(config, rngs=rngs)
         self.config = config
 
-        # Build encoder layers
-        encoder_layers = []
-        encoder_bn = []
-        encoder_dropout = []
-
-        in_features = config.n_bins
-        for hidden_dim in config.hidden_dims:
-            # Add L1/L2 regularization to first layer (as in MS2DeepScore)
-            encoder_layers.append(nnx.Linear(in_features, hidden_dim, rngs=rngs))
-
-            if config.use_batch_norm:
-                encoder_bn.append(nnx.BatchNorm(hidden_dim, rngs=rngs))
-            else:
-                encoder_bn.append(None)
-
-            if config.dropout_rate > 0:
-                encoder_dropout.append(nnx.Dropout(rate=config.dropout_rate, rngs=rngs))
-            else:
-                encoder_dropout.append(None)
-
-            in_features = hidden_dim
-
-        self.encoder_layers = nnx.List(encoder_layers)
-        self.encoder_bn = nnx.List(encoder_bn)
-        self.encoder_dropout = nnx.List(encoder_dropout)
-
-        # Final embedding layer (no batch norm or dropout after this)
-        self.embedding_layer = nnx.Linear(in_features, config.embedding_dim, rngs=rngs)
+        self.backbone = MLP(
+            hidden_dims=[*config.hidden_dims, config.embedding_dim],
+            in_features=config.n_bins,
+            activation="relu",
+            dropout_rate=config.dropout_rate,
+            output_activation=None,
+            use_batch_norm=config.use_batch_norm,
+            rngs=rngs,
+        )
 
     def encode(self, spectra: jnp.ndarray) -> jnp.ndarray:
         """Encode binned spectra into embeddings.
@@ -152,28 +129,10 @@ class DifferentiableSpectralSimilarity(OperatorModule):
         Returns:
             Embeddings with shape (n_spectra, embedding_dim).
         """
-        x = spectra
-
-        # Apply encoder layers
-        for idx in range(len(self.encoder_layers)):
-            layer = self.encoder_layers[idx]
-            bn = self.encoder_bn[idx]
-            dropout = self.encoder_dropout[idx]
-
-            x = layer(x)
-
-            if bn is not None:
-                x = bn(x)
-
-            x = nnx.relu(x)
-
-            if dropout is not None:
-                x = dropout(x)
-
-        # Final embedding layer (no activation for embedding output)
-        embeddings = self.embedding_layer(x)
-
-        return embeddings
+        backbone_output = self.backbone(spectra)
+        if isinstance(backbone_output, tuple):
+            raise TypeError("Spectral similarity backbone must return a single tensor output.")
+        return backbone_output
 
     def cosine_similarity(
         self, embeddings_a: jnp.ndarray, embeddings_b: jnp.ndarray

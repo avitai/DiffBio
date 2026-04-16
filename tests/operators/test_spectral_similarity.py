@@ -73,6 +73,10 @@ class TestDifferentiableSpectralSimilarity:
         """Test operator initialization."""
         assert operator is not None
         assert operator.config == config
+        assert operator.backbone is not None
+        assert len(operator.backbone.layers) == len(config.hidden_dims) + 1
+        if config.use_batch_norm:
+            assert len(operator.backbone.batch_norms) == len(config.hidden_dims)
 
     def test_embedding_output_shape(self, operator):
         """Test that embedding has correct shape."""
@@ -145,6 +149,23 @@ class TestDifferentiableSpectralSimilarity:
 
         assert loss is not None
         assert grads is not None
+
+    def test_gradients_reach_shared_backbone(self, operator):
+        """Test that gradients reach the first shared encoder layer."""
+        spectra_a = jax.random.uniform(jax.random.PRNGKey(0), (5, 500))
+        spectra_b = jax.random.uniform(jax.random.PRNGKey(1), (5, 500))
+
+        @nnx.value_and_grad
+        def loss_fn(model):
+            data = {"spectra_a": spectra_a, "spectra_b": spectra_b}
+            result, _, _ = model.apply(data, {}, None)
+            return result["similarity_scores"].mean()
+
+        _, grads = loss_fn(operator)
+
+        assert hasattr(grads, "backbone")
+        assert grads.backbone is not None
+        assert jnp.any(grads.backbone.layers[0].kernel[...] != 0.0)
 
     def test_jit_compilation(self, operator):
         """Test JIT compilation with nnx.jit."""
