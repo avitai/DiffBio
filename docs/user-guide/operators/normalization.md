@@ -94,7 +94,6 @@ from diffbio.operators.normalization import DifferentiableUMAP, UMAPConfig
 config = UMAPConfig(
     n_components=2,
     n_neighbors=15,
-    min_dist=0.1,
     input_features=50,
     hidden_dim=32,
 )
@@ -117,7 +116,6 @@ embedding = result["embedding"]  # (n_samples, n_components)
 |-----------|------|---------|-------------|
 | `n_components` | int | 2 | Output embedding dimension |
 | `n_neighbors` | int | 15 | Number of neighbors for local structure |
-| `min_dist` | float | 0.1 | Minimum distance between embedded points |
 | `input_features` | int | 64 | Input feature dimension |
 | `hidden_dim` | int | 32 | Projection network hidden dimension |
 | `metric` | str | "euclidean" | Distance metric ("euclidean" or "cosine") |
@@ -137,12 +135,10 @@ Where:
 
 ```python
 # UMAP curve parameters
-umap.a_param  # Controls q(d) = 1/(1 + a*d^(2b))
-umap.b_param  # Shape parameter
+umap.embedding_head.curve_params  # Packed [a, b] kernel coefficients
 
 # Projection network
-umap.projection_layer1  # Input → Hidden
-umap.projection_layer2  # Hidden → Output
+umap.embedding_head.projection_backbone  # Direct Artifex MLP backbone
 ```
 
 ## DifferentiablePHATE

@@ -22,9 +22,12 @@ class TestUMAPConfig:
 
         assert config.n_components == 2
         assert config.n_neighbors == 15
-        assert config.min_dist == 0.1
         assert config.metric == "euclidean"
         assert config.stochastic is False
+        assert not hasattr(config, "min_dist")
+        assert not hasattr(config, "spread")
+        assert not hasattr(config, "learning_rate")
+        assert not hasattr(config, "negative_sample_rate")
 
     def test_custom_config(self):
         """Test custom configuration values."""
@@ -33,15 +36,46 @@ class TestUMAPConfig:
         config = UMAPConfig(
             n_components=3,
             n_neighbors=30,
-            min_dist=0.5,
             metric="cosine",
             stream_name=None,
         )
 
         assert config.n_components == 3
         assert config.n_neighbors == 30
-        assert config.min_dist == 0.5
         assert config.metric == "cosine"
+
+    @pytest.mark.parametrize(
+        ("field_name", "value"),
+        [
+            ("min_dist", 0.5),
+            ("spread", 2.0),
+            ("learning_rate", 1.0),
+            ("negative_sample_rate", 5),
+        ],
+    )
+    def test_rejects_removed_legacy_fields(self, field_name, value):
+        """Unsupported legacy UMAP keywords should fail immediately."""
+        from diffbio.operators.normalization.umap import UMAPConfig
+
+        with pytest.raises(TypeError, match=field_name):
+            UMAPConfig(stream_name=None, **{field_name: value})
+
+    @pytest.mark.parametrize(
+        ("kwargs", "message"),
+        [
+            ({"n_components": 0}, "n_components"),
+            ({"n_neighbors": 0}, "n_neighbors"),
+            ({"input_features": 0}, "input_features"),
+            ({"hidden_dim": 0}, "hidden_dim"),
+            ({"metric": "manhattan"}, "metric"),
+        ],
+    )
+    def test_rejects_invalid_config(self, kwargs, message):
+        """Config should fail fast for unsupported values."""
+        from diffbio.operators.normalization.umap import UMAPConfig
+
+        with pytest.raises(ValueError, match=message):
+            UMAPConfig(stream_name=None, **kwargs)
 
 
 class TestDifferentiableUMAP:
@@ -55,7 +89,6 @@ class TestDifferentiableUMAP:
         return UMAPConfig(
             n_components=2,
             n_neighbors=10,
-            min_dist=0.1,
             input_features=50,
             hidden_dim=32,
             stream_name=None,

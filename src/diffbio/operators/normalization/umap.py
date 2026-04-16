@@ -5,7 +5,6 @@ Approximation and Projection) for dimensionality reduction with end-to-end
 gradient flow.
 """
 
-import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -23,8 +22,6 @@ from diffbio.core.graph_utils import (
     symmetrize_graph,
 )
 
-logger = logging.getLogger(__name__)
-
 
 @dataclass(frozen=True)
 class UMAPConfig(OperatorConfig):
@@ -33,11 +30,7 @@ class UMAPConfig(OperatorConfig):
     Attributes:
         n_components: Number of dimensions in the embedding.
         n_neighbors: Number of neighbors for local structure preservation.
-        min_dist: Minimum distance between points in the embedding.
-        spread: Effective scale of embedded points.
         metric: Distance metric ('euclidean' or 'cosine').
-        learning_rate: Learning rate for optimization.
-        negative_sample_rate: Number of negative samples per positive.
         input_features: Number of input features (required for initialization).
         hidden_dim: Hidden dimension for projection network.
         stream_name: Name of the data stream to process.
@@ -45,13 +38,24 @@ class UMAPConfig(OperatorConfig):
 
     n_components: int = 2
     n_neighbors: int = 15
-    min_dist: float = 0.1
-    spread: float = 1.0
     metric: str = "euclidean"
-    learning_rate: float = 1.0
-    negative_sample_rate: int = 5
     input_features: int = 64
     hidden_dim: int = 32
+
+    def __post_init__(self) -> None:
+        """Validate the supported UMAP configuration surface."""
+        super().__post_init__()
+
+        if self.n_components <= 0:
+            raise ValueError(f"n_components must be positive, got {self.n_components}")
+        if self.n_neighbors <= 0:
+            raise ValueError(f"n_neighbors must be positive, got {self.n_neighbors}")
+        if self.input_features <= 0:
+            raise ValueError(f"input_features must be positive, got {self.input_features}")
+        if self.hidden_dim <= 0:
+            raise ValueError(f"hidden_dim must be positive, got {self.hidden_dim}")
+        if self.metric not in {"euclidean", "cosine"}:
+            raise ValueError(f"metric must be 'euclidean' or 'cosine', got '{self.metric}'")
 
 
 class ParametricUMAPHead(nnx.Module):
@@ -105,7 +109,6 @@ class DifferentiableUMAP(OperatorModule):
         config = UMAPConfig(
             n_components=2,
             n_neighbors=15,
-            min_dist=0.1,
         )
         umap = DifferentiableUMAP(config, rngs=rngs)
 
