@@ -63,30 +63,45 @@ DEFAULT_MIN_HAIRPIN = 3
 
 
 @dataclass(frozen=True)
-class RNAFoldConfig(OperatorConfig):
-    """Configuration for DifferentiableRNAFold.
-
-    Attributes:
-        temperature: Temperature for Boltzmann distribution and softmax.
-            Default 1.0. Lower values give sharper base pair probabilities.
-            In physical terms, this is RT (gas constant * temperature).
-        min_hairpin_loop: Minimum hairpin loop size. Default 3.
-            Standard is 3 nucleotides between paired bases.
-        alphabet_size: Size of nucleotide alphabet. Default 4 (A,C,G,U).
-        bp_energy_au: Energy for A-U base pair. Default -2.0.
-        bp_energy_gc: Energy for G-C base pair. Default -3.0.
-        bp_energy_gu: Energy for G-U wobble pair. Default -1.0.
-        learnable_temperature: Whether temperature is learnable.
-    """
+class _RNAFoldRuntimeConfig:
+    """Runtime and caching configuration for RNA folding."""
 
     cacheable: bool = True
     temperature: float = 1.0
     min_hairpin_loop: int = DEFAULT_MIN_HAIRPIN
+
+
+@dataclass(frozen=True)
+class _RNAFoldEnergyConfig:
+    """Alphabet and base-pair energy configuration."""
+
     alphabet_size: int = 4
     bp_energy_au: float = BP_ENERGY_AU
     bp_energy_gc: float = BP_ENERGY_GC
     bp_energy_gu: float = BP_ENERGY_GU
     learnable_temperature: bool = False
+
+
+@dataclass(frozen=True)
+class RNAFoldConfig(_RNAFoldRuntimeConfig, _RNAFoldEnergyConfig, OperatorConfig):
+    """Configuration for DifferentiableRNAFold."""
+
+    def __post_init__(self) -> None:
+        """Validate RNA folding configuration."""
+        super().__post_init__()
+
+        if self.temperature <= 0.0:
+            raise ValueError("temperature must be positive.")
+        if self.min_hairpin_loop < 0:
+            raise ValueError("min_hairpin_loop must be non-negative.")
+        if self.alphabet_size != 4:
+            raise ValueError("alphabet_size must be 4 for canonical RNA one-hot encoding.")
+        if self.bp_energy_au > 0.0:
+            raise ValueError("bp_energy_au must be non-positive.")
+        if self.bp_energy_gc > 0.0:
+            raise ValueError("bp_energy_gc must be non-positive.")
+        if self.bp_energy_gu > 0.0:
+            raise ValueError("bp_energy_gu must be non-positive.")
 
 
 def compute_pair_energy_matrix(

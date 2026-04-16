@@ -40,6 +40,26 @@ class TestRNAFoldConfig:
         assert config.min_hairpin_loop == 4
         assert config.alphabet_size == 4
 
+    def test_invalid_temperature_rejected(self):
+        """Temperature must be positive."""
+        with pytest.raises(ValueError, match="temperature"):
+            RNAFoldConfig(temperature=0.0)
+
+    def test_invalid_min_hairpin_loop_rejected(self):
+        """Hairpin loop size must be non-negative."""
+        with pytest.raises(ValueError, match="min_hairpin_loop"):
+            RNAFoldConfig(min_hairpin_loop=-1)
+
+    def test_invalid_alphabet_size_rejected(self):
+        """The implementation currently supports the canonical 4-letter RNA alphabet."""
+        with pytest.raises(ValueError, match="alphabet_size"):
+            RNAFoldConfig(alphabet_size=5)
+
+    def test_invalid_base_pair_energy_rejected(self):
+        """Base-pair energies must remain non-positive to preserve folding semantics."""
+        with pytest.raises(ValueError, match="bp_energy_gc"):
+            RNAFoldConfig(bp_energy_gc=1.0)
+
 
 class TestDifferentiableRNAFold:
     """Tests for DifferentiableRNAFold operator."""
