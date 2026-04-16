@@ -13,6 +13,7 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
+from artifex.generative_models.core.base import MLP
 from flax import nnx
 from jaxtyping import Array, Float
 
@@ -50,6 +51,10 @@ class MetagenomicBinnerConfig(TemperatureConfig):
         if self.stream_name is None:
             object.__setattr__(self, "stream_name", "sample")
         super().__post_init__()
+        if not self.hidden_dims:
+            raise ValueError(
+                "MetagenomicBinnerConfig.hidden_dims must contain at least one hidden layer."
+            )
 
 
 class DifferentiableMetagenomicBinner(TemperatureOperator, EncoderDecoderOperator):
@@ -103,17 +108,15 @@ class DifferentiableMetagenomicBinner(TemperatureOperator, EncoderDecoderOperato
 
         input_dim = config.n_tnf_features + config.n_abundance_features
 
-        # Build encoder (using nnx.List for proper pytree handling)
-        encoder_linear = []
-        encoder_bn = []
-        prev_dim = input_dim
-        for hidden_dim in config.hidden_dims:
-            encoder_linear.append(nnx.Linear(prev_dim, hidden_dim, rngs=rngs))
-            encoder_bn.append(nnx.BatchNorm(hidden_dim, rngs=rngs))
-            prev_dim = hidden_dim
-        self.encoder_linear = nnx.List(encoder_linear)
-        self.encoder_bn = nnx.List(encoder_bn)
-        self.encoder_dropout = nnx.Dropout(rate=config.dropout_rate, rngs=rngs)
+        self.encoder_backbone = MLP(
+            hidden_dims=list(config.hidden_dims),
+            in_features=input_dim,
+            activation="relu",
+            dropout_rate=config.dropout_rate,
+            output_activation="relu",
+            use_batch_norm=True,
+            rngs=rngs,
+        )
         self.fc_latent = nnx.List(
             [
                 nnx.Linear(config.hidden_dims[-1], config.latent_dim, rngs=rngs),
@@ -121,23 +124,26 @@ class DifferentiableMetagenomicBinner(TemperatureOperator, EncoderDecoderOperato
             ]
         )
 
-        # Build decoder (using nnx.List for proper pytree handling)
-        decoder_linear = []
-        decoder_bn = []
-        prev_dim = config.latent_dim
-        for hidden_dim in reversed(config.hidden_dims):
-            decoder_linear.append(nnx.Linear(prev_dim, hidden_dim, rngs=rngs))
-            decoder_bn.append(nnx.BatchNorm(hidden_dim, rngs=rngs))
-            prev_dim = hidden_dim
-        self.decoder_linear = nnx.List(decoder_linear)
-        self.decoder_bn = nnx.List(decoder_bn)
-        self.decoder_dropout = nnx.Dropout(rate=config.dropout_rate, rngs=rngs)
+        decoder_hidden_dims = list(reversed(config.hidden_dims))
+        self.decoder_backbone = MLP(
+            hidden_dims=decoder_hidden_dims,
+            in_features=config.latent_dim,
+            activation="relu",
+            dropout_rate=config.dropout_rate,
+            output_activation="relu",
+            use_batch_norm=True,
+            rngs=rngs,
+        )
         self.decoder_heads = nnx.List(
             [
-                nnx.Linear(config.hidden_dims[0], config.n_tnf_features, rngs=rngs),
-                nnx.Linear(config.hidden_dims[0], config.n_abundance_features, rngs=rngs),
+                nnx.Linear(decoder_hidden_dims[-1], config.n_tnf_features, rngs=rngs),
+                nnx.Linear(decoder_hidden_dims[-1], config.n_abundance_features, rngs=rngs),
             ]
         )
+
+        # Tracks train/eval mode for latent sampling even when no stochastic
+        # submodule on the encoder is active for a given configuration.
+        self.latent_sampling_mode = nnx.Dropout(rate=0.0, rngs=rngs)
 
         # Learnable cluster centroids
         self.centroids = nnx.Param(
@@ -155,16 +161,13 @@ class DifferentiableMetagenomicBinner(TemperatureOperator, EncoderDecoderOperato
         Returns:
             Tuple of (mu, logvar).
         """
-        h = x
-        for linear, bn in zip(self.encoder_linear, self.encoder_bn):
-            h = linear(h)
-            h = bn(h)
-            h = nnx.relu(h)
-            h = self.encoder_dropout(h)
+        encoded = self.encoder_backbone(x)
+        if isinstance(encoded, tuple):
+            raise TypeError("Metagenomic binner encoder backbone must return a single tensor.")
 
         fc_mu, fc_logvar = self.fc_latent
-        mu = fc_mu(h)
-        logvar = fc_logvar(h)
+        mu = fc_mu(encoded)
+        logvar = fc_logvar(encoded)
         return mu, logvar
 
     def decode(
@@ -178,18 +181,15 @@ class DifferentiableMetagenomicBinner(TemperatureOperator, EncoderDecoderOperato
         Returns:
             Tuple of (tnf, abundance).
         """
-        h = z
-        for linear, bn in zip(self.decoder_linear, self.decoder_bn):
-            h = linear(h)
-            h = bn(h)
-            h = nnx.relu(h)
-            h = self.decoder_dropout(h)
+        decoded = self.decoder_backbone(z)
+        if isinstance(decoded, tuple):
+            raise TypeError("Metagenomic binner decoder backbone must return a single tensor.")
 
         fc_tnf, fc_abundance = self.decoder_heads
         # TNF uses softmax (frequencies sum to 1)
-        tnf_recon = nnx.softmax(fc_tnf(h), axis=-1)
+        tnf_recon = nnx.softmax(fc_tnf(decoded), axis=-1)
         # Abundance uses softplus (positive values)
-        abundance_recon = nnx.softplus(fc_abundance(h))
+        abundance_recon = nnx.softplus(fc_abundance(decoded))
 
         return tnf_recon, abundance_recon
 
@@ -244,8 +244,7 @@ class DifferentiableMetagenomicBinner(TemperatureOperator, EncoderDecoderOperato
         mu, logvar = self.encode(x)
 
         # Sample latent (use mu during eval for determinism)
-        # Check if in eval mode via dropout's deterministic flag
-        if self.encoder_dropout.deterministic:
+        if self.latent_sampling_mode.deterministic:
             z = mu  # Eval mode: deterministic
         else:
             z = self.reparameterize(mu, logvar)  # Train mode: stochastic

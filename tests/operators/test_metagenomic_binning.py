@@ -3,6 +3,7 @@
 import jax
 import jax.numpy as jnp
 import pytest
+from artifex.generative_models.core.base import MLP
 from flax import nnx
 
 from diffbio.operators.assembly import (
@@ -34,6 +35,11 @@ class TestMetagenomicBinnerConfig:
         assert config.n_abundance_features == 5
         assert config.latent_dim == 16
         assert config.n_clusters == 50
+
+    def test_hidden_dims_must_be_non_empty(self):
+        """Metagenomic binning should fail fast without hidden backbones."""
+        with pytest.raises(ValueError, match="hidden_dims"):
+            MetagenomicBinnerConfig(hidden_dims=())
 
 
 class TestMetagenomicBinnerBasic:
@@ -95,6 +101,13 @@ class TestMetagenomicBinnerBasic:
         assert result["cluster_assignments"].shape == (n_contigs, n_clusters)
         assert result["reconstructed_tnf"].shape == (n_contigs, n_tnf)
         assert result["reconstructed_abundance"].shape == (n_contigs, n_abundance)
+
+    def test_uses_direct_artifex_backbones(self, binner):
+        """Binner should use shared Artifex MLPs for encoder and decoder."""
+        assert isinstance(binner.encoder_backbone, MLP)
+        assert isinstance(binner.decoder_backbone, MLP)
+        assert len(binner.encoder_backbone.layers) == len(binner.config.hidden_dims)
+        assert len(binner.decoder_backbone.layers) == len(binner.config.hidden_dims)
 
     def test_cluster_assignments_sum_to_one(self, binner, sample_data):
         """Test that soft cluster assignments are valid probabilities."""
@@ -189,17 +202,10 @@ class TestMetagenomicBinnerDifferentiability:
 
         _, grads = loss_fn(binner)
 
-        # Check encoder_linear has gradients
-        encoder_grads = jax.tree.leaves(grads.encoder_linear)
-        assert any(hasattr(g, "shape") and jnp.any(g != 0) for g in encoder_grads), (
-            "Encoder should have non-zero gradients"
-        )
-
-        # Check decoder_linear has gradients
-        decoder_grads = jax.tree.leaves(grads.decoder_linear)
-        assert any(hasattr(g, "shape") and jnp.any(g != 0) for g in decoder_grads), (
-            "Decoder should have non-zero gradients"
-        )
+        assert hasattr(grads, "encoder_backbone")
+        assert hasattr(grads, "decoder_backbone")
+        assert jnp.any(grads.encoder_backbone.layers[0].kernel[...] != 0.0)
+        assert jnp.any(grads.decoder_backbone.layers[0].kernel[...] != 0.0)
 
     def test_clustering_loss_gradient(self, binner, sample_data):
         """Test gradient through clustering loss."""
