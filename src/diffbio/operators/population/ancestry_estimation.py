@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import jax.numpy as jnp
+from artifex.generative_models.core.base import MLP
 from flax import nnx
 
 from diffbio.configs import TemperatureConfig
@@ -58,8 +59,7 @@ class DifferentiableAncestryEstimator(TemperatureOperator):
 
     Attributes:
         config: Operator configuration.
-        encoder_layers: Encoder network layers.
-        encoder_dropout: Dropout layer for encoder.
+        backbone: Shared encoder MLP, or ``None`` when ``hidden_dims`` is empty.
         ancestry_head: Linear layer for ancestry proportions.
         population_frequencies: Learnable population allele frequencies (P matrix).
 
@@ -93,19 +93,23 @@ class DifferentiableAncestryEstimator(TemperatureOperator):
 
         self.config = config
 
-        # Build encoder layers
-        encoder_layers = []
-        prev_dim = config.n_snps
-        for hidden_dim in config.hidden_dims:
-            encoder_layers.append(nnx.Linear(prev_dim, hidden_dim, rngs=rngs))
-            prev_dim = hidden_dim
-        self.encoder_layers = nnx.List(encoder_layers)
-
-        # Dropout for regularization
-        self.encoder_dropout = nnx.Dropout(rate=config.dropout_rate, rngs=rngs)
+        if config.hidden_dims:
+            self.backbone = MLP(
+                hidden_dims=list(config.hidden_dims),
+                in_features=config.n_snps,
+                activation="relu",
+                dropout_rate=config.dropout_rate,
+                output_activation="relu",
+                use_batch_norm=False,
+                rngs=rngs,
+            )
+            latent_dim = config.hidden_dims[-1]
+        else:
+            self.backbone = None
+            latent_dim = config.n_snps
 
         # Ancestry proportion head
-        self.ancestry_head = nnx.Linear(prev_dim, config.n_populations, rngs=rngs)
+        self.ancestry_head = nnx.Linear(latent_dim, config.n_populations, rngs=rngs)
 
         # Learnable population allele frequencies (P matrix)
         # Shape: (n_populations, n_snps)
@@ -130,17 +134,13 @@ class DifferentiableAncestryEstimator(TemperatureOperator):
                 Values should be 0, 1, or 2 representing allele counts.
 
         Returns:
-            Latent representation of shape (n_samples, hidden_dims[-1]).
+            Latent representation of shape ``(n_samples, hidden_dims[-1])`` when
+            hidden layers are configured, otherwise the original genotype matrix.
         """
-        x = genotypes
-
-        # Pass through encoder layers with ReLU and dropout
-        for layer in self.encoder_layers:
-            x = layer(x)
-            x = nnx.relu(x)
-            x = self.encoder_dropout(x)
-
-        return x
+        if self.backbone is None:
+            return genotypes
+        latent: jnp.ndarray = self.backbone(genotypes)
+        return latent
 
     def compute_ancestry(self, latent: jnp.ndarray) -> jnp.ndarray:
         """Compute ancestry proportions from latent representation.

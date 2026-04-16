@@ -77,6 +77,11 @@ class TestAncestryEstimator:
 
         return {"genotypes": genotypes}
 
+    def test_uses_direct_artifex_backbone(self, estimator, config):
+        """Estimator should use the shared Artifex MLP backbone directly."""
+        assert estimator.backbone is not None
+        assert len(estimator.backbone.layers) == len(config.hidden_dims)
+
     def test_output_shapes(self, estimator, sample_data, config):
         """Test output tensor shapes."""
         result, _, _ = estimator.apply(sample_data, {}, None)
@@ -257,6 +262,20 @@ class TestAncestryEstimatorDifferentiability:
 
         assert jnp.isfinite(loss)
         assert grads is not None
+
+    def test_gradients_reach_backbone_weights(self, estimator, sample_data):
+        """Gradients should reach the first shared MLP layer."""
+
+        @nnx.value_and_grad
+        def loss_fn(model):
+            result, _, _ = model.apply(sample_data, {}, None)
+            return jnp.mean(result["ancestry_proportions"])
+
+        _, grads = loss_fn(estimator)
+
+        assert hasattr(grads, "backbone")
+        assert grads.backbone is not None
+        assert jnp.any(grads.backbone.layers[0].kernel[...] != 0.0)
 
     def test_jit_compilation(self, estimator, sample_data):
         """Test JIT compilation works."""
