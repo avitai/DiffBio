@@ -18,12 +18,13 @@ from dataclasses import dataclass
 from typing import Any
 
 import jax
+from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.base_operators import TemperatureOperator
-from diffbio.utils.nn_utils import build_mlp_encoder, ensure_rngs, forward_mlp, get_rng_key
+from diffbio.utils.nn_utils import ensure_rngs, get_rng_key
 
 logger = logging.getLogger(__name__)
 
@@ -98,10 +99,12 @@ class DifferentiableArchetypalAnalysis(TemperatureOperator):
 
         rngs = ensure_rngs(rngs)
 
-        # Encoder MLP: n_genes -> hidden_dim -> n_archetypes (logits)
-        self.encoder_layers = build_mlp_encoder(
-            in_features=config.n_genes,
+        self.encoder_layers = MLP(
             hidden_dims=[config.hidden_dim],
+            in_features=config.n_genes,
+            activation="relu",
+            output_activation="relu",
+            use_batch_norm=False,
             rngs=rngs,
         )
         self.projection = nnx.Linear(
@@ -127,7 +130,7 @@ class DifferentiableArchetypalAnalysis(TemperatureOperator):
         Returns:
             Simplex weights of shape ``(n_cells, n_archetypes)``.
         """
-        hidden = forward_mlp(self.encoder_layers, counts)
+        hidden: jax.Array = self.encoder_layers(counts)
         logits = self.projection(hidden)
         weights = jax.nn.softmax(logits / self._temperature, axis=-1)
         return weights

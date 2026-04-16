@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 from artifex.generative_models.core.base import MLP
 from flax import nnx
@@ -111,7 +111,8 @@ class CountVAEBackboneMixin:
         """Encode count vectors to latent Gaussian parameters."""
         x = jnp.log1p(counts)
         if self.encoder_backbone is not None:
-            x = cast(jax.Array, self.encoder_backbone(x))
+            encoded: jax.Array = self.encoder_backbone(x)
+            x = encoded
         mean = self.fc_mean(x)
         logvar = jnp.clip(self.fc_logvar(x), -10.0, 10.0)
         return mean, logvar
@@ -123,7 +124,8 @@ class CountVAEBackboneMixin:
         """Decode latent vectors to the shared decoder hidden representation."""
         if self.decoder_backbone is None:
             return z
-        return cast(jax.Array, self.decoder_backbone(z))
+        decoded: jax.Array = self.decoder_backbone(z)
+        return decoded
 
     def decode_rates(
         self,

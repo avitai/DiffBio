@@ -208,7 +208,7 @@ class TestGradientFlow:
         _, grads = loss_fn(op)
         assert hasattr(grads, "encoder_layers")
         # First encoder layer must have non-zero gradients
-        assert jnp.any(grads.encoder_layers[0].kernel[...] != 0.0)
+        assert jnp.any(grads.encoder_layers.layers[0].kernel[...] != 0.0)
 
 
 # ---------------------------------------------------------------------------

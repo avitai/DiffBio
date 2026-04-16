@@ -77,6 +77,103 @@ class TestCountVAEBackbone:
         assert log_rate.shape == (8,)
 
 
+class TestGradientFlow:
+    """Gradients reach the direct Artifex MLP parameters."""
+
+    def test_grads_through_encoder_backbone(self) -> None:
+        """Encoder gradients flow into the first Artifex MLP layer."""
+        backbone = count_vae.CountVAEBackbone(
+            n_inputs=6,
+            latent_dim=3,
+            hidden_dims=[5, 4],
+            n_outputs=6,
+            rngs=nnx.Rngs(0),
+        )
+        counts = jnp.arange(1, 7, dtype=jnp.float32)
+
+        @nnx.value_and_grad
+        def loss_fn(model: count_vae.CountVAEBackbone) -> jax.Array:
+            mean, logvar = model.encode(counts)
+            return jnp.sum(mean) + jnp.sum(logvar)
+
+        _, grads = loss_fn(backbone)
+
+        assert hasattr(grads, "encoder_backbone")
+        assert grads.encoder_backbone is not None
+        assert jnp.any(grads.encoder_backbone.layers[0].kernel[...] != 0.0)
+
+    def test_grads_through_decoder_backbone(self) -> None:
+        """Decoder gradients flow into the first Artifex MLP layer."""
+        backbone = count_vae.CountVAEBackbone(
+            n_inputs=6,
+            latent_dim=3,
+            hidden_dims=[5, 4],
+            n_outputs=6,
+            rngs=nnx.Rngs(0),
+        )
+        latent = jnp.linspace(-1.0, 1.0, 3, dtype=jnp.float32)
+
+        @nnx.value_and_grad
+        def loss_fn(model: count_vae.CountVAEBackbone) -> jax.Array:
+            return jnp.sum(model.decode_rates(latent))
+
+        _, grads = loss_fn(backbone)
+
+        assert hasattr(grads, "decoder_backbone")
+        assert grads.decoder_backbone is not None
+        assert jnp.any(grads.decoder_backbone.layers[0].kernel[...] != 0.0)
+
+
+class TestJITCompatibility:
+    """JIT compilation works for direct Artifex count-VAE blocks."""
+
+    def test_encode_is_jit_compatible(self) -> None:
+        """Encoding compiles under jax.jit and returns finite outputs."""
+        backbone = count_vae.CountVAEBackbone(
+            n_inputs=6,
+            latent_dim=3,
+            hidden_dims=[5, 4],
+            n_outputs=6,
+            rngs=nnx.Rngs(0),
+        )
+        counts = jnp.arange(1, 7, dtype=jnp.float32)
+
+        @jax.jit
+        def jit_encode(x: jax.Array) -> tuple[jax.Array, jax.Array]:
+            return backbone.encode(x)
+
+        mean, logvar = jit_encode(counts)
+
+        assert mean.shape == (3,)
+        assert logvar.shape == (3,)
+        assert jnp.all(jnp.isfinite(mean))
+        assert jnp.all(jnp.isfinite(logvar))
+
+    def test_jit_gradient_is_finite(self) -> None:
+        """JIT-compiled gradients remain finite through encode/decode."""
+        backbone = count_vae.CountVAEBackbone(
+            n_inputs=6,
+            latent_dim=3,
+            hidden_dims=[5, 4],
+            n_outputs=6,
+            rngs=nnx.Rngs(0),
+        )
+        counts = jnp.arange(1, 7, dtype=jnp.float32)
+
+        @nnx.value_and_grad
+        def loss_fn(model: count_vae.CountVAEBackbone) -> jax.Array:
+            mean, logvar = model.encode(counts)
+            reconstruction = model.decode_rates(mean)
+            return jnp.mean(reconstruction) + 0.1 * jnp.mean(logvar)
+
+        jit_loss_fn = jax.jit(loss_fn)
+        loss, grads = jit_loss_fn(backbone)
+
+        assert jnp.isfinite(loss)
+        assert hasattr(grads, "encoder_backbone")
+        assert hasattr(grads, "decoder_backbone")
+
+
 class TestCountReconstructionMixin:
     """Tests for the shared count reconstruction helpers."""
 

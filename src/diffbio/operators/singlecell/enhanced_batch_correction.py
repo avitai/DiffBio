@@ -20,7 +20,7 @@ Both operators inherit from ``OperatorModule`` and follow the standard
 
 import logging
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any
 
 import jax
 import jax.numpy as jnp
@@ -193,7 +193,8 @@ class DifferentiableMMDBatchCorrection(LossBalancingMixin, OperatorModule):
         Returns:
             Latent representation.
         """
-        return cast(jax.Array, self.encoder(expression))
+        latent: jax.Array = self.encoder(expression)
+        return latent
 
     def _decode(
         self, latent: Float[Array, "n_cells latent_dim"]
@@ -206,7 +207,8 @@ class DifferentiableMMDBatchCorrection(LossBalancingMixin, OperatorModule):
         Returns:
             Reconstructed gene expression.
         """
-        return cast(jax.Array, self.decoder(latent))
+        reconstruction: jax.Array = self.decoder(latent)
+        return reconstruction
 
     def _compute_pairwise_mmd(
         self,
@@ -400,7 +402,8 @@ class DifferentiableWGANBatchCorrection(LossBalancingMixin, OperatorModule):
         Returns:
             Latent representation.
         """
-        return cast(jax.Array, self.encoder(expression))
+        latent: jax.Array = self.encoder(expression)
+        return latent
 
     def _decode(
         self, latent: Float[Array, "n_cells latent_dim"]
@@ -413,7 +416,8 @@ class DifferentiableWGANBatchCorrection(LossBalancingMixin, OperatorModule):
         Returns:
             Reconstructed gene expression.
         """
-        return cast(jax.Array, self.decoder(latent))
+        reconstruction: jax.Array = self.decoder(latent)
+        return reconstruction
 
     def _discriminate(self, latent: Float[Array, "n_cells latent_dim"]) -> Float[Array, "n_cells"]:
         """Compute discriminator (critic) scores from latent representations.
@@ -424,7 +428,7 @@ class DifferentiableWGANBatchCorrection(LossBalancingMixin, OperatorModule):
         Returns:
             Per-cell scalar critic scores.
         """
-        scores = cast(jax.Array, self.discriminator(latent))
+        scores: jax.Array = self.discriminator(latent)
         return scores.squeeze(-1)  # (n_cells,)
 
     # -- apply ----------------------------------------------------------------

@@ -14,12 +14,9 @@ from diffbio.utils.dependency_runtime import (
 )
 from diffbio.utils.quality import apply_quality_filter
 from diffbio.utils.nn_utils import (
-    build_mlp_decoder,
-    build_mlp_encoder,
     build_mlp_layers,
     ensure_rngs,
     extract_windows_1d,
-    forward_mlp,
     get_rng_key,
     init_learnable_param,
 )
@@ -52,12 +49,9 @@ __all__ = [
     # Quality utilities
     "apply_quality_filter",
     # Neural network utilities
-    "build_mlp_decoder",
-    "build_mlp_encoder",
     "build_mlp_layers",
     "ensure_rngs",
     "extract_windows_1d",
-    "forward_mlp",
     "get_rng_key",
     "init_learnable_param",
 ]

@@ -18,7 +18,7 @@ Key algorithm:
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, cast
+from typing import Any
 
 import jax
 import jax.numpy as jnp
@@ -278,7 +278,7 @@ class DifferentiableMultiOmicsVAE(LossBalancingMixin, EncoderDecoderOperator):
 
         for i in range(n_modalities):
             counts = data[self._input_key(i)]
-            h = cast(jax.Array, self.encoders[i](jnp.log1p(counts)))
+            h: jax.Array = self.encoders[i](jnp.log1p(counts))
             mu = self.mu_heads[i](h)
             logvar = jnp.clip(self.logvar_heads[i](h), -10.0, 10.0)
             mu_list.append(mu)
@@ -293,7 +293,8 @@ class DifferentiableMultiOmicsVAE(LossBalancingMixin, EncoderDecoderOperator):
         # 4. Decode each modality ----------------------------------------
         reconstructions: list[jax.Array] = []
         for i in range(n_modalities):
-            reconstructions.append(cast(jax.Array, self.decoders[i](z)))
+            reconstruction: jax.Array = self.decoders[i](z)
+            reconstructions.append(reconstruction)
 
         # 5. Compute ELBO ------------------------------------------------
         weights = self._get_modality_weights()
