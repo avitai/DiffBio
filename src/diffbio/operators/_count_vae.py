@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from artifex.generative_models.core.base import MLP
 from flax import nnx
@@ -24,19 +24,6 @@ class CountVAEBackboneMixin:
     fc_output: nnx.Linear
     n_genes: int
     stream_name: Any
-
-    @staticmethod
-    def _forward_backbone(
-        backbone: MLP | None,
-        x: jax.Array,
-    ) -> jax.Array:
-        """Run an Artifex MLP backbone and normalize tuple-return variants."""
-        if backbone is None:
-            return x
-        features = backbone(x)
-        if isinstance(features, tuple):
-            return features[0]
-        return features
 
     def _init_count_vae_backbone(
         self,
@@ -123,7 +110,8 @@ class CountVAEBackboneMixin:
     ) -> tuple[Float[Array, "... latent_dim"], Float[Array, "... latent_dim"]]:
         """Encode count vectors to latent Gaussian parameters."""
         x = jnp.log1p(counts)
-        x = self._forward_backbone(self.encoder_backbone, x)
+        if self.encoder_backbone is not None:
+            x = cast(jax.Array, self.encoder_backbone(x))
         mean = self.fc_mean(x)
         logvar = jnp.clip(self.fc_logvar(x), -10.0, 10.0)
         return mean, logvar
@@ -133,7 +121,9 @@ class CountVAEBackboneMixin:
         z: Float[Array, "... latent_dim"],
     ) -> Float[Array, "... hidden_dim"]:
         """Decode latent vectors to the shared decoder hidden representation."""
-        return self._forward_backbone(self.decoder_backbone, z)
+        if self.decoder_backbone is None:
+            return z
+        return cast(jax.Array, self.decoder_backbone(z))
 
     def decode_rates(
         self,

@@ -20,10 +20,11 @@ Both operators inherit from ``OperatorModule`` and follow the standard
 
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 import jax
 import jax.numpy as jnp
+from artifex.generative_models.core.base import MLP
 from artifex.generative_models.core.losses.adversarial import (
     wasserstein_discriminator_loss,
     wasserstein_generator_loss,
@@ -70,57 +71,6 @@ def _gradient_reversal_bwd(scale: float, grad: jax.Array) -> tuple[jax.Array, No
 
 
 _gradient_reversal.defvjp(_gradient_reversal_fwd, _gradient_reversal_bwd)
-
-
-# ---------------------------------------------------------------------------
-# Shared MLP builder
-# ---------------------------------------------------------------------------
-
-
-def _build_mlp(
-    in_features: int,
-    hidden_dim: int,
-    out_features: int,
-    *,
-    rngs: nnx.Rngs,
-) -> tuple[nnx.Linear, nnx.Linear, nnx.Linear]:
-    """Build a 2-hidden-layer MLP as three ``nnx.Linear`` layers.
-
-    Args:
-        in_features: Input dimensionality.
-        hidden_dim: Hidden layer width.
-        out_features: Output dimensionality.
-        rngs: Flax NNX random number generators.
-
-    Returns:
-        Tuple of (input_layer, hidden_layer, output_layer).
-    """
-    layer1 = nnx.Linear(in_features, hidden_dim, rngs=rngs)
-    layer2 = nnx.Linear(hidden_dim, hidden_dim, rngs=rngs)
-    layer3 = nnx.Linear(hidden_dim, out_features, rngs=rngs)
-    return layer1, layer2, layer3
-
-
-def _forward_mlp(
-    x: Float[Array, "... in_features"],
-    layer1: nnx.Linear,
-    layer2: nnx.Linear,
-    layer3: nnx.Linear,
-) -> Float[Array, "... out_features"]:
-    """Run a 2-hidden-layer MLP forward pass with ReLU activations.
-
-    Args:
-        x: Input tensor.
-        layer1: First linear layer.
-        layer2: Second linear layer.
-        layer3: Output linear layer.
-
-    Returns:
-        MLP output.
-    """
-    h = nnx.relu(layer1(x))
-    h = nnx.relu(layer2(h))
-    return layer3(h)
 
 
 # ---------------------------------------------------------------------------
@@ -214,23 +164,21 @@ class DifferentiableMMDBatchCorrection(LossBalancingMixin, OperatorModule):
 
         rngs = ensure_rngs(rngs)
 
-        # Encoder: n_genes -> hidden -> hidden -> latent
-        enc1, enc2, enc3 = _build_mlp(
-            config.n_genes,
-            config.hidden_dim,
-            config.latent_dim,
+        self.encoder = MLP(
+            hidden_dims=[config.hidden_dim, config.hidden_dim, config.latent_dim],
+            in_features=config.n_genes,
+            activation="relu",
+            use_batch_norm=False,
             rngs=rngs,
         )
-        self.encoder = _MLPBlock(enc1, enc2, enc3)
 
-        # Decoder: latent -> hidden -> hidden -> n_genes
-        dec1, dec2, dec3 = _build_mlp(
-            config.latent_dim,
-            config.hidden_dim,
-            config.n_genes,
+        self.decoder = MLP(
+            hidden_dims=[config.hidden_dim, config.hidden_dim, config.n_genes],
+            in_features=config.latent_dim,
+            activation="relu",
+            use_batch_norm=False,
             rngs=rngs,
         )
-        self.decoder = _MLPBlock(dec1, dec2, dec3)
 
     # -- helpers --------------------------------------------------------------
 
@@ -245,12 +193,7 @@ class DifferentiableMMDBatchCorrection(LossBalancingMixin, OperatorModule):
         Returns:
             Latent representation.
         """
-        return _forward_mlp(
-            expression,
-            self.encoder.layer1,
-            self.encoder.layer2,
-            self.encoder.layer3,
-        )
+        return cast(jax.Array, self.encoder(expression))
 
     def _decode(
         self, latent: Float[Array, "n_cells latent_dim"]
@@ -263,12 +206,7 @@ class DifferentiableMMDBatchCorrection(LossBalancingMixin, OperatorModule):
         Returns:
             Reconstructed gene expression.
         """
-        return _forward_mlp(
-            latent,
-            self.decoder.layer1,
-            self.decoder.layer2,
-            self.decoder.layer3,
-        )
+        return cast(jax.Array, self.decoder(latent))
 
     def _compute_pairwise_mmd(
         self,
@@ -421,32 +359,33 @@ class DifferentiableWGANBatchCorrection(LossBalancingMixin, OperatorModule):
 
         rngs = ensure_rngs(rngs)
 
-        # Encoder (generator): n_genes -> latent
-        enc1, enc2, enc3 = _build_mlp(
-            config.n_genes,
-            config.hidden_dim,
-            config.latent_dim,
+        self.encoder = MLP(
+            hidden_dims=[config.hidden_dim, config.hidden_dim, config.latent_dim],
+            in_features=config.n_genes,
+            activation="relu",
+            use_batch_norm=False,
             rngs=rngs,
         )
-        self.encoder = _MLPBlock(enc1, enc2, enc3)
 
-        # Decoder: latent -> n_genes
-        dec1, dec2, dec3 = _build_mlp(
-            config.latent_dim,
-            config.hidden_dim,
-            config.n_genes,
+        self.decoder = MLP(
+            hidden_dims=[config.hidden_dim, config.hidden_dim, config.n_genes],
+            in_features=config.latent_dim,
+            activation="relu",
+            use_batch_norm=False,
             rngs=rngs,
         )
-        self.decoder = _MLPBlock(dec1, dec2, dec3)
 
-        # Discriminator: latent -> scalar (critic score)
-        disc1, disc2, disc3 = _build_mlp(
-            config.latent_dim,
-            config.discriminator_hidden_dim,
-            1,
+        self.discriminator = MLP(
+            hidden_dims=[
+                config.discriminator_hidden_dim,
+                config.discriminator_hidden_dim,
+                1,
+            ],
+            in_features=config.latent_dim,
+            activation="relu",
+            use_batch_norm=False,
             rngs=rngs,
         )
-        self.discriminator = _MLPBlock(disc1, disc2, disc3)
 
     # -- helpers --------------------------------------------------------------
 
@@ -461,12 +400,7 @@ class DifferentiableWGANBatchCorrection(LossBalancingMixin, OperatorModule):
         Returns:
             Latent representation.
         """
-        return _forward_mlp(
-            expression,
-            self.encoder.layer1,
-            self.encoder.layer2,
-            self.encoder.layer3,
-        )
+        return cast(jax.Array, self.encoder(expression))
 
     def _decode(
         self, latent: Float[Array, "n_cells latent_dim"]
@@ -479,12 +413,7 @@ class DifferentiableWGANBatchCorrection(LossBalancingMixin, OperatorModule):
         Returns:
             Reconstructed gene expression.
         """
-        return _forward_mlp(
-            latent,
-            self.decoder.layer1,
-            self.decoder.layer2,
-            self.decoder.layer3,
-        )
+        return cast(jax.Array, self.decoder(latent))
 
     def _discriminate(self, latent: Float[Array, "n_cells latent_dim"]) -> Float[Array, "n_cells"]:
         """Compute discriminator (critic) scores from latent representations.
@@ -495,12 +424,7 @@ class DifferentiableWGANBatchCorrection(LossBalancingMixin, OperatorModule):
         Returns:
             Per-cell scalar critic scores.
         """
-        scores = _forward_mlp(
-            latent,
-            self.discriminator.layer1,
-            self.discriminator.layer2,
-            self.discriminator.layer3,
-        )
+        scores = cast(jax.Array, self.discriminator(latent))
         return scores.squeeze(-1)  # (n_cells,)
 
     # -- apply ----------------------------------------------------------------
@@ -589,35 +513,3 @@ class DifferentiableWGANBatchCorrection(LossBalancingMixin, OperatorModule):
 # ---------------------------------------------------------------------------
 # Internal MLP container (nnx.Module so it appears in the grad tree)
 # ---------------------------------------------------------------------------
-
-
-class _MLPBlock(nnx.Module):
-    """Thin container holding three ``nnx.Linear`` layers.
-
-    This module exists so that encoder / decoder / discriminator weights
-    appear as named sub-trees in the NNX parameter tree, making gradient
-    inspection straightforward in tests.
-
-    Args:
-        layer1: First linear layer.
-        layer2: Second linear layer.
-        layer3: Third (output) linear layer.
-    """
-
-    def __init__(
-        self,
-        layer1: nnx.Linear,
-        layer2: nnx.Linear,
-        layer3: nnx.Linear,
-    ) -> None:
-        """Store the three layers.
-
-        Args:
-            layer1: First linear layer.
-            layer2: Second linear layer.
-            layer3: Third (output) linear layer.
-        """
-        super().__init__()
-        self.layer1 = layer1
-        self.layer2 = layer2
-        self.layer3 = layer3

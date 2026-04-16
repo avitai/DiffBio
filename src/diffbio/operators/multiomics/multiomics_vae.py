@@ -18,10 +18,11 @@ Key algorithm:
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 import jax
 import jax.numpy as jnp
+from artifex.generative_models.core.base import MLP
 from artifex.generative_models.core.losses.base import reduce_loss
 from artifex.generative_models.core.losses.divergence import gaussian_kl_divergence
 from datarax.core.config import OperatorConfig
@@ -64,113 +65,6 @@ class MultiOmicsVAEConfig(OperatorConfig):
         if self.stream_name is None:
             object.__setattr__(self, "stream_name", "sample")
         super().__post_init__()
-
-
-# -------------------------------------------------------------------
-# Encoder / Decoder sub-modules
-# -------------------------------------------------------------------
-
-
-class _ModalityEncoder(nnx.Module):
-    """Two-layer MLP encoder for a single modality.
-
-    Maps log1p-transformed count vectors to a hidden representation that
-    is then projected to (mu, logvar) by external heads.
-
-    Attributes:
-        layers: List of linear layers.
-    """
-
-    def __init__(
-        self,
-        in_features: int,
-        hidden_dim: int,
-        *,
-        rngs: nnx.Rngs,
-    ) -> None:
-        """Initialise the encoder.
-
-        Args:
-            in_features: Input dimension (number of features for this modality).
-            hidden_dim: Width of hidden layers.
-            rngs: Flax NNX random number generators.
-        """
-        super().__init__()
-        self.layers = nnx.List(
-            [
-                nnx.Linear(in_features, hidden_dim, rngs=rngs),
-                nnx.Linear(hidden_dim, hidden_dim, rngs=rngs),
-            ]
-        )
-
-    def __call__(self, x: Float[Array, "batch features"]) -> Float[Array, "batch hidden"]:
-        """Forward pass through encoder layers.
-
-        Args:
-            x: Input counts (already log1p-transformed by caller).
-
-        Returns:
-            Hidden representation of shape (batch, hidden_dim).
-        """
-        h = x
-        for layer in self.layers:
-            h = nnx.relu(layer(h))
-        return h
-
-
-class _ModalityDecoder(nnx.Module):
-    """Two-layer MLP decoder for a single modality.
-
-    Maps the shared latent z back to reconstructed count-level outputs.
-
-    Attributes:
-        layers: List of linear layers.
-        output_layer: Final projection to modality dimension.
-    """
-
-    def __init__(
-        self,
-        latent_dim: int,
-        hidden_dim: int,
-        out_features: int,
-        *,
-        rngs: nnx.Rngs,
-    ) -> None:
-        """Initialise the decoder.
-
-        Args:
-            latent_dim: Latent space dimension (input).
-            hidden_dim: Width of hidden layers.
-            out_features: Output dimension (number of features for this modality).
-            rngs: Flax NNX random number generators.
-        """
-        super().__init__()
-        self.layers = nnx.List(
-            [
-                nnx.Linear(latent_dim, hidden_dim, rngs=rngs),
-                nnx.Linear(hidden_dim, hidden_dim, rngs=rngs),
-            ]
-        )
-        self.output_layer = nnx.Linear(hidden_dim, out_features, rngs=rngs)
-
-    def __call__(self, z: Float[Array, "batch latent"]) -> Float[Array, "batch features"]:
-        """Decode latent z to reconstructed log-rates.
-
-        Args:
-            z: Latent representation.
-
-        Returns:
-            Reconstructed log-rates of shape (batch, out_features).
-        """
-        h = z
-        for layer in self.layers:
-            h = nnx.relu(layer(h))
-        return self.output_layer(h)
-
-
-# -------------------------------------------------------------------
-# Main operator
-# -------------------------------------------------------------------
 
 
 class DifferentiableMultiOmicsVAE(LossBalancingMixin, EncoderDecoderOperator):
@@ -217,12 +111,21 @@ class DifferentiableMultiOmicsVAE(LossBalancingMixin, EncoderDecoderOperator):
         n_modalities = len(config.modality_dims)
 
         # Per-modality encoders ------------------------------------------
-        encoders: list[_ModalityEncoder] = []
+        encoders: list[MLP] = []
         mu_heads: list[nnx.Linear] = []
         logvar_heads: list[nnx.Linear] = []
 
         for dim in config.modality_dims:
-            encoders.append(_ModalityEncoder(dim, config.hidden_dim, rngs=rngs))
+            encoders.append(
+                MLP(
+                    hidden_dims=[config.hidden_dim, config.hidden_dim],
+                    in_features=dim,
+                    activation="relu",
+                    output_activation="relu",
+                    use_batch_norm=False,
+                    rngs=rngs,
+                )
+            )
             mu_heads.append(nnx.Linear(config.hidden_dim, config.latent_dim, rngs=rngs))
             logvar_heads.append(nnx.Linear(config.hidden_dim, config.latent_dim, rngs=rngs))
 
@@ -231,9 +134,17 @@ class DifferentiableMultiOmicsVAE(LossBalancingMixin, EncoderDecoderOperator):
         self.logvar_heads = nnx.List(logvar_heads)
 
         # Per-modality decoders ------------------------------------------
-        decoders: list[_ModalityDecoder] = []
+        decoders: list[MLP] = []
         for dim in config.modality_dims:
-            decoders.append(_ModalityDecoder(config.latent_dim, config.hidden_dim, dim, rngs=rngs))
+            decoders.append(
+                MLP(
+                    hidden_dims=[config.hidden_dim, config.hidden_dim, dim],
+                    in_features=config.latent_dim,
+                    activation="relu",
+                    use_batch_norm=False,
+                    rngs=rngs,
+                )
+            )
         self.decoders = nnx.List(decoders)
 
         # Modality weight mode -------------------------------------------
@@ -367,7 +278,7 @@ class DifferentiableMultiOmicsVAE(LossBalancingMixin, EncoderDecoderOperator):
 
         for i in range(n_modalities):
             counts = data[self._input_key(i)]
-            h = self.encoders[i](jnp.log1p(counts))
+            h = cast(jax.Array, self.encoders[i](jnp.log1p(counts)))
             mu = self.mu_heads[i](h)
             logvar = jnp.clip(self.logvar_heads[i](h), -10.0, 10.0)
             mu_list.append(mu)
@@ -382,7 +293,7 @@ class DifferentiableMultiOmicsVAE(LossBalancingMixin, EncoderDecoderOperator):
         # 4. Decode each modality ----------------------------------------
         reconstructions: list[jax.Array] = []
         for i in range(n_modalities):
-            reconstructions.append(self.decoders[i](z))
+            reconstructions.append(cast(jax.Array, self.decoders[i](z)))
 
         # 5. Compute ELBO ------------------------------------------------
         weights = self._get_modality_weights()
