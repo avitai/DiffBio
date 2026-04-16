@@ -351,6 +351,8 @@ class TestMolecularPropertyPredictor:
         predictor = MolecularPropertyPredictor(config, rngs=nnx.Rngs(42))
 
         assert predictor is not None
+        assert predictor.ffn_backbone is not None
+        assert len(predictor.ffn_backbone.layers) == 1
 
     def test_forward_pass_shape(self, molecular_graph):
         """Test forward pass produces correct output shape."""
@@ -428,6 +430,34 @@ class TestMolecularPropertyPredictor:
         # Use nnx.grad for proper NNX module handling (filters to Param only)
         grads = nnx.grad(loss_fn)(predictor, data)
         assert grads is not None
+
+    def test_gradients_reach_shared_ffn_backbone(self, molecular_graph):
+        """Test gradients reach the shared predictor MLP."""
+        from diffbio.operators.drug_discovery import (
+            MolecularPropertyConfig,
+            MolecularPropertyPredictor,
+        )
+
+        config = MolecularPropertyConfig(hidden_dim=32, num_message_passing_steps=2)
+        predictor = MolecularPropertyPredictor(config, rngs=nnx.Rngs(42))
+
+        data = {
+            "node_features": molecular_graph["node_features"],
+            "adjacency": molecular_graph["adjacency"],
+            "edge_features": molecular_graph["edge_features"],
+            "node_mask": jnp.ones(molecular_graph["num_nodes"]),
+        }
+
+        @nnx.value_and_grad
+        def loss_fn(model):
+            result, _, _ = model.apply(data, {}, None)
+            return result["predictions"].sum()
+
+        _, grads = loss_fn(predictor)
+
+        assert hasattr(grads, "ffn_backbone")
+        assert grads.ffn_backbone is not None
+        assert jnp.any(grads.ffn_backbone.layers[0].kernel[...] != 0.0)
 
     def test_jit_compatibility(self, molecular_graph):
         """Test JIT compilation works."""

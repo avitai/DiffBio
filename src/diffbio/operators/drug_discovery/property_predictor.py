@@ -8,6 +8,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
@@ -78,11 +79,16 @@ class MolecularPropertyPredictor(OperatorModule):
 
         rngs = initialize_graph_encoder_from_config(self, config, rngs=rngs)
 
-        # Feed-forward network for prediction
-        self.ffn = nnx.Sequential(
-            nnx.Linear(config.hidden_dim, config.hidden_dim, rngs=rngs),
-            nnx.Linear(config.hidden_dim, config.num_output_tasks, rngs=rngs),
+        self.ffn_backbone = MLP(
+            hidden_dims=[config.hidden_dim],
+            in_features=config.hidden_dim,
+            activation="relu",
+            dropout_rate=config.dropout_rate,
+            output_activation="relu",
+            use_batch_norm=False,
+            rngs=rngs,
         )
+        self.output_layer = nnx.Linear(config.hidden_dim, config.num_output_tasks, rngs=rngs)
 
         self.dropout = build_optional_dropout(config.dropout_rate, rngs=rngs)
 
@@ -116,11 +122,10 @@ class MolecularPropertyPredictor(OperatorModule):
         graph_repr = graph_sum_readout(data, self.encoder, dropout=self.dropout)
 
         # Feed-forward prediction
-        # Apply ReLU between layers
-        h = nnx.relu(self.ffn.layers[0](graph_repr))
-        if self.dropout is not None:
-            h = self.dropout(h)
-        predictions = self.ffn.layers[1](h)
+        ffn_output = self.ffn_backbone(graph_repr)
+        if isinstance(ffn_output, tuple):
+            raise TypeError("MolecularPropertyPredictor FFN must return a single tensor output.")
+        predictions = self.output_layer(ffn_output)
 
         result = {
             **data,
