@@ -10,8 +10,6 @@ Source: scVelo tutorial dataset.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,7 +20,12 @@ import numpy as np
 from flax import nnx
 
 from datarax.core.config import StructuralConfig
-from datarax.core.data_source import DataSourceModule
+
+from diffbio.sources._benchmark_source import (
+    BenchmarkDataSource,
+    encode_label_column,
+)
+from diffbio.sources._utils import to_dense_float32 as _to_dense
 
 logger = logging.getLogger(__name__)
 
@@ -54,14 +57,12 @@ class PancreasConfig(StructuralConfig):
             )
 
 
-class PancreasSource(DataSourceModule):
+class PancreasSource(BenchmarkDataSource):
     """DataSource for the scVelo pancreas endocrinogenesis dataset.
 
     Provides counts, spliced/unspliced layers, PCA embeddings,
     and cell type labels for trajectory and velocity benchmarks.
     """
-
-    data: dict[str, Any] = nnx.data()
 
     def __init__(
         self,
@@ -73,41 +74,18 @@ class PancreasSource(DataSourceModule):
         """Load the pancreas dataset."""
         super().__init__(config, rngs=rngs, name=name or "PancreasSource")
         self.data = self._load(config)
-        logger.info(
-            "Loaded pancreas: %d cells, %d genes, %d types",
-            self.data["n_cells"],
-            self.data["n_genes"],
-            self.data["n_types"],
-        )
+        self._log_loaded_summary(logger, "pancreas", ("n_cells", "n_genes", "n_types"))
 
     def _load(self, config: PancreasConfig) -> dict[str, Any]:
         """Load and preprocess the h5ad file."""
-        import anndata  # noqa: PLC0415
-
-        path = Path(config.data_dir) / _FILENAME
-        adata = anndata.read_h5ad(path)
-
-        if config.subsample is not None and config.subsample < adata.n_obs:
-            rng = np.random.default_rng(42)
-            idx = rng.choice(adata.n_obs, size=config.subsample, replace=False)
-            idx.sort()
-            adata = adata[idx].copy()
-
-        from diffbio.sources._utils import to_dense_float32  # noqa: PLC0415
-
-        counts = jnp.array(to_dense_float32(adata.X))
+        adata, counts = self._load_benchmark_counts(config, _FILENAME, _to_dense)
 
         # Spliced/unspliced for velocity
-        spliced = jnp.array(to_dense_float32(adata.layers["spliced"]))
-        unspliced = jnp.array(to_dense_float32(adata.layers["unspliced"]))
+        spliced = jnp.array(_to_dense(adata.layers["spliced"]))
+        unspliced = jnp.array(_to_dense(adata.layers["unspliced"]))
 
         # Cell type labels
-        label_col = adata.obs[config.cluster_key]
-        if hasattr(label_col, "cat"):
-            labels = np.asarray(label_col.cat.codes, dtype=np.int32)
-        else:
-            _, labels = np.unique(np.asarray(label_col), return_inverse=True)
-            labels = labels.astype(np.int32)
+        labels = encode_label_column(adata.obs[config.cluster_key])
 
         # Embeddings
         embeddings = jnp.array(
@@ -128,19 +106,3 @@ class PancreasSource(DataSourceModule):
             "n_genes": adata.n_vars,
             "n_types": int(len(np.unique(labels))),
         }
-
-    def load(self) -> dict[str, Any]:
-        """Return the full dataset."""
-        return self.data
-
-    def __len__(self) -> int:
-        """Return the number of cells."""
-        return self.data["n_cells"]
-
-    def __iter__(self) -> Iterator[dict[str, Any]]:
-        """Iterate over cells."""
-        for i in range(len(self)):
-            yield {
-                k: v[i] if hasattr(v, "__getitem__") and k != "gene_names" else v
-                for k, v in self.data.items()
-            }

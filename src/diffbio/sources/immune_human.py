@@ -13,8 +13,6 @@ The dataset must be pre-downloaded to a local directory. See
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,9 +23,12 @@ import numpy as np
 from flax import nnx
 
 from datarax.core.config import StructuralConfig
-from datarax.core.data_source import DataSourceModule
 
-from diffbio.sources._utils import _require_anndata, to_dense_float32 as _to_dense
+from diffbio.sources._benchmark_source import (
+    BenchmarkDataSource,
+    encode_label_column,
+)
+from diffbio.sources._utils import to_dense_float32 as _to_dense
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ class ImmuneHumanConfig(StructuralConfig):
             )
 
 
-class ImmuneHumanSource(DataSourceModule):
+class ImmuneHumanSource(BenchmarkDataSource):
     """DataSource for the scib immune human integration benchmark.
 
     Loads the human immune cell atlas (33,506 cells, 12,303 genes,
@@ -83,8 +84,6 @@ class ImmuneHumanSource(DataSourceModule):
         ```
     """
 
-    data: dict[str, Any] = nnx.data()
-
     def __init__(
         self,
         config: ImmuneHumanConfig,
@@ -101,42 +100,19 @@ class ImmuneHumanSource(DataSourceModule):
         """
         super().__init__(config, rngs=rngs, name=name or "ImmuneHumanSource")
         self.data = self._load(config)
-        logger.info(
-            "Loaded immune_human: %d cells, %d genes, %d batches, %d types",
-            self.data["n_cells"],
-            self.data["n_genes"],
-            self.data["n_batches"],
-            self.data["n_types"],
+        self._log_loaded_summary(
+            logger,
+            "immune_human",
+            ("n_cells", "n_genes", "n_batches", "n_types"),
         )
 
     def _load(self, config: ImmuneHumanConfig) -> dict[str, Any]:
         """Load and preprocess the h5ad file."""
-        anndata_mod = _require_anndata()
-        path = Path(config.data_dir) / _FILENAME
-        adata = anndata_mod.read_h5ad(path)
-
-        if config.subsample is not None and config.subsample < adata.n_obs:
-            rng = np.random.default_rng(42)
-            indices = rng.choice(adata.n_obs, size=config.subsample, replace=False)
-            indices.sort()
-            adata = adata[indices].copy()
-
-        counts = jnp.array(_to_dense(adata.X))
+        adata, counts = self._load_benchmark_counts(config, _FILENAME, _to_dense)
 
         # Encode categorical labels as integer codes
-        batch_col = adata.obs[config.batch_key]
-        if hasattr(batch_col, "cat"):
-            batch_labels = np.asarray(batch_col.cat.codes, dtype=np.int32)
-        else:
-            _, batch_labels = np.unique(np.asarray(batch_col), return_inverse=True)
-            batch_labels = batch_labels.astype(np.int32)
-
-        label_col = adata.obs[config.label_key]
-        if hasattr(label_col, "cat"):
-            cell_type_labels = np.asarray(label_col.cat.codes, dtype=np.int32)
-        else:
-            _, cell_type_labels = np.unique(np.asarray(label_col), return_inverse=True)
-            cell_type_labels = cell_type_labels.astype(np.int32)
+        batch_labels = encode_label_column(adata.obs[config.batch_key])
+        cell_type_labels = encode_label_column(adata.obs[config.label_key])
 
         # Get embeddings (PCA from obsm, or compute on the fly)
         if config.embedding_key in adata.obsm:
@@ -194,25 +170,3 @@ class ImmuneHumanSource(DataSourceModule):
         svd = TruncatedSVD(n_components=n_components, random_state=42)
         embeddings = svd.fit_transform(centered_np)
         return jnp.array(embeddings.astype(np.float32))
-
-    def load(self) -> dict[str, Any]:
-        """Return the full dataset as a dictionary.
-
-        Returns:
-            Dict with keys: counts, batch_labels, cell_type_labels,
-            cell_ids, embeddings, gene_names, n_cells, n_genes,
-            n_batches, n_types.
-        """
-        return self.data
-
-    def __len__(self) -> int:
-        """Return the number of cells in the dataset."""
-        return self.data["n_cells"]
-
-    def __iter__(self) -> Iterator[dict[str, Any]]:
-        """Iterate over individual cells."""
-        for i in range(len(self)):
-            yield {
-                k: v[i] if hasattr(v, "__getitem__") and k != "gene_names" else v
-                for k, v in self.data.items()
-            }

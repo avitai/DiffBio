@@ -12,7 +12,6 @@ directory. See ``benchmarks/README.md`` for download instructions.
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -20,10 +19,13 @@ from typing import Any
 import jax.numpy as jnp
 import numpy as np
 from datarax.core.config import StructuralConfig
-from datarax.core.data_source import DataSourceModule
 from flax import nnx
 
-from diffbio.sources._utils import _require_anndata, to_dense_float32 as _to_dense
+from diffbio.sources._benchmark_source import (
+    BenchmarkDataSource,
+    encode_label_column,
+)
+from diffbio.sources._utils import to_dense_float32 as _to_dense
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +59,7 @@ class SeqFISHConfig(StructuralConfig):
             )
 
 
-class SeqFISHSource(DataSourceModule):
+class SeqFISHSource(BenchmarkDataSource):
     """DataSource for the seqFISH mouse cortex dataset.
 
     Loads spatially resolved gene expression (19,416 cells, 351
@@ -76,7 +78,7 @@ class SeqFISHSource(DataSourceModule):
         ```
     """
 
-    data: dict[str, Any] = nnx.data()
+    iter_static_keys = ("gene_names", "cell_type_names")
 
     def __init__(
         self,
@@ -94,40 +96,17 @@ class SeqFISHSource(DataSourceModule):
         """
         super().__init__(config, rngs=rngs, name=name or "SeqFISHSource")
         self.data = self._load(config)
-        logger.info(
-            "Loaded seqfish_cortex: %d cells, %d genes, %d types",
-            self.data["n_cells"],
-            self.data["n_genes"],
-            self.data["n_types"],
-        )
+        self._log_loaded_summary(logger, "seqfish_cortex", ("n_cells", "n_genes", "n_types"))
 
     def _load(self, config: SeqFISHConfig) -> dict[str, Any]:
         """Load and preprocess the h5ad file."""
-        anndata_mod = _require_anndata()
-        path = Path(config.data_dir) / _FILENAME
-        adata = anndata_mod.read_h5ad(path)
-
-        if config.subsample is not None and config.subsample < adata.n_obs:
-            rng = np.random.default_rng(42)
-            indices = rng.choice(
-                adata.n_obs,
-                size=config.subsample,
-                replace=False,
-            )
-            indices.sort()
-            adata = adata[indices].copy()
-
-        counts = jnp.array(_to_dense(adata.X))
+        adata, counts = self._load_benchmark_counts(config, _FILENAME, _to_dense)
 
         # Encode cell type labels as integer codes
-        label_col = adata.obs[config.label_key]
-        if hasattr(label_col, "cat"):
-            cell_type_labels = np.asarray(label_col.cat.codes, dtype=np.int32)
-            cell_type_names = list(label_col.cat.categories)
-        else:
-            unique_labels, cell_type_labels = np.unique(np.asarray(label_col), return_inverse=True)
-            cell_type_labels = cell_type_labels.astype(np.int32)
-            cell_type_names = list(unique_labels)
+        cell_type_labels, cell_type_names = encode_label_column(
+            adata.obs[config.label_key],
+            include_names=True,
+        )
 
         # Spatial coordinates
         spatial_coords = jnp.array(np.asarray(adata.obsm[config.spatial_key], dtype=np.float32))
@@ -144,29 +123,3 @@ class SeqFISHSource(DataSourceModule):
             "n_genes": adata.n_vars,
             "n_types": int(len(np.unique(cell_type_labels))),
         }
-
-    def load(self) -> dict[str, Any]:
-        """Return the full dataset as a dictionary.
-
-        Returns:
-            Dict with keys: counts, cell_type_labels,
-            cell_type_names, spatial_coords, gene_names,
-            n_cells, n_genes, n_types.
-        """
-        return self.data
-
-    def __len__(self) -> int:
-        """Return the number of cells in the dataset."""
-        return self.data["n_cells"]
-
-    def __iter__(self) -> Iterator[dict[str, Any]]:
-        """Iterate over individual cells."""
-        for i in range(len(self)):
-            yield {
-                k: (
-                    v[i]
-                    if hasattr(v, "__getitem__") and k not in ("gene_names", "cell_type_names")
-                    else v
-                )
-                for k, v in self.data.items()
-            }
