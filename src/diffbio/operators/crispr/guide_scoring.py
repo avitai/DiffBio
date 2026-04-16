@@ -29,6 +29,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import jax.numpy as jnp
+from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
@@ -54,6 +55,16 @@ class CRISPRScorerConfig(OperatorConfig):
     fc_dims: tuple[int, ...] = (256, 128)
     dropout_rate: float = 0.2
 
+    def __post_init__(self) -> None:
+        """Validate configuration."""
+        super().__post_init__()
+        if not self.hidden_channels:
+            raise ValueError(
+                "CRISPRScorerConfig.hidden_channels must contain at least one channel."
+            )
+        if not self.fc_dims:
+            raise ValueError("CRISPRScorerConfig.fc_dims must contain at least one hidden layer.")
+
 
 class DifferentiableCRISPRScorer(OperatorModule):
     """DeepCRISPR-style differentiable guide RNA scoring.
@@ -72,8 +83,7 @@ class DifferentiableCRISPRScorer(OperatorModule):
         config: Operator configuration.
         conv_layers: 1D convolutional layers.
         conv_bn: Batch normalization layers for conv.
-        fc_layers: Fully connected layers.
-        dropout: Dropout layer.
+        ffn_backbone: Shared Artifex MLP for score prediction.
         output_head: Final output layer.
 
     Example:
@@ -125,19 +135,18 @@ class DifferentiableCRISPRScorer(OperatorModule):
         # With SAME padding, spatial size is preserved
         flat_size = config.guide_length * config.hidden_channels[-1]
 
-        # Build fully connected layers
-        fc_layers = []
-        prev_dim = flat_size
-        for fc_dim in config.fc_dims:
-            fc_layers.append(nnx.Linear(prev_dim, fc_dim, rngs=rngs))
-            prev_dim = fc_dim
-        self.fc_layers = nnx.List(fc_layers)
-
-        # Dropout for regularization
-        self.dropout = nnx.Dropout(rate=config.dropout_rate, rngs=rngs)
+        self.ffn_backbone = MLP(
+            hidden_dims=list(config.fc_dims),
+            in_features=flat_size,
+            activation="relu",
+            dropout_rate=config.dropout_rate,
+            output_activation="relu",
+            use_batch_norm=False,
+            rngs=rngs,
+        )
 
         # Output head for efficiency score
-        self.output_head = nnx.Linear(prev_dim, 1, rngs=rngs)
+        self.output_head = nnx.Linear(config.fc_dims[-1], 1, rngs=rngs)
 
     def extract_features(self, guides: jnp.ndarray) -> jnp.ndarray:
         """Extract features from guide sequences using CNN.
@@ -172,16 +181,12 @@ class DifferentiableCRISPRScorer(OperatorModule):
         Returns:
             Efficiency scores (n_guides,) in range [0, 1].
         """
-        x = features
-
-        # Fully connected layers with ReLU and dropout
-        for fc in self.fc_layers:
-            x = fc(x)
-            x = nnx.relu(x)
-            x = self.dropout(x)
+        backbone_output = self.ffn_backbone(features)
+        if isinstance(backbone_output, tuple):
+            raise TypeError("CRISPR scorer backbone must return a single tensor output.")
 
         # Output layer with sigmoid for [0, 1] output
-        x = self.output_head(x)
+        x = self.output_head(backbone_output)
         scores = nnx.sigmoid(x).squeeze(-1)
 
         return scores

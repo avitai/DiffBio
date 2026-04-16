@@ -7,6 +7,7 @@ that uses a CNN to predict on-target efficiency.
 import jax
 import jax.numpy as jnp
 import pytest
+from artifex.generative_models.core.base import MLP
 from flax import nnx
 
 
@@ -38,6 +39,13 @@ class TestCRISPRScorerConfig:
         assert config.hidden_channels == (32, 64)
         assert config.fc_dims == (128, 64)
         assert config.dropout_rate == 0.1
+
+    def test_fc_dims_must_be_non_empty(self):
+        """CRISPR scorer should fail fast when no FC backbone is configured."""
+        from diffbio.operators.crispr import CRISPRScorerConfig
+
+        with pytest.raises(ValueError, match="fc_dims"):
+            CRISPRScorerConfig(fc_dims=())
 
 
 class TestCRISPRScorer:
@@ -90,6 +98,11 @@ class TestCRISPRScorer:
         # Feature maps (from CNN)
         assert "features" in result
         assert result["features"].shape[0] == n_guides
+
+    def test_uses_direct_artifex_backbone(self, scorer, config):
+        """Scorer should use the shared Artifex MLP backbone directly."""
+        assert isinstance(scorer.ffn_backbone, MLP)
+        assert len(scorer.ffn_backbone.layers) == len(config.fc_dims)
 
     def test_efficiency_scores_bounded(self, scorer, sample_data):
         """Test that efficiency scores are in [0, 1] range."""
@@ -199,6 +212,7 @@ class TestCRISPRScorerDifferentiability:
 
         # Check loss is finite
         assert jnp.isfinite(loss)
+        assert jnp.any(grads.ffn_backbone.layers[0].kernel[...] != 0.0)
 
     def test_gradient_wrt_target(self, scorer, sample_data):
         """Test gradients for regression loss."""
