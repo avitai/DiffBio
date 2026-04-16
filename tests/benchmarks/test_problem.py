@@ -40,6 +40,26 @@ class TestBenchmarkProblem:
         assert problem.description == ""
         assert problem.source == ""
 
+    def test_configs_are_copied_on_construction(self) -> None:
+        """Task and grader configs should not alias caller-owned dicts."""
+        grader_config = {"tolerance": 0.1}
+        task_config = {"n_clusters": 5}
+
+        problem = BenchmarkProblem(
+            problem_id="t1",
+            task_type="clustering",
+            grader_type="numeric_tolerance",
+            expected_answer=0,
+            grader_config=grader_config,
+            task_config=task_config,
+        )
+
+        grader_config["tolerance"] = 0.9
+        task_config["n_clusters"] = 99
+
+        assert problem.grader_config["tolerance"] == 0.1
+        assert problem.task_config["n_clusters"] == 5
+
     def test_immutable(self) -> None:
         """BenchmarkProblem is frozen."""
         problem = BenchmarkProblem(

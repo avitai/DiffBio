@@ -17,10 +17,26 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class _TaskSpec:
+    """Normalized task specification for a benchmark problem."""
+
+    type: str
+    config: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class _GraderSpec:
+    """Normalized grader specification for a benchmark problem."""
+
+    type: str
+    config: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True, init=False)
 class BenchmarkProblem:
     """A single benchmark evaluation problem.
 
-    Attributes:
+    Public properties:
         problem_id: Unique identifier for the problem.
         task_type: Category of the task (e.g., ``"qc_filtering"``,
             ``"clustering"``, ``"differential_expression"``).
@@ -38,14 +54,62 @@ class BenchmarkProblem:
     """
 
     problem_id: str
-    task_type: str
-    grader_type: str
     expected_answer: Any
-    grader_config: dict[str, Any] = field(default_factory=dict)
-    task_config: dict[str, Any] = field(default_factory=dict)
-    data_path: str | None = None
-    description: str = ""
-    source: str = ""
+    data_path: str | None
+    description: str
+    source: str
+    _task: _TaskSpec = field(init=False, repr=False)
+    _grader: _GraderSpec = field(init=False, repr=False)
+
+    def __init__(
+        self,
+        *,
+        problem_id: str,
+        task_type: str,
+        grader_type: str,
+        expected_answer: Any,
+        grader_config: dict[str, Any] | None = None,
+        task_config: dict[str, Any] | None = None,
+        data_path: str | None = None,
+        description: str = "",
+        source: str = "",
+    ) -> None:
+        """Normalize task and grader state into grouped specs."""
+        object.__setattr__(self, "problem_id", problem_id)
+        object.__setattr__(self, "expected_answer", expected_answer)
+        object.__setattr__(self, "data_path", data_path)
+        object.__setattr__(self, "description", description)
+        object.__setattr__(self, "source", source)
+        object.__setattr__(
+            self,
+            "_task",
+            _TaskSpec(type=task_type, config=dict(task_config or {})),
+        )
+        object.__setattr__(
+            self,
+            "_grader",
+            _GraderSpec(type=grader_type, config=dict(grader_config or {})),
+        )
+
+    @property
+    def task_type(self) -> str:
+        """Return the task category."""
+        return self._task.type
+
+    @property
+    def task_config(self) -> dict[str, Any]:
+        """Return task-specific operator configuration."""
+        return self._task.config
+
+    @property
+    def grader_type(self) -> str:
+        """Return the grader category."""
+        return self._grader.type
+
+    @property
+    def grader_config(self) -> dict[str, Any]:
+        """Return grader-specific configuration."""
+        return self._grader.config
 
 
 def load_problems(path: Path | str) -> list[BenchmarkProblem]:
