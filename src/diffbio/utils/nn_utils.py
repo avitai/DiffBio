@@ -75,65 +75,6 @@ def get_rng_key(
     return jax.random.key(fallback_seed)
 
 
-def build_mlp_layers(
-    in_features: int,
-    hidden_dim: int,
-    num_layers: int,
-    rngs: nnx.Rngs,
-    *,
-    with_dropout: bool = False,
-    dropout_rate: float = 0.1,
-) -> tuple[nnx.List, nnx.List | None, int]:
-    """Build MLP hidden layers as an nnx.List.
-
-    Creates a list of Linear layers suitable for use in MLP architectures.
-    Optionally creates corresponding dropout layers.
-
-    Args:
-        in_features: Input feature dimension.
-        hidden_dim: Hidden layer dimension.
-        num_layers: Number of hidden layers to create.
-        rngs: Flax NNX random number generators.
-        with_dropout: Whether to create dropout layers.
-        dropout_rate: Dropout rate if creating dropout layers.
-
-    Returns:
-        Tuple of (layers, dropout_layers, output_dim):
-            - layers: nnx.List of Linear layers
-            - dropout_layers: nnx.List of Dropout layers (None if with_dropout=False)
-            - output_dim: Output dimension after all layers
-
-    Example:
-        ```python
-        layers, dropouts, out_dim = build_mlp_layers(
-            in_features=84,
-            hidden_dim=64,
-            num_layers=2,
-            rngs=rngs,
-            with_dropout=True,
-        )
-        for layer, dropout in zip(layers, dropouts):
-            x = nnx.relu(layer(x))
-            x = dropout(x)
-        ```
-    """
-    layers: list[nnx.Linear] = []
-    dropout_layers: list[nnx.Dropout] | None = [] if with_dropout else None
-    current_dim = in_features
-
-    for _ in range(num_layers):
-        layers.append(nnx.Linear(current_dim, hidden_dim, rngs=rngs))
-        if with_dropout and dropout_layers is not None:
-            dropout_layers.append(nnx.Dropout(rate=dropout_rate, rngs=rngs))
-        current_dim = hidden_dim
-
-    return (
-        nnx.List(layers),
-        nnx.List(dropout_layers) if dropout_layers is not None else None,
-        current_dim,
-    )
-
-
 def extract_windows_1d(
     signal: Array,
     window_size: int,

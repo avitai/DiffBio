@@ -6,7 +6,6 @@ import pytest
 from flax import nnx
 
 from diffbio.utils.nn_utils import (
-    build_mlp_layers,
     ensure_rngs,
     extract_windows_1d,
     get_rng_key,
@@ -86,76 +85,6 @@ class TestGetRngKey:
         assert jnp.array_equal(key, expected)
 
 
-class TestBuildMlpLayers:
-    """Tests for build_mlp_layers function."""
-
-    def test_creates_correct_number_of_layers(self, rngs):
-        """Should create the specified number of layers."""
-        layers, dropouts, out_dim = build_mlp_layers(
-            in_features=10,
-            hidden_dim=32,
-            num_layers=3,
-            rngs=rngs,
-        )
-        assert len(layers) == 3
-        assert dropouts is None
-
-    def test_output_dimension_correct(self, rngs):
-        """Should return correct output dimension."""
-        _, _, out_dim = build_mlp_layers(
-            in_features=10,
-            hidden_dim=64,
-            num_layers=2,
-            rngs=rngs,
-        )
-        assert out_dim == 64
-
-    def test_creates_dropout_layers(self, rngs):
-        """Should create dropout layers when requested."""
-        layers, dropouts, _ = build_mlp_layers(
-            in_features=10,
-            hidden_dim=32,
-            num_layers=2,
-            rngs=rngs,
-            with_dropout=True,
-            dropout_rate=0.1,
-        )
-        assert dropouts is not None
-        assert len(dropouts) == 2
-
-    def test_no_dropout_layers_by_default(self, rngs):
-        """Should not create dropout layers by default."""
-        _, dropouts, _ = build_mlp_layers(
-            in_features=10,
-            hidden_dim=32,
-            num_layers=2,
-            rngs=rngs,
-        )
-        assert dropouts is None
-
-    def test_layers_are_nnx_linear(self, rngs):
-        """All layers should be nnx.Linear instances."""
-        layers, _, _ = build_mlp_layers(
-            in_features=10,
-            hidden_dim=32,
-            num_layers=2,
-            rngs=rngs,
-        )
-        for layer in layers:
-            assert isinstance(layer, nnx.Linear)
-
-    def test_zero_layers(self, rngs):
-        """Should handle zero layers."""
-        layers, _, out_dim = build_mlp_layers(
-            in_features=10,
-            hidden_dim=32,
-            num_layers=0,
-            rngs=rngs,
-        )
-        assert len(layers) == 0
-        assert out_dim == 10  # Output dim equals input dim
-
-
 class TestExtractWindows1d:
     """Tests for extract_windows_1d function."""
 
@@ -216,18 +145,6 @@ class TestExtractWindows1d:
 
 class TestEdgeCases:
     """Edge case tests for neural network utilities."""
-
-    def test_build_mlp_single_layer(self, rngs):
-        """Test building MLP with single layer."""
-        layers, dropouts, out_dim = build_mlp_layers(
-            in_features=10,
-            hidden_dim=32,
-            num_layers=1,
-            rngs=rngs,
-        )
-        assert len(layers) == 1
-        assert out_dim == 32
-        assert dropouts is None
 
     def test_extract_windows_single_position(self):
         """Test window extraction with single position signal."""

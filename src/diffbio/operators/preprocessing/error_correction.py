@@ -21,12 +21,13 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
+from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.base_operators import TemperatureOperator
-from diffbio.utils.nn_utils import build_mlp_layers, ensure_rngs, init_learnable_param
+from diffbio.utils.nn_utils import ensure_rngs, init_learnable_param
 
 logger = logging.getLogger(__name__)
 
@@ -104,13 +105,19 @@ class SoftErrorCorrection(TemperatureOperator):
         features_per_position = alphabet_size + (1 if config.use_quality else 0)
         input_dim = config.window_size * features_per_position
 
-        # Build MLP layers using utility
-        self.layers, _, out_dim = build_mlp_layers(
-            in_features=input_dim,
-            hidden_dim=config.hidden_dim,
-            num_layers=config.num_layers,
-            rngs=rngs,
-        )
+        if config.num_layers > 0:
+            self.backbone = MLP(
+                hidden_dims=[config.hidden_dim] * config.num_layers,
+                in_features=input_dim,
+                activation="relu",
+                output_activation="relu",
+                use_batch_norm=False,
+                rngs=rngs,
+            )
+            out_dim = config.hidden_dim
+        else:
+            self.backbone = None
+            out_dim = input_dim
 
         # Output layer (predicts 4 base probabilities)
         self.output_layer = nnx.Linear(in_features=out_dim, out_features=alphabet_size, rngs=rngs)
@@ -179,10 +186,9 @@ class SoftErrorCorrection(TemperatureOperator):
         """
         x = window_features
 
-        # Pass through MLP layers with ReLU activation
-        for layer in self.layers:
-            x = layer(x)
-            x = nnx.relu(x)
+        if self.backbone is not None:
+            hidden: jax.Array = self.backbone(window_features)
+            x = hidden
 
         # Output layer
         logits = self.output_layer(x)

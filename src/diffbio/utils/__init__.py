@@ -14,7 +14,6 @@ from diffbio.utils.dependency_runtime import (
 )
 from diffbio.utils.quality import apply_quality_filter
 from diffbio.utils.nn_utils import (
-    build_mlp_layers,
     ensure_rngs,
     extract_windows_1d,
     get_rng_key,
@@ -49,7 +48,6 @@ __all__ = [
     # Quality utilities
     "apply_quality_filter",
     # Neural network utilities
-    "build_mlp_layers",
     "ensure_rngs",
     "extract_windows_1d",
     "get_rng_key",

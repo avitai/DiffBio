@@ -83,13 +83,15 @@ class TestSoftErrorCorrection:
         config = ErrorCorrectionConfig()
         op = SoftErrorCorrection(config, rngs=rngs)
         assert op is not None
-        assert len(op.layers) == config.num_layers
+        assert op.backbone is not None
+        assert len(op.backbone.layers) == config.num_layers
 
     def test_initialization_custom_layers(self, rngs):
         """Test initialization with custom layer count."""
         config = ErrorCorrectionConfig(num_layers=4)
         op = SoftErrorCorrection(config, rngs=rngs)
-        assert len(op.layers) == 4
+        assert op.backbone is not None
+        assert len(op.backbone.layers) == 4
 
     def test_apply_output_shape(self, rngs, sample_data):
         """Test that apply produces correct output shape."""
@@ -202,8 +204,8 @@ class TestGradientFlow:
         assert grad is not None
         assert grad.shape == quality.shape
 
-    def test_layers_are_learnable(self, rngs):
-        """Test that layer parameters are learnable."""
+    def test_backbone_layers_are_learnable(self, rngs):
+        """Test that backbone MLP parameters are learnable."""
         config = ErrorCorrectionConfig()
         op = SoftErrorCorrection(config, rngs=rngs)
 
@@ -219,8 +221,9 @@ class TestGradientFlow:
 
         loss, grads = loss_fn(op)
 
-        # Check that layer gradients exist
-        assert hasattr(grads, "layers")
+        assert hasattr(grads, "backbone")
+        assert grads.backbone is not None
+        assert jnp.any(grads.backbone.layers[0].kernel[...] != 0.0)
         assert hasattr(grads, "output_layer")
 
     def test_correction_weight_is_learnable(self, rngs):
