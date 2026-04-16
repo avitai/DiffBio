@@ -32,34 +32,51 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class PeakCallerConfig(OperatorConfig):
-    """Configuration for differentiable peak caller.
-
-    Attributes:
-        window_size: Size of the sliding window for peak detection.
-        num_filters: Number of CNN filters for peak pattern detection.
-        kernel_sizes: List of kernel sizes for multi-scale detection.
-        threshold: Initial threshold for peak calling.
-        temperature: Temperature for sigmoid smoothing.
-        min_peak_width: Minimum width for called peaks.
-        use_vae_denoising: Whether to apply VAE-based denoising before
-            peak detection. When enabled, the coverage signal is encoded
-            to a latent space and decoded with a Poisson decoder.
-        vae_latent_dim: Latent space dimension for VAE denoiser.
-        vae_hidden_dim: Hidden layer dimension for VAE encoder/decoder.
-        stream_name: Name of the data stream to process.
-    """
+class _PeakDetectionConfig:
+    """Peak detection hyperparameters."""
 
     window_size: int = 200
     num_filters: int = 32
     kernel_sizes: tuple[int, ...] = (5, 11, 21)
     threshold: float = 0.5
     temperature: float = 1.0
+
+
+@dataclass(frozen=True)
+class _PeakDenoisingConfig:
+    """Optional VAE denoising hyperparameters."""
+
     learnable_temperature: bool = True
     min_peak_width: int = 50
     use_vae_denoising: bool = False
     vae_latent_dim: int = 16
     vae_hidden_dim: int = 64
+
+
+@dataclass(frozen=True)
+class PeakCallerConfig(_PeakDetectionConfig, _PeakDenoisingConfig, OperatorConfig):
+    """Configuration for differentiable peak caller."""
+
+    def __post_init__(self) -> None:
+        """Validate the peak caller configuration."""
+        super().__post_init__()
+
+        if self.window_size <= 0:
+            raise ValueError("window_size must be positive.")
+        if self.num_filters <= 0:
+            raise ValueError("num_filters must be positive.")
+        if not self.kernel_sizes or any(kernel_size <= 0 for kernel_size in self.kernel_sizes):
+            raise ValueError("kernel_sizes must contain only positive integers.")
+        if not 0.0 <= self.threshold <= 1.0:
+            raise ValueError("threshold must be between 0.0 and 1.0.")
+        if self.temperature <= 0.0:
+            raise ValueError("temperature must be positive.")
+        if self.min_peak_width <= 0:
+            raise ValueError("min_peak_width must be positive.")
+        if self.vae_latent_dim <= 0:
+            raise ValueError("vae_latent_dim must be positive.")
+        if self.vae_hidden_dim <= 0:
+            raise ValueError("vae_hidden_dim must be positive.")
 
 
 class SignalVAE(nnx.Module):

@@ -48,6 +48,27 @@ class TestPeakCallerConfig:
         assert config.temperature == 0.5
         assert config.min_peak_width == 30
 
+    def test_invalid_window_size_rejected(self):
+        """Peak caller rejects non-positive window sizes."""
+        from diffbio.operators.epigenomics.peak_calling import PeakCallerConfig
+
+        with pytest.raises(ValueError, match="window_size"):
+            PeakCallerConfig(window_size=0, stream_name=None)
+
+    def test_invalid_kernel_sizes_rejected(self):
+        """Peak caller rejects empty or non-positive kernel sizes."""
+        from diffbio.operators.epigenomics.peak_calling import PeakCallerConfig
+
+        with pytest.raises(ValueError, match="kernel_sizes"):
+            PeakCallerConfig(kernel_sizes=(), stream_name=None)
+
+    def test_invalid_threshold_rejected(self):
+        """Peak caller rejects thresholds outside [0, 1]."""
+        from diffbio.operators.epigenomics.peak_calling import PeakCallerConfig
+
+        with pytest.raises(ValueError, match="threshold"):
+            PeakCallerConfig(threshold=1.5, stream_name=None)
+
 
 class TestPeakDetectionCNN:
     """Tests for the PeakDetectionCNN module."""

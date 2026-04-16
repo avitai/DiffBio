@@ -15,42 +15,53 @@ from flax import nnx
 
 
 @dataclass(frozen=True)
-class ContextualEpigenomicsConfig(OperatorConfig):
-    """Configuration for the contextual epigenomics operator.
-
-    Attributes:
-        hidden_dim: Token embedding size used by the encoder.
-        num_layers: Number of Artifex transformer encoder layers.
-        num_heads: Number of attention heads.
-        intermediate_dim: Feed-forward hidden size.
-        max_length: Maximum supported sequence length.
-        num_tf_features: Number of TF-context features.
-        num_outputs: Output channels per genomic position. Use ``1`` for
-            binary peak masks and ``>1`` for chromatin-state prediction.
-        dropout_rate: Dropout rate inside the transformer.
-        use_tf_context: Whether TF conditioning is applied.
-        use_chromatin_guidance: Whether to compute the structured chromatin
-            consistency loss term.
-        chromatin_guidance_weight: Weight applied to the chromatin-consistency
-            loss when forming the total training loss.
-    """
+class _ContextualEncoderConfig:
+    """Sequence encoder hyperparameters."""
 
     hidden_dim: int = 64
     num_layers: int = 2
     num_heads: int = 4
     intermediate_dim: int = 256
     max_length: int = 512
+    dropout_rate: float = 0.0
+
+
+@dataclass(frozen=True)
+class _ContextualTaskConfig:
+    """Task and conditioning configuration."""
+
     num_tf_features: int = 8
     num_outputs: int = 1
-    dropout_rate: float = 0.0
     use_tf_context: bool = True
     use_chromatin_guidance: bool = False
     chromatin_guidance_weight: float = 0.1
 
+
+@dataclass(frozen=True)
+class ContextualEpigenomicsConfig(
+    _ContextualEncoderConfig,
+    _ContextualTaskConfig,
+    OperatorConfig,
+):
+    """Configuration for the contextual epigenomics operator."""
+
     def __post_init__(self) -> None:
         """Validate the operator configuration."""
+        super().__post_init__()
+        if self.hidden_dim <= 0:
+            raise ValueError("hidden_dim must be positive.")
+        if self.num_layers <= 0:
+            raise ValueError("num_layers must be positive.")
+        if self.num_heads <= 0:
+            raise ValueError("num_heads must be positive.")
         if self.hidden_dim % self.num_heads != 0:
             raise ValueError("hidden_dim must be divisible by num_heads.")
+        if self.intermediate_dim <= 0:
+            raise ValueError("intermediate_dim must be positive.")
+        if self.max_length <= 0:
+            raise ValueError("max_length must be positive.")
+        if not 0.0 <= self.dropout_rate < 1.0:
+            raise ValueError("dropout_rate must be in [0.0, 1.0).")
         if self.num_outputs < 1:
             raise ValueError("num_outputs must be at least 1.")
         if self.num_tf_features < 1:

@@ -37,6 +37,31 @@ def _make_batch(
 class TestContextualEpigenomicsOperator:
     """Tests for one configurable contextual epigenomics operator path."""
 
+    def test_invalid_dropout_rate_is_rejected(self) -> None:
+        with pytest.raises(ValueError, match="dropout_rate"):
+            ContextualEpigenomicsConfig(
+                hidden_dim=16,
+                num_layers=1,
+                num_heads=2,
+                intermediate_dim=32,
+                max_length=20,
+                num_tf_features=3,
+                num_outputs=1,
+                dropout_rate=1.5,
+            )
+
+    def test_invalid_head_divisibility_is_rejected(self) -> None:
+        with pytest.raises(ValueError, match="hidden_dim"):
+            ContextualEpigenomicsConfig(
+                hidden_dim=15,
+                num_layers=1,
+                num_heads=2,
+                intermediate_dim=32,
+                max_length=20,
+                num_tf_features=3,
+                num_outputs=1,
+            )
+
     def test_sequence_only_mode_ignores_tf_conditioning(self, rngs: nnx.Rngs) -> None:
         data = _make_batch()
         config = ContextualEpigenomicsConfig(
