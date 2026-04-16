@@ -54,36 +54,8 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class PerturbationPipelineConfig(StructuralConfig):
-    """Configuration for PerturbationPipeline.
-
-    Attributes:
-        pert_col: Obs column for perturbation identity.
-        cell_type_col: Obs column for cell type.
-        batch_col: Obs column for batch/plate.
-        control_pert: Label identifying control cells.
-        output_space: Output representation (``"gene"``, ``"all"``,
-            ``"embedding"``).
-        embedding_key: Key in obsm for embeddings.
-        hvg_col: Column in var marking HVGs.
-        mapping_strategy: Control mapping strategy (``"batch"`` or
-            ``"random"``).
-        n_basal_samples: Number of controls per perturbed cell.
-        sentence_size: Cells per sentence in batch sampler.
-        sentences_per_batch: Sentences per batch.
-        split_mode: Split strategy (``"zeroshot"``, ``"fewshot"``, or
-            ``"random"``).
-        held_out_cell_types: Cell types for zero-shot test set.
-        held_out_perturbations: Perturbations for few-shot test set.
-        train_frac: Training fraction.
-        valid_frac: Validation fraction.
-        enable_knockdown_filter: Whether to apply knockdown QC.
-        residual_expression: Stage 1 knockdown threshold.
-        cell_residual_expression: Stage 2 per-cell threshold.
-        min_cells: Stage 3 minimum cells per perturbation.
-        var_gene_col: Column in var for gene names (knockdown filter).
-        seed: Global random seed.
-    """
+class _PipelineSourceConfig:
+    """Perturbation source selection and output-space configuration."""
 
     pert_col: str = "perturbation"
     cell_type_col: str = "cell_type"
@@ -92,6 +64,12 @@ class PerturbationPipelineConfig(StructuralConfig):
     output_space: str = "all"
     embedding_key: str | None = None
     hvg_col: str | None = None
+
+
+@dataclass(frozen=True)
+class _PipelineBatchingAndSplitConfig:
+    """Control mapping, batching, and split selection configuration."""
+
     mapping_strategy: str = "random"
     n_basal_samples: int = 1
     sentence_size: int = 512
@@ -99,14 +77,93 @@ class PerturbationPipelineConfig(StructuralConfig):
     split_mode: str = "random"
     held_out_cell_types: tuple[str, ...] = ()
     held_out_perturbations: tuple[str, ...] = ()
-    train_frac: float = 0.8
-    valid_frac: float = 0.1
+
+
+@dataclass(frozen=True)
+class _PipelineFilterConfig:
+    """Knockdown-filter configuration."""
+
     enable_knockdown_filter: bool = False
     residual_expression: float = 0.30
     cell_residual_expression: float = 0.50
     min_cells: int = 30
     var_gene_col: str | None = None
+
+
+@dataclass(frozen=True)
+class _PipelineFractionConfig:
+    """Split fraction and seed configuration."""
+
+    train_frac: float = 0.8
+    valid_frac: float = 0.1
     seed: int = 42
+
+
+@dataclass(frozen=True)
+class PerturbationPipelineConfig(
+    _PipelineSourceConfig,
+    _PipelineBatchingAndSplitConfig,
+    _PipelineFilterConfig,
+    _PipelineFractionConfig,
+    StructuralConfig,
+):
+    """Configuration for PerturbationPipeline."""
+
+    def __post_init__(self) -> None:
+        """Validate pipeline configuration."""
+        super().__post_init__()
+
+        if self.output_space == "embedding" and self.embedding_key is None:
+            raise ValueError("embedding_key is required when output_space='embedding'")
+
+        if self.mapping_strategy not in {"batch", "random"}:
+            raise ValueError(
+                "mapping_strategy must be either 'batch' or 'random', "
+                f"got {self.mapping_strategy!r}"
+            )
+
+        if self.split_mode not in {"random", "zeroshot", "fewshot"}:
+            raise ValueError(
+                "split_mode must be one of 'random', 'zeroshot', or 'fewshot', "
+                f"got {self.split_mode!r}"
+            )
+
+        if self.n_basal_samples <= 0:
+            raise ValueError("n_basal_samples must be positive")
+        if self.sentence_size <= 0:
+            raise ValueError("sentence_size must be positive")
+        if self.sentences_per_batch <= 0:
+            raise ValueError("sentences_per_batch must be positive")
+        if self.min_cells <= 0:
+            raise ValueError("min_cells must be positive")
+
+        if not 0.0 <= self.train_frac <= 1.0:
+            raise ValueError("train_frac must be between 0.0 and 1.0")
+        if not 0.0 <= self.valid_frac <= 1.0:
+            raise ValueError("valid_frac must be between 0.0 and 1.0")
+        if self.train_frac + self.valid_frac > 1.0:
+            raise ValueError("train_frac + valid_frac must be <= 1.0")
+
+        if not 0.0 < self.residual_expression <= 1.0:
+            raise ValueError("residual_expression must be in (0.0, 1.0]")
+        if not 0.0 < self.cell_residual_expression <= 1.0:
+            raise ValueError("cell_residual_expression must be in (0.0, 1.0]")
+
+        if self.split_mode == "random":
+            if self.held_out_cell_types or self.held_out_perturbations:
+                raise ValueError(
+                    "held_out_cell_types and held_out_perturbations are only valid for "
+                    "zeroshot/fewshot split modes"
+                )
+        elif self.split_mode == "zeroshot":
+            if not self.held_out_cell_types:
+                raise ValueError("held_out_cell_types is required when split_mode='zeroshot'")
+            if self.held_out_perturbations:
+                raise ValueError("held_out_perturbations is not used when split_mode='zeroshot'")
+        elif not self.held_out_perturbations:
+            raise ValueError("held_out_perturbations is required when split_mode='fewshot'")
+        elif self.held_out_cell_types:
+            raise ValueError("held_out_cell_types is not used when split_mode='fewshot'")
 
 
 class PerturbationPipeline:

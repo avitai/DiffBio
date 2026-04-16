@@ -95,6 +95,37 @@ class TestPerturbationPipelineRandomSplit:
         assert result.control_mapping.shape[1] == 2
 
 
+class TestPerturbationPipelineConfig:
+    """Tests for PerturbationPipelineConfig validation."""
+
+    def test_embedding_output_space_requires_embedding_key(self) -> None:
+        with pytest.raises(ValueError, match="embedding_key"):
+            PerturbationPipelineConfig(output_space="embedding")
+
+    def test_invalid_mapping_strategy_fails(self) -> None:
+        with pytest.raises(ValueError, match="mapping_strategy"):
+            PerturbationPipelineConfig(mapping_strategy="unsupported")
+
+    def test_random_split_rejects_holdout_configuration(self) -> None:
+        with pytest.raises(ValueError, match="held_out"):
+            PerturbationPipelineConfig(
+                split_mode="random",
+                held_out_cell_types=("TypeA",),
+            )
+
+    def test_zeroshot_requires_cell_type_holdouts(self) -> None:
+        with pytest.raises(ValueError, match="held_out_cell_types"):
+            PerturbationPipelineConfig(split_mode="zeroshot")
+
+    def test_fewshot_requires_perturbation_holdouts(self) -> None:
+        with pytest.raises(ValueError, match="held_out_perturbations"):
+            PerturbationPipelineConfig(split_mode="fewshot")
+
+    def test_sentence_size_must_be_positive(self) -> None:
+        with pytest.raises(ValueError, match="sentence_size"):
+            PerturbationPipelineConfig(sentence_size=0)
+
+
 class TestPerturbationPipelineZeroshotSplit:
     """Tests for PerturbationPipeline with zero-shot split."""
 
