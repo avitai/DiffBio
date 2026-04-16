@@ -7,6 +7,7 @@ operator for removing ambient RNA contamination from single-cell data.
 import jax
 import jax.numpy as jnp
 import pytest
+from artifex.generative_models.core.base import MLP
 from flax import nnx
 
 from diffbio.operators.singlecell.ambient_removal import (
@@ -36,6 +37,11 @@ class TestAmbientRemovalConfig:
         assert config.n_genes == 5000
         assert config.latent_dim == 128
         assert config.ambient_prior == 0.05
+
+    def test_hidden_dims_must_be_non_empty(self):
+        """Ambient removal should fail fast when no hidden backbone is configured."""
+        with pytest.raises(ValueError, match="hidden_dims"):
+            AmbientRemovalConfig(hidden_dims=[])
 
 
 class TestDifferentiableAmbientRemoval:
@@ -76,6 +82,10 @@ class TestDifferentiableAmbientRemoval:
         """Test operator initialization."""
         op = DifferentiableAmbientRemoval(small_config, rngs=rngs)
         assert op is not None
+        assert isinstance(op.encoder.backbone, MLP)
+        assert isinstance(op.decoder.backbone, MLP)
+        assert len(op.encoder.backbone.layers) == len(small_config.hidden_dims)
+        assert len(op.decoder.backbone.layers) == len(small_config.hidden_dims)
 
     def test_output_contains_decontaminated(self, rngs, small_config, sample_data):
         """Test that output contains decontaminated counts."""
@@ -191,11 +201,15 @@ class TestGradientFlow:
         @nnx.value_and_grad
         def loss_fn(model):
             transformed, _, _ = model.apply(data, state, None, None)
-            return transformed["decontaminated_counts"].sum()
+            return transformed["reconstructed"].sum()
 
         loss, grads = loss_fn(op)
 
+        assert loss is not None
         assert hasattr(grads, "encoder")
+        assert hasattr(grads, "decoder")
+        assert jnp.any(grads.encoder.backbone.layers[0].kernel[...] != 0.0)
+        assert jnp.any(grads.decoder.backbone.layers[0].kernel[...] != 0.0)
 
 
 class TestJITCompatibility:

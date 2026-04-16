@@ -23,6 +23,7 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
+from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
@@ -56,6 +57,10 @@ class AmbientRemovalConfig(OperatorConfig):
         if self.stream_name is None:
             object.__setattr__(self, "stream_name", "sample")
         super().__post_init__()
+        if not self.hidden_dims:
+            raise ValueError(
+                "AmbientRemovalConfig.hidden_dims must contain at least one hidden dimension."
+            )
 
 
 class AmbientEncoder(nnx.Module):
@@ -78,25 +83,23 @@ class AmbientEncoder(nnx.Module):
             rngs: Random number generators.
         """
         super().__init__()
-
-        # Build encoder layers
-        layers = []
-        norms = []
-        in_dim = n_genes
-        for hidden_dim in hidden_dims:
-            layers.append(nnx.Linear(in_features=in_dim, out_features=hidden_dim, rngs=rngs))
-            norms.append(nnx.LayerNorm(num_features=hidden_dim, rngs=rngs))
-            in_dim = hidden_dim
-
-        self.layers = nnx.List(layers)
-        self.norms = nnx.List(norms)
+        self.backbone = MLP(
+            hidden_dims=hidden_dims,
+            in_features=n_genes,
+            activation="gelu",
+            output_activation="gelu",
+            use_batch_norm=False,
+            rngs=rngs,
+        )
 
         # Latent projections
-        self.mean_proj = nnx.Linear(in_features=in_dim, out_features=latent_dim, rngs=rngs)
-        self.logvar_proj = nnx.Linear(in_features=in_dim, out_features=latent_dim, rngs=rngs)
+        self.mean_proj = nnx.Linear(in_features=hidden_dims[-1], out_features=latent_dim, rngs=rngs)
+        self.logvar_proj = nnx.Linear(
+            in_features=hidden_dims[-1], out_features=latent_dim, rngs=rngs
+        )
 
         # Contamination fraction projection
-        self.contamination_proj = nnx.Linear(in_features=in_dim, out_features=1, rngs=rngs)
+        self.contamination_proj = nnx.Linear(in_features=hidden_dims[-1], out_features=1, rngs=rngs)
 
     def __call__(
         self,
@@ -115,18 +118,16 @@ class AmbientEncoder(nnx.Module):
             Tuple of (mean, logvar, contamination_fraction).
         """
         # Log-normalize for encoder input
-        x = jnp.log1p(counts)
-
-        # Forward through encoder layers
-        for linear, norm in zip(self.layers, self.norms):
-            x = norm(nnx.gelu(linear(x)))
+        backbone_output = self.backbone(jnp.log1p(counts))
+        if isinstance(backbone_output, tuple):
+            raise TypeError("AmbientEncoder backbone must return a single tensor output.")
 
         # Latent parameters
-        mean = self.mean_proj(x)
-        logvar = self.logvar_proj(x)
+        mean = self.mean_proj(backbone_output)
+        logvar = self.logvar_proj(backbone_output)
 
         # Contamination fraction (bounded 0-1)
-        contamination = jax.nn.sigmoid(self.contamination_proj(x)).squeeze(-1)
+        contamination = jax.nn.sigmoid(self.contamination_proj(backbone_output)).squeeze(-1)
 
         return mean, logvar, contamination
 
@@ -151,21 +152,20 @@ class AmbientDecoder(nnx.Module):
             rngs: Random number generators.
         """
         super().__init__()
-
-        # Build decoder layers (reversed hidden dims)
-        layers = []
-        norms = []
-        in_dim = latent_dim
-        for hidden_dim in reversed(hidden_dims):
-            layers.append(nnx.Linear(in_features=in_dim, out_features=hidden_dim, rngs=rngs))
-            norms.append(nnx.LayerNorm(num_features=hidden_dim, rngs=rngs))
-            in_dim = hidden_dim
-
-        self.layers = nnx.List(layers)
-        self.norms = nnx.List(norms)
+        decoder_hidden_dims = list(reversed(hidden_dims))
+        self.backbone = MLP(
+            hidden_dims=decoder_hidden_dims,
+            in_features=latent_dim,
+            activation="gelu",
+            output_activation="gelu",
+            use_batch_norm=False,
+            rngs=rngs,
+        )
 
         # Output projection (log-rate for Poisson/NB)
-        self.output_proj = nnx.Linear(in_features=in_dim, out_features=n_genes, rngs=rngs)
+        self.output_proj = nnx.Linear(
+            in_features=decoder_hidden_dims[-1], out_features=n_genes, rngs=rngs
+        )
 
     def __call__(
         self,
@@ -179,12 +179,12 @@ class AmbientDecoder(nnx.Module):
         Returns:
             Log-rate parameters for gene expression.
         """
-        x = z
-        for linear, norm in zip(self.layers, self.norms):
-            x = norm(nnx.gelu(linear(x)))
+        backbone_output = self.backbone(z)
+        if isinstance(backbone_output, tuple):
+            raise TypeError("AmbientDecoder backbone must return a single tensor output.")
 
         # Output log-rates
-        log_rate = self.output_proj(x)
+        log_rate = self.output_proj(backbone_output)
 
         return log_rate
 
