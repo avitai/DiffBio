@@ -83,6 +83,18 @@ class TestGraphAttentionLayer:
         )
         assert layer.dropout is None
 
+    def test_invalid_head_configuration_rejected(self, rngs):
+        """Output width must divide evenly across heads."""
+        with pytest.raises(ValueError, match="divisible"):
+            GraphAttentionLayer(
+                in_features=16,
+                out_features=30,
+                num_heads=4,
+                edge_features=4,
+                dropout_rate=0.0,
+                rngs=rngs,
+            )
+
     def test_forward_pass_output_shape(self, rngs, small_graph):
         """Test forward pass produces correct output shape."""
         out_features = 32
@@ -787,11 +799,24 @@ class TestGATv2Layer:
             ).sum()
 
         _, grads = loss_fn(layer)
-        assert hasattr(grads, "left_proj")
-        assert hasattr(grads, "right_proj")
+        assert hasattr(grads, "attn_projections")
+        assert hasattr(grads.attn_projections, "left")
+        assert hasattr(grads.attn_projections, "right")
         assert hasattr(grads, "attn_vector")
         assert hasattr(grads, "value_proj")
         assert hasattr(grads, "output_proj")
+
+    def test_invalid_head_configuration_rejected(self, rngs):
+        """Output width must divide evenly across heads."""
+        with pytest.raises(ValueError, match="divisible"):
+            GATv2Layer(
+                in_features=16,
+                out_features=30,
+                num_heads=4,
+                edge_features=4,
+                dropout_rate=0.0,
+                rngs=rngs,
+            )
 
     def test_jit_compatible(self, rngs, small_graph):
         """Test that the layer works under JIT compilation."""
@@ -850,6 +875,7 @@ class TestGATv2Layer:
             small_graph["edge_index"],
             small_graph["edge_features"],
         )
+        assert layer.negative_slope == 0.1
         assert output.shape == (small_graph["n_nodes"], 32)
         assert jnp.isfinite(output).all()
 

@@ -32,6 +32,34 @@ __all__ = [
 ]
 
 
+class _BidirectionalProjection(nnx.Module):
+    """Pair of linear projections used by attention mechanisms."""
+
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        *,
+        rngs: nnx.Rngs,
+        negative_slope: float | None = None,
+    ) -> None:
+        """Initialize the paired projection module."""
+        super().__init__()
+        self.left = nnx.Linear(in_features=in_features, out_features=out_features, rngs=rngs)
+        self.right = nnx.Linear(in_features=in_features, out_features=out_features, rngs=rngs)
+        self.negative_slope = negative_slope
+
+    def __call__(
+        self,
+        node_features: Float[Array, "n_nodes in_features"],
+    ) -> tuple[
+        Float[Array, "n_nodes out_features"],
+        Float[Array, "n_nodes out_features"],
+    ]:
+        """Project the same node tensor through both linear paths."""
+        return self.left(node_features), self.right(node_features)
+
+
 class GraphAttentionLayer(nnx.Module):
     """Multi-head graph attention layer for message passing.
 
@@ -70,10 +98,16 @@ class GraphAttentionLayer(nnx.Module):
             rngs: Random number generators.
         """
         super().__init__()
-
-        self.num_heads = num_heads
-        self.head_dim = out_features // num_heads
-        self.scale = self.head_dim**-0.5
+        if num_heads <= 0:
+            raise ValueError("num_heads must be positive")
+        if out_features <= 0:
+            raise ValueError("out_features must be positive")
+        if out_features % num_heads != 0:
+            raise ValueError("out_features must be divisible by num_heads")
+        if edge_features <= 0:
+            raise ValueError("edge_features must be positive")
+        if not 0.0 <= dropout_rate < 1.0:
+            raise ValueError("dropout_rate must be in [0, 1)")
 
         # Node feature projections
         self.query_proj = nnx.Linear(
@@ -107,6 +141,21 @@ class GraphAttentionLayer(nnx.Module):
         )
 
         self.dropout = nnx.Dropout(rate=dropout_rate, rngs=rngs) if dropout_rate > 0 else None
+
+    @property
+    def num_heads(self) -> int:
+        """Number of attention heads."""
+        return self.edge_proj.out_features
+
+    @property
+    def head_dim(self) -> int:
+        """Per-head hidden dimension."""
+        return self.query_proj.out_features // self.num_heads
+
+    @property
+    def scale(self) -> float:
+        """Dot-product attention scaling factor."""
+        return self.head_dim**-0.5
 
     def __call__(
         self,
@@ -343,26 +392,25 @@ class GATv2Layer(nnx.Module):
             rngs: Random number generators.
         """
         super().__init__()
-
-        self.num_heads = num_heads
-        self.head_dim = out_features // num_heads
-        self.negative_slope = negative_slope
+        if num_heads <= 0:
+            raise ValueError("num_heads must be positive")
+        if out_features <= 0:
+            raise ValueError("out_features must be positive")
+        if out_features % num_heads != 0:
+            raise ValueError("out_features must be divisible by num_heads")
+        if edge_features <= 0:
+            raise ValueError("edge_features must be positive")
+        if negative_slope < 0.0:
+            raise ValueError("negative_slope must be non-negative")
+        if not 0.0 <= dropout_rate < 1.0:
+            raise ValueError("dropout_rate must be in [0, 1)")
 
         # GATv2 uses separate left/right projections (not Q/K/V)
-        self.left_proj = nnx.Linear(
+        self.attn_projections = _BidirectionalProjection(
             in_features=in_features,
             out_features=out_features,
             rngs=rngs,
-        )
-        self.right_proj = nnx.Linear(
-            in_features=in_features,
-            out_features=out_features,
-            rngs=rngs,
-        )
-
-        # Per-head attention vector a^T (applied after LeakyReLU)
-        self.attn_vector = nnx.Param(
-            jax.random.normal(rngs.params(), (num_heads, self.head_dim)) * 0.01
+            negative_slope=negative_slope,
         )
 
         # Edge feature projection to per-head bias
@@ -370,6 +418,11 @@ class GATv2Layer(nnx.Module):
             in_features=edge_features,
             out_features=num_heads,
             rngs=rngs,
+        )
+
+        # Per-head attention vector a^T (applied after LeakyReLU)
+        self.attn_vector = nnx.Param(
+            jax.random.normal(rngs.params(), (num_heads, self.head_dim)) * 0.01
         )
 
         # Value projection and output projection
@@ -385,6 +438,23 @@ class GATv2Layer(nnx.Module):
         )
 
         self.dropout = nnx.Dropout(rate=dropout_rate, rngs=rngs) if dropout_rate > 0 else None
+
+    @property
+    def num_heads(self) -> int:
+        """Number of attention heads."""
+        return self.edge_proj.out_features
+
+    @property
+    def head_dim(self) -> int:
+        """Per-head hidden dimension."""
+        return self.attn_projections.left.out_features // self.num_heads
+
+    @property
+    def negative_slope(self) -> float:
+        """LeakyReLU negative slope used in the attention scorer."""
+        if self.attn_projections.negative_slope is None:
+            raise ValueError("negative_slope is not configured")
+        return self.attn_projections.negative_slope
 
     def __call__(
         self,
@@ -417,8 +487,7 @@ class GATv2Layer(nnx.Module):
         targets = edge_index[1]
 
         # Left/right projections for all nodes
-        left = self.left_proj(node_features)  # (n_nodes, out_features)
-        right = self.right_proj(node_features)
+        left, right = self.attn_projections(node_features)
 
         # Reshape to per-head: (n_nodes, num_heads, head_dim)
         left = left.reshape(n_nodes, self.num_heads, self.head_dim)
