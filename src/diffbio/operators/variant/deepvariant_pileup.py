@@ -1,29 +1,5 @@
-"""DeepVariant-style pileup image generation for variant calling.
+"""DeepVariant-style pileup image generation for variant calling."""
 
-This module provides a differentiable implementation of DeepVariant's
-multi-channel pileup image format, enabling CNN-based variant calling
-with end-to-end gradient flow.
-
-DeepVariant uses pileup images with shape (height, width, channels) where:
-- height: max number of reads (typically 100)
-- width: window size in base pairs (typically 221)
-- channels: multiple feature channels (6 core channels)
-
-Core channels:
-1. Read base (A/C/G/T one-hot or intensity encoding)
-2. Base quality (Phred scores normalized to [0,1])
-3. Mapping quality (MAPQ normalized to [0,1])
-4. Strand (0=forward, 1=reverse)
-5. Read supports variant (soft indicator)
-6. Base differs from reference (soft indicator)
-
-References:
-    - https://google.github.io/deepvariant/posts/2020-02-20-looking-through-deepvariants-eyes/
-    - https://google.github.io/deepvariant/posts/2022-06-09-adding-custom-channels/
-    - https://github.com/google/deepvariant
-"""
-
-import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -35,7 +11,22 @@ from jaxtyping import Array, Float, Int, PyTree
 from diffbio.configs import TemperatureConfig
 from diffbio.core.base_operators import TemperatureOperator
 
-logger = logging.getLogger(__name__)
+_DEFAULT_DEEPVARIANT_CHANNELS = (
+    "base",
+    "base_quality",
+    "mapping_quality",
+    "strand",
+    "supports_variant",
+    "differs_from_ref",
+)
+_DEEPVARIANT_CHANNEL_WIDTHS = {
+    "base": 4,
+    "base_quality": 1,
+    "mapping_quality": 1,
+    "strand": 1,
+    "supports_variant": 1,
+    "differs_from_ref": 1,
+}
 
 
 @dataclass(frozen=True)
@@ -48,26 +39,41 @@ class DeepVariantPileupConfig(TemperatureConfig):
     Attributes:
         window_size: Width of pileup image in base pairs (default: 221)
         max_reads: Height of pileup image / max reads to include (default: 100)
-        include_base_channels: Include 4 channels for base identity (A/C/G/T)
-        include_base_quality: Include channel for base quality scores
-        include_mapping_quality: Include channel for mapping quality
-        include_strand: Include channel for strand orientation
-        include_supports_variant: Include channel for variant support
-        include_differs_from_ref: Include channel for reference mismatch
+        channels: Ordered channel set to emit in the pileup image.
         quality_max: Maximum quality score for normalization (default: 40)
         mapq_max: Maximum mapping quality for normalization (default: 60)
     """
 
     window_size: int = 221
     max_reads: int = 100
-    include_base_channels: bool = True
-    include_base_quality: bool = True
-    include_mapping_quality: bool = True
-    include_strand: bool = True
-    include_supports_variant: bool = True
-    include_differs_from_ref: bool = True
+    channels: tuple[str, ...] = _DEFAULT_DEEPVARIANT_CHANNELS
     quality_max: float = 40.0
     mapq_max: float = 60.0
+
+    def __post_init__(self) -> None:
+        """Validate the supported DeepVariant pileup configuration surface."""
+        super().__post_init__()
+
+        if self.window_size <= 0:
+            raise ValueError(f"window_size must be positive, got {self.window_size}")
+        if self.max_reads <= 0:
+            raise ValueError(f"max_reads must be positive, got {self.max_reads}")
+        if self.quality_max <= 0.0:
+            raise ValueError(f"quality_max must be positive, got {self.quality_max}")
+        if self.mapq_max <= 0.0:
+            raise ValueError(f"mapq_max must be positive, got {self.mapq_max}")
+        if not self.channels:
+            raise ValueError("channels must contain at least one DeepVariant channel")
+
+        invalid_channels = tuple(
+            channel for channel in self.channels if channel not in _DEEPVARIANT_CHANNEL_WIDTHS
+        )
+        if invalid_channels:
+            invalid = ", ".join(invalid_channels)
+            raise ValueError(f"channels contains unsupported values: {invalid}")
+
+        if len(set(self.channels)) != len(self.channels):
+            raise ValueError("channels must not contain duplicates")
 
 
 class DeepVariantStylePileup(TemperatureOperator):
@@ -119,19 +125,9 @@ class DeepVariantStylePileup(TemperatureOperator):
         super().__init__(config, rngs=rngs, name=name)
 
         # Calculate number of output channels
-        self._num_channels = 0
-        if config.include_base_channels:
-            self._num_channels += 4  # A, C, G, T
-        if config.include_base_quality:
-            self._num_channels += 1
-        if config.include_mapping_quality:
-            self._num_channels += 1
-        if config.include_strand:
-            self._num_channels += 1
-        if config.include_supports_variant:
-            self._num_channels += 1
-        if config.include_differs_from_ref:
-            self._num_channels += 1
+        self._num_channels = sum(
+            _DEEPVARIANT_CHANNEL_WIDTHS[channel] for channel in config.channels
+        )
 
     @property
     def num_channels(self) -> int:
@@ -241,45 +237,37 @@ class DeepVariantStylePileup(TemperatureOperator):
         # Build the pileup image channel by channel
         channel_idx = 0
 
-        # Base channels (4 channels for A, C, G, T)
-        if config.include_base_channels:
-            base_image = self._compute_base_channels(reads, positions, read_length)
-            pileup_image = pileup_image.at[:, :, channel_idx : channel_idx + 4].set(base_image)
-            channel_idx += 4
-
-        # Base quality channel
-        if config.include_base_quality:
-            quality_image = self._compute_quality_channel(base_qualities, positions, read_length)
-            pileup_image = pileup_image.at[:, :, channel_idx].set(quality_image)
-            channel_idx += 1
-
-        # Mapping quality channel
-        if config.include_mapping_quality:
-            mapq_image = self._compute_mapq_channel(mapping_qualities, positions, read_length)
-            pileup_image = pileup_image.at[:, :, channel_idx].set(mapq_image)
-            channel_idx += 1
-
-        # Strand channel
-        if config.include_strand:
-            strand_image = self._compute_strand_channel(strands, positions, read_length)
-            pileup_image = pileup_image.at[:, :, channel_idx].set(strand_image)
-            channel_idx += 1
-
-        # Supports variant channel
-        if config.include_supports_variant:
-            variant_image = self._compute_variant_support_channel(
-                reads, reference, positions, read_length
-            )
-            pileup_image = pileup_image.at[:, :, channel_idx].set(variant_image)
-            channel_idx += 1
-
-        # Differs from reference channel
-        if config.include_differs_from_ref:
-            diff_image = self._compute_diff_from_ref_channel(
-                reads, reference, positions, read_length
-            )
-            pileup_image = pileup_image.at[:, :, channel_idx].set(diff_image)
-            channel_idx += 1
+        for channel in config.channels:
+            if channel == "base":
+                base_image = self._compute_base_channels(reads, positions, read_length)
+                pileup_image = pileup_image.at[:, :, channel_idx : channel_idx + 4].set(base_image)
+                channel_idx += 4
+            elif channel == "base_quality":
+                quality_image = self._compute_quality_channel(
+                    base_qualities, positions, read_length
+                )
+                pileup_image = pileup_image.at[:, :, channel_idx].set(quality_image)
+                channel_idx += 1
+            elif channel == "mapping_quality":
+                mapq_image = self._compute_mapq_channel(mapping_qualities, positions, read_length)
+                pileup_image = pileup_image.at[:, :, channel_idx].set(mapq_image)
+                channel_idx += 1
+            elif channel == "strand":
+                strand_image = self._compute_strand_channel(strands, positions, read_length)
+                pileup_image = pileup_image.at[:, :, channel_idx].set(strand_image)
+                channel_idx += 1
+            elif channel == "supports_variant":
+                variant_image = self._compute_variant_support_channel(
+                    reads, reference, positions, read_length
+                )
+                pileup_image = pileup_image.at[:, :, channel_idx].set(variant_image)
+                channel_idx += 1
+            else:
+                diff_image = self._compute_diff_from_ref_channel(
+                    reads, reference, positions, read_length
+                )
+                pileup_image = pileup_image.at[:, :, channel_idx].set(diff_image)
+                channel_idx += 1
 
         return pileup_image
 

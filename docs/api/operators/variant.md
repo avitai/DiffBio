@@ -144,12 +144,14 @@ from diffbio.operators.variant import DeepVariantStylePileup, DeepVariantPileupC
 config = DeepVariantPileupConfig(
     window_size=101,
     max_reads=50,
-    include_base_channels=True,
-    include_base_quality=True,
-    include_mapping_quality=True,
-    include_strand=True,
-    include_supports_variant=True,
-    include_differs_from_ref=True,
+    channels=(
+        "base",
+        "base_quality",
+        "mapping_quality",
+        "strand",
+        "supports_variant",
+        "differs_from_ref",
+    ),
 )
 pileup = DeepVariantStylePileup(config)
 

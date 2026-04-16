@@ -481,12 +481,7 @@ print(f"Pileup image shape: {result['pileup_image'].shape}")  # (100, 221, 9)
 |-----------|------|---------|-------------|
 | `window_size` | int | 221 | Width of pileup in base pairs |
 | `max_reads` | int | 100 | Maximum reads (image height) |
-| `include_base_channels` | bool | True | Include 4 A/C/G/T channels |
-| `include_base_quality` | bool | True | Include base quality channel |
-| `include_mapping_quality` | bool | True | Include mapping quality channel |
-| `include_strand` | bool | True | Include strand orientation channel |
-| `include_supports_variant` | bool | True | Include variant support channel |
-| `include_differs_from_ref` | bool | True | Include reference mismatch channel |
+| `channels` | tuple[str, ...] | `("base", "base_quality", "mapping_quality", "strand", "supports_variant", "differs_from_ref")` | Ordered DeepVariant channels to emit |
 | `quality_max` | float | 40.0 | Max quality for normalization |
 | `mapq_max` | float | 60.0 | Max MAPQ for normalization |
 | `temperature` | float | 1.0 | Temperature for soft operations |
@@ -604,12 +599,7 @@ def fast_pileup(data):
 ```python
 # Minimal configuration for base-only analysis
 config = DeepVariantPileupConfig(
-    include_base_channels=True,
-    include_base_quality=False,
-    include_mapping_quality=False,
-    include_strand=False,
-    include_supports_variant=False,
-    include_differs_from_ref=False,
+    channels=("base",),
 )
 # Only 4 channels instead of 9
 ```

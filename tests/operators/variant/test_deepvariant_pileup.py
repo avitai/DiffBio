@@ -109,13 +109,14 @@ class TestDeepVariantPileupConfig:
         # DeepVariant defaults
         assert config.window_size == 221
         assert config.max_reads == 100
-        # Channel flags
-        assert config.include_base_channels is True
-        assert config.include_base_quality is True
-        assert config.include_mapping_quality is True
-        assert config.include_strand is True
-        assert config.include_supports_variant is True
-        assert config.include_differs_from_ref is True
+        assert config.channels == (
+            "base",
+            "base_quality",
+            "mapping_quality",
+            "strand",
+            "supports_variant",
+            "differs_from_ref",
+        )
 
     def test_config_custom_values(self):
         """Test config with custom values."""
@@ -124,13 +125,47 @@ class TestDeepVariantPileupConfig:
         config = DeepVariantPileupConfig(
             window_size=101,
             max_reads=50,
-            include_mapping_quality=False,
-            include_strand=False,
+            channels=("base", "base_quality", "supports_variant"),
         )
         assert config.window_size == 101
         assert config.max_reads == 50
-        assert config.include_mapping_quality is False
-        assert config.include_strand is False
+        assert config.channels == ("base", "base_quality", "supports_variant")
+
+    @pytest.mark.parametrize(
+        ("field_name", "value"),
+        [
+            ("include_base_channels", False),
+            ("include_base_quality", False),
+            ("include_mapping_quality", False),
+            ("include_strand", False),
+            ("include_supports_variant", False),
+            ("include_differs_from_ref", False),
+        ],
+    )
+    def test_rejects_removed_legacy_channel_flags(self, field_name, value):
+        """Legacy channel booleans should fail immediately."""
+        from diffbio.operators.variant import DeepVariantPileupConfig
+
+        with pytest.raises(TypeError, match=field_name):
+            DeepVariantPileupConfig(**{field_name: value})
+
+    @pytest.mark.parametrize(
+        ("kwargs", "message"),
+        [
+            ({"window_size": 0}, "window_size"),
+            ({"max_reads": 0}, "max_reads"),
+            ({"quality_max": 0.0}, "quality_max"),
+            ({"mapq_max": 0.0}, "mapq_max"),
+            ({"channels": ()}, "channels"),
+            ({"channels": ("base", "unknown")}, "unknown"),
+        ],
+    )
+    def test_rejects_invalid_config(self, kwargs, message):
+        """Config should fail fast for invalid values."""
+        from diffbio.operators.variant import DeepVariantPileupConfig
+
+        with pytest.raises(ValueError, match=message):
+            DeepVariantPileupConfig(**kwargs)
 
     def test_config_inheritance(self):
         """Test that config inherits from TemperatureConfig."""
@@ -176,8 +211,7 @@ class TestDeepVariantStylePileupBasic:
 
         # Disable some channels
         config2 = DeepVariantPileupConfig(
-            include_mapping_quality=False,
-            include_strand=False,
+            channels=("base", "base_quality", "supports_variant", "differs_from_ref"),
         )
         pileup2 = DeepVariantStylePileup(config2, rngs=rngs)
         assert pileup2.num_channels == 7  # 9 - 2
@@ -300,12 +334,7 @@ class TestDeepVariantPileupChannels:
 
         # Only enable base channels
         config = DeepVariantPileupConfig(
-            include_base_channels=True,
-            include_base_quality=False,
-            include_mapping_quality=False,
-            include_strand=False,
-            include_supports_variant=False,
-            include_differs_from_ref=False,
+            channels=("base",),
         )
         pileup = DeepVariantStylePileup(config, rngs=rngs)
 
@@ -341,12 +370,7 @@ class TestDeepVariantPileupChannels:
         )
 
         config = DeepVariantPileupConfig(
-            include_base_channels=False,
-            include_base_quality=True,
-            include_mapping_quality=False,
-            include_strand=False,
-            include_supports_variant=False,
-            include_differs_from_ref=False,
+            channels=("base_quality",),
         )
         pileup = DeepVariantStylePileup(config, rngs=rngs)
 
@@ -376,12 +400,7 @@ class TestDeepVariantPileupChannels:
         )
 
         config = DeepVariantPileupConfig(
-            include_base_channels=False,
-            include_base_quality=False,
-            include_mapping_quality=False,
-            include_strand=True,
-            include_supports_variant=False,
-            include_differs_from_ref=False,
+            channels=("strand",),
         )
         pileup = DeepVariantStylePileup(config, rngs=rngs)
 
