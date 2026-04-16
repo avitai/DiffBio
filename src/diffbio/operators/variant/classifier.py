@@ -11,6 +11,7 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
+from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
@@ -70,18 +71,18 @@ class VariantClassifier(OperatorModule):
         # Input dimension: window_size * alphabet_size (nucleotides)
         input_dim = config.input_window * DNA_ALPHABET_SIZE
 
-        # Input layer
-        self.input_layer = nnx.Linear(input_dim, config.hidden_dim, rngs=rngs)
+        if config.num_layers < 1:
+            raise ValueError("VariantClassifierConfig.num_layers must be at least 1.")
 
-        # Hidden layers using nnx.List for proper pytree handling
-        layers = []
-        dropout_layers = []
-        for _ in range(config.num_layers - 1):
-            layers.append(nnx.Linear(config.hidden_dim, config.hidden_dim, rngs=rngs))
-            dropout_layers.append(nnx.Dropout(rate=config.dropout_rate, rngs=rngs))
-
-        self.layers = nnx.List(layers)
-        self.dropout_layers = nnx.List(dropout_layers)
+        self.backbone = MLP(
+            hidden_dims=[config.hidden_dim] * config.num_layers,
+            in_features=input_dim,
+            activation="relu",
+            dropout_rate=config.dropout_rate,
+            output_activation="relu",
+            use_batch_norm=False,
+            rngs=rngs,
+        )
 
         # Output layer
         self.output_layer = nnx.Linear(config.hidden_dim, config.num_classes, rngs=rngs)
@@ -101,16 +102,10 @@ class VariantClassifier(OperatorModule):
         """
         # Flatten pileup window
         x = pileup_window.reshape(-1)
-
-        # Input projection
-        x = self.input_layer(x)
-        x = nnx.relu(x)
-
-        # Hidden layers
-        for layer, dropout in zip(self.layers, self.dropout_layers, strict=False):
-            x = layer(x)
-            x = nnx.relu(x)
-            x = dropout(x)
+        backbone_output = self.backbone(x)
+        if isinstance(backbone_output, tuple):
+            raise TypeError("VariantClassifier backbone must return a single tensor output.")
+        x = backbone_output
 
         # Output
         logits = self.output_layer(x)

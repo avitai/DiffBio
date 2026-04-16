@@ -252,6 +252,8 @@ class TestVariantClassifier:
         """Test classifier initialization."""
         classifier = VariantClassifier(classifier_config, rngs=rngs)
         assert classifier is not None
+        assert classifier.backbone is not None
+        assert len(classifier.backbone.layers) == classifier_config.num_layers
 
     def test_classifier_output_shape(self, rngs, classifier_config):
         """Test classifier produces correct output shape."""
@@ -328,6 +330,26 @@ class TestVariantClassifier:
         assert grad is not None
         assert grad.shape == pileup_window.shape
         assert jnp.all(jnp.isfinite(grad))
+
+    def test_classifier_gradients_reach_backbone_weights(self, rngs, classifier_config):
+        """Test gradients reach the first shared MLP layer."""
+        classifier = VariantClassifier(classifier_config, rngs=rngs)
+        classifier.eval()
+
+        key = jax.random.PRNGKey(42)
+        pileup_window = jax.random.uniform(key, (classifier_config.input_window, 4))
+        pileup_window = pileup_window / pileup_window.sum(axis=-1, keepdims=True)
+
+        @nnx.value_and_grad
+        def loss_fn(model):
+            logits = model.classify(pileup_window)
+            return jnp.sum(logits)
+
+        _, grads = loss_fn(classifier)
+
+        assert hasattr(grads, "backbone")
+        assert grads.backbone is not None
+        assert jnp.any(grads.backbone.layers[0].kernel[...] != 0.0)
 
     def test_classifier_jit_compatible(self, rngs, classifier_config):
         """Test classifier works with JIT."""
