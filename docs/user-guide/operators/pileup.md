@@ -47,10 +47,10 @@ print(f"Pileup shape: {result['pileup'].shape}")  # (100, 4)
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `reference_length` | int | 100 | Length of reference sequence |
-| `window_size` | int | 21 | Context window size |
-| `min_coverage` | int | 1 | Minimum coverage threshold |
-| `max_coverage` | int | 100 | Maximum coverage for normalization |
 | `use_quality_weights` | bool | True | Weight bases by quality scores |
+| `return_coverage` | bool | False | Include soft coverage as an extra output |
+| `return_quality` | bool | False | Include mean-quality channel as an extra output |
+| `apply_softmax` | bool | True | Normalize base channels into distributions |
 | `stochastic` | bool | False | Whether operator uses randomness |
 
 ```python
@@ -59,8 +59,8 @@ from diffbio.operators.variant import PileupConfig
 config = PileupConfig(
     reference_length=10000,     # Must match your reference
     use_quality_weights=True,   # Recommended for quality-aware pileup
-    min_coverage=5,             # Minimum reads for reliable calls
-    max_coverage=200,           # Cap for normalization
+    return_coverage=True,       # Emit soft coverage channel
+    return_quality=True,        # Emit mean-quality channel
 )
 ```
 
@@ -97,7 +97,7 @@ def compute_pileup(
     positions: Int[Array, "num_reads"],
     quality: Float[Array, "num_reads read_length"],
     reference_length: int,
-) -> Float[Array, "reference_length 4"]:
+) -> dict[str, Float[Array, "..."]]:
     """Generate pileup from aligned reads.
 
     Args:
@@ -107,7 +107,8 @@ def compute_pileup(
         reference_length: Length of reference sequence
 
     Returns:
-        Pileup array with nucleotide distributions at each position
+        Dictionary containing `"pileup"` and optional `"coverage"` /
+        `"mean_quality"` channels
     """
 ```
 
@@ -242,21 +243,20 @@ high_confidence_variants = variant_scores > 0.3
 ### Coverage Analysis
 
 ```python
-def compute_coverage(pileup, reads, positions, reference_length):
-    """Compute soft coverage at each position."""
-    # Create coverage array
-    read_length = reads.shape[1]
-    coverage = jnp.zeros(reference_length)
+config = PileupConfig(
+    reference_length=1000,
+    return_coverage=True,
+    use_quality_weights=False,
+)
+pileup_op = DifferentiablePileup(config)
+result, _, _ = pileup_op.apply(
+    {"reads": reads, "positions": positions, "quality": quality},
+    {},
+    None,
+)
 
-    for i in range(reads.shape[0]):
-        pos = positions[i]
-        coverage = coverage.at[pos:pos+read_length].add(1.0)
-
-    return coverage
-
-# Identify low coverage regions
-coverage = compute_coverage(reads, positions, config.reference_length)
-low_coverage_mask = coverage < config.min_coverage
+coverage = result["coverage"].squeeze(-1)
+low_coverage_mask = coverage < 5.0
 ```
 
 ### Gradient-Based Analysis

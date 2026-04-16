@@ -66,20 +66,47 @@ class TestPileupConfig:
     def test_default_values(self):
         """Test default configuration values."""
         config = PileupConfig()
-        assert config.window_size == 21
-        assert config.min_coverage == 1
-        assert config.max_coverage == 100
+        assert config.reference_length == 100
         assert config.use_quality_weights is True
+        assert config.return_coverage is False
+        assert config.return_quality is False
+        assert config.apply_softmax is True
+        assert not hasattr(config, "window_size")
+        assert not hasattr(config, "min_coverage")
+        assert not hasattr(config, "max_coverage")
 
     def test_custom_values(self):
         """Test custom configuration values."""
         config = PileupConfig(
-            window_size=31, min_coverage=5, max_coverage=200, use_quality_weights=False
+            reference_length=250,
+            use_quality_weights=False,
+            return_coverage=True,
+            return_quality=True,
+            apply_softmax=False,
         )
-        assert config.window_size == 31
-        assert config.min_coverage == 5
-        assert config.max_coverage == 200
+        assert config.reference_length == 250
         assert config.use_quality_weights is False
+        assert config.return_coverage is True
+        assert config.return_quality is True
+        assert config.apply_softmax is False
+
+    @pytest.mark.parametrize(
+        ("field_name", "value"),
+        [
+            ("window_size", 31),
+            ("min_coverage", 5),
+            ("max_coverage", 200),
+        ],
+    )
+    def test_rejects_removed_legacy_fields(self, field_name, value):
+        """Legacy pileup fields should fail immediately."""
+        with pytest.raises(TypeError, match=field_name):
+            PileupConfig(**{field_name: value})
+
+    def test_rejects_non_positive_reference_length(self):
+        """Reference length must be positive for segment aggregation."""
+        with pytest.raises(ValueError, match="reference_length"):
+            PileupConfig(reference_length=0)
 
 
 class TestDifferentiablePileup:
@@ -87,7 +114,7 @@ class TestDifferentiablePileup:
 
     @pytest.fixture
     def pileup_config(self):
-        return PileupConfig(window_size=11)
+        return PileupConfig(reference_length=50)
 
     def test_initialization(self, rngs, pileup_config):
         """Test pileup operator initialization."""
@@ -393,7 +420,7 @@ class TestVariantCallingIntegration:
     def test_pileup_to_classifier_pipeline(self, rngs):
         """Test pileup output flows to classifier."""
         window_size = 11
-        pileup_config = PileupConfig(window_size=window_size)
+        pileup_config = PileupConfig(reference_length=50)
         classifier_config = VariantClassifierConfig(
             num_classes=3, hidden_dim=32, input_window=window_size
         )
@@ -418,7 +445,7 @@ class TestVariantCallingIntegration:
 
         # Extract window around position 25
         center = 25
-        half_window = pileup_config.window_size // 2
+        half_window = window_size // 2
         window = pileup_result["pileup"][center - half_window : center + half_window + 1]
 
         # Classify
@@ -430,7 +457,7 @@ class TestVariantCallingIntegration:
     def test_end_to_end_gradient_flow(self, rngs):
         """Test gradients flow through entire pipeline."""
         window_size = 11
-        pileup_config = PileupConfig(window_size=window_size)
+        pileup_config = PileupConfig(reference_length=30)
         classifier_config = VariantClassifierConfig(
             num_classes=3, hidden_dim=32, input_window=window_size
         )
@@ -456,7 +483,7 @@ class TestVariantCallingIntegration:
 
             # Extract center window
             center = reference_length // 2
-            half_window = pileup_config.window_size // 2
+            half_window = window_size // 2
             window = pileup_result["pileup"][center - half_window : center + half_window + 1]
 
             # Classify and compute loss (e.g., cross-entropy with target class 0)
@@ -476,7 +503,6 @@ class TestEnhancedPileup:
     def test_pileup_returns_coverage_when_enabled(self, rngs):
         """Test pileup returns coverage channel when configured."""
         config = PileupConfig(
-            window_size=11,
             reference_length=50,
             return_coverage=True,
         )
@@ -504,7 +530,6 @@ class TestEnhancedPileup:
     def test_pileup_returns_quality_when_enabled(self, rngs):
         """Test pileup returns mean quality channel when configured."""
         config = PileupConfig(
-            window_size=11,
             reference_length=50,
             return_coverage=True,
             return_quality=True,
@@ -539,7 +564,6 @@ class TestEnhancedPileup:
     def test_pileup_no_final_softmax_option(self, rngs):
         """Test pileup can skip final softmax normalization."""
         config = PileupConfig(
-            window_size=11,
             reference_length=50,
             apply_softmax=False,  # Skip final softmax
         )
@@ -567,7 +591,6 @@ class TestEnhancedPileup:
     def test_coverage_reflects_actual_read_depth(self, rngs):
         """Test that coverage channel reflects actual read depth."""
         config = PileupConfig(
-            window_size=11,
             reference_length=30,
             return_coverage=True,
             use_quality_weights=False,  # Disable quality weighting for cleaner test
@@ -600,7 +623,7 @@ class TestEdgeCases:
 
     def test_single_read(self, rngs):
         """Test pileup with single read."""
-        config = PileupConfig(window_size=11)
+        config = PileupConfig(reference_length=20)
         pileup = DifferentiablePileup(config, rngs=rngs)
 
         key = jax.random.PRNGKey(42)

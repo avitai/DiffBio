@@ -141,7 +141,6 @@ class EnhancedVariantCallingPipeline(OperatorModule):
         self.pileup = DifferentiablePileup(
             PileupConfig(
                 reference_length=config.reference_length,
-                window_size=config.pileup_window_size,
                 use_quality_weights=True,
             ),
             rngs=rngs,

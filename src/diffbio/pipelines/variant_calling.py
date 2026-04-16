@@ -126,7 +126,6 @@ class VariantCallingPipeline(OperatorModule):
         use_multichannel = config.classifier_type == ClassifierType.CNN
         self.pileup = DifferentiablePileup(
             PileupConfig(
-                window_size=config.pileup_window_size,
                 use_quality_weights=config.use_quality_weights,
                 reference_length=config.reference_length,
                 return_coverage=use_multichannel,
@@ -310,22 +309,8 @@ class VariantCallingPipeline(OperatorModule):
             pileup, window_size=window_size, pad_mode="edge"
         )  # (reference_length, window_size, 4)
 
-        # Classify all windows using batch processing through the classifier
-        batch_size = all_windows.shape[0]
-        x = all_windows.reshape(batch_size, -1)  # (reference_length, window_size * 4)
-
-        # Forward pass through classifier layers with batch dimension
-        x = self.classifier.input_layer(x)
-        x = nnx.relu(x)
-
-        for layer, dropout in zip(
-            self.classifier.layers, self.classifier.dropout_layers, strict=False
-        ):
-            x = layer(x)
-            x = nnx.relu(x)
-            x = dropout(x)
-
-        logits = self.classifier.output_layer(x)  # (reference_length, num_classes)
+        # Classify each extracted window through the classifier's public API.
+        logits = jax.vmap(self.classifier.classify)(all_windows)
         probabilities = jax.nn.softmax(logits, axis=-1)
 
         return logits, probabilities
@@ -345,15 +330,15 @@ class VariantCallingPipeline(OperatorModule):
 
         Creates 6-channel pileup images:
         - Channels 0-3: Base distributions (A, C, G, T)
-        - Channel 4: Coverage (normalized by max_coverage)
+        - Channel 4: Coverage (normalized by observed maximum coverage)
         - Channel 5: Mean quality (normalized to 0-1)
         """
         del half_window  # Not needed - handled by extract_windows_1d
-        max_coverage = self.pileup.config.max_coverage
 
         # Normalize coverage and quality if provided
         if coverage is not None:
-            norm_coverage = coverage / max_coverage  # (reference_length, 1)
+            coverage_scale = jnp.maximum(jnp.max(coverage), 1.0)
+            norm_coverage = coverage / coverage_scale  # (reference_length, 1)
         else:
             norm_coverage = jnp.zeros((reference_length, 1))
 

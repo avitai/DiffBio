@@ -167,7 +167,7 @@ class TestPileupBatchProcessing:
     @pytest.fixture
     def pileup(self, rngs):
         # reference_length=30 must match test data
-        config = PileupConfig(window_size=11, use_quality_weights=True, reference_length=30)
+        config = PileupConfig(use_quality_weights=True, reference_length=30)
         return DifferentiablePileup(config, rngs=rngs)
 
     @pytest.fixture
@@ -501,7 +501,7 @@ class TestGradientFlowThroughPipelines:
 
     def test_gradient_through_composed_pipeline(self, rngs):
         """Test gradients flow through a composed pileup -> classifier pipeline."""
-        pileup_config = PileupConfig(reference_length=11, window_size=11)
+        pileup_config = PileupConfig(reference_length=11)
         pileup_op = DifferentiablePileup(pileup_config, rngs=rngs)
 
         classifier_config = VariantClassifierConfig(num_classes=3, hidden_dim=32, input_window=11)
@@ -569,7 +569,7 @@ class TestOperatorModuleInterface:
     def test_pileup_has_apply_method(self, rngs):
         """Test DifferentiablePileup has proper apply() signature."""
         # reference_length is set in config, not data
-        op = DifferentiablePileup(PileupConfig(window_size=11, reference_length=20), rngs=rngs)
+        op = DifferentiablePileup(PileupConfig(reference_length=20), rngs=rngs)
 
         assert hasattr(op, "apply")
         assert callable(op.apply)

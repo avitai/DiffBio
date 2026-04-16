@@ -1,16 +1,5 @@
-"""Differentiable pileup generation for variant calling.
+"""Differentiable pileup generation for variant calling."""
 
-This module provides a differentiable approximation of pileup generation,
-which aggregates aligned reads at each position of a reference sequence.
-
-Inherits from TemperatureOperator to get:
-
-- _temperature property for temperature-controlled smoothing
-- soft_max() for logsumexp-based smooth maximum
-- soft_argmax() for soft position selection
-"""
-
-import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -20,15 +9,8 @@ from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
 from diffbio.configs import TemperatureConfig
-from diffbio.constants import (
-    DEFAULT_MAX_COVERAGE,
-    DEFAULT_MIN_COVERAGE,
-    DEFAULT_PILEUP_WINDOW_SIZE,
-    EPSILON,
-)
+from diffbio.constants import EPSILON
 from diffbio.core.base_operators import TemperatureOperator
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -38,9 +20,6 @@ class PileupConfig(TemperatureConfig):
     Inherits from TemperatureConfig to get temperature and learnable_temperature fields.
 
     Attributes:
-        window_size: Size of context window around each position.
-        min_coverage: Minimum coverage threshold.
-        max_coverage: Maximum coverage for normalization.
         use_quality_weights: Whether to weight bases by quality scores.
         reference_length: Length of reference sequence (required for batch processing).
             All reads in a batch must align to the same reference length.
@@ -50,14 +29,18 @@ class PileupConfig(TemperatureConfig):
             raw weighted sums, which is better for variant detection).
     """
 
-    window_size: int = DEFAULT_PILEUP_WINDOW_SIZE
-    min_coverage: int = DEFAULT_MIN_COVERAGE
-    max_coverage: int = DEFAULT_MAX_COVERAGE
     use_quality_weights: bool = True
     reference_length: int = 100
     return_coverage: bool = False
     return_quality: bool = False
     apply_softmax: bool = True
+
+    def __post_init__(self) -> None:
+        """Validate the supported pileup configuration surface."""
+        super().__post_init__()
+
+        if self.reference_length <= 0:
+            raise ValueError(f"reference_length must be positive, got {self.reference_length}")
 
 
 class DifferentiablePileup(TemperatureOperator):

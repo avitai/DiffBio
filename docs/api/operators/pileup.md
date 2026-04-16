@@ -48,7 +48,8 @@ positions = jax.random.randint(jax.random.PRNGKey(1), (num_reads,), 0, 70)
 quality = jax.random.uniform(jax.random.PRNGKey(2), (num_reads, read_length), 10, 40)
 
 # Generate pileup
-pileup = pileup_op.compute_pileup(reads, positions, quality, 100)
+result = pileup_op.compute_pileup(reads, positions, quality, 100)
+pileup = result["pileup"]
 print(f"Pileup shape: {pileup.shape}")  # (100, 4)
 ```
 

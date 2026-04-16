@@ -17,7 +17,6 @@ from diffbio.operators.variant import DifferentiablePileup, PileupConfig
 config = PileupConfig(
     reference_length=100,     # Length of reference sequence
     use_quality_weights=True, # Weight by quality scores
-    window_size=21,           # Context window
 )
 
 # Create operator
@@ -90,7 +89,8 @@ Quality range: 10.0 to 40.0
 ### Using compute_pileup directly
 
 ```python
-pileup = pileup_op.compute_pileup(reads, positions, quality, reference_length)
+result = pileup_op.compute_pileup(reads, positions, quality, reference_length)
+pileup = result["pileup"]
 
 print(f"Pileup shape: {pileup.shape}")  # (100, 4)
 print(f"Pileup at position 50: {pileup[50]}")
