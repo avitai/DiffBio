@@ -23,6 +23,7 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
+from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
@@ -54,6 +55,12 @@ class HiCContactAnalysisConfig(OperatorConfig):
     dropout_rate: float = 0.1
     temperature: float = 1.0
 
+    def __post_init__(self) -> None:
+        """Validate Hi-C contact analysis configuration."""
+        super().__post_init__()
+        if self.num_layers < 1:
+            raise ValueError("HiCContactAnalysisConfig.num_layers must be at least 1.")
+
 
 class ContactEncoder(nnx.Module):
     """Encoder for Hi-C contact patterns."""
@@ -75,22 +82,13 @@ class ContactEncoder(nnx.Module):
             rngs: Random number generators.
         """
         super().__init__()
-
-        # Project contact row to hidden dim
-        self.input_proj = nnx.Linear(
+        self.backbone = MLP(
+            hidden_dims=[hidden_dim] * num_layers,
             in_features=n_bins,
-            out_features=hidden_dim,
+            activation="gelu",
+            output_activation="gelu",
+            use_batch_norm=False,
             rngs=rngs,
-        )
-
-        # MLP layers
-        layers = []
-        for _ in range(num_layers - 1):
-            layers.append(nnx.Linear(in_features=hidden_dim, out_features=hidden_dim, rngs=rngs))
-
-        self.layers = nnx.List(layers)
-        self.layer_norms = nnx.List(
-            [nnx.LayerNorm(num_features=hidden_dim, rngs=rngs) for _ in range(num_layers - 1)]
         )
 
     def __call__(
@@ -105,13 +103,10 @@ class ContactEncoder(nnx.Module):
         Returns:
             Bin embeddings from contact patterns.
         """
-        # Each bin gets embedding from its contact row
-        x = self.input_proj(contact_matrix)  # (n_bins, hidden_dim)
-
-        for linear, norm in zip(self.layers, self.layer_norms):
-            x = norm(nnx.gelu(linear(x)) + x)  # Residual
-
-        return x
+        backbone_output = self.backbone(contact_matrix)
+        if isinstance(backbone_output, tuple):
+            raise TypeError("Hi-C contact encoder backbone must return a single tensor.")
+        return backbone_output
 
 
 class BinFeatureEncoder(nnx.Module):
@@ -132,10 +127,14 @@ class BinFeatureEncoder(nnx.Module):
             rngs: Random number generators.
         """
         super().__init__()
-
-        self.linear1 = nnx.Linear(in_features=bin_features, out_features=hidden_dim, rngs=rngs)
-        self.linear2 = nnx.Linear(in_features=hidden_dim, out_features=hidden_dim, rngs=rngs)
-        self.norm = nnx.LayerNorm(num_features=hidden_dim, rngs=rngs)
+        self.backbone = MLP(
+            hidden_dims=[hidden_dim, hidden_dim],
+            in_features=bin_features,
+            activation="gelu",
+            output_activation=None,
+            use_batch_norm=False,
+            rngs=rngs,
+        )
 
     def __call__(
         self,
@@ -149,9 +148,10 @@ class BinFeatureEncoder(nnx.Module):
         Returns:
             Bin feature embeddings.
         """
-        x = nnx.gelu(self.linear1(bin_features))
-        x = self.norm(self.linear2(x))
-        return x
+        backbone_output = self.backbone(bin_features)
+        if isinstance(backbone_output, tuple):
+            raise TypeError("Hi-C feature encoder backbone must return a single tensor.")
+        return backbone_output
 
 
 class LocalAttention(nnx.Module):

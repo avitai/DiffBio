@@ -7,6 +7,7 @@ operator for differentiable chromatin contact analysis.
 import jax
 import jax.numpy as jnp
 import pytest
+from artifex.generative_models.core.base import MLP
 from flax import nnx
 
 from diffbio.operators.multiomics.hic_contact import (
@@ -35,6 +36,11 @@ class TestHiCContactAnalysisConfig:
         """Test custom hidden dimension."""
         config = HiCContactAnalysisConfig(hidden_dim=256)
         assert config.hidden_dim == 256
+
+    def test_num_layers_must_be_positive(self):
+        """Hi-C contact analysis should fail fast without contact encoder layers."""
+        with pytest.raises(ValueError, match="num_layers"):
+            HiCContactAnalysisConfig(num_layers=0)
 
 
 class TestHiCContactAnalysis:
@@ -74,6 +80,10 @@ class TestHiCContactAnalysis:
         """Test operator initialization."""
         op = HiCContactAnalysis(small_config, rngs=rngs)
         assert op is not None
+        assert isinstance(op.contact_encoder.backbone, MLP)
+        assert isinstance(op.feature_encoder.backbone, MLP)
+        assert len(op.contact_encoder.backbone.layers) == small_config.num_layers
+        assert len(op.feature_encoder.backbone.layers) == 2
 
     def test_output_contains_compartments(self, rngs, small_config, sample_data):
         """Test that output contains compartment assignments."""
@@ -194,12 +204,15 @@ class TestGradientFlow:
         @nnx.value_and_grad
         def loss_fn(model):
             transformed, _, _ = model.apply(data, state, None, None)
-            return transformed["compartment_scores"].sum()
+            return jnp.sum(transformed["predicted_contacts"] ** 2)
 
         loss, grads = loss_fn(op)
 
-        # Check encoder has gradients
+        assert loss is not None
         assert hasattr(grads, "contact_encoder")
+        assert hasattr(grads, "feature_encoder")
+        assert jnp.any(grads.contact_encoder.backbone.layers[0].kernel[...] != 0.0)
+        assert jnp.any(grads.feature_encoder.backbone.layers[0].kernel[...] != 0.0)
 
 
 class TestJITCompatibility:
