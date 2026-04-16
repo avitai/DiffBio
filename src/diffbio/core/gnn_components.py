@@ -451,7 +451,7 @@ class GATv2Layer(nnx.Module):
 
     @property
     def negative_slope(self) -> float:
-        """LeakyReLU negative slope used in the attention scorer."""
+        """Negative slope used by the LeakyReLU attention scorer."""
         if self.attn_projections.negative_slope is None:
             raise ValueError("negative_slope is not configured")
         return self.attn_projections.negative_slope
