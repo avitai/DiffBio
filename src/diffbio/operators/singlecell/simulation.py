@@ -34,29 +34,19 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class SimulationConfig(OperatorConfig):
-    """Configuration for DifferentiableSimulator.
-
-    Attributes:
-        n_cells: Number of cells to simulate.
-        n_genes: Number of genes to simulate.
-        n_groups: Number of cell groups (for differential expression).
-        n_batches: Number of experimental batches.
-        mean_shape: Shape parameter for Gamma-distributed gene means.
-        mean_rate: Rate parameter for Gamma-distributed gene means.
-        lib_loc: Location (log-scale) for LogNormal library sizes.
-        lib_scale: Scale (log-scale) for LogNormal library sizes.
-        de_prob: Fraction of genes that are differentially expressed.
-        de_fac_loc: Location for LogNormal DE fold-change.
-        de_fac_scale: Scale for LogNormal DE fold-change.
-        dropout_mid: Logistic dropout midpoint on log-expression scale.
-        dropout_shape: Logistic dropout shape (negative = more dropout at low expression).
-    """
+class _SimulationSizeConfig:
+    """Cell, gene, group, and batch sizing for the simulator."""
 
     n_cells: int = 500
     n_genes: int = 200
     n_groups: int = 3
     n_batches: int = 1
+
+
+@dataclass(frozen=True)
+class _SimulationDistributionConfig:
+    """Sampling distributions for means, library sizes, and DE effects."""
+
     mean_shape: float = 0.6
     mean_rate: float = 0.3
     lib_loc: float = 11.0
@@ -64,14 +54,54 @@ class SimulationConfig(OperatorConfig):
     de_prob: float = 0.1
     de_fac_loc: float = 0.1
     de_fac_scale: float = 0.4
+
+
+@dataclass(frozen=True)
+class _SimulationDropoutConfig:
+    """Expression-dependent dropout parameters."""
+
     dropout_mid: float = -1.0
     dropout_shape: float = -0.5
 
+
+@dataclass(frozen=True)
+class SimulationConfig(
+    _SimulationSizeConfig,
+    _SimulationDistributionConfig,
+    _SimulationDropoutConfig,
+    OperatorConfig,
+):
+    """Configuration for DifferentiableSimulator."""
+
     def __post_init__(self) -> None:
-        """Set stochastic defaults and validate."""
+        """Set stochastic defaults and validate simulation assumptions."""
         object.__setattr__(self, "stochastic", True)
         if self.stream_name is None:
             object.__setattr__(self, "stream_name", "sample")
+        if self.n_cells <= 0:
+            raise ValueError("n_cells must be positive")
+        if self.n_genes <= 0:
+            raise ValueError("n_genes must be positive")
+        if self.n_groups <= 0:
+            raise ValueError("n_groups must be positive")
+        if self.n_groups > self.n_cells:
+            raise ValueError("n_groups cannot exceed n_cells for even cell-group assignment")
+        if self.n_batches <= 0:
+            raise ValueError("n_batches must be positive")
+        if self.n_batches > self.n_cells:
+            raise ValueError("n_batches cannot exceed n_cells for even batch assignment")
+        if self.mean_shape <= 0.0:
+            raise ValueError("mean_shape must be positive")
+        if self.mean_rate <= 0.0:
+            raise ValueError("mean_rate must be positive")
+        if self.lib_scale < 0.0:
+            raise ValueError("lib_scale must be non-negative")
+        if not 0.0 <= self.de_prob <= 1.0:
+            raise ValueError("de_prob must be in [0, 1]")
+        if self.de_fac_scale < 0.0:
+            raise ValueError("de_fac_scale must be non-negative")
+        if self.dropout_shape >= 0.0:
+            raise ValueError("dropout_shape must be negative to model lower-expression dropout")
         super().__post_init__()
 
 
@@ -141,21 +171,6 @@ class DifferentiableSimulator(OperatorModule):
         # Learnable batch shift (additive on log scale)
         self.batch_shift = nnx.Param(jnp.zeros(config.n_batches))
 
-        # Store config dimensions as static (non-trainable) fields
-        self.n_cells = nnx.static(config.n_cells)
-        self.n_genes = nnx.static(config.n_genes)
-        self.n_groups = nnx.static(config.n_groups)
-        self.n_batches = nnx.static(config.n_batches)
-        self.mean_shape = nnx.static(config.mean_shape)
-        self.mean_rate = nnx.static(config.mean_rate)
-        self.lib_loc = nnx.static(config.lib_loc)
-        self.lib_scale = nnx.static(config.lib_scale)
-        self.de_prob = nnx.static(config.de_prob)
-        self.de_fac_loc = nnx.static(config.de_fac_loc)
-        self.de_fac_scale = nnx.static(config.de_fac_scale)
-        self.dropout_mid = nnx.static(config.dropout_mid)
-        self.dropout_shape_param = nnx.static(config.dropout_shape)
-
     def generate_random_params(
         self,
         rng: jax.Array,
@@ -195,12 +210,14 @@ class DifferentiableSimulator(OperatorModule):
         Returns:
             Positive gene mean expression levels of shape (n_genes,).
         """
+        config = self.config
+
         # Learnable base means via softplus (always positive)
         base_means = jax.nn.softplus(self.gene_means_logits[...])
 
         # Stochastic Gamma perturbation: gamma(shape) / rate
-        gamma_samples = jax.random.gamma(key, self.mean_shape, shape=(self.n_genes,))
-        gamma_factor = gamma_samples / (self.mean_rate + EPSILON)
+        gamma_samples = jax.random.gamma(key, config.mean_shape, shape=(config.n_genes,))
+        gamma_factor = gamma_samples / (config.mean_rate + EPSILON)
 
         # Combine learnable and stochastic components
         return base_means * gamma_factor + EPSILON
@@ -217,7 +234,8 @@ class DifferentiableSimulator(OperatorModule):
         Returns:
             Positive library sizes of shape (n_cells,).
         """
-        log_lib = self.lib_loc + self.lib_scale * jax.random.normal(key, (self.n_cells,))
+        config = self.config
+        log_lib = config.lib_loc + config.lib_scale * jax.random.normal(key, (config.n_cells,))
         return jnp.exp(log_lib)
 
     def _assign_groups(
@@ -238,19 +256,21 @@ class DifferentiableSimulator(OperatorModule):
                 - hard_labels: Integer group labels of shape (n_cells,).
                 - soft_assignments: Soft probabilities of shape (n_cells, n_groups).
         """
+        config = self.config
+
         # Even division of cells across groups
-        cells_per_group = self.n_cells // self.n_groups
-        hard_labels = jnp.repeat(jnp.arange(self.n_groups), cells_per_group)
+        cells_per_group = config.n_cells // config.n_groups
+        hard_labels = jnp.repeat(jnp.arange(config.n_groups), cells_per_group)
         # Handle remainder cells
-        remainder = self.n_cells - len(hard_labels)
+        remainder = config.n_cells - len(hard_labels)
         if remainder > 0:
-            extra = jnp.full(remainder, self.n_groups - 1)
+            extra = jnp.full(remainder, config.n_groups - 1)
             hard_labels = jnp.concatenate([hard_labels, extra])
 
         # Soft assignments from learnable group logits
         group_probs = jax.nn.softmax(self.group_logits[...])  # (n_groups,)
         # Expand to full soft assignment matrix via one-hot weighting
-        one_hot = jax.nn.one_hot(hard_labels, self.n_groups)  # (n_cells, n_groups)
+        one_hot = jax.nn.one_hot(hard_labels, config.n_groups)  # (n_cells, n_groups)
         # Scale by learnable logits for gradient flow
         soft_assignments_full = one_hot * group_probs[None, :]  # (n_cells, n_groups)
         soft_assignments_full = soft_assignments_full / (
@@ -278,14 +298,16 @@ class DifferentiableSimulator(OperatorModule):
                 - fold_changes: Multiplicative fold-changes (n_groups, n_genes).
                 - de_mask: Binary DE indicator (n_groups, n_genes).
         """
+        config = self.config
+
         # Bernoulli mask: which genes are DE in each group
         de_mask = jax.random.bernoulli(
-            de_mask_key, self.de_prob, shape=(self.n_groups, self.n_genes)
+            de_mask_key, config.de_prob, shape=(config.n_groups, config.n_genes)
         ).astype(jnp.float32)
 
         # LogNormal fold-changes for DE genes
-        log_fc = self.de_fac_loc + self.de_fac_scale * jax.random.normal(
-            de_fold_key, (self.n_groups, self.n_genes)
+        log_fc = config.de_fac_loc + config.de_fac_scale * jax.random.normal(
+            de_fold_key, (config.n_groups, config.n_genes)
         )
         fold_changes_raw = jnp.exp(log_fc)
 
@@ -330,8 +352,9 @@ class DifferentiableSimulator(OperatorModule):
         Returns:
             Dropout-adjusted cell means.
         """
+        config = self.config
         log_means = jnp.log(cell_means + EPSILON)
-        keep_prob = jax.nn.sigmoid(self.dropout_shape_param * (log_means - self.dropout_mid))
+        keep_prob = jax.nn.sigmoid(config.dropout_shape * (log_means - config.dropout_mid))
         return cell_means * keep_prob
 
     def apply(
@@ -388,11 +411,12 @@ class DifferentiableSimulator(OperatorModule):
 
         # Step 6: Batch effects
         # Assign cells evenly across batches
-        cells_per_batch = self.n_cells // self.n_batches
-        batch_labels = jnp.repeat(jnp.arange(self.n_batches), cells_per_batch)
-        remainder = self.n_cells - len(batch_labels)
+        config = self.config
+        cells_per_batch = config.n_cells // config.n_batches
+        batch_labels = jnp.repeat(jnp.arange(config.n_batches), cells_per_batch)
+        remainder = config.n_cells - len(batch_labels)
         if remainder > 0:
-            extra = jnp.full(remainder, self.n_batches - 1)
+            extra = jnp.full(remainder, config.n_batches - 1)
             batch_labels = jnp.concatenate([batch_labels, extra])
 
         cell_means = self._apply_batch_effects(cell_means, batch_labels)

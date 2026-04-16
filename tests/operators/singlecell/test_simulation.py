@@ -91,6 +91,26 @@ class TestSimulationConfig:
         assert config.mean_rate == 0.5
         assert config.de_prob == 0.2
 
+    def test_invalid_group_count_rejected(self) -> None:
+        """n_groups must define a valid even-assignment regime."""
+        with pytest.raises(ValueError, match="n_groups"):
+            SimulationConfig(n_cells=4, n_groups=5)
+
+    def test_invalid_de_probability_rejected(self) -> None:
+        """de_prob must stay within a valid probability range."""
+        with pytest.raises(ValueError, match="de_prob"):
+            SimulationConfig(de_prob=1.5)
+
+    def test_non_negative_library_scale_required(self) -> None:
+        """lib_scale cannot be negative."""
+        with pytest.raises(ValueError, match="lib_scale"):
+            SimulationConfig(lib_scale=-0.1)
+
+    def test_negative_dropout_shape_required(self) -> None:
+        """dropout_shape must preserve lower-expression dropout semantics."""
+        with pytest.raises(ValueError, match="dropout_shape"):
+            SimulationConfig(dropout_shape=0.0)
+
 
 class TestDifferentiableSimulator:
     """Tests for output keys, shapes, and basic properties."""
