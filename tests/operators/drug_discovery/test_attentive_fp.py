@@ -62,6 +62,27 @@ class TestAttentiveFPConfig:
         assert config.num_timesteps == 3
         assert config.dropout_rate == 0.2
 
+    def test_invalid_hidden_dim_rejected(self):
+        """Hidden dimension must be positive."""
+        from diffbio.operators.drug_discovery.attentive_fp import AttentiveFPConfig
+
+        with pytest.raises(ValueError, match="hidden_dim"):
+            AttentiveFPConfig(hidden_dim=0)
+
+    def test_invalid_dropout_rate_rejected(self):
+        """Dropout must be in [0, 1)."""
+        from diffbio.operators.drug_discovery.attentive_fp import AttentiveFPConfig
+
+        with pytest.raises(ValueError, match="dropout_rate"):
+            AttentiveFPConfig(dropout_rate=1.0)
+
+    def test_invalid_edge_dim_rejected(self):
+        """Edge dimension cannot be negative."""
+        from diffbio.operators.drug_discovery.attentive_fp import AttentiveFPConfig
+
+        with pytest.raises(ValueError, match="edge_dim"):
+            AttentiveFPConfig(edge_dim=-1)
+
 
 class TestAttentiveFP:
     """Test AttentiveFP operator."""

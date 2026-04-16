@@ -26,32 +26,62 @@ from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 
+from diffbio.operators.drug_discovery._graph_utils import (
+    build_optional_dropout,
+    stabilize_operator_id,
+)
+
 logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class AttentiveFPConfig(OperatorConfig):
-    """Configuration for AttentiveFP operator.
-
-    Attributes:
-        hidden_dim: Hidden dimension for GNN layers (default: 200).
-        out_dim: Output fingerprint dimension (default: 200).
-        num_layers: Number of atom-level attention layers (default: 2).
-        num_timesteps: Number of molecule-level GRU iterations (default: 2).
-        dropout_rate: Dropout rate for regularization (default: 0.0).
-        in_features: Number of input node features (default: 39).
-        edge_dim: Edge feature dimension (default: 10).
-        negative_slope: LeakyReLU negative slope (default: 0.2).
-    """
+class _AttentiveFPArchitectureConfig:
+    """Architecture configuration for AttentiveFP."""
 
     hidden_dim: int = 200
     out_dim: int = 200
     num_layers: int = 2
     num_timesteps: int = 2
     dropout_rate: float = 0.0
+
+
+@dataclass(frozen=True)
+class _AttentiveFPInputConfig:
+    """Graph input configuration for AttentiveFP."""
+
     in_features: int = 39
     edge_dim: int = 10
     negative_slope: float = 0.2
+
+
+@dataclass(frozen=True)
+class AttentiveFPConfig(
+    _AttentiveFPArchitectureConfig,
+    _AttentiveFPInputConfig,
+    OperatorConfig,
+):
+    """Configuration for AttentiveFP operator."""
+
+    def __post_init__(self) -> None:
+        """Validate the AttentiveFP configuration."""
+        super().__post_init__()
+
+        if self.hidden_dim <= 0:
+            raise ValueError("hidden_dim must be positive.")
+        if self.out_dim <= 0:
+            raise ValueError("out_dim must be positive.")
+        if self.num_layers <= 0:
+            raise ValueError("num_layers must be positive.")
+        if self.num_timesteps <= 0:
+            raise ValueError("num_timesteps must be positive.")
+        if not 0.0 <= self.dropout_rate < 1.0:
+            raise ValueError("dropout_rate must be in [0.0, 1.0).")
+        if self.in_features <= 0:
+            raise ValueError("in_features must be positive.")
+        if self.edge_dim < 0:
+            raise ValueError("edge_dim must be non-negative.")
+        if self.negative_slope < 0.0:
+            raise ValueError("negative_slope must be non-negative.")
 
 
 class GATEConv(nnx.Module):
@@ -201,10 +231,8 @@ class AttentiveFP(OperatorModule):
             rngs: Flax NNX random number generators.
         """
         super().__init__(config, rngs=rngs)
-        self.config: AttentiveFPConfig = config
 
-        # Fix: wrap _unique_id as static for jax.grad compatibility
-        self._unique_id = nnx.static(self._unique_id)
+        stabilize_operator_id(self)
 
         if rngs is None:
             rngs = nnx.Rngs(0)
@@ -257,9 +285,7 @@ class AttentiveFP(OperatorModule):
         self.output_proj = nnx.Linear(config.hidden_dim, config.out_dim, rngs=rngs)
 
         # Dropout
-        self.dropout: nnx.Dropout | None = None
-        if config.dropout_rate > 0:
-            self.dropout = nnx.Dropout(rate=config.dropout_rate, rngs=rngs)
+        self.dropout = build_optional_dropout(config.dropout_rate, rngs=rngs)
 
     def apply(
         self,
