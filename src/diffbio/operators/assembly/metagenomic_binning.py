@@ -17,8 +17,9 @@ from artifex.generative_models.core.base import MLP
 from flax import nnx
 from jaxtyping import Array, Float
 
-from diffbio.configs import TemperatureConfig
+from diffbio.configs import TemperatureConfig, apply_stochastic_sampling_defaults
 from diffbio.core.base_operators import EncoderDecoderOperator, TemperatureOperator
+from diffbio.utils.nn_utils import ARTIFEX_RELU_BATCH_NORM_MLP_KWARGS
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +48,7 @@ class MetagenomicBinnerConfig(TemperatureConfig):
 
     def __post_init__(self) -> None:
         """Set stochastic config and validate."""
-        object.__setattr__(self, "stochastic", True)
-        if self.stream_name is None:
-            object.__setattr__(self, "stream_name", "sample")
+        apply_stochastic_sampling_defaults(self)
         super().__post_init__()
         if not self.hidden_dims:
             raise ValueError(
@@ -111,11 +110,9 @@ class DifferentiableMetagenomicBinner(TemperatureOperator, EncoderDecoderOperato
         self.encoder_backbone = MLP(
             hidden_dims=list(config.hidden_dims),
             in_features=input_dim,
-            activation="relu",
             dropout_rate=config.dropout_rate,
-            output_activation="relu",
-            use_batch_norm=True,
             rngs=rngs,
+            **ARTIFEX_RELU_BATCH_NORM_MLP_KWARGS,
         )
         self.fc_latent = nnx.List(
             [
@@ -128,11 +125,9 @@ class DifferentiableMetagenomicBinner(TemperatureOperator, EncoderDecoderOperato
         self.decoder_backbone = MLP(
             hidden_dims=decoder_hidden_dims,
             in_features=config.latent_dim,
-            activation="relu",
             dropout_rate=config.dropout_rate,
-            output_activation="relu",
-            use_batch_norm=True,
             rngs=rngs,
+            **ARTIFEX_RELU_BATCH_NORM_MLP_KWARGS,
         )
         self.decoder_heads = nnx.List(
             [

@@ -27,6 +27,7 @@ from diffbio.operators.drug_discovery._graph_utils import (
     graph_sum_readout,
     initialize_graph_encoder_from_config,
 )
+from diffbio.utils.nn_utils import ARTIFEX_RELU_MLP_KWARGS
 
 logger = logging.getLogger(__name__)
 
@@ -180,11 +181,9 @@ class ADMETPredictor(OperatorModule):
             self.ffn_backbone = MLP(
                 hidden_dims=[ffn_hidden] * (config.ffn_num_layers - 1),
                 in_features=config.hidden_dim,
-                activation="relu",
                 dropout_rate=config.dropout_rate,
-                output_activation="relu",
-                use_batch_norm=False,
                 rngs=rngs,
+                **ARTIFEX_RELU_MLP_KWARGS,
             )
         else:
             self.ffn_backbone = None

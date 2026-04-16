@@ -1,4 +1,4 @@
-"""Shared source utilities for sequence foundation-model artifacts."""
+"""Sequence embedding sources following the Datarax source model."""
 
 from __future__ import annotations
 
@@ -6,27 +6,52 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import jax.numpy as jnp
+from flax import nnx
 
-from diffbio.sources.indexed_embeddings import (
-    align_indexed_embeddings,
-    load_indexed_embedding_artifact,
-)
+from diffbio.sources.indexed_embeddings import IndexedEmbeddingSource, IndexedEmbeddingSourceConfig
 
 
-@dataclass(frozen=True, slots=True)
-class SequenceEmbeddingArtifact:
-    """External sequence embedding artifact plus optional row identities."""
+@dataclass(frozen=True)
+class SequenceEmbeddingSourceConfig(IndexedEmbeddingSourceConfig):
+    """Configuration for sequence embedding artifacts."""
 
-    embeddings: jnp.ndarray
-    sequence_ids: tuple[str, ...] | None = None
+    row_id_key: str = "sequence_ids"
 
 
-def load_sequence_embedding_artifact(path: Path | str) -> SequenceEmbeddingArtifact:
-    """Load a sequence embedding artifact with optional ``sequence_ids``."""
-    artifact = load_indexed_embedding_artifact(path, row_id_key="sequence_ids")
-    return SequenceEmbeddingArtifact(
-        embeddings=artifact.embeddings,
-        sequence_ids=artifact.row_ids,
+class SequenceEmbeddingSource(IndexedEmbeddingSource):
+    """Indexed embedding source specialized for sequence artifacts."""
+
+    config: SequenceEmbeddingSourceConfig  # pyright: ignore[reportIncompatibleVariableOverride]
+
+    @property
+    def sequence_ids(self) -> tuple[str, ...] | None:
+        """Tuple of persisted sequence identifiers, if present."""
+        return self.row_ids
+
+    def align_to_reference_sequence_ids(
+        self,
+        *,
+        reference_sequence_ids: list[str] | tuple[str, ...],
+        require_sequence_ids: bool = True,
+    ) -> jnp.ndarray:
+        """Align external embeddings to the benchmark sequence order."""
+        return self.align_to_reference_ids(
+            reference_ids=reference_sequence_ids,
+            require_row_ids=require_sequence_ids,
+            artifact_label="Sequence",
+            id_display_name="Sequence ID",
+        )
+
+
+def load_sequence_embedding_source(
+    path: Path | str,
+    *,
+    rngs: nnx.Rngs | None = None,
+) -> SequenceEmbeddingSource:
+    """Build the canonical sequence embedding source for an artifact."""
+    return SequenceEmbeddingSource(
+        SequenceEmbeddingSourceConfig(file_path=str(path)),
+        rngs=rngs,
     )
 
 
@@ -36,12 +61,8 @@ def align_sequence_embeddings(
     artifact_path: Path | str,
     require_sequence_ids: bool = True,
 ) -> jnp.ndarray:
-    """Align external sequence embeddings to the benchmark sequence order."""
-    return align_indexed_embeddings(
-        reference_ids=reference_sequence_ids,
-        artifact_path=artifact_path,
-        row_id_key="sequence_ids",
-        require_row_ids=require_sequence_ids,
-        artifact_label="Sequence",
-        id_display_name="Sequence ID",
+    """Align external embeddings to the benchmark sequence order."""
+    return load_sequence_embedding_source(artifact_path).align_to_reference_sequence_ids(
+        reference_sequence_ids=reference_sequence_ids,
+        require_sequence_ids=require_sequence_ids,
     )

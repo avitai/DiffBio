@@ -4,10 +4,42 @@ This module provides shared utility functions for building and initializing
 neural network components, ensuring consistency across operators.
 """
 
+from typing import TypedDict
+
 import jax
 import jax.numpy as jnp
 from flax import nnx
 from jaxtyping import Array
+
+
+class ArtifexMLPKwargs(TypedDict):
+    """Typed shared kwargs for direct Artifex MLP construction."""
+
+    activation: str
+    output_activation: str | None
+    use_batch_norm: bool
+
+
+ARTIFEX_RELU_MLP_KWARGS: ArtifexMLPKwargs = {
+    "activation": "relu",
+    "output_activation": "relu",
+    "use_batch_norm": False,
+}
+ARTIFEX_RELU_BATCH_NORM_MLP_KWARGS: ArtifexMLPKwargs = {
+    "activation": "relu",
+    "output_activation": "relu",
+    "use_batch_norm": True,
+}
+ARTIFEX_GELU_MLP_KWARGS: ArtifexMLPKwargs = {
+    "activation": "gelu",
+    "output_activation": "gelu",
+    "use_batch_norm": False,
+}
+ARTIFEX_GELU_NO_OUTPUT_MLP_KWARGS: ArtifexMLPKwargs = {
+    "activation": "gelu",
+    "output_activation": None,
+    "use_batch_norm": False,
+}
 
 
 def init_learnable_param(value: float) -> nnx.Param:

@@ -173,9 +173,16 @@ class PerturbationAnnDataSource(AnnDataSource):
         # External perturbation embeddings (overrides one-hot)
         pert_embeddings_matrix: np.ndarray | None = None
         if config.perturbation_features_file is not None:
-            from diffbio.sources.embeddings import load_embedding_array  # noqa: PLC0415
+            from diffbio.sources.embeddings import (  # noqa: PLC0415
+                EmbeddingArtifactSource,
+                EmbeddingArtifactSourceConfig,
+            )
 
-            ext_emb = load_embedding_array(Path(config.perturbation_features_file))
+            ext_emb = EmbeddingArtifactSource(
+                EmbeddingArtifactSourceConfig(
+                    file_path=str(Path(config.perturbation_features_file))
+                )
+            ).embeddings
             pert_embeddings_matrix = np.asarray(ext_emb)
 
         # Barcodes

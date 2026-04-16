@@ -24,6 +24,7 @@ class TestMetagenomicBinnerConfig:
         assert config.latent_dim == 32
         assert config.n_clusters == 100
         assert config.stochastic is True
+        assert config.stream_name == "sample"
 
     def test_custom_config(self):
         """Test custom configuration."""

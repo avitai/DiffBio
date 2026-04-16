@@ -26,6 +26,7 @@ class TestAmbientRemovalConfig:
         assert config.latent_dim == 64
         assert config.ambient_prior == 0.01
         assert config.stochastic is True
+        assert config.stream_name == "sample"
 
     def test_custom_config(self):
         """Test custom configuration values."""

@@ -8,11 +8,11 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import PyTree
 
-from diffbio.configs import DiffBioOperatorConfig
 from diffbio.constants import PHRED_QUALITY_THRESHOLD
 from diffbio.core import soft_ops
 from diffbio.utils.nn_utils import init_learnable_param
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class QualityFilterConfig(DiffBioOperatorConfig):
+class QualityFilterConfig(OperatorConfig):
     """Configuration for DifferentiableQualityFilter.
 
     Attributes:

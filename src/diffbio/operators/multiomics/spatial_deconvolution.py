@@ -29,6 +29,7 @@ from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.base_operators import TemperatureOperator
+from diffbio.utils.nn_utils import ARTIFEX_GELU_MLP_KWARGS, ARTIFEX_GELU_NO_OUTPUT_MLP_KWARGS
 
 logger = logging.getLogger(__name__)
 
@@ -85,10 +86,8 @@ class SpotEncoder(nnx.Module):
         self.backbone = MLP(
             hidden_dims=[hidden_dim] * num_layers,
             in_features=n_genes,
-            activation="gelu",
-            output_activation="gelu",
-            use_batch_norm=False,
             rngs=rngs,
+            **ARTIFEX_GELU_MLP_KWARGS,
         )
 
     def __call__(
@@ -128,10 +127,8 @@ class SpatialEncoder(nnx.Module):
         self.backbone = MLP(
             hidden_dims=[hidden_dim, hidden_dim],
             in_features=2,
-            activation="gelu",
-            output_activation=None,
-            use_batch_norm=False,
             rngs=rngs,
+            **ARTIFEX_GELU_NO_OUTPUT_MLP_KWARGS,
         )
 
     def __call__(

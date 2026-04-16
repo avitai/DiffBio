@@ -15,11 +15,11 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
+from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
-from diffbio.configs import DiffBioOperatorConfig
 from diffbio.constants import DEFAULT_DROPOUT_RATE, DEFAULT_NUM_CLASSES
 from diffbio.utils.nn_utils import ensure_rngs
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class CNNVariantClassifierConfig(DiffBioOperatorConfig):
+class CNNVariantClassifierConfig(OperatorConfig):
     """Configuration for CNNVariantClassifier.
 
     Attributes:

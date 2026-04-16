@@ -20,10 +20,21 @@ from diffbio.constants import (
     DEFAULT_TEMPERATURE,
 )
 
-# Re-export OperatorConfig as DiffBioOperatorConfig for backward compatibility
-# and to provide a clear base class for DiffBio operators.
-# Note: stochastic and stream_name are inherited from OperatorConfig.
-DiffBioOperatorConfig = OperatorConfig
+
+def apply_stochastic_sampling_defaults(
+    config: OperatorConfig,
+    *,
+    stream_name: str = "sample",
+) -> None:
+    """Apply DiffBio's default stochastic sampling contract to a config.
+
+    Args:
+        config: Operator config instance being finalized in ``__post_init__``.
+        stream_name: Default RNG stream name to use when none is supplied.
+    """
+    object.__setattr__(config, "stochastic", True)
+    if config.stream_name is None:
+        object.__setattr__(config, "stream_name", stream_name)
 
 
 @dataclass(frozen=True)

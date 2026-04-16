@@ -29,7 +29,11 @@ from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.base_operators import TemperatureOperator
-from diffbio.utils.nn_utils import ensure_rngs
+from diffbio.utils.nn_utils import (
+    ARTIFEX_GELU_MLP_KWARGS,
+    ARTIFEX_GELU_NO_OUTPUT_MLP_KWARGS,
+    ensure_rngs,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -86,10 +90,8 @@ class SequenceEncoder(nnx.Module):
         self.backbone = MLP(
             hidden_dims=[hidden_dim] * num_layers,
             in_features=alphabet_size,
-            activation="gelu",
-            output_activation="gelu",
-            use_batch_norm=False,
             rngs=rngs,
+            **ARTIFEX_GELU_MLP_KWARGS,
         )
 
         # Output projection for sequence embedding
@@ -147,10 +149,8 @@ class ProfileBuilder(nnx.Module):
         self.backbone = MLP(
             hidden_dims=[hidden_dim, alphabet_size],
             in_features=alphabet_size,
-            activation="gelu",
-            output_activation=None,
-            use_batch_norm=False,
             rngs=rngs,
+            **ARTIFEX_GELU_NO_OUTPUT_MLP_KWARGS,
         )
 
     def __call__(

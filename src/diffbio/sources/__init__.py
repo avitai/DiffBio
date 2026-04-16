@@ -36,7 +36,10 @@ from diffbio.sources.dti import (
     deterministic_dti_split,
     validate_dti_dataset,
 )
-from diffbio.sources.embeddings import load_embedding_array
+from diffbio.sources.embeddings import (
+    EmbeddingArtifactSource,
+    EmbeddingArtifactSourceConfig,
+)
 from diffbio.sources.encode_peaks import ENCODEPeakConfig, ENCODEPeakSource
 from diffbio.sources.fasta import FastaSource, FastaSourceConfig
 from diffbio.sources.indexed_view import IndexedViewSource, IndexedViewSourceConfig
@@ -54,14 +57,16 @@ from diffbio.sources.perturbation import (
     load_experiment_config,
 )
 from diffbio.sources.singlecell_foundation import (
-    SingleCellEmbeddingArtifact,
+    SingleCellEmbeddingSource,
+    SingleCellEmbeddingSourceConfig,
     align_singlecell_embeddings,
-    load_singlecell_embedding_artifact,
+    load_singlecell_embedding_source,
 )
 from diffbio.sources.sequence_foundation import (
-    SequenceEmbeddingArtifact,
+    SequenceEmbeddingSource,
+    SequenceEmbeddingSourceConfig,
     align_sequence_embeddings,
-    load_sequence_embedding_artifact,
+    load_sequence_embedding_source,
 )
 
 __all__ = [
@@ -75,6 +80,8 @@ __all__ = [
     "DTI_DATASET_CONTRACT_KEYS",
     "DTISourceConfig",
     "DavisDTISource",
+    "EmbeddingArtifactSource",
+    "EmbeddingArtifactSourceConfig",
     "ENCODEPeakConfig",
     "ENCODEPeakSource",
     "FastaSource",
@@ -84,7 +91,6 @@ __all__ = [
     "MolNetSource",
     "MolNetSourceConfig",
     "from_anndata",
-    "load_embedding_array",
     "to_anndata",
     # Perturbation
     "BatchControlMapping",
@@ -102,10 +108,12 @@ __all__ = [
     "validate_dti_dataset",
     "validate_contextual_epigenomics_dataset",
     "load_experiment_config",
-    "SequenceEmbeddingArtifact",
+    "SequenceEmbeddingSource",
+    "SequenceEmbeddingSourceConfig",
     "align_sequence_embeddings",
-    "load_sequence_embedding_artifact",
-    "SingleCellEmbeddingArtifact",
+    "load_sequence_embedding_source",
+    "SingleCellEmbeddingSource",
+    "SingleCellEmbeddingSourceConfig",
     "align_singlecell_embeddings",
-    "load_singlecell_embedding_artifact",
+    "load_singlecell_embedding_source",
 ]

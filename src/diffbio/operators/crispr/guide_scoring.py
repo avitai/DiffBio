@@ -33,6 +33,7 @@ from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
+from diffbio.utils.nn_utils import ARTIFEX_RELU_MLP_KWARGS
 
 logger = logging.getLogger(__name__)
 
@@ -138,11 +139,9 @@ class DifferentiableCRISPRScorer(OperatorModule):
         self.ffn_backbone = MLP(
             hidden_dims=list(config.fc_dims),
             in_features=flat_size,
-            activation="relu",
             dropout_rate=config.dropout_rate,
-            output_activation="relu",
-            use_batch_norm=False,
             rngs=rngs,
+            **ARTIFEX_RELU_MLP_KWARGS,
         )
 
         # Output head for efficiency score

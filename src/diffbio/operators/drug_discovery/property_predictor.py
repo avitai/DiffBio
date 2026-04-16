@@ -18,6 +18,7 @@ from diffbio.operators.drug_discovery._graph_utils import (
     graph_sum_readout,
     initialize_graph_encoder_from_config,
 )
+from diffbio.utils.nn_utils import ARTIFEX_RELU_MLP_KWARGS
 
 logger = logging.getLogger(__name__)
 
@@ -82,11 +83,9 @@ class MolecularPropertyPredictor(OperatorModule):
         self.ffn_backbone = MLP(
             hidden_dims=[config.hidden_dim],
             in_features=config.hidden_dim,
-            activation="relu",
             dropout_rate=config.dropout_rate,
-            output_activation="relu",
-            use_batch_norm=False,
             rngs=rngs,
+            **ARTIFEX_RELU_MLP_KWARGS,
         )
         self.output_layer = nnx.Linear(config.hidden_dim, config.num_output_tasks, rngs=rngs)
 

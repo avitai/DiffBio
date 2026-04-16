@@ -28,7 +28,9 @@ from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.configs import apply_stochastic_sampling_defaults
 from diffbio.core.base_operators import EncoderDecoderOperator
+from diffbio.utils.nn_utils import ARTIFEX_GELU_MLP_KWARGS
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +55,7 @@ class AmbientRemovalConfig(OperatorConfig):
 
     def __post_init__(self) -> None:
         """Set stochastic defaults and validate."""
-        object.__setattr__(self, "stochastic", True)
-        if self.stream_name is None:
-            object.__setattr__(self, "stream_name", "sample")
+        apply_stochastic_sampling_defaults(self)
         super().__post_init__()
         if not self.hidden_dims:
             raise ValueError(
@@ -86,10 +86,8 @@ class AmbientEncoder(nnx.Module):
         self.backbone = MLP(
             hidden_dims=hidden_dims,
             in_features=n_genes,
-            activation="gelu",
-            output_activation="gelu",
-            use_batch_norm=False,
             rngs=rngs,
+            **ARTIFEX_GELU_MLP_KWARGS,
         )
 
         # Latent projections
@@ -156,10 +154,8 @@ class AmbientDecoder(nnx.Module):
         self.backbone = MLP(
             hidden_dims=decoder_hidden_dims,
             in_features=latent_dim,
-            activation="gelu",
-            output_activation="gelu",
-            use_batch_norm=False,
             rngs=rngs,
+            **ARTIFEX_GELU_MLP_KWARGS,
         )
 
         # Output projection (log-rate for Poisson/NB)

@@ -6,15 +6,16 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from datarax.core.data_source import DataSourceModule
 
 from diffbio.sources.singlecell_foundation import (
     align_singlecell_embeddings,
-    load_singlecell_embedding_artifact,
+    load_singlecell_embedding_source,
 )
 
 
-class TestLoadSingleCellEmbeddingArtifact:
-    """Tests for loading single-cell embedding artifacts."""
+class TestLoadSingleCellEmbeddingSource:
+    """Tests for loading single-cell embedding sources."""
 
     def test_load_npz_with_cell_ids(self, tmp_path: Path) -> None:
         embeddings = np.arange(12, dtype=np.float32).reshape(3, 4)
@@ -22,10 +23,38 @@ class TestLoadSingleCellEmbeddingArtifact:
         path = tmp_path / "artifact.npz"
         np.savez(path, embeddings=embeddings, cell_ids=cell_ids)
 
-        artifact = load_singlecell_embedding_artifact(path)
+        source = load_singlecell_embedding_source(path)
 
-        np.testing.assert_allclose(np.asarray(artifact.embeddings), embeddings)
-        assert artifact.cell_ids == ("cell_a", "cell_b", "cell_c")
+        assert isinstance(source, DataSourceModule)
+        np.testing.assert_allclose(np.asarray(source.embeddings), embeddings)
+        assert source.cell_ids == ("cell_a", "cell_b", "cell_c")
+
+    def test_load_pt_with_cell_ids(self, tmp_path: Path) -> None:
+        """Load a ``.pt`` artifact that carries embeddings plus ``cell_ids``."""
+        torch = pytest.importorskip("torch")
+        embeddings = np.arange(12, dtype=np.float32).reshape(3, 4)
+        path = tmp_path / "artifact.pt"
+        torch.save(
+            {
+                "embeddings": torch.from_numpy(embeddings),
+                "cell_ids": ["cell_a", "cell_b", "cell_c"],
+            },
+            path,
+        )
+
+        source = load_singlecell_embedding_source(path)
+
+        np.testing.assert_allclose(np.asarray(source.embeddings), embeddings)
+        assert source.cell_ids == ("cell_a", "cell_b", "cell_c")
+
+    def test_rejects_cell_id_length_mismatch(self, tmp_path: Path) -> None:
+        """Reject artifacts whose ``cell_ids`` count does not match row count."""
+        embeddings = np.arange(12, dtype=np.float32).reshape(3, 4)
+        path = tmp_path / "artifact.npz"
+        np.savez(path, embeddings=embeddings, cell_ids=np.array(["cell_a", "cell_b"]))
+
+        with pytest.raises(ValueError, match="cell_ids must contain one value per embedding row"):
+            load_singlecell_embedding_source(path)
 
 
 class TestAlignSingleCellEmbeddings:
@@ -96,3 +125,40 @@ class TestAlignSingleCellEmbeddings:
         )
 
         np.testing.assert_allclose(np.asarray(aligned), embeddings)
+
+    def test_reorders_pt_embeddings_to_reference_cell_order(self, tmp_path: Path) -> None:
+        """Reorder ``.pt`` artifacts using persisted ``cell_ids`` metadata."""
+        torch = pytest.importorskip("torch")
+        embeddings = np.array(
+            [
+                [30.0, 31.0],
+                [10.0, 11.0],
+                [20.0, 21.0],
+            ],
+            dtype=np.float32,
+        )
+        path = tmp_path / "shuffled_embeddings.pt"
+        torch.save(
+            {
+                "embeddings": torch.from_numpy(embeddings),
+                "cell_ids": ["cell_c", "cell_a", "cell_b"],
+            },
+            path,
+        )
+
+        aligned = align_singlecell_embeddings(
+            reference_cell_ids=["cell_a", "cell_b", "cell_c"],
+            artifact_path=path,
+        )
+
+        np.testing.assert_allclose(
+            np.asarray(aligned),
+            np.array(
+                [
+                    [10.0, 11.0],
+                    [20.0, 21.0],
+                    [30.0, 31.0],
+                ],
+                dtype=np.float32,
+            ),
+        )
