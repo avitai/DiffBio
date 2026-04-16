@@ -36,6 +36,13 @@ class TestPerturbationSourceConfig:
         with pytest.raises(ValueError, match="file_path"):
             PerturbationSourceConfig()
 
+    def test_embedding_output_space_requires_embedding_key(self, synthetic_h5ad_path: Path) -> None:
+        with pytest.raises(ValueError, match="embedding_key"):
+            PerturbationSourceConfig(
+                file_path=str(synthetic_h5ad_path),
+                output_space="embedding",
+            )
+
 
 class TestPerturbationAnnDataSource:
     """Tests for PerturbationAnnDataSource."""
@@ -210,9 +217,51 @@ class TestPerturbationAnnDataSource:
         element = source[0]
         assert "barcode" in element
 
-    def test_embedding_output_space(self, synthetic_h5ad_path: Path) -> None:
+    def test_additional_obs_passthrough(self, synthetic_adata, tmp_path: Path) -> None:
+        synthetic_adata.obs["donor"] = ["donor_a"] * synthetic_adata.n_obs
+        path = tmp_path / "with_donor.h5ad"
+        synthetic_adata.write_h5ad(path)
+
+        config = PerturbationSourceConfig(
+            file_path=str(path),
+            output_space="all",
+            additional_obs=("donor",),
+        )
+        source = PerturbationAnnDataSource(config)
+        element = source[0]
+        assert element["donor"] == "donor_a"
+
+    def test_missing_additional_obs_fails(self, synthetic_h5ad_path: Path) -> None:
         config = PerturbationSourceConfig(
             file_path=str(synthetic_h5ad_path),
+            output_space="all",
+            additional_obs=("donor",),
+        )
+        with pytest.raises(ValueError, match="additional_obs"):
+            PerturbationAnnDataSource(config)
+
+    def test_include_barcodes_requires_barcode_column(self, tmp_path: Path) -> None:
+        from tests.sources.perturbation.conftest import _build_synthetic_adata
+
+        adata = _build_synthetic_adata(np.random.default_rng(7), include_barcodes=False)
+        path = tmp_path / "without_barcodes.h5ad"
+        adata.write_h5ad(path)
+
+        config = PerturbationSourceConfig(
+            file_path=str(path),
+            output_space="all",
+            include_barcodes=True,
+        )
+        with pytest.raises(ValueError, match="barcode"):
+            PerturbationAnnDataSource(config)
+
+    def test_embedding_output_space(self, synthetic_adata, tmp_path: Path) -> None:
+        synthetic_adata.obsm["X_alt"] = np.ones_like(synthetic_adata.obsm["X_hvg"])
+        path = tmp_path / "with_multiple_embeddings.h5ad"
+        synthetic_adata.write_h5ad(path)
+
+        config = PerturbationSourceConfig(
+            file_path=str(path),
             output_space="embedding",
             embedding_key="X_hvg",
         )
@@ -220,8 +269,17 @@ class TestPerturbationAnnDataSource:
         element = source[0]
         # In embedding mode, counts should be empty
         assert element["counts"].shape == (0,)
-        # But obsm embedding should be available
-        assert "obsm" in element
+        # Only the requested embedding should be exposed
+        assert set(element["obsm"]) == {"X_hvg"}
+
+    def test_missing_embedding_key_fails(self, synthetic_h5ad_path: Path) -> None:
+        config = PerturbationSourceConfig(
+            file_path=str(synthetic_h5ad_path),
+            output_space="embedding",
+            embedding_key="X_missing",
+        )
+        with pytest.raises(ValueError, match="embedding_key"):
+            PerturbationAnnDataSource(config)
 
     def test_external_perturbation_embeddings_override_one_hot(
         self, synthetic_h5ad_path: Path, tmp_path: Path
@@ -247,6 +305,21 @@ class TestPerturbationAnnDataSource:
             external_embeddings[element["pert_code"]],
             atol=1e-6,
         )
+
+    def test_external_perturbation_embeddings_row_mismatch_fails(
+        self, synthetic_h5ad_path: Path, tmp_path: Path
+    ) -> None:
+        wrong_rows = np.zeros((len(ALL_PERTS) - 1, 7), dtype=np.float32)
+        embedding_path = tmp_path / "wrong_pert_embeddings.npy"
+        np.save(embedding_path, wrong_rows)
+
+        config = PerturbationSourceConfig(
+            file_path=str(synthetic_h5ad_path),
+            output_space="all",
+            perturbation_features_file=str(embedding_path),
+        )
+        with pytest.raises(ValueError, match="perturbation_features_file"):
+            PerturbationAnnDataSource(config)
 
     def test_should_yield_controls_false_skips_controls(self, synthetic_h5ad_path: Path) -> None:
         config = PerturbationSourceConfig(

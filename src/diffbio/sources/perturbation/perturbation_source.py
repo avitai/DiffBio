@@ -35,39 +35,93 @@ from diffbio.sources.perturbation.output_space import select_output_counts
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True, slots=True)
+class _EncodedObsColumn:
+    """Categorical obs column with codes, labels, and one-hot lookup."""
+
+    codes: np.ndarray
+    categories: np.ndarray
+    labels: np.ndarray
+    onehot_matrix: np.ndarray
+
+
+@dataclass(frozen=True, slots=True)
+class _CategoricalMetadataState:
+    """Categorical perturbation metadata and lookup tables."""
+
+    perturbation: _EncodedObsColumn
+    cell_type: _EncodedObsColumn
+    batch: _EncodedObsColumn
+    control_mask: np.ndarray
+    group_codes: np.ndarray
+
+
+@dataclass(frozen=True, slots=True)
+class _FeatureViewState:
+    """Feature-view metadata used to build source elements."""
+
+    perturbation_embeddings_matrix: np.ndarray | None
+    barcodes: np.ndarray | None
+    additional_obs: tuple[str, ...]
+    hvg_indices: np.ndarray | None
+    gene_names: tuple[str, ...]
+
+
+def _encode_obs_column(labels: np.ndarray) -> _EncodedObsColumn:
+    """Encode one categorical obs column into reusable lookup tables."""
+    categories = np.array(sorted(set(labels)))
+    label_to_code = {label: idx for idx, label in enumerate(categories)}
+    codes = np.array([label_to_code[label] for label in labels], dtype=np.int32)
+    onehot_matrix = np.eye(len(categories), dtype=np.float32)
+    return _EncodedObsColumn(
+        codes=codes,
+        categories=categories,
+        labels=labels,
+        onehot_matrix=onehot_matrix,
+    )
+
+
 @dataclass(frozen=True)
-class PerturbationSourceConfig(AnnDataSourceConfig):
-    """Configuration for PerturbationAnnDataSource.
-
-    Extends AnnDataSourceConfig with perturbation-specific settings.
-
-    Attributes:
-        pert_col: Obs column name for perturbation identity.
-        cell_type_col: Obs column name for cell type.
-        batch_col: Obs column name for batch/plate.
-        control_pert: Label identifying control cells.
-        output_space: Output representation mode (``"gene"``, ``"all"``,
-            or ``"embedding"``).
-        embedding_key: Key in obsm for pre-computed embeddings.
-        hvg_col: Column in var marking highly variable genes.
-        include_barcodes: Whether to include cell barcodes in output.
-        additional_obs: Extra obs columns to pass through in elements.
-        should_yield_controls: Whether to include control cells in iteration.
-        perturbation_features_file: Path to external perturbation embeddings
-            (``.npy`` or ``.npz``). If provided, used instead of one-hot.
-    """
+class _PerturbationMetadataConfig:
+    """Perturbation metadata column and passthrough configuration."""
 
     pert_col: str = "perturbation"
     cell_type_col: str = "cell_type"
     batch_col: str = "batch"
     control_pert: str = "non-targeting"
+    include_barcodes: bool = False
+    additional_obs: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class _PerturbationViewConfig:
+    """Perturbation output-view and feature configuration."""
+
     output_space: str = "gene"
     embedding_key: str | None = None
     hvg_col: str | None = None
-    include_barcodes: bool = False
-    additional_obs: tuple[str, ...] = ()
     should_yield_controls: bool = True
     perturbation_features_file: str | None = None
+
+
+@dataclass(frozen=True)
+class PerturbationSourceConfig(
+    _PerturbationMetadataConfig,
+    _PerturbationViewConfig,
+    AnnDataSourceConfig,
+):
+    """Configuration for PerturbationAnnDataSource."""
+
+    def __post_init__(self) -> None:
+        """Validate perturbation-specific configuration."""
+        super().__post_init__()
+
+        OutputSpaceMode(self.output_space)
+        if self.output_space == OutputSpaceMode.EMBEDDING.value and self.embedding_key is None:
+            raise ValueError("embedding_key is required when output_space='embedding'")
+
+        if len(set(self.additional_obs)) != len(self.additional_obs):
+            raise ValueError("additional_obs must not contain duplicates")
 
 
 class PerturbationAnnDataSource(AnnDataSource):
@@ -139,36 +193,37 @@ class PerturbationAnnDataSource(AnnDataSource):
 
         obs, var, obsm = extract_anndata_annotations(adata)
 
+        required_obs_cols = (
+            config.pert_col,
+            config.cell_type_col,
+            config.batch_col,
+            *config.additional_obs,
+        )
+        missing_obs_cols = tuple(column for column in required_obs_cols if column not in obs)
+        if missing_obs_cols:
+            missing = ", ".join(missing_obs_cols)
+            raise ValueError(f"additional_obs/required obs columns missing from AnnData: {missing}")
+
+        if config.embedding_key is not None:
+            if config.embedding_key not in obsm:
+                raise ValueError(
+                    f"embedding_key '{config.embedding_key}' not found in AnnData.obsm"
+                )
+            obsm = {config.embedding_key: obsm[config.embedding_key]}
+
         # -- Perturbation metadata --
-        pert_labels = np.asarray(adata.obs[config.pert_col])
-        cell_type_labels = np.asarray(adata.obs[config.cell_type_col])
-        batch_labels = np.asarray(adata.obs[config.batch_col])
-
-        # Build category -> code mappings
-        pert_cats = np.array(sorted(set(pert_labels)))
-        ct_cats = np.array(sorted(set(cell_type_labels)))
-        batch_cats = np.array(sorted(set(batch_labels)))
-
-        pert_to_code = {p: i for i, p in enumerate(pert_cats)}
-        ct_to_code = {c: i for i, c in enumerate(ct_cats)}
-        batch_to_code = {b: i for i, b in enumerate(batch_cats)}
-
-        pert_codes = np.array([pert_to_code[p] for p in pert_labels], dtype=np.int32)
-        ct_codes = np.array([ct_to_code[c] for c in cell_type_labels], dtype=np.int32)
-        batch_codes = np.array([batch_to_code[b] for b in batch_labels], dtype=np.int32)
+        perturbation = _encode_obs_column(np.asarray(obs[config.pert_col]))
+        cell_type = _encode_obs_column(np.asarray(obs[config.cell_type_col]))
+        batch = _encode_obs_column(np.asarray(obs[config.batch_col]))
 
         # Control mask
-        control_mask = pert_labels == config.control_pert
+        control_mask = perturbation.labels == config.control_pert
 
         # Group codes: ravel_multi_index for fast (celltype, pert) grouping
         group_codes = np.ravel_multi_index(
-            (ct_codes, pert_codes), (len(ct_cats), len(pert_cats))
+            (cell_type.codes, perturbation.codes),
+            (len(cell_type.categories), len(perturbation.categories)),
         ).astype(np.int32)
-
-        # One-hot matrices (stacked identity, indexed by code; plain numpy)
-        pert_onehot_matrix = np.eye(len(pert_cats), dtype=np.float32)
-        ct_onehot_matrix = np.eye(len(ct_cats), dtype=np.float32)
-        batch_onehot_matrix = np.eye(len(batch_cats), dtype=np.float32)
 
         # External perturbation embeddings (overrides one-hot)
         pert_embeddings_matrix: np.ndarray | None = None
@@ -184,11 +239,19 @@ class PerturbationAnnDataSource(AnnDataSource):
                 )
             ).embeddings
             pert_embeddings_matrix = np.asarray(ext_emb)
+            if pert_embeddings_matrix.shape[0] != len(perturbation.categories):
+                raise ValueError(
+                    "perturbation_features_file must have one row per perturbation category; "
+                    f"expected {len(perturbation.categories)}, "
+                    f"got {pert_embeddings_matrix.shape[0]}"
+                )
 
         # Barcodes
         barcodes: np.ndarray | None = None
-        if config.include_barcodes and "barcode" in adata.obs.columns:
-            barcodes = np.asarray(adata.obs["barcode"])
+        if config.include_barcodes:
+            if "barcode" not in obs:
+                raise ValueError("barcode column is required when include_barcodes=True")
+            barcodes = np.asarray(obs["barcode"])
 
         # -- Visible index mapping for should_yield_controls --
         if config.should_yield_controls:
@@ -203,31 +266,26 @@ class PerturbationAnnDataSource(AnnDataSource):
             data=build_anndata_data(counts=counts, obs=obs, var=var, obsm=obsm),
             length=len(visible_indices),
         )
-        self._full_length: int = adata.n_obs
         self._visible_indices = visible_indices
 
-        # Perturbation-specific attributes (all plain Python / numpy scalars)
-        # Stored as plain types that NNX pytree walker won't inspect
-        self._pert_codes = pert_codes
-        self._ct_codes = ct_codes
-        self._batch_codes = batch_codes
-        self._pert_cats = tuple(pert_cats)
-        self._ct_cats = tuple(ct_cats)
-        self._batch_cats = tuple(batch_cats)
-        self._control_mask = control_mask
-        self._group_codes = group_codes
-        self._pert_onehot_matrix = pert_onehot_matrix
-        self._ct_onehot_matrix = ct_onehot_matrix
-        self._batch_onehot_matrix = batch_onehot_matrix
-        self._pert_embeddings_matrix = pert_embeddings_matrix
-        self._barcodes = barcodes
-        self._pert_labels = pert_labels
-        self._ct_labels = cell_type_labels
-        self._batch_labels = batch_labels
-        self._hvg_indices = hvg_indices
-        self._gene_names = tuple(adata.var_names)
-        self._n_pert_cats = len(pert_cats)
-        self._pert_to_code = {p: i for i, p in enumerate(pert_cats)}
+        self._categorical_state = nnx.static(
+            _CategoricalMetadataState(
+                perturbation=perturbation,
+                cell_type=cell_type,
+                batch=batch,
+                control_mask=control_mask,
+                group_codes=group_codes,
+            )
+        )
+        self._feature_state = nnx.static(
+            _FeatureViewState(
+                perturbation_embeddings_matrix=pert_embeddings_matrix,
+                barcodes=barcodes,
+                additional_obs=config.additional_obs,
+                hvg_indices=hvg_indices,
+                gene_names=tuple(adata.var_names),
+            )
+        )
 
     # =================================================================
     # DataSourceModule protocol overrides
@@ -279,39 +337,41 @@ class PerturbationAnnDataSource(AnnDataSource):
 
     def get_control_mask(self) -> np.ndarray:
         """Return boolean mask where True indicates a control cell."""
-        return self._control_mask
+        return self._categorical_state.control_mask
 
     def get_pert_codes(self) -> np.ndarray:
         """Return per-cell integer perturbation codes."""
-        return self._pert_codes
+        return self._categorical_state.perturbation.codes
 
     def get_cell_type_codes(self) -> np.ndarray:
         """Return per-cell integer cell type codes."""
-        return self._ct_codes
+        return self._categorical_state.cell_type.codes
 
     def get_batch_codes(self) -> np.ndarray:
         """Return per-cell integer batch codes."""
-        return self._batch_codes
+        return self._categorical_state.batch.codes
 
     def get_pert_categories(self) -> np.ndarray:
         """Return sorted array of unique perturbation labels."""
-        return np.array(self._pert_cats)
+        return np.array(self._categorical_state.perturbation.categories)
 
     def get_cell_type_categories(self) -> np.ndarray:
         """Return sorted array of unique cell type labels."""
-        return np.array(self._ct_cats)
+        return np.array(self._categorical_state.cell_type.categories)
 
     def get_batch_categories(self) -> np.ndarray:
         """Return sorted array of unique batch labels."""
-        return np.array(self._batch_cats)
+        return np.array(self._categorical_state.batch.categories)
 
     def get_group_codes(self) -> np.ndarray:
         """Return per-cell group codes for (cell_type, perturbation) grouping."""
-        return self._group_codes
+        return self._categorical_state.group_codes
 
     def get_onehot_map(self) -> dict[str, jnp.ndarray]:
         """Return perturbation one-hot encoding map (JAX arrays)."""
-        return {p: jnp.array(self._pert_onehot_matrix[i]) for i, p in enumerate(self._pert_cats)}
+        categories = self._categorical_state.perturbation.categories
+        matrix = self._categorical_state.perturbation.onehot_matrix
+        return {str(category): jnp.array(matrix[i]) for i, category in enumerate(categories)}
 
     def get_gene_names(self, output_space: str = "all") -> list[str]:
         """Return gene names, optionally filtered by output space.
@@ -322,13 +382,13 @@ class PerturbationAnnDataSource(AnnDataSource):
         Returns:
             List of gene name strings.
         """
-        if output_space == "gene" and self._hvg_indices is not None:
-            return [self._gene_names[i] for i in self._hvg_indices]
-        return list(self._gene_names)
+        if output_space == "gene" and self._feature_state.hvg_indices is not None:
+            return [self._feature_state.gene_names[i] for i in self._feature_state.hvg_indices]
+        return list(self._feature_state.gene_names)
 
     def get_n_genes(self) -> int:
         """Return total number of genes."""
-        return len(self._gene_names)
+        return len(self._feature_state.gene_names)
 
     def get_var_dims(self) -> dict[str, int]:
         """Return dimensionality info for the dataset.
@@ -338,11 +398,11 @@ class PerturbationAnnDataSource(AnnDataSource):
             ``n_cell_types``, ``n_batches``.
         """
         return {
-            "n_genes": len(self._gene_names),
+            "n_genes": len(self._feature_state.gene_names),
             "n_cells": self.length,
-            "n_perts": len(self._pert_cats),
-            "n_cell_types": len(self._ct_cats),
-            "n_batches": len(self._batch_cats),
+            "n_perts": len(self._categorical_state.perturbation.categories),
+            "n_cell_types": len(self._categorical_state.cell_type.categories),
+            "n_batches": len(self._categorical_state.batch.categories),
         }
 
     # =================================================================
@@ -358,18 +418,20 @@ class PerturbationAnnDataSource(AnnDataSource):
             cell_obsm[emb_name] = emb_arr[idx]
 
         # Perturbation embedding (indexed by code, converted to JAX)
-        pc = int(self._pert_codes[idx])
-        cc = int(self._ct_codes[idx])
-        bc = int(self._batch_codes[idx])
+        categorical_state = self._categorical_state
+        feature_state = self._feature_state
+        pc = int(categorical_state.perturbation.codes[idx])
+        cc = int(categorical_state.cell_type.codes[idx])
+        bc = int(categorical_state.batch.codes[idx])
 
-        if self._pert_embeddings_matrix is not None:
-            pert_emb = jnp.array(self._pert_embeddings_matrix[pc])
+        if feature_state.perturbation_embeddings_matrix is not None:
+            pert_emb = jnp.array(feature_state.perturbation_embeddings_matrix[pc])
         else:
-            pert_emb = jnp.array(self._pert_onehot_matrix[pc])
+            pert_emb = jnp.array(categorical_state.perturbation.onehot_matrix[pc])
 
-        pert_name = str(self._pert_labels[idx])
-        ct_name = str(self._ct_labels[idx])
-        batch_name = str(self._batch_labels[idx])
+        pert_name = str(categorical_state.perturbation.labels[idx])
+        ct_name = str(categorical_state.cell_type.labels[idx])
+        batch_name = str(categorical_state.batch.labels[idx])
 
         element: dict[str, Any] = {
             "counts": cell_counts,
@@ -378,17 +440,20 @@ class PerturbationAnnDataSource(AnnDataSource):
             "pert_code": pc,
             "cell_type_code": cc,
             "batch_code": bc,
-            "is_control": bool(self._control_mask[idx]),
+            "is_control": bool(categorical_state.control_mask[idx]),
             "pert_emb": pert_emb,
-            "cell_type_onehot": jnp.array(self._ct_onehot_matrix[cc]),
-            "batch_onehot": jnp.array(self._batch_onehot_matrix[bc]),
+            "cell_type_onehot": jnp.array(categorical_state.cell_type.onehot_matrix[cc]),
+            "batch_onehot": jnp.array(categorical_state.batch.onehot_matrix[bc]),
             "pert_name": pert_name,
             "cell_type_name": ct_name,
             "batch_name": batch_name,
         }
 
-        if self._barcodes is not None:
-            element["barcode"] = str(self._barcodes[idx])
+        for column in feature_state.additional_obs:
+            element[column] = cell_obs[column]
+
+        if feature_state.barcodes is not None:
+            element["barcode"] = str(feature_state.barcodes[idx])
 
         return element
 
@@ -409,31 +474,40 @@ class PerturbationAnnDataSource(AnnDataSource):
         for emb_name, emb_arr in self.data["obsm"].items():
             obsm[emb_name] = emb_arr[indices]
 
-        pert_codes = self._pert_codes[indices]
-        ct_codes = self._ct_codes[indices]
-        batch_codes = self._batch_codes[indices]
+        categorical_state = self._categorical_state
+        feature_state = self._feature_state
+        pert_codes = categorical_state.perturbation.codes[indices]
+        ct_codes = categorical_state.cell_type.codes[indices]
+        batch_codes = categorical_state.batch.codes[indices]
 
         # Build batched embeddings (indexed by codes, converted to JAX)
-        if self._pert_embeddings_matrix is not None:
-            pert_embs = jnp.array(self._pert_embeddings_matrix[pert_codes])
+        if feature_state.perturbation_embeddings_matrix is not None:
+            pert_embs = jnp.array(feature_state.perturbation_embeddings_matrix[pert_codes])
         else:
-            pert_embs = jnp.array(self._pert_onehot_matrix[pert_codes])
+            pert_embs = jnp.array(categorical_state.perturbation.onehot_matrix[pert_codes])
 
-        ct_embs = jnp.array(self._ct_onehot_matrix[ct_codes])
-        batch_embs = jnp.array(self._batch_onehot_matrix[batch_codes])
-
-        return {
+        transformed_data = {
             "counts": counts,
             "obs": obs,
             "obsm": obsm,
             "pert_code": jnp.array(pert_codes),
             "cell_type_code": jnp.array(ct_codes),
             "batch_code": jnp.array(batch_codes),
-            "is_control": jnp.array(self._control_mask[indices]),
+            "is_control": jnp.array(categorical_state.control_mask[indices]),
             "pert_emb": pert_embs,
-            "cell_type_onehot": ct_embs,
-            "batch_onehot": batch_embs,
-            "pert_name": [str(self._pert_labels[i]) for i in indices],
-            "cell_type_name": [str(self._ct_labels[i]) for i in indices],
-            "batch_name": [str(self._batch_labels[i]) for i in indices],
+            "cell_type_onehot": jnp.array(categorical_state.cell_type.onehot_matrix[ct_codes]),
+            "batch_onehot": jnp.array(categorical_state.batch.onehot_matrix[batch_codes]),
+            "pert_name": [str(categorical_state.perturbation.labels[i]) for i in indices],
+            "cell_type_name": [str(categorical_state.cell_type.labels[i]) for i in indices],
+            "batch_name": [str(categorical_state.batch.labels[i]) for i in indices],
         }
+
+        for column in feature_state.additional_obs:
+            transformed_data[column] = obs[column]
+
+        if feature_state.barcodes is not None:
+            transformed_data["barcode"] = (
+                np.asarray(feature_state.barcodes)[indices].astype(str).tolist()
+            )
+
+        return transformed_data
