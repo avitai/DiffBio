@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import jax.numpy as jnp
+from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
@@ -175,12 +176,18 @@ class ADMETPredictor(OperatorModule):
         # FFN hidden dim defaults to hidden_dim
         ffn_hidden = config.ffn_hidden_dim or config.hidden_dim
 
-        # Shared FFN layers
-        ffn_layers = []
-        for i in range(config.ffn_num_layers - 1):
-            in_dim = config.hidden_dim if i == 0 else ffn_hidden
-            ffn_layers.append(nnx.Linear(in_dim, ffn_hidden, rngs=rngs))
-        self.ffn_layers = nnx.List(ffn_layers)
+        if config.ffn_num_layers > 1:
+            self.ffn_backbone = MLP(
+                hidden_dims=[ffn_hidden] * (config.ffn_num_layers - 1),
+                in_features=config.hidden_dim,
+                activation="relu",
+                dropout_rate=config.dropout_rate,
+                output_activation="relu",
+                use_batch_norm=False,
+                rngs=rngs,
+            )
+        else:
+            self.ffn_backbone = None
 
         # Task-specific output heads (one per ADMET task)
         last_hidden = ffn_hidden if config.ffn_num_layers > 1 else config.hidden_dim
@@ -221,12 +228,12 @@ class ADMETPredictor(OperatorModule):
 
         graph_repr = graph_sum_readout(data, self.encoder, dropout=self.dropout)
 
-        # Shared FFN layers
         h = graph_repr
-        for layer in self.ffn_layers:
-            h = nnx.relu(layer(h))
-            if self.dropout is not None:
-                h = self.dropout(h)
+        if self.ffn_backbone is not None:
+            ffn_output = self.ffn_backbone(h)
+            if isinstance(ffn_output, tuple):
+                raise TypeError("ADMETPredictor shared FFN must return a single tensor output.")
+            h = ffn_output
 
         # Task-specific predictions
         task_predictions = []

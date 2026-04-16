@@ -121,6 +121,8 @@ class TestADMETPredictor:
         assert predictor is not None
         assert predictor.config.hidden_dim == config.hidden_dim
         assert predictor.config.num_tasks == config.num_tasks
+        assert predictor.ffn_backbone is not None
+        assert len(predictor.ffn_backbone.layers) == config.ffn_num_layers - 1
 
     def test_output_shape(self, predictor, sample_data):
         """Test that output has correct shape."""
@@ -196,6 +198,32 @@ class TestADMETPredictorDifferentiability:
         grads = jax.grad(loss_fn)(node_features)
         assert grads.shape == node_features.shape
         assert jnp.all(jnp.isfinite(grads))
+
+    def test_gradients_reach_shared_ffn_backbone(self, predictor):
+        """Gradients should reach the first shared FFN layer."""
+        num_atoms = 8
+        num_features = 4
+
+        node_features = jax.random.uniform(jax.random.PRNGKey(0), (num_atoms, num_features))
+        adjacency = jnp.eye(num_atoms)
+        adjacency = adjacency.at[0, 1].set(1.0)
+        adjacency = adjacency.at[1, 0].set(1.0)
+        node_mask = jnp.ones(num_atoms)
+        data = {
+            "node_features": node_features,
+            "adjacency": adjacency,
+            "node_mask": node_mask,
+        }
+
+        @nnx.value_and_grad
+        def loss_fn(model):
+            result, _, _ = model.apply(data, {}, None)
+            return jnp.sum(result["predictions"])
+
+        _, grads = loss_fn(predictor)
+        assert hasattr(grads, "ffn_backbone")
+        assert grads.ffn_backbone is not None
+        assert jnp.any(grads.ffn_backbone.layers[0].kernel[...] != 0.0)
 
 
 class TestADMETPredictorJIT:
