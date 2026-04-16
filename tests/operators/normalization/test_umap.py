@@ -8,6 +8,7 @@ import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
 import pytest
+from artifex.generative_models.core.base import MLP
 
 
 class TestUMAPConfig:
@@ -74,8 +75,8 @@ class TestDifferentiableUMAP:
         umap = DifferentiableUMAP(config, rngs=rngs)
 
         assert umap.config == config
-        assert hasattr(umap, "a_param")
-        assert hasattr(umap, "b_param")
+        assert isinstance(umap.embedding_head.projection_backbone, MLP)
+        assert hasattr(umap.embedding_head, "curve_params")
 
     def test_initialization_without_rngs(self, config):
         """Test initialization without providing RNGs."""
@@ -220,8 +221,8 @@ class TestUMAPDifferentiability:
         grads = nnx.grad(loss_fn)(umap, features)
 
         # Check that parameter gradients exist
-        assert hasattr(grads, "a_param")
-        assert hasattr(grads, "b_param")
+        assert hasattr(grads, "embedding_head")
+        assert hasattr(grads.embedding_head, "curve_params")
 
 
 class TestUMAPJITCompatibility:

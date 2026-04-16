@@ -12,6 +12,7 @@ from typing import Any
 import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
+from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 
@@ -53,6 +54,36 @@ class UMAPConfig(OperatorConfig):
     hidden_dim: int = 32
 
 
+class ParametricUMAPHead(nnx.Module):
+    """Parametric UMAP embedding head with learnable similarity curve."""
+
+    def __init__(self, config: UMAPConfig, *, rngs: nnx.Rngs):
+        """Initialize the parametric embedding head."""
+        super().__init__()
+        self.curve_params = nnx.Param(jnp.array([1.929, 0.7915], dtype=jnp.float32))
+        self.projection_backbone = MLP(
+            hidden_dims=[config.hidden_dim, config.n_components],
+            in_features=config.input_features,
+            activation="relu",
+            output_activation=None,
+            use_batch_norm=False,
+            rngs=rngs,
+        )
+
+    def project(self, features: jax.Array) -> jax.Array:
+        """Project high-dimensional features to low-dimensional embedding."""
+        embedding = self.projection_backbone(features)
+        if isinstance(embedding, tuple):
+            raise TypeError("ParametricUMAPHead projection backbone must return a single tensor.")
+        return embedding
+
+    def curve_coefficients(self) -> tuple[jax.Array, jax.Array]:
+        """Return positive low-dimensional similarity curve coefficients."""
+        a = jnp.abs(self.curve_params[0]) + 1e-6
+        b = jnp.abs(self.curve_params[1]) + 1e-6
+        return a, b
+
+
 class DifferentiableUMAP(OperatorModule):
     """Differentiable UMAP for dimensionality reduction.
 
@@ -92,29 +123,11 @@ class DifferentiableUMAP(OperatorModule):
             rngs: Random number generators for initialization.
         """
         super().__init__(config, rngs=rngs)
-        self.config = config
 
         if rngs is None:
             rngs = nnx.Rngs(0)
 
-        # Initialize UMAP curve parameters a and b
-        # These control the shape of the low-dimensional similarity function
-        # q(d) = 1 / (1 + a * d^(2b))
-        # Default values from original UMAP: a ≈ 1.929, b ≈ 0.7915
-        self.a_param = nnx.Param(jnp.array(1.929))
-        self.b_param = nnx.Param(jnp.array(0.7915))
-
-        # Initialize projection network (parametric UMAP) using nnx.Linear
-        self.projection_layer1 = nnx.Linear(
-            in_features=config.input_features,
-            out_features=config.hidden_dim,
-            rngs=rngs,
-        )
-        self.projection_layer2 = nnx.Linear(
-            in_features=config.hidden_dim,
-            out_features=config.n_components,
-            rngs=rngs,
-        )
+        self.embedding_head = ParametricUMAPHead(config, rngs=rngs)
 
     def _project(self, features: jax.Array) -> jax.Array:
         """Project high-dimensional features to low-dimensional embedding.
@@ -125,12 +138,7 @@ class DifferentiableUMAP(OperatorModule):
         Returns:
             Embedding of shape (n_samples, n_components).
         """
-        # Simple 2-layer MLP with ReLU activation
-        h = self.projection_layer1(features)
-        h = nnx.relu(h)
-        embedding = self.projection_layer2(h)
-
-        return embedding
+        return self.embedding_head.project(features)
 
     def _compute_high_dim_similarities(self, features: jax.Array) -> jax.Array:
         """Compute high-dimensional fuzzy set membership (p_ij).
@@ -172,8 +180,7 @@ class DifferentiableUMAP(OperatorModule):
         distances_sq = jnp.sum(diff**2, axis=-1)
 
         # UMAP similarity kernel
-        a = jnp.abs(self.a_param[...]) + 1e-6
-        b = jnp.abs(self.b_param[...]) + 1e-6
+        a, b = self.embedding_head.curve_coefficients()
 
         q_ij = 1.0 / (1.0 + a * jnp.power(distances_sq + 1e-8, b))
 
