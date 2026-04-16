@@ -132,6 +132,8 @@ class TestNeuralReadMapper:
 
         assert "mapping_quality" in transformed
         assert transformed["mapping_quality"].shape == (1,)
+        assert jnp.all(transformed["mapping_quality"] >= 0.0)
+        assert jnp.all(transformed["mapping_quality"] <= 1.0)
 
 
 class TestGradientFlow:
@@ -193,6 +195,34 @@ class TestGradientFlow:
 
         # Check encoder has gradients
         assert hasattr(grads, "read_encoder")
+        assert hasattr(grads, "score_projection")
+        assert jnp.linalg.norm(grads.score_projection.kernel[...]) > 0.0
+
+    def test_mapping_quality_head_is_learnable(self, rngs, small_config):
+        """Mapping quality should depend on the learned quality head."""
+        op = NeuralReadMapper(small_config, rngs=rngs)
+
+        key = jax.random.key(0)
+        read_indices = jax.random.randint(key, (1, 50), 0, 4)
+        read = jax.nn.one_hot(read_indices, 4)
+
+        key, subkey = jax.random.split(key)
+        ref_indices = jax.random.randint(subkey, (1, 100), 0, 4)
+        reference = jax.nn.one_hot(ref_indices, 4)
+
+        data = {"read": read, "reference": reference}
+        state = {}
+
+        @nnx.value_and_grad
+        def loss_fn(model):
+            transformed, _, _ = model.apply(data, state, None, None)
+            return transformed["mapping_quality"].sum()
+
+        loss, grads = loss_fn(op)
+
+        assert jnp.isfinite(loss)
+        assert hasattr(grads, "quality_projection")
+        assert jnp.linalg.norm(grads.quality_projection.kernel[...]) > 0.0
 
 
 class TestJITCompatibility:

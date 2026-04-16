@@ -130,8 +130,6 @@ class CrossAttentionLayer(nnx.Module):
         super().__init__()
 
         self.num_heads = num_heads
-        self.head_dim = embedding_dim // num_heads
-        self.scale = self.head_dim**-0.5
 
         # Query, Key, Value projections
         self.query_proj = nnx.Linear(
@@ -183,10 +181,13 @@ class CrossAttentionLayer(nnx.Module):
         K = self.key_proj(key_value)
         V = self.value_proj(key_value)
 
+        head_dim = Q.shape[-1] // self.num_heads
+        scale = head_dim**-0.5
+
         # Reshape for multi-head attention
-        Q = Q.reshape(batch_size, query_len, self.num_heads, self.head_dim)
-        K = K.reshape(batch_size, kv_len, self.num_heads, self.head_dim)
-        V = V.reshape(batch_size, kv_len, self.num_heads, self.head_dim)
+        Q = Q.reshape(batch_size, query_len, self.num_heads, head_dim)
+        K = K.reshape(batch_size, kv_len, self.num_heads, head_dim)
+        V = V.reshape(batch_size, kv_len, self.num_heads, head_dim)
 
         # Transpose to (batch, heads, length, dim)
         Q = Q.transpose(0, 2, 1, 3)
@@ -194,7 +195,7 @@ class CrossAttentionLayer(nnx.Module):
         V = V.transpose(0, 2, 1, 3)
 
         # Compute attention scores
-        attn_scores = jnp.einsum("bhqd,bhkd->bhqk", Q, K) * self.scale
+        attn_scores = jnp.einsum("bhqd,bhkd->bhqk", Q, K) * scale
         attn_probs = jax.nn.softmax(attn_scores, axis=-1)
 
         # Apply dropout to attention
@@ -346,11 +347,6 @@ class NeuralReadMapper(TemperatureOperator):
         if rngs is None:
             rngs = nnx.Rngs(0)
 
-        self.embedding_dim = config.embedding_dim
-        self.num_heads = config.num_heads
-        self.num_layers = config.num_layers
-        # Temperature is now managed by TemperatureOperator via self._temperature
-
         # Read encoder
         self.read_encoder = SequenceEncoder(
             embedding_dim=config.embedding_dim,
@@ -422,9 +418,9 @@ class NeuralReadMapper(TemperatureOperator):
         # Global read representation (mean pooling)
         read_summary = jnp.mean(read_emb, axis=1)  # (batch, dim)
 
-        # Compute scores: dot product of read summary with each reference position
-        # (batch, dim) @ (batch, ref_len, dim).T -> (batch, ref_len)
-        scores = jnp.einsum("bd,brd->br", read_summary, ref_emb)
+        # Learned per-position alignment scoring over read/reference interaction features.
+        interaction_features = ref_emb * read_summary[:, None, :]
+        scores = self.score_projection(interaction_features).squeeze(-1)
 
         return scores, read_summary
 
@@ -480,7 +476,9 @@ class NeuralReadMapper(TemperatureOperator):
         # Use negative entropy as quality measure
         entropy = -jnp.sum(position_probs * jnp.log(position_probs + 1e-10), axis=-1)
         max_entropy = jnp.log(jnp.array(reference.shape[1], dtype=jnp.float32))
-        mapping_quality = 1.0 - (entropy / max_entropy)
+        entropy_confidence = 1.0 - (entropy / max_entropy)
+        learned_confidence = jax.nn.sigmoid(self.quality_projection(read_summary).squeeze(-1))
+        mapping_quality = entropy_confidence * learned_confidence
 
         # Build output
         transformed_data = {
