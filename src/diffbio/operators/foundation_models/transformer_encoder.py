@@ -41,40 +41,81 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class TransformerSequenceEncoderConfig(FoundationEmbeddingOperatorConfig):
-    """Configuration for TransformerSequenceEncoder.
-
-    Attributes:
-        hidden_dim: Dimension of hidden states and embeddings.
-        num_layers: Number of transformer encoder layers.
-        num_heads: Number of attention heads.
-        intermediate_dim: Dimension of feed-forward intermediate layer.
-        max_length: Maximum sequence length for positional encoding.
-        alphabet_size: Size of nucleotide alphabet (4 for DNA/RNA).
-        dropout_rate: Dropout rate for regularization.
-        pooling: Pooling strategy for sequence embedding ("mean" or "cls").
-        adapter_mode: Integration mode for the encoder artifact.
-        artifact_id: Identifier for the encoder artifact/version.
-        preprocessing_version: Version tag for sequence preprocessing.
-        input_embedding_type: Type of input embedding. "linear" projects
-            one-hot encoded input via nnx.Linear. "token_embedding" uses
-            nnx.Embed for integer token ID input.
-        vocab_size: Vocabulary size for token embedding mode. Required
-            when input_embedding_type is "token_embedding", ignored for "linear".
-    """
+class _TransformerArchitectureConfig:
+    """Transformer depth and width configuration."""
 
     hidden_dim: int = 256
     num_layers: int = 4
     num_heads: int = 4
     intermediate_dim: int = 1024
     max_length: int = 512
+
+
+@dataclass(frozen=True)
+class _TransformerInputConfig:
+    """Sequence input encoding configuration."""
+
     alphabet_size: int = 4
+    input_embedding_type: Literal["linear", "token_embedding"] = "linear"
+    vocab_size: int | None = None
+
+
+@dataclass(frozen=True)
+class _TransformerOutputConfig:
+    """Transformer output and artifact configuration."""
+
     dropout_rate: float = 0.1
     pooling: Literal["mean", "cls"] = "mean"
     artifact_id: str = "diffbio.transformer_sequence_encoder"
     preprocessing_version: str = "one_hot_v1"
-    input_embedding_type: Literal["linear", "token_embedding"] = "linear"
-    vocab_size: int | None = None
+
+
+@dataclass(frozen=True)
+class TransformerSequenceEncoderConfig(
+    _TransformerArchitectureConfig,
+    _TransformerInputConfig,
+    _TransformerOutputConfig,
+    FoundationEmbeddingOperatorConfig,
+):
+    """Configuration for TransformerSequenceEncoder."""
+
+    def __post_init__(self) -> None:
+        """Validate the transformer encoder configuration."""
+        super().__post_init__()
+
+        if self.hidden_dim <= 0:
+            raise ValueError("hidden_dim must be positive.")
+        if self.num_layers <= 0:
+            raise ValueError("num_layers must be positive.")
+        if self.num_heads <= 0:
+            raise ValueError("num_heads must be positive.")
+        if self.hidden_dim % self.num_heads != 0:
+            raise ValueError("hidden_dim must be divisible by num_heads.")
+        if self.intermediate_dim <= 0:
+            raise ValueError("intermediate_dim must be positive.")
+        if self.max_length <= 0:
+            raise ValueError("max_length must be positive.")
+        if self.alphabet_size <= 0:
+            raise ValueError("alphabet_size must be positive.")
+        if not 0.0 <= self.dropout_rate < 1.0:
+            raise ValueError("dropout_rate must be in [0.0, 1.0).")
+
+        try:
+            PoolingStrategy(self.pooling)
+        except ValueError as exc:
+            raise ValueError("pooling must be 'mean' or 'cls'.") from exc
+
+        if self.input_embedding_type not in ("linear", "token_embedding"):
+            raise ValueError("input_embedding_type must be 'linear' or 'token_embedding'.")
+        if self.input_embedding_type == "token_embedding":
+            if self.vocab_size is None:
+                raise ValueError(
+                    "vocab_size must be specified when input_embedding_type is 'token_embedding'"
+                )
+            if self.vocab_size <= 0:
+                raise ValueError("vocab_size must be positive.")
+        elif self.vocab_size is not None and self.vocab_size <= 0:
+            raise ValueError("vocab_size must be positive when provided.")
 
 
 class TransformerSequenceEncoder(FoundationEmbeddingMixin, SequenceOperator):
@@ -141,10 +182,7 @@ class TransformerSequenceEncoder(FoundationEmbeddingMixin, SequenceOperator):
 
         # Input projection: alphabet_size -> hidden_dim (or token embedding)
         if config.input_embedding_type == "token_embedding":
-            if config.vocab_size is None:
-                raise ValueError(
-                    "vocab_size must be specified when input_embedding_type is 'token_embedding'"
-                )
+            assert config.vocab_size is not None
             self.input_projection = nnx.Embed(
                 num_embeddings=config.vocab_size,
                 features=config.hidden_dim,

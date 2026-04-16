@@ -8,6 +8,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 from flax import nnx
+from typing import Any, cast
 
 from diffbio.operators.foundation_models import (
     TransformerSequenceEncoder,
@@ -55,6 +56,28 @@ class TestTransformerSequenceEncoderConfig:
         assert config.alphabet_size == 5
         assert config.dropout_rate == 0.0
         assert config.pooling == "cls"
+
+    def test_invalid_hidden_dim_rejected(self):
+        """Hidden dimension must be positive and divisible by num_heads."""
+        with pytest.raises(ValueError, match="hidden_dim"):
+            TransformerSequenceEncoderConfig(hidden_dim=0)
+
+    def test_invalid_head_divisibility_rejected(self):
+        """Head count must divide hidden_dim exactly."""
+        with pytest.raises(ValueError, match="divisible by num_heads"):
+            TransformerSequenceEncoderConfig(hidden_dim=10, num_heads=3)
+
+    def test_invalid_input_embedding_type_rejected(self):
+        """Unknown embedding modes must fail fast."""
+        with pytest.raises(ValueError, match="input_embedding_type"):
+            TransformerSequenceEncoderConfig(
+                input_embedding_type=cast(Any, "unsupported"),
+            )
+
+    def test_invalid_pooling_rejected(self):
+        """Unknown pooling strategies must fail fast."""
+        with pytest.raises(ValueError, match="pooling"):
+            TransformerSequenceEncoderConfig(pooling=cast(Any, "unsupported"))
 
 
 class TestTransformerSequenceEncoder:
@@ -501,17 +524,16 @@ class TestTokenEmbeddingMode:
         assert default_config.vocab_size is None
 
     def test_token_embedding_requires_vocab_size(self) -> None:
-        """Test ValueError when token_embedding is selected without vocab_size."""
-        config = TransformerSequenceEncoderConfig(
-            input_embedding_type="token_embedding",
-            vocab_size=None,
-            hidden_dim=32,
-            num_layers=1,
-            num_heads=2,
-            dropout_rate=0.0,
-        )
+        """Token embedding mode must declare a vocabulary size."""
         with pytest.raises(ValueError, match="vocab_size"):
-            TransformerSequenceEncoder(config, rngs=nnx.Rngs(42))
+            TransformerSequenceEncoderConfig(
+                input_embedding_type="token_embedding",
+                vocab_size=None,
+                hidden_dim=32,
+                num_layers=1,
+                num_heads=2,
+                dropout_rate=0.0,
+            )
 
     def test_token_embedding_forward(self) -> None:
         """Test integer input produces correct shape output in token mode."""
