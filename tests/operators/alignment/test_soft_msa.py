@@ -7,6 +7,7 @@ operator for differentiable multiple sequence alignment.
 import jax
 import jax.numpy as jnp
 import pytest
+from artifex.generative_models.core.base import MLP
 from flax import nnx
 
 from diffbio.operators.alignment.soft_msa import (
@@ -36,6 +37,11 @@ class TestSoftProgressiveMSAConfig:
         assert config.max_seq_length == 200
         assert config.hidden_dim == 128
         assert config.temperature == 0.5
+
+    def test_num_layers_must_be_positive(self):
+        """Soft MSA should fail fast without encoder layers."""
+        with pytest.raises(ValueError, match="num_layers"):
+            SoftProgressiveMSAConfig(num_layers=0)
 
 
 class TestSoftProgressiveMSA:
@@ -69,6 +75,10 @@ class TestSoftProgressiveMSA:
         """Test operator initialization."""
         op = SoftProgressiveMSA(small_config, rngs=rngs)
         assert op is not None
+        assert isinstance(op.seq_encoder.backbone, MLP)
+        assert isinstance(op.profile_builder.backbone, MLP)
+        assert len(op.seq_encoder.backbone.layers) == small_config.num_layers
+        assert len(op.profile_builder.backbone.layers) == 2
 
     def test_output_contains_alignment(self, rngs, small_config, sample_sequences):
         """Test that output contains aligned sequences."""
@@ -135,7 +145,7 @@ class TestGradientFlow:
         def loss_fn(seqs):
             data = {"sequences": seqs}
             transformed, _, _ = op.apply(data, {}, None, None)
-            return transformed["aligned_sequences"].sum()
+            return jnp.sum(transformed["pairwise_distances"] ** 2)
 
         grad = jax.grad(loss_fn)(sequences)
         assert grad is not None
@@ -160,12 +170,17 @@ class TestGradientFlow:
         @nnx.value_and_grad
         def loss_fn(model):
             transformed, _, _ = model.apply(data, state, None, None)
-            return transformed["aligned_sequences"].sum()
+            return jnp.sum(transformed["pairwise_distances"] ** 2) + jnp.sum(
+                transformed["consensus_profile"] ** 2
+            )
 
         loss, grads = loss_fn(op)
 
-        # Check encoder has gradients
+        assert loss is not None
         assert hasattr(grads, "seq_encoder")
+        assert hasattr(grads, "profile_builder")
+        assert jnp.any(grads.seq_encoder.backbone.layers[0].kernel[...] != 0.0)
+        assert jnp.any(grads.profile_builder.backbone.layers[0].kernel[...] != 0.0)
 
 
 class TestJITCompatibility:

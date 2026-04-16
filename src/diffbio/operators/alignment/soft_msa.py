@@ -23,6 +23,7 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
+from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
@@ -55,6 +56,12 @@ class SoftProgressiveMSAConfig(OperatorConfig):
     gap_open_penalty: float = -10.0
     gap_extend_penalty: float = -1.0
 
+    def __post_init__(self) -> None:
+        """Validate soft MSA configuration."""
+        super().__post_init__()
+        if self.num_layers < 1:
+            raise ValueError("SoftProgressiveMSAConfig.num_layers must be at least 1.")
+
 
 class SequenceEncoder(nnx.Module):
     """Encoder for biological sequences."""
@@ -76,23 +83,14 @@ class SequenceEncoder(nnx.Module):
             rngs: Random number generators.
         """
         super().__init__()
-
-        # Input projection
-        self.input_proj = nnx.Linear(
+        self.backbone = MLP(
+            hidden_dims=[hidden_dim] * num_layers,
             in_features=alphabet_size,
-            out_features=hidden_dim,
+            activation="gelu",
+            output_activation="gelu",
+            use_batch_norm=False,
             rngs=rngs,
         )
-
-        # Transformer-like layers
-        layers = []
-        norms = []
-        for _ in range(num_layers):
-            layers.append(nnx.Linear(in_features=hidden_dim, out_features=hidden_dim, rngs=rngs))
-            norms.append(nnx.LayerNorm(num_features=hidden_dim, rngs=rngs))
-
-        self.layers = nnx.List(layers)
-        self.norms = nnx.List(norms)
 
         # Output projection for sequence embedding
         self.output_proj = nnx.Linear(
@@ -113,15 +111,12 @@ class SequenceEncoder(nnx.Module):
         Returns:
             Sequence embedding vector.
         """
-        # Project input
-        x = self.input_proj(sequence)  # (seq_len, hidden_dim)
-
-        # Apply layers with residual connections
-        for linear, norm in zip(self.layers, self.norms):
-            x = norm(nnx.gelu(linear(x)) + x)
+        backbone_output = self.backbone(sequence)
+        if isinstance(backbone_output, tuple):
+            raise TypeError("Soft MSA sequence backbone must return a single tensor.")
 
         # Global average pooling to get fixed-size embedding
-        embedding = jnp.mean(x, axis=0)  # (hidden_dim,)
+        embedding = jnp.mean(backbone_output, axis=0)  # (hidden_dim,)
         embedding = self.output_proj(embedding)
 
         return embedding
@@ -149,18 +144,14 @@ class ProfileBuilder(nnx.Module):
         self.hidden_dim = hidden_dim
         self.alphabet_size = alphabet_size
 
-        # Profile refinement layers
-        self.refine1 = nnx.Linear(
+        self.backbone = MLP(
+            hidden_dims=[hidden_dim, alphabet_size],
             in_features=alphabet_size,
-            out_features=hidden_dim,
+            activation="gelu",
+            output_activation=None,
+            use_batch_norm=False,
             rngs=rngs,
         )
-        self.refine2 = nnx.Linear(
-            in_features=hidden_dim,
-            out_features=alphabet_size,
-            rngs=rngs,
-        )
-        self.norm = nnx.LayerNorm(num_features=hidden_dim, rngs=rngs)
 
     def __call__(
         self,
@@ -181,9 +172,10 @@ class ProfileBuilder(nnx.Module):
         profile = jnp.einsum("n,nla->la", weights, sequences)
 
         # Refine profile
-        h = nnx.gelu(self.refine1(profile))
-        h = self.norm(h)
-        profile = profile + 0.1 * self.refine2(h)  # Small residual update
+        refinement = self.backbone(profile)
+        if isinstance(refinement, tuple):
+            raise TypeError("Soft MSA profile backbone must return a single tensor.")
+        profile = profile + 0.1 * refinement  # Small residual update
 
         # Normalize to valid probability distribution
         profile = jax.nn.softmax(profile, axis=-1)
