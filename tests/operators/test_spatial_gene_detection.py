@@ -36,6 +36,21 @@ class TestSpatialGeneDetectorConfig:
         assert config.lengthscale == 2.0
         assert config.n_inducing_points == 50
 
+    def test_invalid_gene_count_rejected(self):
+        """Gene count must be positive."""
+        with pytest.raises(ValueError, match="n_genes"):
+            SpatialGeneDetectorConfig(n_genes=0)
+
+    def test_invalid_hidden_dims_rejected(self):
+        """Hidden dimensions must all be positive."""
+        with pytest.raises(ValueError, match="hidden_dims"):
+            SpatialGeneDetectorConfig(hidden_dims=[32, 0])
+
+    def test_invalid_pvalue_threshold_rejected(self):
+        """P-value threshold must lie in [0, 1]."""
+        with pytest.raises(ValueError, match="pvalue_threshold"):
+            SpatialGeneDetectorConfig(pvalue_threshold=1.5)
+
 
 class TestSpatialGeneDetectorBasic:
     """Test basic functionality."""
@@ -168,9 +183,8 @@ class TestSpatialGeneDetectorDifferentiability:
 
         _, grads = loss_fn(detector)
 
-        # Lengthscale should have gradients
-        if hasattr(grads, "log_lengthscale"):
-            assert grads.log_lengthscale is not None
+        assert hasattr(grads, "kernel_state")
+        assert grads.kernel_state.log_lengthscale is not None
 
 
 class TestSpatialGeneDetectorJIT:

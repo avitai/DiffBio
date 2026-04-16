@@ -14,7 +14,7 @@ References:
 """
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import jax
@@ -30,34 +30,102 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class SpatialGeneDetectorConfig(OperatorConfig):
-    # pylint: disable=too-many-instance-attributes
-    """Configuration for spatial gene detection.
+class _SpatialKernelConfig:
+    """Gaussian-process kernel configuration."""
 
-    Attributes:
-        n_genes: Number of genes to analyze.
-        lengthscale: Initial lengthscale for RBF kernel (characteristic length).
-        variance: Signal variance (sigma^2_s in SpatialDE).
-        noise_variance: Observation noise variance (sigma^2_e in SpatialDE).
-        n_inducing_points: Number of inducing points for sparse GP.
-        hidden_dims: Hidden dimensions for smoothing network.
-        temperature: Temperature for soft thresholding.
-        pvalue_threshold: Threshold for spatial gene classification.
-        learnable_kernel: Whether kernel parameters are learnable.
-        compute_field_ops: Whether to compute spatial expression gradients
-            and Laplacians using opifex field operations.
-    """
-
-    n_genes: int = 2000
     lengthscale: float = 1.0
     variance: float = 1.0
     noise_variance: float = 0.1
     n_inducing_points: int = 100
-    hidden_dims: list[int] = field(default_factory=lambda: [64, 32])
+    learnable_kernel: bool = True
+
+
+@dataclass(frozen=True)
+class _SpatialDetectionConfig:
+    """Spatial gene classification configuration."""
+
+    n_genes: int = 2000
+    hidden_dims: tuple[int, ...] | list[int] = (64, 32)
     temperature: float = 1.0
     pvalue_threshold: float = 0.05
-    learnable_kernel: bool = True
     compute_field_ops: bool = False
+
+
+@dataclass(frozen=True)
+class SpatialGeneDetectorConfig(
+    _SpatialKernelConfig,
+    _SpatialDetectionConfig,
+    OperatorConfig,
+):
+    """Configuration for spatial gene detection."""
+
+    def __post_init__(self) -> None:
+        """Validate the spatial gene detector configuration."""
+        super().__post_init__()
+
+        hidden_dims = tuple(self.hidden_dims)
+        object.__setattr__(self, "hidden_dims", hidden_dims)
+
+        if self.n_genes <= 0:
+            raise ValueError("n_genes must be positive.")
+        if self.lengthscale <= 0.0:
+            raise ValueError("lengthscale must be positive.")
+        if self.variance <= 0.0:
+            raise ValueError("variance must be positive.")
+        if self.noise_variance <= 0.0:
+            raise ValueError("noise_variance must be positive.")
+        if self.n_inducing_points <= 0:
+            raise ValueError("n_inducing_points must be positive.")
+        if not hidden_dims or any(hidden_dim <= 0 for hidden_dim in hidden_dims):
+            raise ValueError("hidden_dims must contain only positive integers.")
+        if self.temperature <= 0.0:
+            raise ValueError("temperature must be positive.")
+        if not 0.0 <= self.pvalue_threshold <= 1.0:
+            raise ValueError("pvalue_threshold must be between 0.0 and 1.0.")
+
+
+@dataclass(frozen=True, slots=True)
+class _FixedKernelState:
+    """Static kernel parameters for non-learnable mode."""
+
+    log_lengthscale: float
+    log_variance: float
+    log_noise_variance: float
+
+
+class _LearnableKernelState(nnx.Module):
+    """Learnable kernel parameters stored in log-space."""
+
+    def __init__(self, config: SpatialGeneDetectorConfig) -> None:
+        self.log_lengthscale = nnx.Param(jnp.log(jnp.array(config.lengthscale)))
+        self.log_variance = nnx.Param(jnp.log(jnp.array(config.variance)))
+        self.log_noise_variance = nnx.Param(jnp.log(jnp.array(config.noise_variance)))
+
+
+class _SpatialSmoothingNetwork(nnx.Module):
+    """Neural approximation to the GP posterior mean."""
+
+    def __init__(
+        self,
+        *,
+        hidden_dims: tuple[int, ...],
+        n_genes: int,
+        rngs: nnx.Rngs,
+    ) -> None:
+        smoothing_layers = []
+        prev_dim = 2
+        for hidden_dim in hidden_dims:
+            smoothing_layers.append(nnx.Linear(prev_dim, hidden_dim, rngs=rngs))
+            prev_dim = hidden_dim
+        self.layers = nnx.List(smoothing_layers)
+        self.output = nnx.Linear(prev_dim, n_genes, rngs=rngs)
+
+    def __call__(self, coords: Float[Array, "n_spots 2"]) -> Float[Array, "n_spots n_genes"]:
+        """Predict a spatial deviation field from normalized coordinates."""
+        hidden = coords
+        for layer in self.layers:
+            hidden = nnx.relu(layer(hidden))
+        return self.output(hidden)
 
 
 class DifferentiableSpatialGeneDetector(TemperatureOperator):
@@ -112,47 +180,48 @@ class DifferentiableSpatialGeneDetector(TemperatureOperator):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        self.config: SpatialGeneDetectorConfig = config
-
         # Kernel parameters (learnable in log-space for positivity)
         if config.learnable_kernel:
-            self.log_lengthscale = nnx.Param(jnp.log(jnp.array(config.lengthscale)))
-            self.log_variance = nnx.Param(jnp.log(jnp.array(config.variance)))
-            self.log_noise_variance = nnx.Param(jnp.log(jnp.array(config.noise_variance)))
+            self.kernel_state = _LearnableKernelState(config)
         else:
-            self._lengthscale = config.lengthscale
-            self._variance = config.variance
-            self._noise_variance = config.noise_variance
+            self.kernel_state = nnx.static(
+                _FixedKernelState(
+                    log_lengthscale=float(jnp.log(jnp.array(config.lengthscale))),
+                    log_variance=float(jnp.log(jnp.array(config.variance))),
+                    log_noise_variance=float(jnp.log(jnp.array(config.noise_variance))),
+                )
+            )
 
         # Smoothing network for expression (neural approximation to GP mean)
-        smoothing_layers = []
-        prev_dim = 2  # Spatial coordinates
-        for hidden_dim in config.hidden_dims:
-            smoothing_layers.append(nnx.Linear(prev_dim, hidden_dim, rngs=rngs))
-            prev_dim = hidden_dim
-        self.smoothing_layers = nnx.List(smoothing_layers)
-        self.smoothing_out = nnx.Linear(prev_dim, config.n_genes, rngs=rngs)
+        self.smoothing_network = _SpatialSmoothingNetwork(
+            hidden_dims=tuple(config.hidden_dims),
+            n_genes=config.n_genes,
+            rngs=rngs,
+        )
 
     @property
     def lengthscale(self) -> Float[Array, ""] | float:
         """Get the characteristic length for RBF kernel."""
-        if hasattr(self, "log_lengthscale"):
-            return jnp.exp(self.log_lengthscale[...])
-        return self._lengthscale
+        kernel_state = self.kernel_state
+        if isinstance(kernel_state, _LearnableKernelState):
+            return jnp.exp(kernel_state.log_lengthscale[...])
+        return jnp.exp(jnp.asarray(kernel_state.log_lengthscale))
 
     @property
     def variance(self) -> Float[Array, ""] | float:
         """Get the signal variance parameter."""
-        if hasattr(self, "log_variance"):
-            return jnp.exp(self.log_variance[...])
-        return self._variance
+        kernel_state = self.kernel_state
+        if isinstance(kernel_state, _LearnableKernelState):
+            return jnp.exp(kernel_state.log_variance[...])
+        return jnp.exp(jnp.asarray(kernel_state.log_variance))
 
     @property
     def noise_variance(self) -> Float[Array, ""] | float:
         """Get current noise variance (sigma^2_e)."""
-        if hasattr(self, "log_noise_variance"):
-            return jnp.exp(self.log_noise_variance[...])
-        return self._noise_variance
+        kernel_state = self.kernel_state
+        if isinstance(kernel_state, _LearnableKernelState):
+            return jnp.exp(kernel_state.log_noise_variance[...])
+        return jnp.exp(jnp.asarray(kernel_state.log_noise_variance))
 
     def compute_kernel(
         self,
@@ -246,12 +315,7 @@ class DifferentiableSpatialGeneDetector(TemperatureOperator):
         coords_norm = (coords - jnp.mean(coords, axis=0)) / (jnp.std(coords, axis=0) + 1e-6)
 
         # Apply smoothing network
-        h = coords_norm
-        for layer in self.smoothing_layers:
-            h = nnx.relu(layer(h))
-
-        # Output layer predicts deviation from mean
-        deviation = self.smoothing_out(h)
+        deviation = self.smoothing_network(coords_norm)
 
         # Smoothed = mean + learned spatial deviation
         smoothed = jnp.mean(expression, axis=0, keepdims=True) + deviation
