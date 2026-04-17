@@ -16,6 +16,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from collections.abc import Sequence
 
 from calibrax.core.models import Metric, Point
 from calibrax.core.result import BenchmarkResult
@@ -48,6 +49,15 @@ class DiffBioBenchmarkConfig:
     quick_subsample: int = 2000
     n_iterations_quick: int = 10
     n_iterations_full: int = 50
+
+
+def build_benchmark_comparison_key(
+    *,
+    comparison_axes: Sequence[str],
+    tags: dict[str, Any],
+) -> dict[str, Any]:
+    """Build one deterministic comparison-key row for a benchmark result."""
+    return {axis: tags.get(axis) for axis in comparison_axes}
 
 
 class DiffBioBenchmark(ABC):
@@ -169,13 +179,19 @@ class DiffBioBenchmark(ABC):
                 tags[key] = foundation_metadata[key]
         tags.update(benchmark_tags)
 
+        comparison_axes = (
+            list(FOUNDATION_BENCHMARK_COMPARISON_AXES)
+            if foundation_metadata
+            else ["dataset", "task"]
+        )
+
         metadata = {
             "dataset_info": dataset_info,
             "baselines": {k: p.to_dict() for k, p in baselines.items()},
-            "comparison_axes": (
-                list(FOUNDATION_BENCHMARK_COMPARISON_AXES)
-                if foundation_metadata
-                else ["dataset", "task"]
+            "comparison_axes": comparison_axes,
+            "comparison_key": build_benchmark_comparison_key(
+                comparison_axes=comparison_axes,
+                tags=tags,
             ),
         }
         if foundation_metadata:

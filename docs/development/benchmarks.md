@@ -175,9 +175,9 @@ into Calibrax tags and result metadata:
 
 These values are decoded from the operator's `foundation_model` payload and
 stored once in the shared benchmark layer. The corresponding result metadata
-also includes `foundation_model` and `comparison_axes` so regression and
-comparison tooling can group by dataset, task, and artifact identity without
-benchmark-specific code.
+also includes `foundation_model`, `comparison_axes`, and one deterministic
+`comparison_key` so regression and comparison tooling can group by dataset,
+task, and artifact identity without benchmark-specific code.
 
 Shared foundation-suite reports preserve the same contract. Each task report
 now exposes:

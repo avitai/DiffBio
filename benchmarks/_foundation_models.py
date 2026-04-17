@@ -6,6 +6,8 @@ from collections.abc import Callable
 from typing import Any, Protocol, TypeVar
 
 from calibrax.core.result import BenchmarkResult
+
+from benchmarks._base import build_benchmark_comparison_key
 from diffbio.operators.foundation_models.contracts import FOUNDATION_BENCHMARK_COMPARISON_AXES
 
 DEFAULT_FOUNDATION_REPORT_METADATA_KEYS = (
@@ -96,25 +98,6 @@ def _extract_foundation_provenance(result: BenchmarkResult) -> dict[str, Any] | 
     return dict(foundation_model)
 
 
-def _build_comparison_key(
-    result: BenchmarkResult,
-    *,
-    comparison_axes: list[str],
-    foundation_model: dict[str, Any] | None,
-) -> dict[str, Any]:
-    """Build one deterministic comparison-key row for a model result."""
-    comparison_key: dict[str, Any] = {}
-    for axis in comparison_axes:
-        if axis in result.tags:
-            comparison_key[axis] = result.tags[axis]
-            continue
-        if foundation_model is not None and axis in foundation_model:
-            comparison_key[axis] = foundation_model[axis]
-            continue
-        comparison_key[axis] = None
-    return comparison_key
-
-
 def build_foundation_task_report(
     *,
     benchmark_name: str,
@@ -147,10 +130,9 @@ def build_foundation_task_report(
             "tags": tags,
             "metadata": metadata,
             "foundation_model": foundation_model,
-            "comparison_key": _build_comparison_key(
-                result,
+            "comparison_key": build_benchmark_comparison_key(
                 comparison_axes=comparison_axes,
-                foundation_model=foundation_model,
+                tags=result.tags,
             ),
         }
 

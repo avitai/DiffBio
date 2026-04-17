@@ -69,6 +69,23 @@ class _DummyBenchmark(DiffBioBenchmark):
         }
 
 
+class _PlainBenchmark(DiffBioBenchmark):
+    """Minimal non-foundation benchmark for default comparison-key coverage."""
+
+    def _run_core(self) -> dict[str, object]:
+        return {
+            "metrics": {"score": 0.5},
+            "operator": object(),
+            "input_data": {},
+            "loss_fn": lambda model, data: 0.0,
+            "n_items": 2,
+            "iterate_fn": lambda: None,
+            "operator_name": "PlainOperator",
+            "dataset_name": "plain_dataset",
+            "task_name": "plain_task",
+        }
+
+
 class TestDiffBioBenchmarkResultContract:
     """Tests for shared BenchmarkResult construction."""
 
@@ -108,6 +125,29 @@ class TestDiffBioBenchmarkResultContract:
             "artifact_id",
             "preprocessing_version",
         ]
+        assert result.metadata["comparison_key"] == {
+            "dataset": "dummy_dataset",
+            "task": "foundation_smoke",
+            "model_family": "sequence_transformer",
+            "adapter_mode": "frozen_encoder",
+            "artifact_id": "diffbio.sequence.smoke",
+            "preprocessing_version": "one_hot_v1",
+        }
+
+    def test_base_result_includes_default_comparison_key_for_non_foundation(self) -> None:
+        """Non-foundation results should still expose one deterministic comparison key."""
+        bench = _PlainBenchmark(
+            DiffBioBenchmarkConfig(name="singlecell/plain_bench", domain="singlecell"),
+            quick=True,
+        )
+
+        result = bench.run()
+
+        assert result.metadata["comparison_axes"] == ["dataset", "task"]
+        assert result.metadata["comparison_key"] == {
+            "dataset": "plain_dataset",
+            "task": "plain_task",
+        }
 
     def test_base_result_tolerates_generic_gradient_probe_failures(self) -> None:
         """Unexpected JAX exceptions during gradient probing should not abort the benchmark."""
