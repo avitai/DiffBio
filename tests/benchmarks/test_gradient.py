@@ -6,6 +6,7 @@ Verifies gradient flow checking and the GradientFlowResult dataclass.
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
+import warnings
 
 import jax.numpy as jnp
 import pytest
@@ -105,3 +106,19 @@ class TestCheckGradientFlow:
 
         result = check_gradient_flow(loss_fn, linear_model, x, scale)
         assert result.gradient_norm > 0.0
+
+    def test_no_nnx_value_deprecation_warning(self, linear_model: nnx.Linear) -> None:
+        """Gradient checks should avoid deprecated .value access on NNX variables."""
+        x = jnp.ones((1, 4))
+
+        def loss_fn(model: nnx.Module, inputs: jnp.ndarray) -> jnp.ndarray:
+            return model(inputs).sum()
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", DeprecationWarning)
+            result = check_gradient_flow(loss_fn, linear_model, x)
+
+        assert result.gradient_norm > 0.0
+        assert not any(
+            ".value access is now deprecated" in str(w.message) for w in caught
+        )

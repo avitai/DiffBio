@@ -86,8 +86,15 @@ def to_anndata(data_dict: dict[str, Any]) -> anndata.AnnData:
 
     counts_np = to_dense_array(data_dict["counts"])
 
-    obs_df = pd.DataFrame(data_dict.get("obs", {}))
-    var_df = pd.DataFrame(data_dict.get("var", {}))
+    n_obs, n_vars = counts_np.shape
+    obs_df = pd.DataFrame(
+        data_dict.get("obs", {}),
+        index=[str(i) for i in range(n_obs)],
+    )
+    var_df = pd.DataFrame(
+        data_dict.get("var", {}),
+        index=[str(i) for i in range(n_vars)],
+    )
 
     adata = ad.AnnData(X=counts_np, obs=obs_df, var=var_df)
 

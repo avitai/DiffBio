@@ -57,6 +57,25 @@ except ImportError:
     HAS_OTT = False
 
 
+def _transport_solver_dtype(dtype: jnp.dtype) -> jnp.dtype:
+    """Choose the highest-precision solver dtype supported by the active JAX config."""
+    return jnp.float64 if jax.config.jax_enable_x64 else dtype
+
+
+def _promote_transport_inputs(
+    C: jax.Array,
+    mu: jax.Array,
+    nu: jax.Array,
+    scalar: float | Array,
+) -> tuple[jax.Array, jax.Array, jax.Array, jax.Array]:
+    """Promote OT solver inputs without requesting unsupported float64 precision."""
+    target_dtype = _transport_solver_dtype(C.dtype)
+    C = C.astype(target_dtype)
+    mu = mu.astype(target_dtype)
+    nu = nu.astype(target_dtype)
+    return C, mu, nu, jnp.asarray(scalar, dtype=target_dtype)
+
+
 # ----------------------------------------------------------------------- #
 # Entropic projection via Sinkhorn (requires OTT-JAX)
 # ----------------------------------------------------------------------- #
@@ -90,12 +109,8 @@ def _proj_transport_polytope_entropic_sinkhorn(
         )
         raise ImportError(msg)
 
-    # Upcast to float64 for numerical stability of implicit diff.
     orig_dtype = C.dtype
-    if C.dtype != jnp.float64:
-        C = C.astype(jnp.float64)
-        mu = mu.astype(jnp.float64)
-        nu = nu.astype(jnp.float64)
+    C, mu, nu, epsilon = _promote_transport_inputs(C, mu, nu, epsilon)
 
     # Avoid exact zeros (helps implicit differentiation a lot)
     tiny = 1e-12
@@ -167,15 +182,8 @@ def _proj_transport_polytope_entropic_lbfgs(
         )
         raise ImportError(msg)
 
-    # Upcast to float64 to avoid dtype mismatch in optimistix
-    # L-BFGS when jax_enable_x64=True (L-BFGS history becomes
-    # float64, causing scan dtype errors).
     orig_dtype = C.dtype
-    if C.dtype != jnp.float64:
-        C = C.astype(jnp.float64)
-        mu = mu.astype(jnp.float64)
-        nu = nu.astype(jnp.float64)
-        epsilon = jnp.asarray(epsilon, dtype=jnp.float64)
+    C, mu, nu, epsilon = _promote_transport_inputs(C, mu, nu, epsilon)
 
     mu = jnp.clip(mu, 1e-12)
     nu = jnp.clip(nu, 1e-12)
@@ -295,15 +303,8 @@ def _proj_transport_polytope_pnorm_lbfgs(
         )
         raise ImportError(msg)
 
-    # Upcast to float64 to avoid dtype mismatch in optimistix
-    # L-BFGS when jax_enable_x64=True (L-BFGS history becomes
-    # float64, causing scan dtype errors).
     orig_dtype = C.dtype
-    if C.dtype != jnp.float64:
-        C = C.astype(jnp.float64)
-        mu = mu.astype(jnp.float64)
-        nu = nu.astype(jnp.float64)
-        lam = jnp.asarray(lam, dtype=jnp.float64)
+    C, mu, nu, lam = _promote_transport_inputs(C, mu, nu, lam)
 
     mu = jnp.clip(mu, 1e-12)
     nu = jnp.clip(nu, 1e-12)

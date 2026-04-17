@@ -4,6 +4,8 @@ These methods require optional dependencies (optimistix, lineax, ott-jax).
 Tests are skipped if dependencies are not installed.
 """
 
+import warnings
+
 import jax.numpy as jnp
 import pytest
 
@@ -184,4 +186,25 @@ class TestOTMethod:
                 ot_kwargs={"use_entropic_ot_sinkhorn_on_entropic": False},
             ),
             (x,),
+        )
+
+    @requires_optimistix
+    def test_ot_method_does_not_request_unavailable_float64(self) -> None:
+        from diffbio.core.soft_ops.sorting import argmax
+
+        x = jnp.array([1.0, 5.0, 3.0], dtype=jnp.float32)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", UserWarning)
+            result = argmax(
+                x,
+                axis=0,
+                softness=0.1,
+                mode="smooth",
+                method="ot",
+                ot_kwargs={"use_entropic_ot_sinkhorn_on_entropic": False},
+            )
+
+        assert result.shape == (3,)
+        assert not any(
+            "Explicitly requested dtype float64" in str(w.message) for w in caught
         )

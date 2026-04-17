@@ -6,6 +6,8 @@ Implementation must pass these tests without modification.
 
 from __future__ import annotations
 
+import warnings
+
 import jax.numpy as jnp
 import numpy as np
 import pytest
@@ -170,6 +172,23 @@ class TestToAnnData:
         }
         result = to_anndata(data_dict)
         assert len(result.obsm) == 0
+
+    def test_uses_string_indexes_without_implicit_modification_warning(
+        self,
+        anndata_module,
+        sample_data_dict,
+    ):
+        """AnnData conversion should provide string indexes up front."""
+        from diffbio.sources.anndata_interop import to_anndata
+
+        warning_cls = anndata_module.ImplicitModificationWarning
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", warning_cls)
+            result = to_anndata(sample_data_dict)
+
+        assert not any(issubclass(w.category, warning_cls) for w in caught)
+        assert list(result.obs_names) == [str(i) for i in range(result.n_obs)]
+        assert list(result.var_names) == [str(i) for i in range(result.n_vars)]
 
 
 # =============================================================================
