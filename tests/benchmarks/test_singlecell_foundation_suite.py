@@ -13,6 +13,7 @@ from benchmarks.singlecell.foundation_suite import (
     run_singlecell_foundation_suite,
 )
 from diffbio.operators.foundation_models import (
+    FOUNDATION_BENCHMARK_COMPARISON_AXES,
     GeneformerPrecomputedAdapter,
     ScGPTPrecomputedAdapter,
 )
@@ -144,6 +145,7 @@ class TestSingleCellFoundationSuiteHarness:
         report_b = build_singlecell_foundation_suite_report(results_b)
 
         assert report_a == report_b
+        assert report_a["comparison_axes"] == list(FOUNDATION_BENCHMARK_COMPARISON_AXES)
         assert tuple(report_a["task_order"]) == ("cell_annotation", "batch_correction")
         assert tuple(report_a["tasks"]["cell_annotation"]["model_order"]) == (
             "diffbio_native",
@@ -172,4 +174,10 @@ class TestSingleCellFoundationSuiteHarness:
                 "context_version"
             ]
             == "obs_batch_v1"
+        )
+        assert (
+            report_a["tasks"]["batch_correction"]["models"]["geneformer_precomputed"][
+                "comparison_key"
+            ]["artifact_id"]
+            == "geneformer.v1"
         )

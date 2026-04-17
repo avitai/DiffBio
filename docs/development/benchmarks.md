@@ -179,6 +179,14 @@ also includes `foundation_model` and `comparison_axes` so regression and
 comparison tooling can group by dataset, task, and artifact identity without
 benchmark-specific code.
 
+Shared foundation-suite reports preserve the same contract. Each task report
+now exposes:
+
+- `comparison_axes`: the canonical ordering used for provenance-aware grouping
+- `foundation_model`: normalized per-model provenance when present
+- `comparison_key`: one deterministic row keyed by `comparison_axes`, with
+  `None` for axes that do not apply to a given model
+
 ### Imported Foundation-Model Benchmarks
 
 The current stable imported-model path is **precomputed embeddings**. For

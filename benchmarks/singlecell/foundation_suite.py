@@ -61,9 +61,18 @@ def build_singlecell_foundation_suite_report(
         )
 
     task_order = [task_name for task_name in _TASK_ORDER if task_name in tasks]
+    comparison_axes = next(
+        (
+            task_report["comparison_axes"]
+            for task_name in task_order
+            if (task_report := tasks[task_name]).get("comparison_axes")
+        ),
+        ["dataset", "task"],
+    )
 
     return {
         "suite": "singlecell/foundation_quick_suite",
+        "comparison_axes": comparison_axes,
         "task_order": task_order,
         "suite_scenarios": {
             task_name: SINGLECELL_FOUNDATION_SUITE_SCENARIOS[task_name] for task_name in task_order

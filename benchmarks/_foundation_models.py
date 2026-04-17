@@ -6,15 +6,8 @@ from collections.abc import Callable
 from typing import Any, Protocol, TypeVar
 
 from calibrax.core.result import BenchmarkResult
+from diffbio.operators.foundation_models.contracts import FOUNDATION_BENCHMARK_COMPARISON_AXES
 
-_FOUNDATION_REPORT_TAG_KEYS = (
-    "dataset",
-    "task",
-    "model_family",
-    "adapter_mode",
-    "artifact_id",
-    "preprocessing_version",
-)
 DEFAULT_FOUNDATION_REPORT_METADATA_KEYS = (
     "embedding_source",
     "foundation_source_name",
@@ -55,6 +48,73 @@ def run_foundation_benchmark_suite(
     return results
 
 
+def _get_shared_string_tag(
+    results: dict[str, BenchmarkResult],
+    *,
+    key: str,
+) -> str:
+    """Require one shared string tag value across a report's model results."""
+    values = {model_name: result.tags.get(key) for model_name, result in results.items()}
+    unique_values = {value for value in values.values() if isinstance(value, str)}
+    if len(unique_values) != 1:
+        raise ValueError(f"Foundation benchmark results disagree on shared tag {key!r}: {values}")
+    return unique_values.pop()
+
+
+def _resolve_foundation_comparison_axes(
+    results: dict[str, BenchmarkResult],
+) -> list[str]:
+    """Resolve one shared comparison-axis convention across model results."""
+    rich_axes: list[tuple[str, ...]] = []
+
+    for result in results.values():
+        comparison_axes = result.metadata.get("comparison_axes")
+        if not isinstance(comparison_axes, list | tuple):
+            continue
+        axes_tuple = tuple(str(axis) for axis in comparison_axes)
+        if len(axes_tuple) > 2:
+            rich_axes.append(axes_tuple)
+
+    if not rich_axes:
+        return ["dataset", "task"]
+
+    canonical_axes = rich_axes[0]
+    if any(axes != canonical_axes for axes in rich_axes[1:]):
+        raise ValueError(
+            "Foundation benchmark results disagree on comparison_axes: "
+            f"{[list(axes) for axes in rich_axes]}"
+        )
+
+    return list(canonical_axes)
+
+
+def _extract_foundation_provenance(result: BenchmarkResult) -> dict[str, Any] | None:
+    """Return normalized foundation provenance when present on a result."""
+    foundation_model = result.metadata.get("foundation_model")
+    if not isinstance(foundation_model, dict):
+        return None
+    return dict(foundation_model)
+
+
+def _build_comparison_key(
+    result: BenchmarkResult,
+    *,
+    comparison_axes: list[str],
+    foundation_model: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Build one deterministic comparison-key row for a model result."""
+    comparison_key: dict[str, Any] = {}
+    for axis in comparison_axes:
+        if axis in result.tags:
+            comparison_key[axis] = result.tags[axis]
+            continue
+        if foundation_model is not None and axis in foundation_model:
+            comparison_key[axis] = foundation_model[axis]
+            continue
+        comparison_key[axis] = None
+    return comparison_key
+
+
 def build_foundation_task_report(
     *,
     benchmark_name: str,
@@ -65,28 +125,40 @@ def build_foundation_task_report(
 ) -> dict[str, Any]:
     """Build a deterministic comparison report for one benchmark task."""
     model_order = [name for name in baseline_families if name in results]
+    dataset = _get_shared_string_tag(results, key="dataset")
+    task = _get_shared_string_tag(results, key="task")
+    comparison_axes = _resolve_foundation_comparison_axes(results)
     models: dict[str, Any] = {}
 
     for model_name in model_order:
         result = results[model_name]
+        foundation_model = _extract_foundation_provenance(result)
         metrics = {
             key: float(result.metrics[key].value) for key in metric_keys if key in result.metrics
         }
-        tags = {key: result.tags[key] for key in _FOUNDATION_REPORT_TAG_KEYS if key in result.tags}
+        tags = {
+            key: result.tags[key]
+            for key in FOUNDATION_BENCHMARK_COMPARISON_AXES
+            if key in result.tags
+        }
         metadata = {key: result.metadata[key] for key in metadata_keys if key in result.metadata}
         models[model_name] = {
             "metrics": metrics,
             "tags": tags,
             "metadata": metadata,
+            "foundation_model": foundation_model,
+            "comparison_key": _build_comparison_key(
+                result,
+                comparison_axes=comparison_axes,
+                foundation_model=foundation_model,
+            ),
         }
-
-    dataset = next(iter(results.values())).tags["dataset"]
-    task = next(iter(results.values())).tags["task"]
 
     return {
         "benchmark": benchmark_name,
         "dataset": dataset,
         "task": task,
+        "comparison_axes": comparison_axes,
         "model_order": model_order,
         "models": models,
     }

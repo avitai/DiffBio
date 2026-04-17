@@ -66,9 +66,18 @@ def build_genomics_foundation_suite_report(
         tasks["splice_site"] = build_foundation_splice_site_report(task_results["splice_site"])
 
     task_order = [task_name for task_name in _TASK_ORDER if task_name in tasks]
+    comparison_axes = next(
+        (
+            task_report["comparison_axes"]
+            for task_name in task_order
+            if (task_report := tasks[task_name]).get("comparison_axes")
+        ),
+        ["dataset", "task"],
+    )
 
     return {
         "suite": "genomics/foundation_quick_suite",
+        "comparison_axes": comparison_axes,
         "task_order": task_order,
         "suite_scenarios": {
             task_name: GENOMICS_FOUNDATION_SUITE_SCENARIOS[task_name] for task_name in task_order

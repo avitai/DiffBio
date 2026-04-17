@@ -16,6 +16,7 @@ from benchmarks.genomics.foundation_suite import (
 from diffbio.operators.foundation_models import (
     AdapterMode,
     DNABERT2PrecomputedAdapter,
+    FOUNDATION_BENCHMARK_COMPARISON_AXES,
     FrozenSequenceEncoderAdapter,
     NucleotideTransformerPrecomputedAdapter,
     TransformerSequenceEncoderConfig,
@@ -133,6 +134,7 @@ class TestGenomicsFoundationSuiteHarness:
         report_b = build_genomics_foundation_suite_report(results_b)
 
         assert report_a == report_b
+        assert report_a["comparison_axes"] == list(FOUNDATION_BENCHMARK_COMPARISON_AXES)
         assert tuple(report_a["task_order"]) == ("promoter", "tfbs", "splice_site")
         for task_name in ("promoter", "tfbs", "splice_site"):
             assert tuple(report_a["tasks"][task_name]["model_order"]) == (
@@ -164,3 +166,18 @@ class TestGenomicsFoundationSuiteHarness:
             ]["preprocessing_version"]
             == "bpe_v1"
         )
+        assert (
+            report_a["tasks"]["promoter"]["models"]["diffbio_frozen_encoder"][
+                "comparison_key"
+            ]["adapter_mode"]
+            == "frozen_encoder"
+        )
+        assert report_a["tasks"]["tfbs"]["models"]["dnabert2_precomputed"]["foundation_model"] == {
+            "dataset": "synthetic_genomics",
+            "task": "tfbs",
+            "model_family": "sequence_transformer",
+            "adapter_mode": "precomputed",
+            "artifact_id": "dnabert2.v1",
+            "preprocessing_version": "kmer6_v1",
+            "pooling_strategy": "mean",
+        }

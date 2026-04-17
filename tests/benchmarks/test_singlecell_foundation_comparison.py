@@ -12,6 +12,7 @@ from benchmarks.singlecell.bench_foundation_annotation import (
     build_foundation_annotation_report,
     run_foundation_annotation_suite,
 )
+from diffbio.operators.foundation_models import FOUNDATION_BENCHMARK_COMPARISON_AXES
 from diffbio.operators.foundation_models import (
     GeneformerPrecomputedAdapter,
     ScGPTPrecomputedAdapter,
@@ -111,15 +112,41 @@ class TestSingleCellFoundationComparisonHarness:
         report_b = build_foundation_annotation_report(results_b)
 
         assert report_a == report_b
+        assert report_a["comparison_axes"] == list(FOUNDATION_BENCHMARK_COMPARISON_AXES)
         assert tuple(report_a["model_order"]) == (
             "diffbio_native",
             "geneformer_precomputed",
             "scgpt_precomputed",
         )
+        assert report_a["models"]["diffbio_native"]["comparison_key"] == {
+            "dataset": "immune_human",
+            "task": "cell_annotation",
+            "model_family": None,
+            "adapter_mode": None,
+            "artifact_id": None,
+            "preprocessing_version": None,
+        }
         assert (
             report_a["models"]["geneformer_precomputed"]["tags"]["artifact_id"] == "geneformer.v1"
         )
+        assert report_a["models"]["geneformer_precomputed"]["foundation_model"] == {
+            "dataset": "immune_human",
+            "task": "cell_annotation",
+            "model_family": "single_cell_transformer",
+            "adapter_mode": "precomputed",
+            "artifact_id": "geneformer.v1",
+            "preprocessing_version": "rank_value_v1",
+            "pooling_strategy": "mean",
+        }
         assert report_a["models"]["scgpt_precomputed"]["tags"]["artifact_id"] == "scgpt.v1"
         assert report_a["models"]["scgpt_precomputed"]["tags"]["preprocessing_version"] == (
             "gene_vocab_v1"
         )
+        assert report_a["models"]["scgpt_precomputed"]["comparison_key"] == {
+            "dataset": "immune_human",
+            "task": "cell_annotation",
+            "model_family": "single_cell_transformer",
+            "adapter_mode": "precomputed",
+            "artifact_id": "scgpt.v1",
+            "preprocessing_version": "gene_vocab_v1",
+        }
