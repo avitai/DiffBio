@@ -204,7 +204,7 @@ class DiffBioBenchmark(ABC):
         """Check gradient flow through the operator."""
         try:
             return check_gradient_flow(loss_fn, operator, input_data)
-        except (ValueError, TypeError, RuntimeError) as exc:
+        except Exception as exc:
             # JAX/NNX gradient computation can fail for operators
             # without learnable parameters or incompatible loss_fn
             logger.warning("Gradient check failed: %s", exc)

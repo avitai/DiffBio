@@ -6,10 +6,12 @@ TDD: Define expected behavior of the base class before implementation.
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
+from unittest.mock import patch
 
 import pytest
 
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
+from benchmarks._gradient import GradientFlowResult
 from diffbio.operators.foundation_models import (
     AdapterMode,
     FoundationArtifactSpec,
@@ -106,3 +108,37 @@ class TestDiffBioBenchmarkResultContract:
             "artifact_id",
             "preprocessing_version",
         ]
+
+    def test_base_result_tolerates_generic_gradient_probe_failures(self) -> None:
+        """Unexpected JAX exceptions during gradient probing should not abort the benchmark."""
+        bench = _DummyBenchmark(
+            DiffBioBenchmarkConfig(name="singlecell/foundation_smoke", domain="singlecell"),
+            quick=True,
+        )
+
+        with patch(
+            "benchmarks._base.check_gradient_flow",
+            side_effect=Exception(
+                "couldn't apply typeof to args: (Array([14], dtype=int32), Array([1.0]))"
+            ),
+        ):
+            result = bench.run()
+
+        assert result.metrics["gradient_norm"].value == 0.0
+        assert result.metrics["gradient_nonzero"].value == 0.0
+
+    def test_base_result_preserves_gradient_probe_success(self) -> None:
+        """Successful gradient probes should still propagate their measured values."""
+        bench = _DummyBenchmark(
+            DiffBioBenchmarkConfig(name="singlecell/foundation_smoke", domain="singlecell"),
+            quick=True,
+        )
+
+        with patch(
+            "benchmarks._base.check_gradient_flow",
+            return_value=GradientFlowResult(gradient_norm=3.5, gradient_nonzero=True),
+        ):
+            result = bench.run()
+
+        assert result.metrics["gradient_norm"].value == 3.5
+        assert result.metrics["gradient_nonzero"].value == 1.0
