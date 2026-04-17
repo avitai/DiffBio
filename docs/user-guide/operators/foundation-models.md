@@ -49,6 +49,21 @@ contract today is:
 3. DiffBio aligns rows to the dataset order
 4. downstream DiffBio operators and benchmarks consume the aligned embeddings
 
+## Single-Cell Support Matrix
+
+This is the canonical support matrix for imported single-cell foundation-model
+work. It is derived from the shared benchmark harness and contract tests, not
+from intended future scope.
+
+| Adapter | Stable Mode | Verified Downstream Tasks | Stable Scope Exclusions |
+|---------|-------------|---------------------------|-------------------------|
+| `GeneformerPrecomputedAdapter` | `precomputed` | `cell_annotation`, `batch_correction` | generic checkpoint loading, tokenizer interchange, generic fine-tuning |
+| `ScGPTPrecomputedAdapter` | `precomputed` | `cell_annotation`, `batch_correction` | generic checkpoint loading, tokenizer interchange, generic fine-tuning |
+
+`GRN transfer` remains planned in the single-cell suite scenarios, but it is
+not yet a stable imported-model claim because the imported foundation-model
+path is only benchmarked today on annotation and batch correction.
+
 ### Precomputed Adapter Examples
 
 ```python

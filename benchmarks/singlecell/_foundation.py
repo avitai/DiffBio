@@ -26,6 +26,30 @@ SINGLECELL_FOUNDATION_SUITE_SCENARIOS = {
     "batch_correction": "singlecell/batch_correction",
     "grn_transfer": "singlecell/grn",
 }
+SINGLECELL_FOUNDATION_SUPPORT_MATRIX = {
+    "GeneformerPrecomputedAdapter": {
+        "adapter_key": "geneformer_precomputed",
+        "stable_modes": ("precomputed",),
+        "verified_tasks": ("cell_annotation", "batch_correction"),
+        "planned_tasks": ("grn_transfer",),
+        "stable_scope_exclusions": (
+            "direct_checkpoint_loading",
+            "tokenizer_interchange",
+            "generic_fine_tuning",
+        ),
+    },
+    "ScGPTPrecomputedAdapter": {
+        "adapter_key": "scgpt_precomputed",
+        "stable_modes": ("precomputed",),
+        "verified_tasks": ("cell_annotation", "batch_correction"),
+        "planned_tasks": ("grn_transfer",),
+        "stable_scope_exclusions": (
+            "direct_checkpoint_loading",
+            "tokenizer_interchange",
+            "generic_fine_tuning",
+        ),
+    },
+}
 SINGLECELL_FOUNDATION_DATASET_CONTRACT_KEYS = (
     "counts",
     "batch_labels",

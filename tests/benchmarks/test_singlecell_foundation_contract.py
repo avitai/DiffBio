@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
 from benchmarks.singlecell._foundation import (
     SINGLECELL_FOUNDATION_DATASET_CONTRACT_KEYS,
+    SINGLECELL_FOUNDATION_SUPPORT_MATRIX,
     SINGLECELL_FOUNDATION_SUITE_SCENARIOS,
     compute_annotation_metrics,
     stratified_cell_annotation_split,
@@ -32,6 +35,45 @@ class TestSingleCellFoundationConstants:
             "embeddings",
             "gene_names",
         )
+
+    def test_support_matrix_tracks_only_verified_single_cell_modes(self) -> None:
+        assert SINGLECELL_FOUNDATION_SUPPORT_MATRIX == {
+            "GeneformerPrecomputedAdapter": {
+                "adapter_key": "geneformer_precomputed",
+                "stable_modes": ("precomputed",),
+                "verified_tasks": ("cell_annotation", "batch_correction"),
+                "planned_tasks": ("grn_transfer",),
+                "stable_scope_exclusions": (
+                    "direct_checkpoint_loading",
+                    "tokenizer_interchange",
+                    "generic_fine_tuning",
+                ),
+            },
+            "ScGPTPrecomputedAdapter": {
+                "adapter_key": "scgpt_precomputed",
+                "stable_modes": ("precomputed",),
+                "verified_tasks": ("cell_annotation", "batch_correction"),
+                "planned_tasks": ("grn_transfer",),
+                "stable_scope_exclusions": (
+                    "direct_checkpoint_loading",
+                    "tokenizer_interchange",
+                    "generic_fine_tuning",
+                ),
+            },
+        }
+
+    def test_user_guide_exposes_the_same_single_cell_support_matrix(self) -> None:
+        doc_path = (
+            Path(__file__).resolve().parents[2] / "docs/user-guide/operators/foundation-models.md"
+        )
+        doc = doc_path.read_text(encoding="utf-8")
+
+        assert "## Single-Cell Support Matrix" in doc
+        assert "| `GeneformerPrecomputedAdapter` | `precomputed` |" in doc
+        assert "| `ScGPTPrecomputedAdapter` | `precomputed` |" in doc
+        assert "`cell_annotation`, `batch_correction`" in doc
+        assert "`GRN transfer` remains planned" in doc
+        assert "generic checkpoint loading" in doc
 
 
 class TestStratifiedCellAnnotationSplit:
