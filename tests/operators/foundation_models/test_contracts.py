@@ -7,8 +7,10 @@ from diffbio.operators.foundation_models import (
     AdapterMode,
     DifferentiableFoundationModel,
     FoundationArtifactSpec,
+    FOUNDATION_BENCHMARK_COMPARISON_AXES,
     FoundationModelKind,
     PoolingStrategy,
+    build_foundation_benchmark_metadata,
     TransformerSequenceEncoder,
     TransformerSequenceEncoderConfig,
     build_foundation_model_metadata,
@@ -49,6 +51,60 @@ class TestFoundationArtifactSpec:
                 adapter_mode=AdapterMode.NATIVE_TRAINABLE,
                 pooling_strategy=PoolingStrategy.MEAN,
             )
+
+    def test_benchmark_metadata_adds_dataset_and_task(self) -> None:
+        """Benchmark-facing metadata should include dataset/task explicitly."""
+        spec = FoundationArtifactSpec(
+            model_family=FoundationModelKind.SEQUENCE_TRANSFORMER,
+            artifact_id="diffbio.sequence.v1",
+            preprocessing_version="one_hot_v1",
+            adapter_mode=AdapterMode.FROZEN_ENCODER,
+            pooling_strategy=PoolingStrategy.CLS,
+        )
+
+        benchmark_metadata = build_foundation_benchmark_metadata(
+            build_foundation_model_metadata(spec),
+            dataset="synthetic_genomics",
+            task="promoter_classification",
+        )
+
+        assert benchmark_metadata["dataset"] == "synthetic_genomics"
+        assert benchmark_metadata["task"] == "promoter_classification"
+        assert benchmark_metadata["model_family"] == "sequence_transformer"
+        assert benchmark_metadata["adapter_mode"] == "frozen_encoder"
+        assert benchmark_metadata["artifact_id"] == "diffbio.sequence.v1"
+        assert benchmark_metadata["preprocessing_version"] == "one_hot_v1"
+        assert benchmark_metadata["pooling_strategy"] == "cls"
+
+    def test_benchmark_metadata_rejects_missing_required_field(self) -> None:
+        """Missing required artifact fields should fail contract normalization."""
+        spec = FoundationArtifactSpec(
+            model_family=FoundationModelKind.SEQUENCE_TRANSFORMER,
+            artifact_id="diffbio.sequence.v1",
+            preprocessing_version="one_hot_v1",
+            adapter_mode=AdapterMode.FROZEN_ENCODER,
+            pooling_strategy=PoolingStrategy.CLS,
+        )
+        metadata = build_foundation_model_metadata(spec)
+        metadata.pop("artifact_id")
+
+        with pytest.raises(ValueError, match="artifact_id"):
+            build_foundation_benchmark_metadata(
+                metadata,
+                dataset="synthetic_genomics",
+                task="promoter_classification",
+            )
+
+    def test_benchmark_comparison_axes_match_contract(self) -> None:
+        """Comparison axes should stay aligned with the benchmark metadata contract."""
+        assert list(FOUNDATION_BENCHMARK_COMPARISON_AXES) == [
+            "dataset",
+            "task",
+            "model_family",
+            "adapter_mode",
+            "artifact_id",
+            "preprocessing_version",
+        ]
 
 
 class TestFoundationRegistry:

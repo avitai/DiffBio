@@ -16,13 +16,16 @@ Factory Functions:
 
 from diffbio.operators.foundation_models.contracts import (
     AdapterMode,
+    FOUNDATION_BENCHMARK_COMPARISON_AXES,
     FoundationArtifactSpec,
     FoundationEmbeddingMixin,
     FoundationEmbeddingOperatorConfig,
     FoundationModelKind,
     PoolingStrategy,
+    build_foundation_benchmark_metadata,
     build_foundation_model_metadata,
     create_foundation_model,
+    decode_foundation_model_metadata,
     decode_foundation_text,
     encode_foundation_text,
     get_foundation_model_cls,
@@ -31,6 +34,9 @@ from diffbio.operators.foundation_models.contracts import (
 from diffbio.operators.foundation_models.adapters import (
     FoundationBenchmarkAdapter,
     SequenceFoundationAdapter,
+    create_foundation_adapter,
+    get_foundation_adapter_cls,
+    register_foundation_adapter,
 )
 from diffbio.operators.foundation_models.embedding_probe import (
     EmbeddingProbeConfig,
@@ -72,6 +78,7 @@ __all__ = [
     "SequenceFoundationAdapter",
     "SequencePrecomputedAdapter",
     "AdapterMode",
+    "FOUNDATION_BENCHMARK_COMPARISON_AXES",
     "FoundationArtifactSpec",
     "FoundationEmbeddingMixin",
     "FoundationEmbeddingOperatorConfig",
@@ -80,12 +87,17 @@ __all__ = [
     "SingleCellPrecomputedAdapter",
     "TransformerSequenceEncoder",
     "TransformerSequenceEncoderConfig",
+    "build_foundation_benchmark_metadata",
     "build_foundation_model_metadata",
+    "create_foundation_adapter",
     "create_foundation_model",
     "create_dna_encoder",
+    "decode_foundation_model_metadata",
     "decode_foundation_text",
     "encode_foundation_text",
+    "get_foundation_adapter_cls",
     "get_foundation_model_cls",
     "create_rna_encoder",
+    "register_foundation_adapter",
     "register_foundation_model",
 ]

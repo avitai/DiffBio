@@ -186,6 +186,20 @@ single-cell workloads, benchmarks consume a `SingleCellPrecomputedAdapter`
 implementation, align artifact rows by `cell_ids`, and then run the normal
 DiffBio downstream benchmark.
 
+Imported foundation-model benchmarks must expose one shared metadata contract
+at the benchmark layer. In addition to benchmark tags, the promoted
+`foundation_model` metadata now carries:
+
+- `dataset`
+- `task`
+- `model_family`
+- `adapter_mode`
+- `artifact_id`
+- `preprocessing_version`
+
+This keeps artifact identity and benchmark scenario identity on one shared
+schema for comparison, regression, and provenance tooling.
+
 The first supported imported adapters are `GeneformerPrecomputedAdapter` and
 `ScGPTPrecomputedAdapter`. This remains deliberately narrower than generic
 checkpoint support:

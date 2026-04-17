@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
+from typing import Any, Mapping
 
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
@@ -40,6 +40,20 @@ class PoolingStrategy(StrEnum):
     NONE = "none"
     MEAN = "mean"
     CLS = "cls"
+
+
+FOUNDATION_TAG_KEYS = (
+    "model_family",
+    "adapter_mode",
+    "artifact_id",
+    "preprocessing_version",
+)
+FOUNDATION_METADATA_KEYS = (*FOUNDATION_TAG_KEYS, "pooling_strategy")
+FOUNDATION_BENCHMARK_COMPARISON_AXES = (
+    "dataset",
+    "task",
+    *FOUNDATION_TAG_KEYS,
+)
 
 
 @dataclass(frozen=True)
@@ -100,6 +114,44 @@ def decode_foundation_text(value: Array) -> str:
     """Decode a JAX uint8 text array back into an ASCII string."""
     data = bytes(int(item) for item in value.tolist())
     return data.decode("ascii")
+
+
+def decode_foundation_model_metadata(
+    metadata: Mapping[str, Array | str],
+) -> dict[str, str]:
+    """Decode canonical foundation-model metadata into benchmark-friendly strings."""
+    decoded: dict[str, str] = {}
+    for key in FOUNDATION_METADATA_KEYS:
+        value = metadata.get(key)
+        if value is None:
+            continue
+        if isinstance(value, str):
+            decoded[key] = value
+            continue
+        decoded[key] = decode_foundation_text(value)
+    return decoded
+
+
+def build_foundation_benchmark_metadata(
+    metadata: Mapping[str, Array | str],
+    *,
+    dataset: str,
+    task: str,
+) -> dict[str, str]:
+    """Build the shared benchmark-facing foundation metadata contract."""
+    _validate_ascii_text(dataset, field_name="dataset")
+    _validate_ascii_text(task, field_name="task")
+    decoded = decode_foundation_model_metadata(metadata)
+    missing = [key for key in FOUNDATION_TAG_KEYS if key not in decoded]
+    if missing:
+        missing_fields = ", ".join(missing)
+        raise ValueError(f"foundation metadata missing required field(s): {missing_fields}")
+
+    return {
+        "dataset": dataset,
+        "task": task,
+        **decoded,
+    }
 
 
 def build_foundation_model_metadata(

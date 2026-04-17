@@ -10,6 +10,7 @@ import jax.numpy as jnp
 
 from diffbio.operators.foundation_models.adapters import (
     FoundationBenchmarkAdapterBase,
+    register_foundation_adapter,
 )
 from diffbio.operators.foundation_models.contracts import (
     AdapterMode,
@@ -235,3 +236,12 @@ class ScGPTPrecomputedAdapter(SingleCellPrecomputedAdapter):
             source_name="scgpt_precomputed",
             extra_metadata=extra_metadata,
         )
+
+
+register_foundation_adapter("dnabert2_precomputed", DNABERT2PrecomputedAdapter)
+register_foundation_adapter(
+    "nucleotide_transformer_precomputed",
+    NucleotideTransformerPrecomputedAdapter,
+)
+register_foundation_adapter("geneformer_precomputed", GeneformerPrecomputedAdapter)
+register_foundation_adapter("scgpt_precomputed", ScGPTPrecomputedAdapter)

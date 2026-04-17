@@ -22,26 +22,13 @@ from calibrax.core.result import BenchmarkResult
 from calibrax.profiling.timing import TimingCollector
 
 from benchmarks._gradient import GradientFlowResult, check_gradient_flow
-from diffbio.operators.foundation_models.contracts import decode_foundation_text
+from diffbio.operators.foundation_models.contracts import (
+    FOUNDATION_BENCHMARK_COMPARISON_AXES,
+    FOUNDATION_TAG_KEYS,
+    build_foundation_benchmark_metadata,
+)
 
 logger = logging.getLogger(__name__)
-
-_FOUNDATION_TAG_KEYS = (
-    "model_family",
-    "adapter_mode",
-    "artifact_id",
-    "preprocessing_version",
-)
-_FOUNDATION_METADATA_KEYS = (*_FOUNDATION_TAG_KEYS, "pooling_strategy")
-_FOUNDATION_COMPARISON_AXES = [
-    "dataset",
-    "task",
-    "model_family",
-    "adapter_mode",
-    "artifact_id",
-    "preprocessing_version",
-]
-
 
 @dataclass(frozen=True, kw_only=True)
 class DiffBioBenchmarkConfig:
@@ -138,7 +125,11 @@ class DiffBioBenchmark(ABC):
         benchmark_tags = core.get("benchmark_tags", {})
         benchmark_metadata = core.get("benchmark_metadata", {})
         result_data = core.get("result_data", {})
-        foundation_metadata = self._extract_foundation_metadata(result_data)
+        foundation_metadata = self._extract_foundation_metadata(
+            result_data,
+            dataset=dataset_name,
+            task=task_name,
+        )
 
         # Gradient flow check
         logger.info("Checking gradient flow...")
@@ -172,7 +163,7 @@ class DiffBioBenchmark(ABC):
             "framework": "diffbio",
             "task": task_name,
         }
-        for key in _FOUNDATION_TAG_KEYS:
+        for key in FOUNDATION_TAG_KEYS:
             if key in foundation_metadata:
                 tags[key] = foundation_metadata[key]
         tags.update(benchmark_tags)
@@ -181,7 +172,9 @@ class DiffBioBenchmark(ABC):
             "dataset_info": dataset_info,
             "baselines": {k: p.to_dict() for k, p in baselines.items()},
             "comparison_axes": (
-                _FOUNDATION_COMPARISON_AXES if foundation_metadata else ["dataset", "task"]
+                list(FOUNDATION_BENCHMARK_COMPARISON_AXES)
+                if foundation_metadata
+                else ["dataset", "task"]
             ),
         }
         if foundation_metadata:
@@ -271,25 +264,24 @@ class DiffBioBenchmark(ABC):
             logger.info("%s", row)
 
     @staticmethod
-    def _extract_foundation_metadata(result_data: Any) -> dict[str, str]:
-        """Decode optional foundation-model metadata from operator outputs."""
+    def _extract_foundation_metadata(
+        result_data: Any,
+        *,
+        dataset: str,
+        task: str,
+    ) -> dict[str, str]:
+        """Decode and validate benchmark-facing foundation metadata."""
         if not isinstance(result_data, dict):
             return {}
 
         raw_metadata = result_data.get("foundation_model")
         if not isinstance(raw_metadata, dict):
             return {}
-
-        decoded: dict[str, str] = {}
-        for key in _FOUNDATION_METADATA_KEYS:
-            value = raw_metadata.get(key)
-            if value is None:
-                continue
-            if isinstance(value, str):
-                decoded[key] = value
-                continue
-            decoded[key] = decode_foundation_text(value)
-        return decoded
+        return build_foundation_benchmark_metadata(
+            raw_metadata,
+            dataset=dataset,
+            task=task,
+        )
 
     @classmethod
     def cli_main(

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import jax.numpy as jnp
 import numpy as np
+import pytest
 from flax import nnx
 
 from diffbio.operators.foundation_models import (
@@ -33,6 +34,24 @@ def _make_one_hot_sequences() -> jnp.ndarray:
 
 class TestFrozenSequenceEncoderAdapter:
     """Tests for the frozen in-process sequence adapter."""
+
+    def test_rejects_non_frozen_adapter_mode(self) -> None:
+        with pytest.raises(ValueError, match="frozen_encoder"):
+            FrozenSequenceEncoderAdapter(
+                config=TransformerSequenceEncoderConfig(
+                    hidden_dim=8,
+                    num_layers=1,
+                    num_heads=2,
+                    intermediate_dim=16,
+                    max_length=10,
+                    dropout_rate=0.0,
+                    pooling="mean",
+                    artifact_id="diffbio.sequence_native",
+                    preprocessing_version="one_hot_v1",
+                    adapter_mode=AdapterMode.NATIVE_TRAINABLE,
+                ),
+                rngs=nnx.Rngs(42),
+            )
 
     def test_exposes_frozen_encoder_metadata(self) -> None:
         adapter = FrozenSequenceEncoderAdapter(

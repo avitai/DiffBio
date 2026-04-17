@@ -95,6 +95,8 @@ class TestDiffBioBenchmarkResultContract:
         assert result.tags["adapter_mode"] == "frozen_encoder"
         assert result.tags["artifact_id"] == "diffbio.sequence.smoke"
         assert result.tags["preprocessing_version"] == "one_hot_v1"
+        assert result.metadata["foundation_model"]["dataset"] == "dummy_dataset"
+        assert result.metadata["foundation_model"]["task"] == "foundation_smoke"
         assert result.metadata["foundation_model"]["pooling_strategy"] == "cls"
         assert result.metadata["comparison_axes"] == [
             "dataset",

@@ -8,7 +8,10 @@ from typing import Any
 import jax.numpy as jnp
 from flax import nnx
 
-from diffbio.operators.foundation_models.adapters import FoundationBenchmarkAdapterBase
+from diffbio.operators.foundation_models.adapters import (
+    FoundationBenchmarkAdapterBase,
+    register_foundation_adapter,
+)
 from diffbio.operators.foundation_models.contracts import AdapterMode
 from diffbio.operators.foundation_models.transformer_encoder import (
     TransformerSequenceEncoder,
@@ -51,3 +54,6 @@ class FrozenSequenceEncoderAdapter(FoundationBenchmarkAdapterBase):
             )
         result, _, _ = self.encoder.apply({"sequence": sequences}, {}, None)
         return jnp.asarray(result["embeddings"], dtype=jnp.float32)
+
+
+register_foundation_adapter("diffbio_frozen_encoder", FrozenSequenceEncoderAdapter)
