@@ -187,6 +187,15 @@ now exposes:
 - `comparison_key`: one deterministic row keyed by `comparison_axes`, with
   `None` for axes that do not apply to a given model
 
+Each full foundation-suite report also stores:
+
+- `regression_expectations`: the canonical `comparison_axes`, `task_order`,
+  and per-task `required_models` ordering that later comparison or regression
+  tooling can enforce
+
+Use `save_foundation_suite_report()` from `benchmarks._foundation_models` to
+persist these deterministic suite reports as canonical JSON.
+
 ### Imported Foundation-Model Benchmarks
 
 The current stable imported-model path is **precomputed embeddings**. For

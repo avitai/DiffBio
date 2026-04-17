@@ -7,6 +7,7 @@ from typing import Any
 
 from calibrax.core.result import BenchmarkResult
 
+from benchmarks._foundation_models import build_foundation_suite_report
 from benchmarks.genomics._foundation import GENOMICS_FOUNDATION_SUITE_SCENARIOS
 from benchmarks.genomics.bench_promoter import (
     build_foundation_promoter_report,
@@ -56,31 +57,20 @@ def build_genomics_foundation_suite_report(
     task_results: dict[str, dict[str, BenchmarkResult]],
 ) -> dict[str, Any]:
     """Build a deterministic report over the genomics quick suite."""
-    tasks: dict[str, Any] = {}
+    task_reports: dict[str, Any] = {}
 
     if "promoter" in task_results:
-        tasks["promoter"] = build_foundation_promoter_report(task_results["promoter"])
+        task_reports["promoter"] = build_foundation_promoter_report(task_results["promoter"])
     if "tfbs" in task_results:
-        tasks["tfbs"] = build_foundation_tfbs_report(task_results["tfbs"])
+        task_reports["tfbs"] = build_foundation_tfbs_report(task_results["tfbs"])
     if "splice_site" in task_results:
-        tasks["splice_site"] = build_foundation_splice_site_report(task_results["splice_site"])
+        task_reports["splice_site"] = build_foundation_splice_site_report(
+            task_results["splice_site"]
+        )
 
-    task_order = [task_name for task_name in _TASK_ORDER if task_name in tasks]
-    comparison_axes = next(
-        (
-            task_report["comparison_axes"]
-            for task_name in task_order
-            if (task_report := tasks[task_name]).get("comparison_axes")
-        ),
-        ["dataset", "task"],
+    return build_foundation_suite_report(
+        suite_name="genomics/foundation_quick_suite",
+        task_order=_TASK_ORDER,
+        task_reports=task_reports,
+        task_scenarios=GENOMICS_FOUNDATION_SUITE_SCENARIOS,
     )
-
-    return {
-        "suite": "genomics/foundation_quick_suite",
-        "comparison_axes": comparison_axes,
-        "task_order": task_order,
-        "suite_scenarios": {
-            task_name: GENOMICS_FOUNDATION_SUITE_SCENARIOS[task_name] for task_name in task_order
-        },
-        "tasks": tasks,
-    }

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, Protocol, TypeVar
 
 from calibrax.core.result import BenchmarkResult
@@ -144,3 +146,55 @@ def build_foundation_task_report(
         "model_order": model_order,
         "models": models,
     }
+
+
+def build_foundation_suite_report(
+    *,
+    suite_name: str,
+    task_order: tuple[str, ...],
+    task_reports: dict[str, dict[str, Any]],
+    task_scenarios: dict[str, Any],
+) -> dict[str, Any]:
+    """Build one deterministic suite report plus regression expectations."""
+    ordered_tasks = [task_name for task_name in task_order if task_name in task_reports]
+    comparison_axes = next(
+        (
+            report["comparison_axes"]
+            for task_name in ordered_tasks
+            if (report := task_reports[task_name]).get("comparison_axes")
+        ),
+        ["dataset", "task"],
+    )
+
+    regression_expectations = {
+        "comparison_axes": list(comparison_axes),
+        "task_order": ordered_tasks,
+        "required_models": {
+            task_name: list(task_reports[task_name].get("model_order", ()))
+            for task_name in ordered_tasks
+        },
+    }
+
+    return {
+        "suite": suite_name,
+        "comparison_axes": comparison_axes,
+        "task_order": ordered_tasks,
+        "suite_scenarios": {
+            task_name: task_scenarios[task_name] for task_name in ordered_tasks
+        },
+        "regression_expectations": regression_expectations,
+        "tasks": {task_name: task_reports[task_name] for task_name in ordered_tasks},
+    }
+
+
+def save_foundation_suite_report(
+    report: dict[str, Any],
+    output_path: Path,
+) -> Path:
+    """Persist one foundation-suite report as canonical JSON."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        json.dumps(report, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return output_path

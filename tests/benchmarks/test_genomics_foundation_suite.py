@@ -7,8 +7,10 @@ from typing import Any
 
 import jax.numpy as jnp
 import numpy as np
+import json
 from flax import nnx
 
+from benchmarks._foundation_models import save_foundation_suite_report
 from benchmarks.genomics.foundation_suite import (
     build_genomics_foundation_suite_report,
     run_genomics_foundation_suite,
@@ -136,6 +138,30 @@ class TestGenomicsFoundationSuiteHarness:
         assert report_a == report_b
         assert report_a["comparison_axes"] == list(FOUNDATION_BENCHMARK_COMPARISON_AXES)
         assert tuple(report_a["task_order"]) == ("promoter", "tfbs", "splice_site")
+        assert report_a["regression_expectations"] == {
+            "comparison_axes": list(FOUNDATION_BENCHMARK_COMPARISON_AXES),
+            "task_order": ["promoter", "tfbs", "splice_site"],
+            "required_models": {
+                "promoter": [
+                    "diffbio_native",
+                    "diffbio_frozen_encoder",
+                    "dnabert2_precomputed",
+                    "nucleotide_transformer_precomputed",
+                ],
+                "tfbs": [
+                    "diffbio_native",
+                    "diffbio_frozen_encoder",
+                    "dnabert2_precomputed",
+                    "nucleotide_transformer_precomputed",
+                ],
+                "splice_site": [
+                    "diffbio_native",
+                    "diffbio_frozen_encoder",
+                    "dnabert2_precomputed",
+                    "nucleotide_transformer_precomputed",
+                ],
+            },
+        }
         for task_name in ("promoter", "tfbs", "splice_site"):
             assert tuple(report_a["tasks"][task_name]["model_order"]) == (
                 "diffbio_native",
@@ -181,3 +207,10 @@ class TestGenomicsFoundationSuiteHarness:
             "preprocessing_version": "kmer6_v1",
             "pooling_strategy": "mean",
         }
+
+        output_path = save_foundation_suite_report(
+            report_a,
+            tmp_path / "genomics_foundation_suite.json",
+        )
+        saved_report = json.loads(output_path.read_text(encoding="utf-8"))
+        assert saved_report == report_a

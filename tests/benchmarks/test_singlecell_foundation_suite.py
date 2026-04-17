@@ -7,7 +7,9 @@ from typing import Any
 
 import jax.numpy as jnp
 import numpy as np
+import json
 
+from benchmarks._foundation_models import save_foundation_suite_report
 from benchmarks.singlecell.foundation_suite import (
     build_singlecell_foundation_suite_report,
     run_singlecell_foundation_suite,
@@ -147,6 +149,22 @@ class TestSingleCellFoundationSuiteHarness:
         assert report_a == report_b
         assert report_a["comparison_axes"] == list(FOUNDATION_BENCHMARK_COMPARISON_AXES)
         assert tuple(report_a["task_order"]) == ("cell_annotation", "batch_correction")
+        assert report_a["regression_expectations"] == {
+            "comparison_axes": list(FOUNDATION_BENCHMARK_COMPARISON_AXES),
+            "task_order": ["cell_annotation", "batch_correction"],
+            "required_models": {
+                "cell_annotation": [
+                    "diffbio_native",
+                    "geneformer_precomputed",
+                    "scgpt_precomputed",
+                ],
+                "batch_correction": [
+                    "diffbio_native",
+                    "geneformer_precomputed",
+                    "scgpt_precomputed",
+                ],
+            },
+        }
         assert tuple(report_a["tasks"]["cell_annotation"]["model_order"]) == (
             "diffbio_native",
             "geneformer_precomputed",
@@ -181,3 +199,10 @@ class TestSingleCellFoundationSuiteHarness:
             ]["artifact_id"]
             == "geneformer.v1"
         )
+
+        output_path = save_foundation_suite_report(
+            report_a,
+            tmp_path / "singlecell_foundation_suite.json",
+        )
+        saved_report = json.loads(output_path.read_text(encoding="utf-8"))
+        assert saved_report == report_a
