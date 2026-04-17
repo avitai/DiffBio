@@ -205,6 +205,4 @@ class TestOTMethod:
             )
 
         assert result.shape == (3,)
-        assert not any(
-            "Explicitly requested dtype float64" in str(w.message) for w in caught
-        )
+        assert not any("Explicitly requested dtype float64" in str(w.message) for w in caught)

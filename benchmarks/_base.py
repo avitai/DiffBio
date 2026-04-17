@@ -30,6 +30,7 @@ from diffbio.operators.foundation_models.contracts import (
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass(frozen=True, kw_only=True)
 class DiffBioBenchmarkConfig:
     """Configuration shared by all DiffBio benchmarks.

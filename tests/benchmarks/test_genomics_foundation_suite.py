@@ -167,9 +167,9 @@ class TestGenomicsFoundationSuiteHarness:
             == "bpe_v1"
         )
         assert (
-            report_a["tasks"]["promoter"]["models"]["diffbio_frozen_encoder"][
-                "comparison_key"
-            ]["adapter_mode"]
+            report_a["tasks"]["promoter"]["models"]["diffbio_frozen_encoder"]["comparison_key"][
+                "adapter_mode"
+            ]
             == "frozen_encoder"
         )
         assert report_a["tasks"]["tfbs"]["models"]["dnabert2_precomputed"]["foundation_model"] == {

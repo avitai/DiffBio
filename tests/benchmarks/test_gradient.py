@@ -119,6 +119,4 @@ class TestCheckGradientFlow:
             result = check_gradient_flow(loss_fn, linear_model, x)
 
         assert result.gradient_norm > 0.0
-        assert not any(
-            ".value access is now deprecated" in str(w.message) for w in caught
-        )
+        assert not any(".value access is now deprecated" in str(w.message) for w in caught)
