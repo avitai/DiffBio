@@ -149,21 +149,44 @@ class TestSingleCellFoundationSuiteHarness:
         assert report_a == report_b
         assert report_a["comparison_axes"] == list(FOUNDATION_BENCHMARK_COMPARISON_AXES)
         assert tuple(report_a["task_order"]) == ("cell_annotation", "batch_correction")
-        assert report_a["regression_expectations"] == {
-            "comparison_axes": list(FOUNDATION_BENCHMARK_COMPARISON_AXES),
-            "task_order": ["cell_annotation", "batch_correction"],
-            "required_models": {
-                "cell_annotation": [
-                    "diffbio_native",
-                    "geneformer_precomputed",
-                    "scgpt_precomputed",
-                ],
-                "batch_correction": [
-                    "diffbio_native",
-                    "geneformer_precomputed",
-                    "scgpt_precomputed",
-                ],
-            },
+        assert report_a["regression_expectations"]["comparison_axes"] == list(
+            FOUNDATION_BENCHMARK_COMPARISON_AXES
+        )
+        assert report_a["regression_expectations"]["task_order"] == [
+            "cell_annotation",
+            "batch_correction",
+        ]
+        assert report_a["regression_expectations"]["required_models"] == {
+            "cell_annotation": [
+                "diffbio_native",
+                "geneformer_precomputed",
+                "scgpt_precomputed",
+            ],
+            "batch_correction": [
+                "diffbio_native",
+                "geneformer_precomputed",
+                "scgpt_precomputed",
+            ],
+        }
+        assert (
+            report_a["regression_expectations"]["metric_defs"]["accuracy"]["direction"]
+            == "higher"
+        )
+        assert (
+            report_a["regression_expectations"]["metric_defs"]["train_loss"]["direction"]
+            == "lower"
+        )
+        assert report_a["regression_expectations"]["metric_defs"]["aggregate_score"] == {
+            "name": "aggregate_score",
+            "unit": "",
+            "direction": "higher",
+            "group": "quality",
+            "priority": "primary",
+            "description": "Aggregate scIB integration score",
+        }
+        assert report_a["regression_expectations"]["calibrax"] == {
+            "baseline_name": "main",
+            "threshold": 0.05,
         }
         assert tuple(report_a["tasks"]["cell_annotation"]["model_order"]) == (
             "diffbio_native",

@@ -138,29 +138,45 @@ class TestGenomicsFoundationSuiteHarness:
         assert report_a == report_b
         assert report_a["comparison_axes"] == list(FOUNDATION_BENCHMARK_COMPARISON_AXES)
         assert tuple(report_a["task_order"]) == ("promoter", "tfbs", "splice_site")
-        assert report_a["regression_expectations"] == {
-            "comparison_axes": list(FOUNDATION_BENCHMARK_COMPARISON_AXES),
-            "task_order": ["promoter", "tfbs", "splice_site"],
-            "required_models": {
-                "promoter": [
-                    "diffbio_native",
-                    "diffbio_frozen_encoder",
-                    "dnabert2_precomputed",
-                    "nucleotide_transformer_precomputed",
-                ],
-                "tfbs": [
-                    "diffbio_native",
-                    "diffbio_frozen_encoder",
-                    "dnabert2_precomputed",
-                    "nucleotide_transformer_precomputed",
-                ],
-                "splice_site": [
-                    "diffbio_native",
-                    "diffbio_frozen_encoder",
-                    "dnabert2_precomputed",
-                    "nucleotide_transformer_precomputed",
-                ],
-            },
+        assert report_a["regression_expectations"]["comparison_axes"] == list(
+            FOUNDATION_BENCHMARK_COMPARISON_AXES
+        )
+        assert report_a["regression_expectations"]["task_order"] == [
+            "promoter",
+            "tfbs",
+            "splice_site",
+        ]
+        assert report_a["regression_expectations"]["required_models"] == {
+            "promoter": [
+                "diffbio_native",
+                "diffbio_frozen_encoder",
+                "dnabert2_precomputed",
+                "nucleotide_transformer_precomputed",
+            ],
+            "tfbs": [
+                "diffbio_native",
+                "diffbio_frozen_encoder",
+                "dnabert2_precomputed",
+                "nucleotide_transformer_precomputed",
+            ],
+            "splice_site": [
+                "diffbio_native",
+                "diffbio_frozen_encoder",
+                "dnabert2_precomputed",
+                "nucleotide_transformer_precomputed",
+            ],
+        }
+        assert (
+            report_a["regression_expectations"]["metric_defs"]["accuracy"]["direction"]
+            == "higher"
+        )
+        assert (
+            report_a["regression_expectations"]["metric_defs"]["train_loss"]["direction"]
+            == "lower"
+        )
+        assert report_a["regression_expectations"]["calibrax"] == {
+            "baseline_name": "main",
+            "threshold": 0.05,
         }
         for task_name in ("promoter", "tfbs", "splice_site"):
             assert tuple(report_a["tasks"][task_name]["model_order"]) == (

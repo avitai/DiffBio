@@ -190,11 +190,14 @@ now exposes:
 Each full foundation-suite report also stores:
 
 - `regression_expectations`: the canonical `comparison_axes`, `task_order`,
-  and per-task `required_models` ordering that later comparison or regression
-  tooling can enforce
+  per-task `required_models` ordering, Calibrax-native `metric_defs`, and the
+  stored `calibrax` baseline/threshold policy used for regression checks
 
 Use `save_foundation_suite_report()` from `benchmarks._foundation_models` to
 persist these deterministic suite reports as canonical JSON.
+Use `save_foundation_suite_run()` to mirror the same suite report into a
+Calibrax `Store`, and `check_foundation_suite_regressions()` to run the stored
+suite against the `main` baseline with the persisted threshold policy.
 
 ### Imported Foundation-Model Benchmarks
 
