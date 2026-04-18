@@ -167,12 +167,10 @@ class TestGenomicsFoundationSuiteHarness:
             ],
         }
         assert (
-            report_a["regression_expectations"]["metric_defs"]["accuracy"]["direction"]
-            == "higher"
+            report_a["regression_expectations"]["metric_defs"]["accuracy"]["direction"] == "higher"
         )
         assert (
-            report_a["regression_expectations"]["metric_defs"]["train_loss"]["direction"]
-            == "lower"
+            report_a["regression_expectations"]["metric_defs"]["train_loss"]["direction"] == "lower"
         )
         assert report_a["regression_expectations"]["calibrax"] == {
             "baseline_name": "main",

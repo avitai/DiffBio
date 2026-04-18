@@ -344,9 +344,7 @@ def build_foundation_suite_report(
         "suite": suite_name,
         "comparison_axes": comparison_axes,
         "task_order": ordered_tasks,
-        "suite_scenarios": {
-            task_name: task_scenarios[task_name] for task_name in ordered_tasks
-        },
+        "suite_scenarios": {task_name: task_scenarios[task_name] for task_name in ordered_tasks},
         "regression_expectations": regression_expectations,
         "tasks": {task_name: task_reports[task_name] for task_name in ordered_tasks},
     }
@@ -404,11 +402,7 @@ def build_foundation_suite_run(
                     f"{benchmark_name}/{model_name}"
                 )
 
-            tags = {
-                axis: str(value)
-                for axis, value in comparison_key.items()
-                if value is not None
-            }
+            tags = {axis: str(value) for axis, value in comparison_key.items() if value is not None}
             points.append(
                 Point(
                     name=benchmark_name,
@@ -486,9 +480,7 @@ def check_foundation_suite_regressions(
     calibrax_policy = regression_expectations.get("calibrax", {})
     if not isinstance(calibrax_policy, dict):
         raise ValueError("Foundation suite report regression_expectations.calibrax must be a dict")
-    threshold = float(
-        calibrax_policy.get("threshold", DEFAULT_FOUNDATION_REGRESSION_THRESHOLD)
-    )
+    threshold = float(calibrax_policy.get("threshold", DEFAULT_FOUNDATION_REGRESSION_THRESHOLD))
 
     baseline = store.get_baseline()
     if baseline is None:

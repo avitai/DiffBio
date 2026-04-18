@@ -135,9 +135,7 @@ class TestFoundationSuiteCalibraxGovernance:
         assert run.metric_defs["train_loss"].direction == MetricDirection.LOWER
         assert len(run.points) == 2
 
-        native_point = next(
-            point for point in run.points if "artifact_id" not in point.tags
-        )
+        native_point = next(point for point in run.points if "artifact_id" not in point.tags)
         assert native_point.name == "singlecell/foundation_annotation"
         assert native_point.scenario == "immune_human"
         assert native_point.tags == {
