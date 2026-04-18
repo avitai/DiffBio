@@ -62,7 +62,8 @@ from intended future scope.
 
 `GRN transfer` remains planned in the single-cell suite scenarios, but it is
 not yet a stable imported-model claim because the imported foundation-model
-path is only benchmarked today on annotation and batch correction.
+path is only benchmarked today on annotation and batch correction. Phase 3
+keeps GRN outside stable imported-model promotion until a dedicated foundation-aware GRN harness exists.
 
 ### Precomputed Adapter Examples
 
@@ -176,6 +177,10 @@ results = run_singlecell_foundation_suite(
 )
 report = build_singlecell_foundation_suite_report(results)
 ```
+
+That suite report also carries one canonical `deferred_tasks` block so planned
+but unverified work stays explicit in stored artifacts. Today that means
+`grn_transfer` is marked deferred from Phase 3 stable scope until a dedicated foundation-aware GRN harness exists.
 
 When scGPT artifacts depend on explicit batch context, that requirement is
 carried in benchmark metadata through `requires_batch_context`, `batch_key`,

@@ -310,10 +310,21 @@ def build_foundation_suite_report(
     task_order: tuple[str, ...],
     task_reports: dict[str, dict[str, Any]],
     task_scenarios: dict[str, Any],
+    deferred_tasks: dict[str, Any] | None = None,
     relative_regression_threshold: float = DEFAULT_FOUNDATION_REGRESSION_THRESHOLD,
 ) -> dict[str, Any]:
     """Build one deterministic suite report plus regression expectations."""
     ordered_tasks = [task_name for task_name in task_order if task_name in task_reports]
+    deferred_task_payload: dict[str, Any] = {}
+    if deferred_tasks is not None:
+        overlapping_tasks = sorted(set(ordered_tasks) & set(deferred_tasks))
+        if overlapping_tasks:
+            raise ValueError(
+                f"Foundation suite deferred_tasks overlap executed tasks: {overlapping_tasks}"
+            )
+        deferred_task_payload = {
+            task_name: deferred_tasks[task_name] for task_name in sorted(deferred_tasks)
+        }
     comparison_axes = next(
         (
             report["comparison_axes"]
@@ -345,6 +356,7 @@ def build_foundation_suite_report(
         "comparison_axes": comparison_axes,
         "task_order": ordered_tasks,
         "suite_scenarios": {task_name: task_scenarios[task_name] for task_name in ordered_tasks},
+        "deferred_tasks": deferred_task_payload,
         "regression_expectations": regression_expectations,
         "tasks": {task_name: task_reports[task_name] for task_name in ordered_tasks},
     }
@@ -419,6 +431,7 @@ def build_foundation_suite_run(
         "suite": report.get("suite"),
         "comparison_axes": report.get("comparison_axes"),
         "task_order": report.get("task_order"),
+        "deferred_tasks": report.get("deferred_tasks", {}),
         "regression_expectations": regression_expectations,
     }
     if metadata is not None:

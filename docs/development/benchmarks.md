@@ -192,6 +192,9 @@ Each full foundation-suite report also stores:
 - `regression_expectations`: the canonical `comparison_axes`, `task_order`,
   per-task `required_models` ordering, Calibrax-native `metric_defs`, and the
   stored `calibrax` baseline/threshold policy used for regression checks
+- `deferred_tasks`: planned-but-unverified tasks that stay outside the current
+  stable promotion scope, with the required follow-on harness or evidence made
+  explicit in the saved report and Calibrax run metadata
 
 Use `save_foundation_suite_report()` from `benchmarks._foundation_models` to
 persist these deterministic suite reports as canonical JSON.
@@ -231,6 +234,9 @@ checkpoint support:
   DiffBio, Geneformer, and scGPT adapters for annotation and batch correction
 - supported: explicit scGPT batch-context metadata in comparison reports via
   `requires_batch_context`, `batch_key`, and `context_version`
+- supported: canonical single-cell deferral metadata that keeps
+  `grn_transfer` outside Phase 3 stable promotion until a dedicated
+  foundation-aware GRN harness exists
 - supported: a shared `SequencePrecomputedAdapter` contract plus a genomics
   quick-suite scaffold for promoter, TFBS, and splice-site tasks
 - supported: `FrozenSequenceEncoderAdapter` for in-process frozen sequence

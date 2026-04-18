@@ -14,6 +14,7 @@ from benchmarks.singlecell.foundation_suite import (
     build_singlecell_foundation_suite_report,
     run_singlecell_foundation_suite,
 )
+from benchmarks.singlecell._foundation import SINGLECELL_FOUNDATION_DEFERRED_TASKS
 from diffbio.operators.foundation_models import (
     FOUNDATION_BENCHMARK_COMPARISON_AXES,
     GeneformerPrecomputedAdapter,
@@ -149,6 +150,7 @@ class TestSingleCellFoundationSuiteHarness:
         assert report_a == report_b
         assert report_a["comparison_axes"] == list(FOUNDATION_BENCHMARK_COMPARISON_AXES)
         assert tuple(report_a["task_order"]) == ("cell_annotation", "batch_correction")
+        assert report_a["deferred_tasks"] == SINGLECELL_FOUNDATION_DEFERRED_TASKS
         assert report_a["regression_expectations"]["comparison_axes"] == list(
             FOUNDATION_BENCHMARK_COMPARISON_AXES
         )

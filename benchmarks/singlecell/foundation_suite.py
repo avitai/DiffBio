@@ -8,7 +8,10 @@ from typing import Any
 from calibrax.core.result import BenchmarkResult
 
 from benchmarks._foundation_models import build_foundation_suite_report
-from benchmarks.singlecell._foundation import SINGLECELL_FOUNDATION_SUITE_SCENARIOS
+from benchmarks.singlecell._foundation import (
+    SINGLECELL_FOUNDATION_DEFERRED_TASKS,
+    SINGLECELL_FOUNDATION_SUITE_SCENARIOS,
+)
 from benchmarks.singlecell.bench_batch_correction import (
     build_foundation_batch_correction_report,
     run_foundation_batch_correction_suite,
@@ -66,4 +69,5 @@ def build_singlecell_foundation_suite_report(
         task_order=_TASK_ORDER,
         task_reports=task_reports,
         task_scenarios=SINGLECELL_FOUNDATION_SUITE_SCENARIOS,
+        deferred_tasks=SINGLECELL_FOUNDATION_DEFERRED_TASKS,
     )

@@ -9,6 +9,7 @@ import pytest
 
 from benchmarks.singlecell._foundation import (
     SINGLECELL_FOUNDATION_DATASET_CONTRACT_KEYS,
+    SINGLECELL_FOUNDATION_DEFERRED_TASKS,
     SINGLECELL_FOUNDATION_SUPPORT_MATRIX,
     SINGLECELL_FOUNDATION_SUITE_SCENARIOS,
     compute_annotation_metrics,
@@ -62,6 +63,20 @@ class TestSingleCellFoundationConstants:
             },
         }
 
+    def test_deferred_tasks_keep_grn_outside_phase_3_stable_scope(self) -> None:
+        assert SINGLECELL_FOUNDATION_DEFERRED_TASKS == {
+            "grn_transfer": {
+                "scenario": "singlecell/grn",
+                "status": "deferred",
+                "stable_scope": "excluded",
+                "reason": (
+                    "Phase 3 stable imported-model claims are benchmarked only for "
+                    "cell_annotation and batch_correction."
+                ),
+                "required_harness": "dedicated_foundation_grn_harness",
+            }
+        }
+
     def test_user_guide_exposes_the_same_single_cell_support_matrix(self) -> None:
         doc_path = (
             Path(__file__).resolve().parents[2] / "docs/user-guide/operators/foundation-models.md"
@@ -73,6 +88,7 @@ class TestSingleCellFoundationConstants:
         assert "| `ScGPTPrecomputedAdapter` | `precomputed` |" in doc
         assert "`cell_annotation`, `batch_correction`" in doc
         assert "`GRN transfer` remains planned" in doc
+        assert "dedicated foundation-aware GRN harness" in doc
         assert "generic checkpoint loading" in doc
 
 

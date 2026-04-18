@@ -26,6 +26,18 @@ SINGLECELL_FOUNDATION_SUITE_SCENARIOS = {
     "batch_correction": "singlecell/batch_correction",
     "grn_transfer": "singlecell/grn",
 }
+SINGLECELL_FOUNDATION_DEFERRED_TASKS = {
+    "grn_transfer": {
+        "scenario": SINGLECELL_FOUNDATION_SUITE_SCENARIOS["grn_transfer"],
+        "status": "deferred",
+        "stable_scope": "excluded",
+        "reason": (
+            "Phase 3 stable imported-model claims are benchmarked only for "
+            "cell_annotation and batch_correction."
+        ),
+        "required_harness": "dedicated_foundation_grn_harness",
+    }
+}
 SINGLECELL_FOUNDATION_SUPPORT_MATRIX = {
     "GeneformerPrecomputedAdapter": {
         "adapter_key": "geneformer_precomputed",

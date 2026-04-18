@@ -110,6 +110,14 @@ def _make_suite_report(
             imported_train_loss=imported_train_loss,
         ),
         task_scenarios={"cell_annotation": {"mode": "quick"}},
+        deferred_tasks={
+            "grn_transfer": {
+                "scenario": "singlecell/grn",
+                "status": "deferred",
+                "stable_scope": "excluded",
+                "reason": "Needs a dedicated foundation-aware GRN harness.",
+            }
+        },
     )
 
 
@@ -130,6 +138,14 @@ class TestFoundationSuiteCalibraxGovernance:
         assert run.branch == "main"
         assert run.environment == {"device": "cpu"}
         assert run.metadata["suite"] == "singlecell/foundation_quick_suite"
+        assert run.metadata["deferred_tasks"] == {
+            "grn_transfer": {
+                "scenario": "singlecell/grn",
+                "status": "deferred",
+                "stable_scope": "excluded",
+                "reason": "Needs a dedicated foundation-aware GRN harness.",
+            }
+        }
         assert run.metadata["regression_expectations"]["calibrax"]["threshold"] == 0.05
         assert run.metric_defs["accuracy"].direction == MetricDirection.HIGHER
         assert run.metric_defs["train_loss"].direction == MetricDirection.LOWER
@@ -175,6 +191,16 @@ class TestFoundationSuiteCalibraxGovernance:
         assert regression.point_name == "singlecell/foundation_annotation"
         assert regression.baseline_value == pytest.approx(0.92)
         assert regression.current_value == pytest.approx(0.82)
+
+    def test_build_foundation_suite_report_rejects_overlapping_deferred_tasks(self) -> None:
+        with pytest.raises(ValueError, match="deferred_tasks overlap executed tasks"):
+            build_foundation_suite_report(
+                suite_name="singlecell/foundation_quick_suite",
+                task_order=("cell_annotation",),
+                task_reports=_make_task_reports(),
+                task_scenarios={"cell_annotation": {"mode": "quick"}},
+                deferred_tasks={"cell_annotation": {"status": "deferred"}},
+            )
 
     def test_save_foundation_suite_run_persists_calibrax_run(self, tmp_path: Path) -> None:
         report = _make_suite_report()
