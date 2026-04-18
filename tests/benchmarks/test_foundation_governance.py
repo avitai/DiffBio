@@ -7,10 +7,13 @@ from typing import Any
 
 import pytest
 
+from calibrax.ci.guard import GuardResult
 from benchmarks._foundation_models import (
+    build_foundation_promotion_report,
     build_foundation_suite_report,
     build_foundation_suite_run,
     check_foundation_suite_regressions,
+    save_foundation_promotion_report,
     save_foundation_suite_run,
 )
 from calibrax.core.models import MetricDirection
@@ -201,6 +204,63 @@ class TestFoundationSuiteCalibraxGovernance:
                 task_scenarios={"cell_annotation": {"mode": "quick"}},
                 deferred_tasks={"cell_annotation": {"status": "deferred"}},
             )
+
+    def test_build_foundation_promotion_report_summarizes_scope_and_guard_result(self) -> None:
+        report = _make_suite_report()
+        guard_result = GuardResult(
+            passed=True,
+            regressions=(),
+            threshold=0.05,
+            baseline_id="baseline123",
+            current_id="run456",
+        )
+
+        promotion_report = build_foundation_promotion_report(report, guard_result=guard_result)
+
+        assert promotion_report["suite"] == "singlecell/foundation_quick_suite"
+        assert promotion_report["comparison_axes"] == list(FOUNDATION_BENCHMARK_COMPARISON_AXES)
+        assert promotion_report["stable_scope"] == {
+            "in_scope_tasks": ["cell_annotation"],
+            "deferred_tasks": {
+                "grn_transfer": {
+                    "scenario": "singlecell/grn",
+                    "status": "deferred",
+                    "stable_scope": "excluded",
+                    "reason": "Needs a dedicated foundation-aware GRN harness.",
+                }
+            },
+        }
+        assert promotion_report["regression_policy"] == {
+            "baseline_name": "main",
+            "threshold": 0.05,
+        }
+        assert promotion_report["regression_check"] == guard_result.to_dict()
+        assert promotion_report["readiness"] == {
+            "required_models_present": True,
+            "regression_check_status": "passed",
+        }
+        assert promotion_report["promotion_candidate"] is True
+        assert promotion_report["promotion_blockers"] == []
+        assert promotion_report["task_summaries"]["cell_annotation"] == {
+            "benchmark": "singlecell/foundation_annotation",
+            "dataset": "immune_human",
+            "required_models": ["diffbio_native", "geneformer_precomputed"],
+            "observed_models": ["diffbio_native", "geneformer_precomputed"],
+            "missing_models": [],
+            "metric_names": ["accuracy", "train_loss"],
+        }
+
+    def test_save_foundation_promotion_report_persists_json(self, tmp_path: Path) -> None:
+        report = _make_suite_report()
+        promotion_report = build_foundation_promotion_report(report)
+
+        saved_path = save_foundation_promotion_report(
+            promotion_report,
+            tmp_path / "singlecell_promotion_report.json",
+        )
+
+        assert saved_path.exists()
+        assert saved_path.read_text(encoding="utf-8").startswith("{\n")
 
     def test_save_foundation_suite_run_persists_calibrax_run(self, tmp_path: Path) -> None:
         report = _make_suite_report()

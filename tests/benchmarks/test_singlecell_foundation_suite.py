@@ -5,11 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import json
 import jax.numpy as jnp
 import numpy as np
-import json
 
-from benchmarks._foundation_models import save_foundation_suite_report
+from benchmarks._foundation_models import (
+    build_foundation_promotion_report,
+    save_foundation_suite_report,
+)
 from benchmarks.singlecell.foundation_suite import (
     build_singlecell_foundation_suite_report,
     run_singlecell_foundation_suite,
@@ -222,6 +225,31 @@ class TestSingleCellFoundationSuiteHarness:
             ]["artifact_id"]
             == "geneformer.v1"
         )
+        promotion_report = build_foundation_promotion_report(report_a)
+        assert promotion_report["stable_scope"] == {
+            "in_scope_tasks": ["cell_annotation", "batch_correction"],
+            "deferred_tasks": SINGLECELL_FOUNDATION_DEFERRED_TASKS,
+        }
+        assert promotion_report["readiness"] == {
+            "required_models_present": True,
+            "regression_check_status": "not_attached",
+        }
+        assert promotion_report["promotion_candidate"] is False
+        assert promotion_report["promotion_blockers"] == ["Regression check not attached."]
+        assert promotion_report["task_summaries"]["cell_annotation"]["missing_models"] == []
+        assert promotion_report["task_summaries"]["batch_correction"]["metric_names"] == [
+            "aggregate_score",
+            "ari_kmeans",
+            "batch_score",
+            "bio_score",
+            "clisi",
+            "graph_connectivity",
+            "ilisi",
+            "isolated_labels",
+            "nmi_kmeans",
+            "silhouette_batch",
+            "silhouette_label",
+        ]
 
         output_path = save_foundation_suite_report(
             report_a,

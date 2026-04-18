@@ -447,6 +447,107 @@ def build_foundation_suite_run(
     )
 
 
+def build_foundation_promotion_report(
+    report: dict[str, Any],
+    *,
+    guard_result: GuardResult | None = None,
+) -> dict[str, Any]:
+    """Build one deterministic promotion-review artifact from a suite report."""
+    regression_expectations = report.get("regression_expectations", {})
+    if not isinstance(regression_expectations, dict):
+        raise ValueError("Foundation suite report regression_expectations must be a dict")
+
+    required_models_payload = regression_expectations.get("required_models", {})
+    if not isinstance(required_models_payload, dict):
+        raise ValueError(
+            "Foundation suite report regression_expectations.required_models must be a dict"
+        )
+
+    task_reports = report.get("tasks", {})
+    if not isinstance(task_reports, dict):
+        raise ValueError("Foundation suite report tasks must be a dict")
+
+    ordered_tasks = [str(task_name) for task_name in report.get("task_order", ())]
+    task_summaries: dict[str, Any] = {}
+    promotion_blockers: list[str] = []
+
+    if not ordered_tasks:
+        promotion_blockers.append("No in-scope tasks attached.")
+
+    for task_name in ordered_tasks:
+        task_report = task_reports.get(task_name)
+        if not isinstance(task_report, dict):
+            raise ValueError(f"Foundation suite report task entry must be a dict: {task_name}")
+
+        required_models_value = required_models_payload.get(
+            task_name, task_report.get("model_order", ())
+        )
+        if not isinstance(required_models_value, list | tuple):
+            raise ValueError(
+                "Foundation promotion report required_models entry must be a list or tuple: "
+                f"{task_name}"
+            )
+        required_models = [str(model_name) for model_name in required_models_value]
+        observed_models = [str(model_name) for model_name in task_report.get("model_order", ())]
+        missing_models = [
+            model_name for model_name in required_models if model_name not in observed_models
+        ]
+
+        metric_names = sorted(
+            {
+                str(metric_name)
+                for model_report in task_report.get("models", {}).values()
+                if isinstance(model_report, dict)
+                for metric_name in model_report.get("metrics", {})
+            }
+        )
+
+        task_summaries[task_name] = {
+            "benchmark": str(task_report.get("benchmark", task_name)),
+            "dataset": str(task_report.get("dataset", "unknown")),
+            "required_models": required_models,
+            "observed_models": observed_models,
+            "missing_models": missing_models,
+            "metric_names": metric_names,
+        }
+
+        if missing_models:
+            promotion_blockers.append(
+                f"Task {task_name} missing required models: {', '.join(missing_models)}."
+            )
+
+    if guard_result is None:
+        regression_check_status = "not_attached"
+        promotion_blockers.append("Regression check not attached.")
+        regression_check = None
+    else:
+        regression_check_status = "passed" if guard_result.passed else "failed"
+        regression_check = guard_result.to_dict()
+        if not guard_result.passed:
+            promotion_blockers.append("Regression check failed.")
+
+    return {
+        "suite": report.get("suite"),
+        "comparison_axes": list(report.get("comparison_axes", ())),
+        "task_order": ordered_tasks,
+        "stable_scope": {
+            "in_scope_tasks": ordered_tasks,
+            "deferred_tasks": report.get("deferred_tasks", {}),
+        },
+        "regression_policy": regression_expectations.get("calibrax", {}),
+        "regression_check": regression_check,
+        "readiness": {
+            "required_models_present": all(
+                not task_summary["missing_models"] for task_summary in task_summaries.values()
+            ),
+            "regression_check_status": regression_check_status,
+        },
+        "promotion_candidate": not promotion_blockers,
+        "promotion_blockers": promotion_blockers,
+        "task_summaries": task_summaries,
+    }
+
+
 def save_foundation_suite_run(
     report: dict[str, Any],
     store_path: Path,
@@ -512,14 +613,30 @@ def check_foundation_suite_regressions(
     return guard.check(run.id)
 
 
+def _save_canonical_json(
+    payload: dict[str, Any],
+    output_path: Path,
+) -> Path:
+    """Persist one canonical JSON artifact for shared benchmark helpers."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return output_path
+
+
 def save_foundation_suite_report(
     report: dict[str, Any],
     output_path: Path,
 ) -> Path:
     """Persist one foundation-suite report as canonical JSON."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(report, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-    return output_path
+    return _save_canonical_json(report, output_path)
+
+
+def save_foundation_promotion_report(
+    report: dict[str, Any],
+    output_path: Path,
+) -> Path:
+    """Persist one foundation promotion report as canonical JSON."""
+    return _save_canonical_json(report, output_path)

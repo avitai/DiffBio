@@ -181,6 +181,9 @@ report = build_singlecell_foundation_suite_report(results)
 That suite report also carries one canonical `deferred_tasks` block so planned
 but unverified work stays explicit in stored artifacts. Today that means
 `grn_transfer` is marked deferred from Phase 3 stable scope until a dedicated foundation-aware GRN harness exists.
+When a stable-scope review is needed, the same suite report can be paired with
+the stored Calibrax regression result to produce one promotion-review artifact
+instead of a benchmark-specific summary path.
 
 When scGPT artifacts depend on explicit batch context, that requirement is
 carried in benchmark metadata through `requires_batch_context`, `batch_key`,

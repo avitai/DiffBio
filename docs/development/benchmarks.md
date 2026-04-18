@@ -196,11 +196,19 @@ Each full foundation-suite report also stores:
   stable promotion scope, with the required follow-on harness or evidence made
   explicit in the saved report and Calibrax run metadata
 
+Use `build_foundation_promotion_report()` from `benchmarks._foundation_models`
+to convert a stored suite report plus an optional Calibrax `GuardResult` into a
+deterministic promotion-review artifact. That artifact keeps the in-scope task
+list, deferred scope, required models, threshold policy, and any missing
+promotion evidence in one machine-readable record.
+
 Use `save_foundation_suite_report()` from `benchmarks._foundation_models` to
 persist these deterministic suite reports as canonical JSON.
 Use `save_foundation_suite_run()` to mirror the same suite report into a
 Calibrax `Store`, and `check_foundation_suite_regressions()` to run the stored
 suite against the `main` baseline with the persisted threshold policy.
+Use `save_foundation_promotion_report()` to persist the promotion-review record
+as canonical JSON once the relevant regression check has been attached.
 
 ### Imported Foundation-Model Benchmarks
 
