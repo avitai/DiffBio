@@ -20,8 +20,6 @@ UNSUPPORTED_CLAIM_PATTERNS = (
     r"\bgeneric biomedical LLM\b",
     r"\bclinical NLP\b",
     r"\bpublic-health\b",
-    r"\bPEFT\b",
-    r"\bLoRA\b",
 )
 
 

@@ -52,6 +52,32 @@ fine-tuning, or unrelated biomedical language-model coverage. New post-DTI
 domains move into stable support only when benchmark provenance, comparison
 metadata, and regression checks are attached.
 
+## Experimental Foundation-Model Boundary
+
+Experimental foundation-model boundary: long-context sequence models,
+Hyena-style systems, external native_trainable checkpoint import, PEFT, and
+LoRA are not stable DiffBio support.
+
+The only public namespace for these capabilities is
+`diffbio.operators.foundation_models.experimental`. That namespace currently
+exposes policy records, not runtime implementations. The stable
+`native_trainable` adapter mode remains limited to DiffBio-native operators and
+does not imply external checkpoint conversion or checkpoint-compatible training.
+
+| Experimental Capability | Current Boundary |
+|-------------------------|------------------|
+| long-context sequence models | benchmark-unverified; excluded from stable support |
+| Hyena-style sequence models | benchmark-unverified; excluded from stable support |
+| external native_trainable checkpoint import | benchmark-unverified; excluded from stable support |
+| PEFT fine-tuning utilities | not shipped as stable DiffBio support |
+| LoRA adaptation utilities | not shipped as stable DiffBio support |
+
+Promotion out of the experimental namespace requires one shared checklist:
+explicit experimental namespace, canonical artifact provenance, downstream
+benchmark suite, Calibrax regression guard, shared audit bundle, and stable
+documentation update. Until all criteria are attached, stable docs and APIs must
+continue to describe these items as excluded experimental scope.
+
 ## Imported Single-Cell Workflows
 
 DiffBio's current stable imported single-cell foundation-model workflow is

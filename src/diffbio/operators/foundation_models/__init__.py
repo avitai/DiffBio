@@ -42,6 +42,14 @@ from diffbio.operators.foundation_models.embedding_probe import (
     EmbeddingProbeConfig,
     LinearEmbeddingProbe,
 )
+from diffbio.operators.foundation_models.experimental import (
+    EXPERIMENTAL_FOUNDATION_MODEL_NAMESPACE,
+    FOUNDATION_EXPERIMENTAL_CAPABILITIES,
+    FOUNDATION_EXPERIMENTAL_PROMOTION_CRITERIA,
+    ExperimentalFoundationCapability,
+    get_experimental_foundation_capability,
+    is_experimental_foundation_capability,
+)
 from diffbio.operators.foundation_models.foundation_model import (
     DifferentiableFoundationModel,
     FoundationModelConfig,
@@ -68,7 +76,11 @@ __all__ = [
     "DifferentiableFoundationModel",
     "DNABERT2PrecomputedAdapter",
     "EmbeddingProbeConfig",
+    "EXPERIMENTAL_FOUNDATION_MODEL_NAMESPACE",
+    "FOUNDATION_EXPERIMENTAL_CAPABILITIES",
+    "FOUNDATION_EXPERIMENTAL_PROMOTION_CRITERIA",
     "FoundationBenchmarkAdapter",
+    "ExperimentalFoundationCapability",
     "FoundationModelConfig",
     "GeneTokenizer",
     "GeneformerPrecomputedAdapter",
@@ -100,6 +112,8 @@ __all__ = [
     "get_foundation_adapter_cls",
     "get_foundation_model_cls",
     "create_rna_encoder",
+    "get_experimental_foundation_capability",
     "register_foundation_adapter",
     "register_foundation_model",
+    "is_experimental_foundation_capability",
 ]
