@@ -1,10 +1,11 @@
 # DNA/RNA Foundation Model Operators
 
 DiffBio provides differentiable foundation-model operators for DNA/RNA
-sequences and single-cell expression. The current stable imported-model
-surface is intentionally narrow: precomputed artifacts plus the first
-benchmark-facing frozen adapters, alongside DiffBio-native sequence and
-single-cell transformer operators.
+sequences and single-cell expression. The current stable imported-model surface
+is intentionally narrow: precomputed Geneformer and scGPT artifacts for
+single-cell annotation and batch correction. Sequence/genomics adapters and
+frozen benchmark paths exist as Phase 4 pre-promotion scaffold until genomics
+realism and promotion evidence is attached.
 
 These operators sit in DiffBio's biology-specific layer and reuse the wider
 ecosystem stack: Datarax for operator contracts, Artifex for transformer/model
@@ -103,8 +104,9 @@ The artifact metadata stays explicit:
 
 ## Imported Sequence Workflows
 
-DiffBio now also exposes a shared sequence benchmark adapter contract. The
-stable sequence integrations today are:
+DiffBio now also exposes a shared sequence benchmark adapter contract. These
+Phase 4 pre-promotion scaffold integrations are available for interface
+validation and benchmark development:
 
 - `SequencePrecomputedAdapter` for aligned imported artifacts
 - `DNABERT2PrecomputedAdapter` for DNABERT-2-style exported embeddings
@@ -113,7 +115,7 @@ stable sequence integrations today are:
 - `FrozenSequenceEncoderAdapter` for in-process DiffBio sequence encoders that
   must be benchmarked as frozen feature extractors
 
-The current stable promise is still narrow:
+The current pre-promotion promise is still narrow:
 
 1. an upstream sequence model exports a rank-2 embedding matrix
 2. the artifact optionally stores `sequence_ids`
@@ -122,9 +124,12 @@ The current stable promise is still narrow:
 4. downstream genomics benchmarks consume those sequence embeddings
 
 This does **not** mean arbitrary DNABERT-2 or Nucleotide Transformer
-checkpoints are already supported in-process. The stable surface today is
-precomputed artifact integration plus DiffBio-native frozen in-process sequence
-encoders. External frozen checkpoint import remains out of stable scope.
+checkpoints are already supported in-process, and it does not mean genomics has
+been promoted as a stable imported-model domain. The sequence surface today is
+interface validation over precomputed artifacts plus DiffBio-native frozen
+in-process sequence encoder benchmarking. Phase 4 must attach dataset
+provenance, realism, and promotion evidence before genomics can be described as
+stable.
 
 The expected artifact shape is:
 
@@ -197,7 +202,8 @@ For genomics, DiffBio now provides a three-task quick suite scaffold covering
 promoter classification, TFBS classification, and splice-site classification.
 That suite can run the native DiffBio sequence encoder, a frozen in-process
 DiffBio sequence encoder, and the current precomputed DNABERT-2 and Nucleotide
-Transformer adapters through the same deterministic reporting layer.
+Transformer adapters through the same deterministic reporting layer. This is
+Phase 4 scaffold evidence, not a stable genomics promotion claim.
 
 ## TransformerSequenceEncoder
 

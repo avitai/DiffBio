@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -30,6 +32,19 @@ class TestGenomicsFoundationConstants:
             "one_hot_sequences",
             "labels",
         )
+
+    def test_docs_keep_genomics_scaffold_outside_stable_promotion(self) -> None:
+        repo_root = Path(__file__).resolve().parents[2]
+        user_guide = (repo_root / "docs/user-guide/operators/foundation-models.md").read_text(
+            encoding="utf-8"
+        )
+        benchmark_guide = (repo_root / "docs/development/benchmarks.md").read_text(encoding="utf-8")
+
+        assert "Phase 4 pre-promotion scaffold" in user_guide
+        assert "not a stable genomics promotion claim" in user_guide
+        assert "stable sequence integrations today" not in user_guide
+        assert "Phase 4 scaffold: `DNABERT2PrecomputedAdapter`" in benchmark_guide
+        assert "pending genomics realism and promotion evidence" in benchmark_guide
 
 
 class TestStratifiedSequenceClassificationSplit:

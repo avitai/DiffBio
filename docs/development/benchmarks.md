@@ -250,13 +250,13 @@ checkpoint support:
 - supported: canonical single-cell deferral metadata that keeps
   `grn_transfer` outside Phase 3 stable promotion until a dedicated
   foundation-aware GRN harness exists
-- supported: a shared `SequencePrecomputedAdapter` contract plus a genomics
-  quick-suite scaffold for promoter, TFBS, and splice-site tasks
-- supported: `FrozenSequenceEncoderAdapter` for in-process frozen sequence
-  encoder benchmarking under `adapter_mode=frozen_encoder`
-- supported: `DNABERT2PrecomputedAdapter` and
+- Phase 4 scaffold: a shared `SequencePrecomputedAdapter` contract plus a
+  genomics quick-suite scaffold for promoter, TFBS, and splice-site tasks
+- Phase 4 scaffold: `FrozenSequenceEncoderAdapter` for in-process frozen
+  sequence encoder benchmarking under `adapter_mode=frozen_encoder`
+- Phase 4 scaffold: `DNABERT2PrecomputedAdapter` and
   `NucleotideTransformerPrecomputedAdapter` for aligned precomputed genomics
-  artifacts
+  artifacts, pending genomics realism and promotion evidence
 - supported: deterministic DTI source contracts for Davis affinity regression
   and BioSNAP binary interaction scaffolds, including paired-input batching and
   metric packaging for regression, classification, and ranking
