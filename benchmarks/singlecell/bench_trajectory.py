@@ -20,11 +20,11 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
-import optax
 from flax import nnx
 
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.trajectory import TRAJECTORY_BASELINES
+from benchmarks._optimizers import create_benchmark_optimizer
 from diffbio.losses.singlecell_losses import VelocityConsistencyLoss
 from diffbio.operators.singlecell.trajectory import (
     DifferentiablePseudotime,
@@ -118,7 +118,11 @@ class TrajectoryBenchmark(DiffBioBenchmark):
         n_steps = 100 if self.quick else 300
         logger.info("Training velocity params (%d steps)...", n_steps)
         vel_loss = VelocityConsistencyLoss(rngs=rngs)
-        vel_opt = nnx.Optimizer(vel_op, optax.adam(1e-3), wrt=nnx.Param)
+        vel_opt = nnx.Optimizer(
+            vel_op,
+            create_benchmark_optimizer(learning_rate=1e-3),
+            wrt=nnx.Param,
+        )
 
         @nnx.jit
         def _vel_step(

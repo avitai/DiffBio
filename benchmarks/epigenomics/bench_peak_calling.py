@@ -35,6 +35,7 @@ from benchmarks._base import (
     DiffBioBenchmarkConfig,
 )
 from benchmarks._baselines.epigenomics import PEAK_CALLING_BASELINES
+from benchmarks._optimizers import create_benchmark_optimizer
 from diffbio.operators.epigenomics.peak_calling import (
     DifferentiablePeakCaller,
     PeakCallerConfig,
@@ -274,7 +275,11 @@ class PeakCallingBenchmark(DiffBioBenchmark):
         # High coverage => high peak probability, low => low.
         n_steps = 200 if self.quick else 500
         logger.info("Training peak caller (%d steps)...", n_steps)
-        opt = nnx.Optimizer(operator, optax.adam(1e-3), wrt=nnx.Param)
+        opt = nnx.Optimizer(
+            operator,
+            create_benchmark_optimizer(learning_rate=1e-3),
+            wrt=nnx.Param,
+        )
         cov_norm = coverage_jax / (jnp.max(coverage_jax) + 1e-8)
 
         @nnx.jit

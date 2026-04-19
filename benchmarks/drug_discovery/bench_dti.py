@@ -12,7 +12,6 @@ import jax.numpy as jnp
 import numpy as np
 from calibrax.core.models import Metric, Point
 from flax import nnx
-from opifex.core.training.optimizers import OptimizerConfig, create_optimizer
 
 from benchmarks._base import (
     DiffBioBenchmark,
@@ -20,6 +19,10 @@ from benchmarks._base import (
     build_benchmark_comparison_key,
 )
 from benchmarks._baselines.dti import DTI_BASELINE_FAMILIES
+from benchmarks._optimizers import (
+    BENCHMARK_OPTIMIZER_SUBSTRATE,
+    create_benchmark_optimizer,
+)
 from diffbio.operators.drug_discovery import (
     DTIPipelineConfig,
     DifferentiableDTIPipeline,
@@ -54,8 +57,7 @@ _OPTIMIZER_TYPE = "adam"
 _DIFFERENTIABLE_ENCODER_PATH = "differentiable_pipeline"
 _FIXED_SCAFFOLD_ENCODER_PATH = "fixed_scaffold_baseline"
 DTI_TRAINING_SUBSTRATE = {
-    "optimizer_factory": "opifex.core.training.optimizers.create_optimizer",
-    "optimizer_config": "opifex.core.training.optimizers.OptimizerConfig",
+    **BENCHMARK_OPTIMIZER_SUBSTRATE,
     "optimizer_type": _OPTIMIZER_TYPE,
 }
 DTI_COMPARISON_AXES = ("dataset", "task", "encoder_path")
@@ -406,11 +408,9 @@ def _train_dti_pipeline(
     pipeline = DifferentiableDTIPipeline(pipeline_config, rngs=nnx.Rngs(42))
     optimizer = nnx.Optimizer(
         pipeline,
-        create_optimizer(
-            OptimizerConfig(
-                optimizer_type=_OPTIMIZER_TYPE,
-                learning_rate=_LEARNING_RATE,
-            )
+        create_benchmark_optimizer(
+            optimizer_type=_OPTIMIZER_TYPE,
+            learning_rate=_LEARNING_RATE,
         ),
         wrt=nnx.Param,
     )

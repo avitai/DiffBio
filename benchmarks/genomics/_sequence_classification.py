@@ -10,11 +10,11 @@ from typing import Any, Protocol
 import jax
 import jax.numpy as jnp
 import numpy as np
-import optax
 from flax import nnx
 
-from benchmarks._classification import create_embedding_probe_train_step
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
+from benchmarks._classification import create_embedding_probe_train_step
+from benchmarks._optimizers import create_benchmark_optimizer
 from benchmarks.genomics._foundation import (
     GENOMICS_FOUNDATION_DATASET_CONTRACT_KEYS,
     GENOMICS_FOUNDATION_SUITE_SCENARIOS,
@@ -264,7 +264,11 @@ class SequenceClassificationBenchmark(DiffBioBenchmark):
             ),
             rngs=nnx.Rngs(42),
         )
-        optimizer = nnx.Optimizer(probe, optax.adam(_LEARNING_RATE), wrt=nnx.Param)
+        optimizer = nnx.Optimizer(
+            probe,
+            create_benchmark_optimizer(learning_rate=_LEARNING_RATE),
+            wrt=nnx.Param,
+        )
         train_step = create_embedding_probe_train_step()
 
         logger.info("Training sequence embedding probe (%d steps)...", n_train_steps)

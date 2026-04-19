@@ -22,12 +22,12 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 import numpy as np
-import optax
 from flax import nnx
 
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.alignment import MSA_BASELINES
 from benchmarks._metrics.alignment import sp_score, tc_score
+from benchmarks._optimizers import create_benchmark_optimizer
 from diffbio.losses.alignment_losses import AlignmentScoreLoss
 from benchmarks.alignment._encoding import onehot_encode_sequence
 from diffbio.operators.alignment import PROTEIN_ALPHABET
@@ -173,7 +173,11 @@ class MSABenchmark(DiffBioBenchmark):
             n_steps = 100 if self.quick else 300
             logger.info("Training MSA encoder (%d steps)...", n_steps)
             AlignmentScoreLoss(rngs=rngs)
-            opt = nnx.Optimizer(operator, optax.adam(1e-3), wrt=nnx.Param)
+            opt = nnx.Optimizer(
+                operator,
+                create_benchmark_optimizer(learning_rate=1e-3),
+                wrt=nnx.Param,
+            )
 
             @nnx.jit
             def _msa_step(

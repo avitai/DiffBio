@@ -38,6 +38,7 @@ from flax import nnx
 
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.molnet import MOLNET_BASELINES
+from benchmarks._optimizers import create_benchmark_optimizer
 from diffbio.operators.drug_discovery import (
     DEFAULT_ATOM_FEATURES,
     CircularFingerprintConfig,
@@ -202,7 +203,11 @@ def _train_and_evaluate(
 
     rngs = nnx.Rngs(seed)
     model = _MLPClassifier(n_bits, hidden_dim=128, rngs=rngs)
-    optimizer = nnx.Optimizer(model, optax.adam(learning_rate), wrt=nnx.Param)
+    optimizer = nnx.Optimizer(
+        model,
+        create_benchmark_optimizer(learning_rate=learning_rate),
+        wrt=nnx.Param,
+    )
 
     @nnx.jit
     def train_step(

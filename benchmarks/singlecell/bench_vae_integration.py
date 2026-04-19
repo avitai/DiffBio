@@ -21,12 +21,12 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 import numpy as np
-import optax
 from flax import nnx
 
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.scib import INTEGRATION_BASELINES
 from benchmarks._metrics.scib_bridge import evaluate_integration
+from benchmarks._optimizers import create_benchmark_optimizer
 from diffbio.operators.normalization.vae_normalizer import (
     VAENormalizer,
     VAENormalizerConfig,
@@ -210,9 +210,13 @@ class VAEIntegrationBenchmark(DiffBioBenchmark):
         rngs = nnx.Rngs(42)
         model = VAENormalizer(vae_config, rngs=rngs)
 
-        # 3. Train with nnx.Optimizer + optax.adam
+        # 3. Train through the shared Opifex-owned benchmark optimizer helper.
         logger.info("Training VAENormalizer (%d epochs)...", n_epochs)
-        optimizer = nnx.Optimizer(model, optax.adam(1e-3), wrt=nnx.Param)
+        optimizer = nnx.Optimizer(
+            model,
+            create_benchmark_optimizer(learning_rate=1e-3),
+            wrt=nnx.Param,
+        )
         train_step = _create_train_step(model, optimizer)
 
         loss = jnp.array(0.0)

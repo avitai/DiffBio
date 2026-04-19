@@ -10,12 +10,15 @@ import jax.numpy as jnp
 import numpy as np
 from datarax.core.config import OperatorConfig
 from flax import nnx
-from opifex.core.training.optimizers import OptimizerConfig, create_optimizer
 
 from benchmarks._base import (
     DiffBioBenchmark,
     DiffBioBenchmarkConfig,
     build_benchmark_comparison_key,
+)
+from benchmarks._optimizers import (
+    BENCHMARK_OPTIMIZER_SUBSTRATE,
+    create_benchmark_optimizer,
 )
 from diffbio.operators.epigenomics.contextual import (
     ContextualEpigenomicsConfig,
@@ -36,8 +39,7 @@ _TRAIN_STEPS_FULL = 60
 _LEARNING_RATE = 1e-2
 _OPTIMIZER_TYPE = "adam"
 CONTEXTUAL_TRAINING_SUBSTRATE = {
-    "optimizer_factory": "opifex.core.training.optimizers.create_optimizer",
-    "optimizer_config": "opifex.core.training.optimizers.OptimizerConfig",
+    **BENCHMARK_OPTIMIZER_SUBSTRATE,
     "optimizer_type": _OPTIMIZER_TYPE,
 }
 CONTEXTUAL_ABLATION_COMPARISON_AXES = (
@@ -226,11 +228,9 @@ class ContextualEpigenomicsBenchmark(DiffBioBenchmark):
         operator = ContextualEpigenomicsOperator(model_config, rngs=nnx.Rngs(42))
         optimizer = nnx.Optimizer(
             operator,
-            create_optimizer(
-                OptimizerConfig(
-                    optimizer_type=_OPTIMIZER_TYPE,
-                    learning_rate=_LEARNING_RATE,
-                )
+            create_benchmark_optimizer(
+                optimizer_type=_OPTIMIZER_TYPE,
+                learning_rate=_LEARNING_RATE,
             ),
             wrt=nnx.Param,
         )

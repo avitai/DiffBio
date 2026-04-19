@@ -25,12 +25,12 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 import numpy as np
-import optax
 from flax import nnx
 
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.grn import GRN_BASELINES
 from benchmarks._metrics.grn import evaluate_grn
+from benchmarks._optimizers import create_benchmark_optimizer
 from diffbio.operators.singlecell.grn_inference import (
     DifferentiableGRN,
     GRNInferenceConfig,
@@ -118,7 +118,11 @@ class GRNBenchmark(DiffBioBenchmark):
         # predicted_expression = tf_activity @ grn_matrix should reconstruct counts.
         n_steps = 100 if self.quick else 300
         logger.info("Training GRN params (%d steps, unsupervised)...", n_steps)
-        opt = nnx.Optimizer(operator, optax.adam(1e-3), wrt=nnx.Param)
+        opt = nnx.Optimizer(
+            operator,
+            create_benchmark_optimizer(learning_rate=1e-3),
+            wrt=nnx.Param,
+        )
 
         # Normalise counts for reconstruction target
         log_counts = jnp.log1p(counts)

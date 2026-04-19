@@ -23,11 +23,11 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 import numpy as np
-import optax
 from flax import nnx
 
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.clustering import CLUSTERING_BASELINES
+from benchmarks._optimizers import create_benchmark_optimizer
 from diffbio.losses.singlecell_losses import ClusteringCompactnessLoss
 from diffbio.operators.singlecell import (
     SoftClusteringConfig,
@@ -78,7 +78,11 @@ def _train_centroids(
         separation_weight=_SEPARATION_WEIGHT,
         min_separation=_MIN_SEPARATION,
     )
-    opt = nnx.Optimizer(operator, optax.adam(_LEARNING_RATE), wrt=nnx.Param)
+    opt = nnx.Optimizer(
+        operator,
+        create_benchmark_optimizer(learning_rate=_LEARNING_RATE),
+        wrt=nnx.Param,
+    )
 
     @nnx.jit
     def _step(

@@ -34,7 +34,6 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 import numpy as np
-import optax
 from flax import nnx
 
 from benchmarks._base import (
@@ -44,6 +43,7 @@ from benchmarks._base import (
 from benchmarks._baselines.deconvolution import (
     DECONVOLUTION_BASELINES,
 )
+from benchmarks._optimizers import create_benchmark_optimizer
 from diffbio.operators.multiomics import (
     SpatialDeconvolution,
     SpatialDeconvolutionConfig,
@@ -350,7 +350,11 @@ class SpatialDeconvBenchmark(DiffBioBenchmark):
         # predicted proportions @ reference_profiles ≈ spot_expression.
         n_steps = 200 if self.quick else 500
         logger.info("Training deconvolution (%d steps, unsupervised)...", n_steps)
-        opt = nnx.Optimizer(operator, optax.adam(1e-3), wrt=nnx.Param)
+        opt = nnx.Optimizer(
+            operator,
+            create_benchmark_optimizer(learning_rate=1e-3),
+            wrt=nnx.Param,
+        )
 
         @nnx.jit
         def _deconv_step(

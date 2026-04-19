@@ -24,7 +24,6 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 import numpy as np
-import optax
 from flax import nnx
 from scipy import stats as sp_stats
 
@@ -33,6 +32,7 @@ from benchmarks._base import (
     DiffBioBenchmarkConfig,
 )
 from benchmarks._baselines.de import DE_BASELINES
+from benchmarks._optimizers import create_benchmark_optimizer
 from diffbio.operators.statistical.nb_glm import (
     DifferentiableNBGLM,
     NBGLMConfig,
@@ -206,7 +206,11 @@ class DEBenchmark(DiffBioBenchmark):
         # 5. Fit: maximise NB log-likelihood via gradient descent
         n_steps = 100 if self.quick else 300
         logger.info("Fitting NB GLM (%d steps)...", n_steps)
-        opt = nnx.Optimizer(operator, optax.adam(1e-2), wrt=nnx.Param)
+        opt = nnx.Optimizer(
+            operator,
+            create_benchmark_optimizer(learning_rate=1e-2),
+            wrt=nnx.Param,
+        )
 
         @nnx.jit
         def _fit_step(
