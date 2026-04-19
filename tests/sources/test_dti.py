@@ -108,7 +108,11 @@ class TestDTISourceContract:
         assert batch["pair_ids"] == data["pair_ids"][:2]
         assert batch["protein_ids"] == data["protein_ids"][:2]
         assert batch["drug_ids"] == data["drug_ids"][:2]
-        assert batch["dataset_provenance"] == data["dataset_provenance"]
+        assert batch["dataset_provenance"] == {
+            **data["dataset_provenance"],
+            "n_pairs": 2,
+            "source_n_pairs": data["dataset_provenance"]["n_pairs"],
+        }
         np.testing.assert_allclose(np.asarray(batch["targets"]), np.asarray(data["targets"])[:2])
 
     def test_validate_rejects_misaligned_lengths(self) -> None:

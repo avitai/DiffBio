@@ -11,6 +11,7 @@ Operators:
     AttentiveFP: Attention-based molecular fingerprint (Xiong et al. 2019)
     ADMETPredictor: Multi-task ADMET property prediction
     MolecularSimilarityOperator: Differentiable Tanimoto/cosine similarity
+    DifferentiableDTIPipeline: Integrated differentiable DTI scorer
 
 Utilities:
     smiles_to_graph: Convert SMILES to molecular graph
@@ -28,6 +29,14 @@ from diffbio.operators.drug_discovery.attentive_fp import (
     AttentiveFP,
     AttentiveFPConfig,
     create_attentive_fp,
+)
+from diffbio.operators.drug_discovery.dti import (
+    DTI_PIPELINE_INTEGRATION_LAYER,
+    PROTEIN_ONE_HOT_PREPROCESSING_VERSION,
+    DTIPipelineConfig,
+    DifferentiableDTIPipeline,
+    build_dti_pipeline_inputs,
+    encode_protein_sequences,
 )
 from diffbio.operators.drug_discovery.fingerprint import (
     CircularFingerprintConfig,
@@ -89,6 +98,13 @@ __all__ = [
     "create_admet_predictor",
     "ADMET_TASK_NAMES",
     "ADMET_TASK_TYPES",
+    # DTI Pipeline
+    "DTI_PIPELINE_INTEGRATION_LAYER",
+    "PROTEIN_ONE_HOT_PREPROCESSING_VERSION",
+    "DTIPipelineConfig",
+    "DifferentiableDTIPipeline",
+    "build_dti_pipeline_inputs",
+    "encode_protein_sequences",
     # Neural Fingerprints
     "MolecularFingerprintConfig",
     "DifferentiableMolecularFingerprint",

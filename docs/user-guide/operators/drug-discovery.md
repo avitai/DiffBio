@@ -15,26 +15,33 @@ Drug discovery operators enable gradient-based optimization for chemoinformatics
 - **MACCSKeysOperator**: Differentiable MACCS 166 structural keys
 - **AttentiveFP**: Attention-based molecular fingerprint with GRU
 - **MolecularSimilarityOperator**: Differentiable Tanimoto/cosine/Dice similarity
+- **DifferentiableDTIPipeline**: shared drug-target interaction pipeline that
+  combines a protein sequence foundation encoder with a differentiable molecular
+  fingerprint encoder
 
 ## Benchmark Coverage
 
 The current benchmarked drug-discovery surface has two layers:
 
 - stable property-prediction benchmarking via MoleculeNet BBBP
-- Phase 6 Task 6.1 DTI contract scaffolds for Davis and BioSNAP, using deterministic
-  paired protein-plus-drug sources and a lightweight probe over shared
-  contract features
+- Phase 6 DTI benchmarks for Davis and BioSNAP, using deterministic paired
+  protein-plus-drug sources and `DifferentiableDTIPipeline`
 
-These DTI benchmarks are intentionally contract-first. They validate paired
-batch assembly plus regression, classification, and ranking metric packaging
-before the protein-embedding and differentiable drug-encoder integrations land
-in a later Phase 6 task.
+The DTI benchmarks are still synthetic-fallback aware, but they now exercise the
+integrated differentiable path. Proteins are one-hot encoded with the shared
+20-residue alignment alphabet and passed through `TransformerSequenceEncoder`;
+drugs are converted with `batch_smiles_to_graphs()` and passed through
+`DifferentiableMolecularFingerprint`; a shared pair scorer trains on top of the
+concatenated embeddings.
 Each DTI benchmark result carries the shared paired-input required keys,
 `dataset_provenance`, and a `metric_contract` that separates Davis regression
 metrics from BioSNAP classification and protein-grouped ranking metrics. The
 default Davis and BioSNAP fallback sources are synthetic scaffolds with
 `promotion_eligible=false`; they are contract evidence, not stable biological
 promotion evidence.
+Mini-batches created with `build_paired_dti_batch()` keep the split-level source
+size under `source_n_pairs` and set `n_pairs` to the current batch size, so each
+batch remains valid under `validate_dti_dataset()`.
 
 ## Architecture
 

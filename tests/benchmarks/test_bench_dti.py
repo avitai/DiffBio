@@ -116,6 +116,7 @@ class TestDavisDTIBenchmark:
             "non_differentiable_fingerprint",
             "differentiable_drug_encoder",
         ]
+        _assert_differentiable_dti_pipeline_metadata(result)
 
 
 class TestBioSNAPDTIBenchmark:
@@ -146,3 +147,37 @@ class TestBioSNAPDTIBenchmark:
                 "ranking": ["mrr", "recall_at_1", "recall_at_5"],
             },
         }
+        _assert_differentiable_dti_pipeline_metadata(result)
+
+
+def _assert_differentiable_dti_pipeline_metadata(result) -> None:
+    """Assert benchmark output is wired through the shared DTI pipeline."""
+    assert result.tags["operator"] == "DifferentiableDTIPipeline"
+    assert result.tags["model_family"] == "sequence_transformer"
+    assert result.tags["adapter_mode"] == "native_trainable"
+    assert result.metadata["foundation_model"]["preprocessing_version"] == "protein_one_hot_v1"
+    assert result.metadata["comparison_axes"] == [
+        "dataset",
+        "task",
+        "model_family",
+        "adapter_mode",
+        "artifact_id",
+        "preprocessing_version",
+    ]
+    assert result.metadata["dti_pipeline"] == {
+        "integration_layer": "shared_dti_pipeline_v1",
+        "pipeline_name": "DifferentiableDTIPipeline",
+        "protein_encoder": {
+            "operator": "TransformerSequenceEncoder",
+            "model_family": "sequence_transformer",
+            "adapter_mode": "native_trainable",
+            "preprocessing_version": "protein_one_hot_v1",
+        },
+        "drug_encoder": {
+            "operator": "DifferentiableMolecularFingerprint",
+            "differentiable": True,
+        },
+    }
+    assert result.config["input_mode"] == "paired_encoded_graph_sequence"
+    assert result.config["protein_encoder"] == "TransformerSequenceEncoder"
+    assert result.config["drug_encoder"] == "DifferentiableMolecularFingerprint"

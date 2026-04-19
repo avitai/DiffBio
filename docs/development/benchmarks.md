@@ -53,8 +53,8 @@ uv run python benchmarks/singlecell/bench_batch_correction.py --quick
 | Benchmark | Operator | Dataset | Metrics | Baselines |
 |-----------|----------|---------|---------|-----------|
 | MolNet BBBP | CircularFingerprintOperator + MLP | bbbp | Test ROC-AUC, train ROC-AUC | GCN, AttentiveFP, D-MPNN |
-| Davis DTI Scaffold | DTIFeatureProbe on paired contract features | davis | RMSE, Pearson, Spearman | non-differentiable fingerprint, differentiable drug encoder |
-| BioSNAP DTI Scaffold | DTIFeatureProbe on paired contract features | biosnap | ROC-AUC, PR-AUC, MRR, Recall@1, Recall@5 | non-differentiable fingerprint, differentiable drug encoder |
+| Davis DTI | DifferentiableDTIPipeline with TransformerSequenceEncoder + DifferentiableMolecularFingerprint | davis | RMSE, Pearson, Spearman | non-differentiable fingerprint, differentiable drug encoder |
+| BioSNAP DTI | DifferentiableDTIPipeline with TransformerSequenceEncoder + DifferentiableMolecularFingerprint | biosnap | ROC-AUC, PR-AUC, MRR, Recall@1, Recall@5 | non-differentiable fingerprint, differentiable drug encoder |
 
 ### Epigenomics (3 benchmarks)
 
@@ -281,6 +281,12 @@ checkpoint support:
 - supported: DTI benchmark metadata that exposes the shared paired-input
   required keys, dataset/split provenance, synthetic-scaffold promotion status,
   and metric groups for regression, classification, and ranking outputs
+- supported: a shared differentiable DTI integration path that encodes proteins
+  with `TransformerSequenceEncoder`, encodes molecules with
+  `DifferentiableMolecularFingerprint`, and promotes the protein foundation
+  metadata into Calibrax benchmark tags and comparison keys
+- supported: DTI mini-batch provenance remains contract-valid by updating batch
+  `n_pairs` while retaining the split-level `source_n_pairs`
 - supported: a shared contextual epigenomics source contract with canonical
   `sequence`, `tf_context`, `chromatin_contacts`, and `targets` keys
 - supported: contextual target-semantics validation for `binary_peak_mask` and
@@ -299,8 +305,8 @@ checkpoint support:
 - not yet supported: external frozen DNABERT-2 or Nucleotide Transformer
   checkpoint imports in stable APIs
 - not yet supported: tokenizer interchangeability claims across upstream models
-- not yet supported: protein-LM and differentiable drug-encoder integration in
-  the DTI benchmark family
+- not yet supported: stable DTI biological-promotion claims from the synthetic
+  fallback sources alone
 - not yet supported: real cell-type-resolved epigenomics datasets for the
   contextual benchmark family
 - not yet supported: stable biological promotion of contextual epigenomics

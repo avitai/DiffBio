@@ -126,7 +126,10 @@ def build_paired_dti_batch(
     """Slice a DTI dataset into one aligned paired batch."""
     validate_dti_dataset(data)
     batch_indices = np.asarray(indices, dtype=np.int32)
-    return {
+    provenance = dict(data["dataset_provenance"])
+    provenance["source_n_pairs"] = int(provenance["n_pairs"])
+    provenance["n_pairs"] = int(batch_indices.shape[0])
+    batch = {
         "pair_ids": [data["pair_ids"][index] for index in batch_indices],
         "protein_ids": [data["protein_ids"][index] for index in batch_indices],
         "protein_sequences": [data["protein_sequences"][index] for index in batch_indices],
@@ -134,8 +137,10 @@ def build_paired_dti_batch(
         "drug_smiles": [data["drug_smiles"][index] for index in batch_indices],
         "targets": jnp.asarray(np.asarray(data["targets"])[batch_indices]),
         "task_type": data["task_type"],
-        "dataset_provenance": data["dataset_provenance"],
+        "dataset_provenance": provenance,
     }
+    validate_dti_dataset(batch)
+    return batch
 
 
 class _BaseDTISource(DataSourceModule):

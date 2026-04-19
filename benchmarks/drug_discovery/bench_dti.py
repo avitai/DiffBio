@@ -13,6 +13,11 @@ from flax import nnx
 
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.dti import DTI_BASELINE_FAMILIES
+from diffbio.operators.drug_discovery import (
+    DTIPipelineConfig,
+    DifferentiableDTIPipeline,
+    build_dti_pipeline_inputs,
+)
 from diffbio.sources import (
     DTI_DATASET_CONTRACT_KEYS,
     BioSNAPDTISource,
@@ -240,24 +245,24 @@ def _run_dti_probe_benchmark(
     loss_mode: str,
 ) -> dict[str, Any]:
     """Train a small paired-input probe and package one DTI benchmark result."""
-    pair_features = build_dti_pair_features(data)
-    targets = jnp.asarray(data["targets"], dtype=jnp.float32)
-    probe = DTIFeatureProbe(int(pair_features.shape[1]), rngs=nnx.Rngs(42))
-    optimizer = nnx.Optimizer(probe, optax.adam(_LEARNING_RATE), wrt=nnx.Param)
+    pipeline_config = _build_dti_pipeline_config(data)
+    input_data = build_dti_pipeline_inputs(data, config=pipeline_config)
+    targets = jnp.asarray(input_data["targets"], dtype=jnp.float32)
+    pipeline = DifferentiableDTIPipeline(pipeline_config, rngs=nnx.Rngs(42))
+    optimizer = nnx.Optimizer(pipeline, optax.adam(_LEARNING_RATE), wrt=nnx.Param)
     n_train_steps = _TRAIN_STEPS_QUICK if quick else _TRAIN_STEPS_FULL
 
-    def loss_fn(model: DTIFeatureProbe, batch_data: dict[str, Any]) -> jnp.ndarray:
+    def loss_fn(model: DifferentiableDTIPipeline, batch_data: dict[str, Any]) -> jnp.ndarray:
         scores = model.apply(batch_data, {}, None)[0]["scores"]
         if loss_mode == "regression":
             return jnp.mean(jnp.square(scores - targets))
         return jnp.mean(optax.sigmoid_binary_cross_entropy(scores, targets))
 
-    input_data = {"pair_features": pair_features}
     for _ in range(n_train_steps):
-        loss, grads = nnx.value_and_grad(lambda model: loss_fn(model, input_data))(probe)
-        optimizer.update(probe, grads)
+        loss, grads = nnx.value_and_grad(lambda model: loss_fn(model, input_data))(pipeline)
+        optimizer.update(pipeline, grads)
 
-    result = probe.apply(input_data, {}, None)[0]
+    result = pipeline.apply(input_data, {}, None)[0]
     predictions = np.asarray(result["scores"], dtype=np.float32)
     target_array = np.asarray(targets, dtype=np.float32)
 
@@ -284,31 +289,54 @@ def _run_dti_probe_benchmark(
 
     return {
         "metrics": metrics,
-        "operator": probe,
+        "operator": pipeline,
         "input_data": input_data,
         "loss_fn": loss_fn,
-        "n_items": int(pair_features.shape[0]),
-        "iterate_fn": lambda: probe.apply(input_data, {}, None),
+        "n_items": int(targets.shape[0]),
+        "iterate_fn": lambda: pipeline.apply(input_data, {}, None),
         "dataset_info": {
-            "n_pairs": int(pair_features.shape[0]),
+            "n_pairs": int(targets.shape[0]),
             "n_unique_proteins": len(set(data["protein_ids"])),
             "n_unique_drugs": len(set(data["drug_ids"])),
         },
         "operator_config": {
-            "input_dim": int(pair_features.shape[1]),
+            "input_mode": "paired_encoded_graph_sequence",
+            "protein_encoder": "TransformerSequenceEncoder",
+            "protein_hidden_dim": pipeline_config.protein_hidden_dim,
+            "drug_encoder": "DifferentiableMolecularFingerprint",
+            "drug_fingerprint_dim": pipeline_config.drug_fingerprint_dim,
+            "pair_hidden_dim": pipeline_config.pair_hidden_dim,
             "n_train_steps": n_train_steps,
             "learning_rate": _LEARNING_RATE,
         },
-        "operator_name": "DTIFeatureProbe",
+        "operator_name": "DifferentiableDTIPipeline",
         "dataset_name": dataset_name,
         "task_name": task_name,
+        "result_data": result,
         "benchmark_metadata": {
             "paired_contract": paired_contract,
             "dataset_provenance": dict(data["dataset_provenance"]),
             "metric_contract": _build_metric_contract(task_name),
             "baseline_families": list(DTI_BASELINE_FAMILIES),
+            "dti_pipeline": result["dti_pipeline"],
         },
     }
+
+
+def _build_dti_pipeline_config(data: dict[str, Any]) -> DTIPipelineConfig:
+    """Build a small shared DTI pipeline config for benchmark-sized runs."""
+    max_sequence_length = max(len(sequence) for sequence in data["protein_sequences"])
+    return DTIPipelineConfig(
+        protein_hidden_dim=8,
+        protein_num_layers=1,
+        protein_num_heads=2,
+        protein_intermediate_dim=16,
+        max_protein_length=max(8, max_sequence_length),
+        drug_fingerprint_dim=8,
+        drug_hidden_dim=8,
+        drug_num_layers=1,
+        pair_hidden_dim=12,
+    )
 
 
 def _build_paired_contract(
