@@ -3,15 +3,22 @@
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import jax.numpy as jnp
 import numpy as np
-import optax
+from calibrax.core.models import Metric, Point
 from flax import nnx
+from opifex.core.training.optimizers import OptimizerConfig, create_optimizer
 
-from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
+from benchmarks._base import (
+    DiffBioBenchmark,
+    DiffBioBenchmarkConfig,
+    build_benchmark_comparison_key,
+)
 from benchmarks._baselines.dti import DTI_BASELINE_FAMILIES
 from diffbio.operators.drug_discovery import (
     DTIPipelineConfig,
@@ -43,6 +50,31 @@ _BIOSNAP_CONFIG = DiffBioBenchmarkConfig(
 _TRAIN_STEPS_QUICK = 40
 _TRAIN_STEPS_FULL = 120
 _LEARNING_RATE = 1e-2
+_OPTIMIZER_TYPE = "adam"
+_DIFFERENTIABLE_ENCODER_PATH = "differentiable_pipeline"
+_FIXED_SCAFFOLD_ENCODER_PATH = "fixed_scaffold_baseline"
+DTI_TRAINING_SUBSTRATE = {
+    "optimizer_factory": "opifex.core.training.optimizers.create_optimizer",
+    "optimizer_config": "opifex.core.training.optimizers.OptimizerConfig",
+    "optimizer_type": _OPTIMIZER_TYPE,
+}
+DTI_COMPARISON_AXES = ("dataset", "task", "encoder_path")
+DTI_COMPARISON_ENCODER_PATHS = (
+    _DIFFERENTIABLE_ENCODER_PATH,
+    _FIXED_SCAFFOLD_ENCODER_PATH,
+)
+_DTI_METRIC_DIRECTIONS = {
+    "rmse": "lower_is_better",
+    "pearson": "higher_is_better",
+    "spearman": "higher_is_better",
+    "roc_auc": "higher_is_better",
+    "pr_auc": "higher_is_better",
+    "mrr": "higher_is_better",
+    "recall_at_1": "higher_is_better",
+    "recall_at_5": "higher_is_better",
+    "brier_score": "lower_is_better",
+    "expected_calibration_error": "lower_is_better",
+}
 _DTI_METRIC_CONTRACTS = {
     "affinity_regression": {
         "task_type": "affinity_regression",
@@ -59,10 +91,23 @@ _DTI_METRIC_CONTRACTS = {
         "metric_groups": {
             "regression": [],
             "classification": ["roc_auc", "pr_auc"],
+            "calibration": ["brier_score", "expected_calibration_error"],
             "ranking": ["mrr", "recall_at_1", "recall_at_5"],
         },
     },
 }
+
+
+@dataclass(frozen=True)
+class _DTITrainingArtifacts:
+    """Artifacts from one Opifex-aligned DTI training run."""
+
+    pipeline: DifferentiableDTIPipeline
+    pipeline_config: DTIPipelineConfig
+    input_data: dict[str, Any]
+    targets: jnp.ndarray
+    loss_fn: Callable[[DifferentiableDTIPipeline, dict[str, Any]], jnp.ndarray]
+    n_train_steps: int
 
 
 def build_dti_pair_features(data: dict[str, Any]) -> jnp.ndarray:
@@ -112,6 +157,43 @@ def compute_binary_interaction_metrics(
     return {
         "roc_auc": _roc_auc(targets, scores),
         "pr_auc": _pr_auc(targets, scores),
+    }
+
+
+def compute_calibration_metrics(
+    *,
+    targets: np.ndarray,
+    scores: np.ndarray,
+    n_bins: int = 5,
+) -> dict[str, float]:
+    """Compute probability calibration metrics from binary labels and logits."""
+    if n_bins <= 0:
+        raise ValueError("n_bins must be positive.")
+
+    target_array = np.asarray(targets, dtype=np.float32).ravel()
+    probabilities = _sigmoid_np(np.asarray(scores, dtype=np.float32).ravel())
+    brier_score = float(np.mean(np.square(probabilities - target_array)))
+    bins = np.linspace(0.0, 1.0, n_bins + 1)
+    expected_calibration_error = 0.0
+
+    for bin_index in range(n_bins):
+        lower = bins[bin_index]
+        upper = bins[bin_index + 1]
+        if bin_index == n_bins - 1:
+            in_bin = (probabilities >= lower) & (probabilities <= upper)
+        else:
+            in_bin = (probabilities >= lower) & (probabilities < upper)
+        if not np.any(in_bin):
+            continue
+
+        bin_weight = float(np.mean(in_bin))
+        confidence = float(np.mean(probabilities[in_bin]))
+        accuracy = float(np.mean(target_array[in_bin]))
+        expected_calibration_error += bin_weight * abs(confidence - accuracy)
+
+    return {
+        "brier_score": brier_score,
+        "expected_calibration_error": float(expected_calibration_error),
     }
 
 
@@ -174,7 +256,7 @@ class DavisDTIBenchmark(DiffBioBenchmark):
                 data_dir=None if not self.data_dir else Path(self.data_dir),
             )
         )
-        return _run_dti_probe_benchmark(
+        return _run_dti_pipeline_benchmark(
             data=source.load(),
             dataset_name="davis",
             task_name="affinity_regression",
@@ -203,7 +285,7 @@ class BioSNAPDTIBenchmark(DiffBioBenchmark):
                 data_dir=None if not self.data_dir else Path(self.data_dir),
             )
         )
-        return _run_dti_probe_benchmark(
+        return _run_dti_pipeline_benchmark(
             data=source.load(),
             dataset_name="biosnap",
             task_name="binary_interaction",
@@ -212,7 +294,7 @@ class BioSNAPDTIBenchmark(DiffBioBenchmark):
         )
 
 
-def _run_dti_probe_benchmark(
+def _run_dti_pipeline_benchmark(
     *,
     data: dict[str, Any],
     dataset_name: str,
@@ -220,27 +302,12 @@ def _run_dti_probe_benchmark(
     quick: bool,
     loss_mode: str,
 ) -> dict[str, Any]:
-    """Train a small paired-input probe and package one DTI benchmark result."""
-    pipeline_config = _build_dti_pipeline_config(data)
-    input_data = build_dti_pipeline_inputs(data, config=pipeline_config)
-    targets = jnp.asarray(input_data["targets"], dtype=jnp.float32)
-    pipeline = DifferentiableDTIPipeline(pipeline_config, rngs=nnx.Rngs(42))
-    optimizer = nnx.Optimizer(pipeline, optax.adam(_LEARNING_RATE), wrt=nnx.Param)
-    n_train_steps = _TRAIN_STEPS_QUICK if quick else _TRAIN_STEPS_FULL
-
-    def loss_fn(model: DifferentiableDTIPipeline, batch_data: dict[str, Any]) -> jnp.ndarray:
-        scores = model.apply(batch_data, {}, None)[0]["scores"]
-        if loss_mode == "regression":
-            return jnp.mean(jnp.square(scores - targets))
-        return jnp.mean(optax.sigmoid_binary_cross_entropy(scores, targets))
-
-    for _ in range(n_train_steps):
-        loss, grads = nnx.value_and_grad(lambda model: loss_fn(model, input_data))(pipeline)
-        optimizer.update(pipeline, grads)
-
-    result = pipeline.apply(input_data, {}, None)[0]
+    """Train the shared DTI pipeline and package one benchmark result."""
+    training = _train_dti_pipeline(data=data, quick=quick, loss_mode=loss_mode)
+    result = training.pipeline.apply(training.input_data, {}, None)[0]
     predictions = np.asarray(result["scores"], dtype=np.float32)
-    target_array = np.asarray(targets, dtype=np.float32)
+    target_array = np.asarray(training.targets, dtype=np.float32)
+    baseline_metrics = _run_fixed_scaffold_baseline(data=data, loss_mode=loss_mode)
 
     if loss_mode == "regression":
         metrics = compute_affinity_regression_metrics(
@@ -254,6 +321,12 @@ def _run_dti_probe_benchmark(
             scores=predictions,
         )
         metrics.update(
+            compute_calibration_metrics(
+                targets=target_array.astype(np.int32),
+                scores=predictions,
+            )
+        )
+        metrics.update(
             compute_ranking_metrics(
                 targets=target_array.astype(np.int32),
                 scores=predictions,
@@ -262,27 +335,42 @@ def _run_dti_probe_benchmark(
             )
         )
         paired_contract = _build_paired_contract(task_name, group_key="protein_ids")
+    comparison_report = _build_dti_comparison_report(
+        dataset_name=dataset_name,
+        task_name=task_name,
+        primary_metric=str(_build_metric_contract(task_name)["primary_metric"]),
+        diffbio_metrics=metrics,
+        baseline_metrics=baseline_metrics,
+        dataset_provenance=dict(data["dataset_provenance"]),
+    )
 
     return {
         "metrics": metrics,
-        "operator": pipeline,
-        "input_data": input_data,
-        "loss_fn": loss_fn,
-        "n_items": int(targets.shape[0]),
-        "iterate_fn": lambda: pipeline.apply(input_data, {}, None),
+        "operator": training.pipeline,
+        "input_data": training.input_data,
+        "loss_fn": training.loss_fn,
+        "n_items": int(training.targets.shape[0]),
+        "iterate_fn": lambda: training.pipeline.apply(training.input_data, {}, None),
+        "baselines": {
+            _FIXED_SCAFFOLD_ENCODER_PATH: _build_baseline_point(
+                dataset_name=dataset_name,
+                task_name=task_name,
+                metrics=baseline_metrics,
+            )
+        },
         "dataset_info": {
-            "n_pairs": int(targets.shape[0]),
+            "n_pairs": int(training.targets.shape[0]),
             "n_unique_proteins": len(set(data["protein_ids"])),
             "n_unique_drugs": len(set(data["drug_ids"])),
         },
         "operator_config": {
             "input_mode": "paired_encoded_graph_sequence",
             "protein_encoder": "TransformerSequenceEncoder",
-            "protein_hidden_dim": pipeline_config.protein_hidden_dim,
+            "protein_hidden_dim": training.pipeline_config.protein_hidden_dim,
             "drug_encoder": "DifferentiableMolecularFingerprint",
-            "drug_fingerprint_dim": pipeline_config.drug_fingerprint_dim,
-            "pair_hidden_dim": pipeline_config.pair_hidden_dim,
-            "n_train_steps": n_train_steps,
+            "drug_fingerprint_dim": training.pipeline_config.drug_fingerprint_dim,
+            "pair_hidden_dim": training.pipeline_config.pair_hidden_dim,
+            "n_train_steps": training.n_train_steps,
             "learning_rate": _LEARNING_RATE,
         },
         "operator_name": "DifferentiableDTIPipeline",
@@ -295,8 +383,216 @@ def _run_dti_probe_benchmark(
             "metric_contract": _build_metric_contract(task_name),
             "baseline_families": list(DTI_BASELINE_FAMILIES),
             "dti_pipeline": result["dti_pipeline"],
+            "dti_comparison_report": comparison_report,
+            "training": {
+                **DTI_TRAINING_SUBSTRATE,
+                "n_steps": training.n_train_steps,
+                "learning_rate": _LEARNING_RATE,
+            },
         },
     }
+
+
+def _train_dti_pipeline(
+    *,
+    data: dict[str, Any],
+    quick: bool,
+    loss_mode: str,
+) -> _DTITrainingArtifacts:
+    """Train one DTI pipeline using the shared Opifex optimizer substrate."""
+    pipeline_config = _build_dti_pipeline_config(data)
+    input_data = build_dti_pipeline_inputs(data, config=pipeline_config)
+    targets = jnp.asarray(input_data["targets"], dtype=jnp.float32)
+    pipeline = DifferentiableDTIPipeline(pipeline_config, rngs=nnx.Rngs(42))
+    optimizer = nnx.Optimizer(
+        pipeline,
+        create_optimizer(
+            OptimizerConfig(
+                optimizer_type=_OPTIMIZER_TYPE,
+                learning_rate=_LEARNING_RATE,
+            )
+        ),
+        wrt=nnx.Param,
+    )
+    n_train_steps = _TRAIN_STEPS_QUICK if quick else _TRAIN_STEPS_FULL
+
+    def loss_fn(model: DifferentiableDTIPipeline, batch_data: dict[str, Any]) -> jnp.ndarray:
+        scores = model.apply(batch_data, {}, None)[0]["scores"]
+        if loss_mode == "regression":
+            return jnp.mean(jnp.square(scores - targets))
+        return jnp.mean(_sigmoid_binary_cross_entropy(scores, targets))
+
+    for _ in range(n_train_steps):
+        _, grads = nnx.value_and_grad(lambda model: loss_fn(model, input_data))(pipeline)
+        optimizer.update(pipeline, grads)
+
+    return _DTITrainingArtifacts(
+        pipeline=pipeline,
+        pipeline_config=pipeline_config,
+        input_data=input_data,
+        targets=targets,
+        loss_fn=loss_fn,
+        n_train_steps=n_train_steps,
+    )
+
+
+def _run_fixed_scaffold_baseline(
+    *,
+    data: dict[str, Any],
+    loss_mode: str,
+) -> dict[str, float]:
+    """Evaluate a deterministic non-differentiable scaffold-feature baseline."""
+    features = np.asarray(build_dti_pair_features(data), dtype=np.float64)
+    target_array = np.asarray(data["targets"], dtype=np.float32)
+    baseline_predictions = _fit_ridge_baseline(features, target_array)
+
+    if loss_mode == "regression":
+        return compute_affinity_regression_metrics(
+            targets=target_array,
+            predictions=baseline_predictions.astype(np.float32),
+        )
+
+    baseline_scores = _probabilities_to_logits(baseline_predictions)
+    metrics = compute_binary_interaction_metrics(
+        targets=target_array.astype(np.int32),
+        scores=baseline_scores,
+    )
+    metrics.update(
+        compute_calibration_metrics(
+            targets=target_array.astype(np.int32),
+            scores=baseline_scores,
+        )
+    )
+    metrics.update(
+        compute_ranking_metrics(
+            targets=target_array.astype(np.int32),
+            scores=baseline_scores,
+            group_ids=list(data["protein_ids"]),
+            ks=(1, 5),
+        )
+    )
+    return metrics
+
+
+def _fit_ridge_baseline(
+    features: np.ndarray,
+    targets: np.ndarray,
+    *,
+    regularization: float = 1e-3,
+) -> np.ndarray:
+    """Fit a closed-form ridge scorer for fixed non-differentiable features."""
+    design = np.concatenate(
+        [np.ones((features.shape[0], 1), dtype=np.float64), features],
+        axis=1,
+    )
+    penalty = regularization * np.eye(design.shape[1], dtype=np.float64)
+    penalty[0, 0] = 0.0
+    weights = np.linalg.solve(design.T @ design + penalty, design.T @ targets)
+    return np.asarray(design @ weights, dtype=np.float32)
+
+
+def _build_baseline_point(
+    *,
+    dataset_name: str,
+    task_name: str,
+    metrics: dict[str, float],
+) -> Point:
+    """Build a Calibrax point for the fixed scaffold comparison row."""
+    return Point(
+        name=_FIXED_SCAFFOLD_ENCODER_PATH,
+        scenario=f"{dataset_name}/{task_name}",
+        tags={
+            "framework": "diffbio",
+            "encoder_path": _FIXED_SCAFFOLD_ENCODER_PATH,
+            "source": "closed_form_fixed_scaffold_features",
+        },
+        metrics={name: Metric(value=float(value)) for name, value in metrics.items()},
+    )
+
+
+def _build_dti_comparison_report(
+    *,
+    dataset_name: str,
+    task_name: str,
+    primary_metric: str,
+    diffbio_metrics: dict[str, float],
+    baseline_metrics: dict[str, float],
+    dataset_provenance: dict[str, Any],
+) -> dict[str, Any]:
+    """Build the shared DTI comparison report for benchmark metadata."""
+    direction = _DTI_METRIC_DIRECTIONS[primary_metric]
+    primary_delta = _compute_primary_delta(
+        metric_name=primary_metric,
+        diffbio_value=diffbio_metrics[primary_metric],
+        baseline_value=baseline_metrics[primary_metric],
+    )
+    promotion_eligible = bool(dataset_provenance.get("promotion_eligible", False))
+    stable_claim = (
+        "promotion_eligible_external_comparison"
+        if promotion_eligible
+        else "synthetic_scaffold_comparison_only"
+    )
+
+    return {
+        "report_version": "dti_comparison_v1",
+        "comparison_axes": list(DTI_COMPARISON_AXES),
+        "required_encoder_paths": list(DTI_COMPARISON_ENCODER_PATHS),
+        "primary_metric": primary_metric,
+        "metric_direction": direction,
+        "primary_delta_vs_fixed_scaffold": {primary_metric: primary_delta},
+        "diffbio_outperforms_fixed_scaffold_on_primary": primary_delta > 0.0,
+        "differentiated_value_benchmarked": True,
+        "stable_scope": "candidate" if promotion_eligible else "excluded",
+        "stable_claim": stable_claim,
+        "models": {
+            _DIFFERENTIABLE_ENCODER_PATH: {
+                "encoder_path": _DIFFERENTIABLE_ENCODER_PATH,
+                "model_family": "sequence_transformer",
+                "adapter_mode": "native_trainable",
+                "comparison_key": build_benchmark_comparison_key(
+                    comparison_axes=DTI_COMPARISON_AXES,
+                    tags={
+                        "dataset": dataset_name,
+                        "task": task_name,
+                        "encoder_path": _DIFFERENTIABLE_ENCODER_PATH,
+                    },
+                ),
+                "metrics": _serialize_metric_values(diffbio_metrics),
+            },
+            _FIXED_SCAFFOLD_ENCODER_PATH: {
+                "encoder_path": _FIXED_SCAFFOLD_ENCODER_PATH,
+                "model_family": "non_differentiable_scaffold_features",
+                "adapter_mode": "fixed_features",
+                "comparison_key": build_benchmark_comparison_key(
+                    comparison_axes=DTI_COMPARISON_AXES,
+                    tags={
+                        "dataset": dataset_name,
+                        "task": task_name,
+                        "encoder_path": _FIXED_SCAFFOLD_ENCODER_PATH,
+                    },
+                ),
+                "metrics": _serialize_metric_values(baseline_metrics),
+            },
+        },
+    }
+
+
+def _serialize_metric_values(metrics: dict[str, float]) -> dict[str, float]:
+    """Return JSON-serializable metric values."""
+    return {metric_name: float(metric_value) for metric_name, metric_value in metrics.items()}
+
+
+def _compute_primary_delta(
+    *,
+    metric_name: str,
+    diffbio_value: float,
+    baseline_value: float,
+) -> float:
+    """Compute positive-is-better primary-metric delta against the fixed baseline."""
+    direction = _DTI_METRIC_DIRECTIONS[metric_name]
+    if direction == "lower_is_better":
+        return float(baseline_value - diffbio_value)
+    return float(diffbio_value - baseline_value)
 
 
 def _build_dti_pipeline_config(data: dict[str, Any]) -> DTIPipelineConfig:
@@ -333,6 +629,11 @@ def _build_metric_contract(task_name: str) -> dict[str, Any]:
     return dict(_DTI_METRIC_CONTRACTS[task_name])
 
 
+def _sigmoid_binary_cross_entropy(scores: jnp.ndarray, targets: jnp.ndarray) -> jnp.ndarray:
+    """Compute stable binary cross entropy from logits without local optimizer APIs."""
+    return jnp.maximum(scores, 0.0) - scores * targets + jnp.log1p(jnp.exp(-jnp.abs(scores)))
+
+
 def _rank(values: np.ndarray) -> np.ndarray:
     """Compute simple integer ranks for correlation metrics."""
     return np.argsort(np.argsort(values))
@@ -353,6 +654,18 @@ def _safe_correlation(left: np.ndarray, right: np.ndarray) -> float:
     if np.allclose(left, left[0]) or np.allclose(right, right[0]):
         return 0.0
     return float(np.corrcoef(left, right)[0, 1])
+
+
+def _sigmoid_np(scores: np.ndarray) -> np.ndarray:
+    """Apply a numerically safe sigmoid to a NumPy score vector."""
+    clipped = np.clip(scores, -60.0, 60.0)
+    return 1.0 / (1.0 + np.exp(-clipped))
+
+
+def _probabilities_to_logits(values: np.ndarray) -> np.ndarray:
+    """Convert bounded probability-like values to logits."""
+    clipped = np.clip(values, 1e-4, 1.0 - 1e-4)
+    return np.asarray(np.log(clipped / (1.0 - clipped)), dtype=np.float32)
 
 
 def _roc_auc(targets: np.ndarray, scores: np.ndarray) -> float:

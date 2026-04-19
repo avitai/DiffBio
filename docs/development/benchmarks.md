@@ -287,6 +287,10 @@ checkpoint support:
   metadata into Calibrax benchmark tags and comparison keys
 - supported: DTI mini-batch provenance remains contract-valid by updating batch
   `n_pairs` while retaining the split-level `source_n_pairs`
+- supported: DTI comparison reports benchmark the differentiable pipeline
+  against a fixed non-differentiable scaffold-feature baseline, include
+  calibration metrics for binary interaction tasks, and use the Opifex
+  optimizer factory for trainable DTI benchmark paths
 - supported: a shared contextual epigenomics source contract with canonical
   `sequence`, `tf_context`, `chromatin_contacts`, and `targets` keys
 - supported: contextual target-semantics validation for `binary_peak_mask` and

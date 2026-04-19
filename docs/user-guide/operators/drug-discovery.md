@@ -39,6 +39,12 @@ metrics from BioSNAP classification and protein-grouped ranking metrics. The
 default Davis and BioSNAP fallback sources are synthetic scaffolds with
 `promotion_eligible=false`; they are contract evidence, not stable biological
 promotion evidence.
+The DTI comparison report records the integrated differentiable pipeline next
+to a fixed, non-differentiable scaffold-feature baseline using shared
+`dataset`, `task`, and `encoder_path` comparison axes. That report is
+synthetic-scaffold comparison evidence for the differentiable upgrade boundary;
+it is not stable biological promotion evidence until an external
+promotion-eligible source is benchmarked.
 Mini-batches created with `build_paired_dti_batch()` keep the split-level source
 size under `source_n_pairs` and set `n_pairs` to the current batch size, so each
 batch remains valid under `validate_dti_dataset()`.

@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import inspect
+from pathlib import Path
+
 import numpy as np
 import pytest
 
+import benchmarks.drug_discovery.bench_dti as bench_dti
 from benchmarks.drug_discovery.bench_dti import (
     BioSNAPDTIBenchmark,
     DavisDTIBenchmark,
@@ -37,6 +41,16 @@ class TestDTIMetrics:
 
         assert 0.0 <= metrics["roc_auc"] <= 1.0
         assert 0.0 <= metrics["pr_auc"] <= 1.0
+
+    def test_binary_calibration_metrics_are_well_formed(self) -> None:
+        metrics = bench_dti.compute_calibration_metrics(
+            targets=np.array([1, 0, 1, 0], dtype=np.int32),
+            scores=np.array([4.0, -4.0, 2.0, -2.0], dtype=np.float32),
+        )
+
+        assert 0.0 <= metrics["brier_score"] <= 1.0
+        assert 0.0 <= metrics["expected_calibration_error"] <= 1.0
+        assert metrics["brier_score"] < 0.05
 
     def test_ranking_metrics_are_well_formed(self) -> None:
         metrics = compute_ranking_metrics(
@@ -73,6 +87,18 @@ class TestDTIMetrics:
 
         with pytest.raises(ValueError, match="missing required keys"):
             build_dti_pair_features(bad)
+
+
+class TestDTITrainingSubstrate:
+    """Tests for the Opifex-owned DTI training boundary."""
+
+    def test_optimizer_contract_uses_opifex_training_substrate(self) -> None:
+        assert bench_dti.DTI_TRAINING_SUBSTRATE == {
+            "optimizer_factory": "opifex.core.training.optimizers.create_optimizer",
+            "optimizer_config": "opifex.core.training.optimizers.OptimizerConfig",
+            "optimizer_type": "adam",
+        }
+        assert "optax.adam" not in inspect.getsource(bench_dti)
 
 
 class TestDavisDTIBenchmark:
@@ -116,6 +142,13 @@ class TestDavisDTIBenchmark:
             "non_differentiable_fingerprint",
             "differentiable_drug_encoder",
         ]
+        _assert_dti_comparison_report(
+            result,
+            dataset_name="davis",
+            task_name="affinity_regression",
+            primary_metric="rmse",
+            metric_direction="lower_is_better",
+        )
         _assert_differentiable_dti_pipeline_metadata(result)
 
 
@@ -144,10 +177,68 @@ class TestBioSNAPDTIBenchmark:
             "metric_groups": {
                 "regression": [],
                 "classification": ["roc_auc", "pr_auc"],
+                "calibration": ["brier_score", "expected_calibration_error"],
                 "ranking": ["mrr", "recall_at_1", "recall_at_5"],
             },
         }
+        assert 0.0 <= result.metrics["brier_score"].value <= 1.0
+        assert 0.0 <= result.metrics["expected_calibration_error"].value <= 1.0
+        _assert_dti_comparison_report(
+            result,
+            dataset_name="biosnap",
+            task_name="binary_interaction",
+            primary_metric="roc_auc",
+            metric_direction="higher_is_better",
+        )
         _assert_differentiable_dti_pipeline_metadata(result)
+
+
+def test_dti_docs_keep_synthetic_comparisons_outside_stable_promotion() -> None:
+    doc = Path("docs/user-guide/operators/drug-discovery.md").read_text(encoding="utf-8")
+
+    assert "DTI comparison report" in doc
+    assert "synthetic-scaffold comparison evidence" in doc
+    assert "not stable biological promotion evidence" in doc
+
+
+def _assert_dti_comparison_report(
+    result,
+    *,
+    dataset_name: str,
+    task_name: str,
+    primary_metric: str,
+    metric_direction: str,
+) -> None:
+    """Assert DTI benchmark output includes the shared comparison report."""
+    report = result.metadata["dti_comparison_report"]
+
+    assert report["report_version"] == "dti_comparison_v1"
+    assert report["comparison_axes"] == ["dataset", "task", "encoder_path"]
+    assert report["primary_metric"] == primary_metric
+    assert report["metric_direction"] == metric_direction
+    assert report["required_encoder_paths"] == [
+        "differentiable_pipeline",
+        "fixed_scaffold_baseline",
+    ]
+    assert report["stable_scope"] == "excluded"
+    assert report["stable_claim"] == "synthetic_scaffold_comparison_only"
+    assert set(report["models"]) == {
+        "differentiable_pipeline",
+        "fixed_scaffold_baseline",
+    }
+    assert report["models"]["differentiable_pipeline"]["comparison_key"] == {
+        "dataset": dataset_name,
+        "task": task_name,
+        "encoder_path": "differentiable_pipeline",
+    }
+    assert report["models"]["fixed_scaffold_baseline"]["comparison_key"] == {
+        "dataset": dataset_name,
+        "task": task_name,
+        "encoder_path": "fixed_scaffold_baseline",
+    }
+    assert primary_metric in report["models"]["differentiable_pipeline"]["metrics"]
+    assert primary_metric in report["models"]["fixed_scaffold_baseline"]["metrics"]
+    assert primary_metric in report["primary_delta_vs_fixed_scaffold"]
 
 
 def _assert_differentiable_dti_pipeline_metadata(result) -> None:
@@ -177,6 +268,13 @@ def _assert_differentiable_dti_pipeline_metadata(result) -> None:
             "operator": "DifferentiableMolecularFingerprint",
             "differentiable": True,
         },
+    }
+    assert result.metadata["training"] == {
+        "optimizer_factory": "opifex.core.training.optimizers.create_optimizer",
+        "optimizer_config": "opifex.core.training.optimizers.OptimizerConfig",
+        "optimizer_type": "adam",
+        "n_steps": 40,
+        "learning_rate": 0.01,
     }
     assert result.config["input_mode"] == "paired_encoded_graph_sequence"
     assert result.config["protein_encoder"] == "TransformerSequenceEncoder"
