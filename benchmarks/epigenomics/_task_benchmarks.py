@@ -5,9 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Protocol
 
-from calibrax.ci.guard import CIGuard, GuardResult
+from calibrax.ci.guard import GuardResult
 from calibrax.core.models import (
-    Metric,
     MetricDef,
     MetricDirection,
     MetricPriority,
@@ -15,9 +14,15 @@ from calibrax.core.models import (
     Run,
 )
 from calibrax.core.result import BenchmarkResult
-from calibrax.storage.store import Store
 
 from benchmarks._base import DiffBioBenchmarkConfig
+from benchmarks._calibrax import (
+    build_calibrax_metric_defs,
+    build_calibrax_point,
+    check_calibrax_suite_regressions,
+    resolve_calibrax_threshold,
+    save_calibrax_suite_run,
+)
 from benchmarks.epigenomics._contextual import (
     CONTEXTUAL_ABLATION_COMPARISON_AXES,
     CONTEXTUAL_ABLATION_ORDER,
@@ -354,17 +359,10 @@ def build_contextual_epigenomics_suite_run(
 ) -> Run:
     """Convert a contextual ablation suite report into a Calibrax run."""
     regression_expectations = report.get("regression_expectations", {})
-    metric_defs_payload = regression_expectations.get("metric_defs", {})
-    if not isinstance(metric_defs_payload, dict):
-        raise ValueError(
-            "Contextual suite report regression_expectations.metric_defs must be a dict"
-        )
-
-    metric_defs = {
-        metric_name: MetricDef.from_dict(metric_payload)
-        for metric_name, metric_payload in metric_defs_payload.items()
-        if isinstance(metric_payload, dict)
-    }
+    metric_defs = build_calibrax_metric_defs(
+        regression_expectations.get("metric_defs", {}),
+        context="Contextual suite report",
+    )
 
     points: list[Point] = []
     task_reports = report.get("tasks", {})
@@ -385,32 +383,13 @@ def build_contextual_epigenomics_suite_run(
             variant_report = variants.get(variant_name)
             if not isinstance(variant_report, dict):
                 continue
-            comparison_key = variant_report.get("comparison_key", {})
-            if not isinstance(comparison_key, dict):
-                raise ValueError(
-                    "Contextual suite variant report comparison_key must be a dict: "
-                    f"{benchmark_name}/{variant_name}"
-                )
-            metrics = variant_report.get("metrics", {})
-            if not isinstance(metrics, dict):
-                raise ValueError(
-                    "Contextual suite variant report metrics must be a dict: "
-                    f"{benchmark_name}/{variant_name}"
-                )
-
             points.append(
-                Point(
+                build_calibrax_point(
                     name=benchmark_name,
                     scenario=dataset_name,
-                    tags={
-                        axis: str(value)
-                        for axis, value in comparison_key.items()
-                        if value is not None
-                    },
-                    metrics={
-                        metric_name: Metric(value=float(metric_value))
-                        for metric_name, metric_value in metrics.items()
-                    },
+                    comparison_key=variant_report.get("comparison_key", {}),
+                    metrics=variant_report.get("metrics", {}),
+                    context=(f"Contextual suite variant report {benchmark_name}/{variant_name}"),
                 )
             )
 
@@ -445,15 +424,15 @@ def save_contextual_epigenomics_suite_run(
     metadata: dict[str, Any] | None = None,
 ) -> tuple[Path, Run]:
     """Persist a contextual ablation suite report into a Calibrax store."""
-    store = Store(store_path)
-    run = build_contextual_epigenomics_suite_run(
+    return save_calibrax_suite_run(
         report,
+        store_path,
+        build_run=build_contextual_epigenomics_suite_run,
         commit=commit,
         branch=branch,
         environment=environment,
         metadata=metadata,
     )
-    return store.save(run), run
 
 
 def check_contextual_epigenomics_suite_regressions(
@@ -467,37 +446,26 @@ def check_contextual_epigenomics_suite_regressions(
     set_baseline_if_missing: bool = False,
 ) -> GuardResult:
     """Persist one contextual suite run and compare it against a Calibrax baseline."""
-    store = Store(store_path)
-    _, run = save_contextual_epigenomics_suite_run(
+    regression_expectations = report.get("regression_expectations", {})
+    if not isinstance(regression_expectations, dict):
+        raise ValueError("Contextual suite report regression_expectations must be a dict")
+    threshold = resolve_calibrax_threshold(
+        regression_expectations,
+        default_threshold=_CONTEXTUAL_REGRESSION_THRESHOLD,
+        context="Contextual suite report",
+    )
+
+    return check_calibrax_suite_regressions(
         report,
         store_path,
+        build_run=build_contextual_epigenomics_suite_run,
+        threshold=threshold,
         commit=commit,
         branch=branch,
         environment=environment,
         metadata=metadata,
+        set_baseline_if_missing=set_baseline_if_missing,
     )
-
-    regression_expectations = report.get("regression_expectations", {})
-    calibrax_policy = regression_expectations.get("calibrax", {})
-    if not isinstance(calibrax_policy, dict):
-        raise ValueError("Contextual suite report regression_expectations.calibrax must be a dict")
-    threshold = float(calibrax_policy.get("threshold", _CONTEXTUAL_REGRESSION_THRESHOLD))
-
-    baseline = store.get_baseline()
-    if baseline is None:
-        if not set_baseline_if_missing:
-            raise FileNotFoundError("No baseline set. Use store.set_baseline() first.")
-        store.set_baseline(run.id)
-        return GuardResult(
-            passed=True,
-            regressions=(),
-            threshold=threshold,
-            baseline_id=run.id,
-            current_id=run.id,
-        )
-
-    guard = CIGuard(store, threshold=threshold)
-    return guard.check(run.id)
 
 
 def _build_contextual_suite_contract(

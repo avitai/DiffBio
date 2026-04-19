@@ -12,6 +12,8 @@ DIRECT_OPTAX_OPTIMIZER_CALLS = (
     "optax.adamw(",
     "optax.sgd(",
 )
+CALIBRAX_STORAGE_IMPORT = "from calibrax.storage.store import Store"
+CALIBRAX_CI_GUARD_IMPORT = "from calibrax.ci.guard import CIGuard"
 
 
 def _benchmark_python_files() -> tuple[Path, ...]:
@@ -29,3 +31,17 @@ def test_benchmark_training_uses_one_opifex_optimizer_boundary() -> None:
             assert OPTIFEX_OPTIMIZER_IMPORT not in source, relative_path
         for direct_call in DIRECT_OPTAX_OPTIMIZER_CALLS:
             assert direct_call not in source, f"{relative_path} contains {direct_call}"
+
+
+def test_benchmark_storage_uses_one_calibrax_boundary() -> None:
+    """Benchmarks should route Calibrax storage and guards through one helper."""
+    calibrax_helper = BENCHMARKS_ROOT / "_calibrax.py"
+
+    for path in _benchmark_python_files():
+        if path == calibrax_helper:
+            continue
+
+        source = path.read_text(encoding="utf-8")
+        relative_path = path.relative_to(ROOT)
+        assert CALIBRAX_STORAGE_IMPORT not in source, relative_path
+        assert CALIBRAX_CI_GUARD_IMPORT not in source, relative_path

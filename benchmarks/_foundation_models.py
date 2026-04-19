@@ -7,9 +7,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Protocol, TypeVar
 
-from calibrax.ci.guard import CIGuard, GuardResult
+from calibrax.ci.guard import GuardResult
 from calibrax.core.models import (
-    Metric,
     MetricDef,
     MetricDirection,
     MetricPriority,
@@ -17,9 +16,15 @@ from calibrax.core.models import (
     Run,
 )
 from calibrax.core.result import BenchmarkResult
-from calibrax.storage.store import Store
 
 from benchmarks._base import build_benchmark_comparison_key
+from benchmarks._calibrax import (
+    build_calibrax_metric_defs,
+    build_calibrax_point,
+    check_calibrax_suite_regressions,
+    resolve_calibrax_threshold,
+    save_calibrax_suite_run,
+)
 from diffbio.operators.foundation_models.contracts import FOUNDATION_BENCHMARK_COMPARISON_AXES
 
 DEFAULT_FOUNDATION_REPORT_METADATA_KEYS = (
@@ -372,17 +377,10 @@ def build_foundation_suite_run(
 ) -> Run:
     """Convert a deterministic suite report into a Calibrax Run."""
     regression_expectations = report.get("regression_expectations", {})
-    metric_defs_payload = regression_expectations.get("metric_defs", {})
-    if not isinstance(metric_defs_payload, dict):
-        raise ValueError(
-            "Foundation suite report regression_expectations.metric_defs must be a dict"
-        )
-
-    metric_defs = {
-        metric_name: MetricDef.from_dict(metric_payload)
-        for metric_name, metric_payload in metric_defs_payload.items()
-        if isinstance(metric_payload, dict)
-    }
+    metric_defs = build_calibrax_metric_defs(
+        regression_expectations.get("metric_defs", {}),
+        context="Foundation suite report",
+    )
 
     points: list[Point] = []
     for task_name in report.get("task_order", ()):
@@ -400,30 +398,13 @@ def build_foundation_suite_run(
             if not isinstance(model_report, dict):
                 continue
 
-            comparison_key = model_report.get("comparison_key", {})
-            if not isinstance(comparison_key, dict):
-                raise ValueError(
-                    "Foundation suite model report comparison_key must be a dict: "
-                    f"{benchmark_name}/{model_name}"
-                )
-
-            metrics = model_report.get("metrics", {})
-            if not isinstance(metrics, dict):
-                raise ValueError(
-                    "Foundation suite model report metrics must be a dict: "
-                    f"{benchmark_name}/{model_name}"
-                )
-
-            tags = {axis: str(value) for axis, value in comparison_key.items() if value is not None}
             points.append(
-                Point(
+                build_calibrax_point(
                     name=benchmark_name,
                     scenario=dataset_name,
-                    tags=tags,
-                    metrics={
-                        metric_name: Metric(value=float(metric_value))
-                        for metric_name, metric_value in metrics.items()
-                    },
+                    comparison_key=model_report.get("comparison_key", {}),
+                    metrics=model_report.get("metrics", {}),
+                    context=(f"Foundation suite model report {benchmark_name}/{model_name}"),
                 )
             )
 
@@ -558,15 +539,15 @@ def save_foundation_suite_run(
     metadata: dict[str, Any] | None = None,
 ) -> tuple[Path, Run]:
     """Persist a deterministic suite report into a Calibrax Store."""
-    store = Store(store_path)
-    run = build_foundation_suite_run(
+    return save_calibrax_suite_run(
         report,
+        store_path,
+        build_run=build_foundation_suite_run,
         commit=commit,
         branch=branch,
         environment=environment,
         metadata=metadata,
     )
-    return store.save(run), run
 
 
 def check_foundation_suite_regressions(
@@ -580,37 +561,26 @@ def check_foundation_suite_regressions(
     set_baseline_if_missing: bool = False,
 ) -> GuardResult:
     """Persist one suite run and compare it against the stored Calibrax baseline."""
-    store = Store(store_path)
-    _, run = save_foundation_suite_run(
+    regression_expectations = report.get("regression_expectations", {})
+    if not isinstance(regression_expectations, dict):
+        raise ValueError("Foundation suite report regression_expectations must be a dict")
+    threshold = resolve_calibrax_threshold(
+        regression_expectations,
+        default_threshold=DEFAULT_FOUNDATION_REGRESSION_THRESHOLD,
+        context="Foundation suite report",
+    )
+
+    return check_calibrax_suite_regressions(
         report,
         store_path,
+        build_run=build_foundation_suite_run,
+        threshold=threshold,
         commit=commit,
         branch=branch,
         environment=environment,
         metadata=metadata,
+        set_baseline_if_missing=set_baseline_if_missing,
     )
-
-    regression_expectations = report.get("regression_expectations", {})
-    calibrax_policy = regression_expectations.get("calibrax", {})
-    if not isinstance(calibrax_policy, dict):
-        raise ValueError("Foundation suite report regression_expectations.calibrax must be a dict")
-    threshold = float(calibrax_policy.get("threshold", DEFAULT_FOUNDATION_REGRESSION_THRESHOLD))
-
-    baseline = store.get_baseline()
-    if baseline is None:
-        if not set_baseline_if_missing:
-            raise FileNotFoundError("No baseline set. Use store.set_baseline() first.")
-        store.set_baseline(run.id)
-        return GuardResult(
-            passed=True,
-            regressions=(),
-            threshold=threshold,
-            baseline_id=run.id,
-            current_id=run.id,
-        )
-
-    guard = CIGuard(store, threshold=threshold)
-    return guard.check(run.id)
 
 
 def _save_canonical_json(

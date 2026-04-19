@@ -23,6 +23,8 @@ from calibrax.core.models import Point, Run
 from calibrax.core.result import BenchmarkResult
 from calibrax.profiling.hardware import detect_hardware_specs
 
+from benchmarks._calibrax import save_calibrax_run
+
 logger = logging.getLogger(__name__)
 
 # Registry: (domain, module_path, benchmark_class_name)
@@ -235,10 +237,7 @@ def main() -> None:
     if results:
         run = _build_run(results)
         try:
-            from calibrax.storage.store import Store  # noqa: PLC0415
-
-            store = Store(Path("benchmarks/results"))
-            store.save(run)
+            save_calibrax_run(run, Path("benchmarks/results"))
             print("\nRun saved to: benchmarks/results/")
         except (OSError, TypeError, ValueError) as exc:
             logger.warning("Could not save Run: %s", exc)
