@@ -17,6 +17,8 @@ through `MetabolomicsEmbeddingSource`, which aligns imported spectrum
 embeddings by `spectrum_ids`. This reuses the same indexed embedding substrate
 as other imported artifacts and keeps spectrum-row identity explicit.
 
+Post-DTI stable boundary: benchmark-backed operator support is separate from imported foundation-model promotion.
+
 The metabolomics operator surface remains operator-tested but not yet benchmark-promoted.
 `DifferentiableSpectralSimilarity` is available for
 synthetic correctness and gradient checks, while stable benchmark promotion

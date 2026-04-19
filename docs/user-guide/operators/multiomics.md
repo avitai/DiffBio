@@ -21,6 +21,8 @@ spatial modalities, and the spatial deconvolution benchmark records both the
 modality contract and the operator-output artifact metadata used for comparison
 tracking.
 
+Post-DTI stable boundary: benchmark-backed operator support is separate from imported foundation-model promotion.
+
 DiffBio also provides shared indexed loaders for RNA+ATAC or other multi-omics
 embedding artifacts via `MultiOmicsEmbeddingSource`, which aligns imported
 embeddings by `sample_ids`. This is a shared loader and metadata contract, not stable imported multi-omics foundation-model support.

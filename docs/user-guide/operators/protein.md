@@ -19,6 +19,8 @@ precomputed protein-LM artifacts. This means exported embedding matrices can be
 aligned by `sequence_ids` through the same sequence adapter path used for other
 foundation-model benchmarks.
 
+Post-DTI stable boundary: benchmark-backed operator support is separate from imported foundation-model promotion.
+
 This is not stable imported protein-LM support. It does not claim external
 protein-LM checkpoint loading, tokenizer interchangeability, or broad protein
 task promotion. The current benchmark evidence is limited to synthetic

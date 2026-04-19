@@ -33,6 +33,25 @@ profiles into dense embeddings using transformer architectures:
 - **NucleotideTransformerPrecomputedAdapter**: strict adapter for precomputed
   Nucleotide Transformer sequence embeddings
 
+## Post-DTI Stable Boundary
+
+Post-DTI stable boundary: benchmark-backed operator support is separate from imported foundation-model promotion.
+
+For Phase 7 domains, the stable surface is intentionally smaller than the
+available experimental interfaces:
+
+| Domain | Verified Capability | Stable Boundary |
+|--------|---------------------|-----------------|
+| Protein | secondary-structure scaffold context | excluded from stable imported protein-LM promotion |
+| Multi-omics | seqFISH spatial deconvolution | benchmark-backed operator benchmark |
+| Metabolomics | precomputed spectrum embedding alignment | not benchmark-promoted |
+
+This boundary means that exported embedding alignment can exist as shared
+infrastructure without implying checkpoint loading, tokenizer interchange, broad
+fine-tuning, or unrelated biomedical language-model coverage. New post-DTI
+domains move into stable support only when benchmark provenance, comparison
+metadata, and regression checks are attached.
+
 ## Imported Single-Cell Workflows
 
 DiffBio's current stable imported single-cell foundation-model workflow is
