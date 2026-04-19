@@ -68,9 +68,15 @@ def build_genomics_foundation_suite_report(
             task_results["splice_site"]
         )
 
-    return build_foundation_suite_report(
+    suite_report = build_foundation_suite_report(
         suite_name="genomics/foundation_quick_suite",
         task_order=_TASK_ORDER,
         task_reports=task_reports,
         task_scenarios=GENOMICS_FOUNDATION_SUITE_SCENARIOS,
     )
+    suite_report["dataset_provenance"] = {
+        task_name: task_reports[task_name]["dataset_provenance"]
+        for task_name in _TASK_ORDER
+        if task_name in task_reports
+    }
+    return suite_report

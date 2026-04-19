@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -19,6 +19,7 @@ from benchmarks.genomics._foundation import (
     GENOMICS_FOUNDATION_DATASET_CONTRACT_KEYS,
     GENOMICS_FOUNDATION_SUITE_SCENARIOS,
     compute_sequence_classification_metrics,
+    resolve_genomics_dataset_provenance,
     stratified_sequence_classification_split,
 )
 from diffbio.operators.foundation_models import (
@@ -221,6 +222,14 @@ class SequenceClassificationBenchmark(DiffBioBenchmark):
         source = self._source_factory(subsample)
         data = source.load()
         _validate_sequence_dataset(data)
+        dataset_name = str(data.get("dataset_name", self.task_spec.dataset_name))
+        provenance_payload = data.get("dataset_provenance")
+        if provenance_payload is not None and not isinstance(provenance_payload, Mapping):
+            raise TypeError("genomics dataset_provenance must be a dict.")
+        dataset_provenance = resolve_genomics_dataset_provenance(
+            dataset_name,
+            provenance_payload,
+        )
 
         labels = np.asarray(data["labels"], dtype=np.int32)
         train_indices, test_indices = stratified_sequence_classification_split(
@@ -285,6 +294,8 @@ class SequenceClassificationBenchmark(DiffBioBenchmark):
             "task_name": self.task_spec.task_name,
             "result_data": result_data,
             "dataset_info": {
+                "dataset_name": dataset_name,
+                "dataset_provenance": dataset_provenance,
                 "n_sequences": len(data["sequence_ids"]),
                 "n_train_sequences": int(train_indices.shape[0]),
                 "n_test_sequences": int(test_indices.shape[0]),
@@ -299,10 +310,11 @@ class SequenceClassificationBenchmark(DiffBioBenchmark):
                 "train_fraction": _TRAIN_FRACTION,
             },
             "operator_name": "LinearEmbeddingProbe",
-            "dataset_name": self.task_spec.dataset_name,
+            "dataset_name": dataset_name,
             "benchmark_metadata": {
                 "suite_scenarios": dict(GENOMICS_FOUNDATION_SUITE_SCENARIOS),
                 "dataset_contract_keys": list(GENOMICS_FOUNDATION_DATASET_CONTRACT_KEYS),
+                "dataset_provenance": dataset_provenance,
                 "embedding_source": embedding_source,
                 **(
                     self.embedding_adapter.benchmark_metadata()

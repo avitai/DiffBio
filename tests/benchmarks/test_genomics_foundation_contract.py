@@ -9,9 +9,13 @@ import pytest
 
 from benchmarks.genomics._foundation import (
     GENOMICS_FOUNDATION_DATASET_CONTRACT_KEYS,
+    GENOMICS_FOUNDATION_DATASET_PROVENANCE,
+    GENOMICS_FOUNDATION_DATASET_PROVENANCE_KEYS,
     GENOMICS_FOUNDATION_SUITE_SCENARIOS,
     compute_sequence_classification_metrics,
+    resolve_genomics_dataset_provenance,
     stratified_sequence_classification_split,
+    _resolve_task_report_dataset_provenance,
 )
 
 
@@ -33,6 +37,68 @@ class TestGenomicsFoundationConstants:
             "labels",
         )
 
+    def test_synthetic_dataset_provenance_marks_scaffold_not_promotable(self) -> None:
+        assert GENOMICS_FOUNDATION_DATASET_PROVENANCE_KEYS == (
+            "dataset_name",
+            "source_type",
+            "curation_status",
+            "provenance_label",
+            "biological_validation",
+            "promotion_eligible",
+        )
+        assert GENOMICS_FOUNDATION_DATASET_PROVENANCE["synthetic_genomics"] == {
+            "dataset_name": "synthetic_genomics",
+            "source_type": "scaffold",
+            "curation_status": "synthetic",
+            "provenance_label": "deterministic_motif_scaffold",
+            "biological_validation": "interface_validation_only",
+            "promotion_eligible": False,
+        }
+
+    def test_unknown_dataset_requires_explicit_provenance(self) -> None:
+        with pytest.raises(ValueError, match="dataset_provenance"):
+            resolve_genomics_dataset_provenance("custom_curated_dataset")
+
+    def test_explicit_curated_dataset_provenance_is_accepted(self) -> None:
+        provenance = {
+            "dataset_name": "custom_curated_dataset",
+            "source_type": "curated",
+            "curation_status": "curated",
+            "provenance_label": "curated_sequence_panel_v1",
+            "biological_validation": "heldout_biological_validation",
+            "promotion_eligible": True,
+        }
+
+        assert (
+            resolve_genomics_dataset_provenance("custom_curated_dataset", provenance) == provenance
+        )
+
+    def test_scaffold_dataset_provenance_cannot_be_promotion_eligible(self) -> None:
+        provenance = {
+            **GENOMICS_FOUNDATION_DATASET_PROVENANCE["synthetic_genomics"],
+            "promotion_eligible": True,
+        }
+
+        with pytest.raises(ValueError, match="scaffold"):
+            resolve_genomics_dataset_provenance("synthetic_genomics", provenance)
+
+    def test_task_report_requires_each_model_dataset_provenance(self) -> None:
+        task_report = {
+            "models": {
+                "diffbio_native": {
+                    "metadata": {
+                        "dataset_provenance": GENOMICS_FOUNDATION_DATASET_PROVENANCE[
+                            "synthetic_genomics"
+                        ]
+                    }
+                },
+                "dnabert2_precomputed": {"metadata": {}},
+            }
+        }
+
+        with pytest.raises(ValueError, match="missing dataset_provenance"):
+            _resolve_task_report_dataset_provenance(task_report)
+
     def test_docs_keep_genomics_scaffold_outside_stable_promotion(self) -> None:
         repo_root = Path(__file__).resolve().parents[2]
         user_guide = (repo_root / "docs/user-guide/operators/foundation-models.md").read_text(
@@ -42,9 +108,12 @@ class TestGenomicsFoundationConstants:
 
         assert "Phase 4 pre-promotion scaffold" in user_guide
         assert "not a stable genomics promotion claim" in user_guide
+        assert "`dataset_provenance`" in user_guide
+        assert "`promotion_eligible`: `false`" in user_guide
         assert "stable sequence integrations today" not in user_guide
         assert "Phase 4 scaffold: `DNABERT2PrecomputedAdapter`" in benchmark_guide
         assert "pending genomics realism and promotion evidence" in benchmark_guide
+        assert "`source_type`: `scaffold`" in benchmark_guide
 
 
 class TestStratifiedSequenceClassificationSplit:

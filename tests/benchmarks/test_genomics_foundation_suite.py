@@ -11,6 +11,7 @@ import json
 from flax import nnx
 
 from benchmarks._foundation_models import save_foundation_suite_report
+from benchmarks.genomics._foundation import GENOMICS_FOUNDATION_DATASET_PROVENANCE
 from benchmarks.genomics.foundation_suite import (
     build_genomics_foundation_suite_report,
     run_genomics_foundation_suite,
@@ -138,6 +139,12 @@ class TestGenomicsFoundationSuiteHarness:
         assert report_a == report_b
         assert report_a["comparison_axes"] == list(FOUNDATION_BENCHMARK_COMPARISON_AXES)
         assert tuple(report_a["task_order"]) == ("promoter", "tfbs", "splice_site")
+        expected_provenance = GENOMICS_FOUNDATION_DATASET_PROVENANCE["synthetic_genomics"]
+        assert report_a["dataset_provenance"] == {
+            "promoter": expected_provenance,
+            "tfbs": expected_provenance,
+            "splice_site": expected_provenance,
+        }
         assert report_a["regression_expectations"]["comparison_axes"] == list(
             FOUNDATION_BENCHMARK_COMPARISON_AXES
         )
@@ -183,6 +190,9 @@ class TestGenomicsFoundationSuiteHarness:
                 "dnabert2_precomputed",
                 "nucleotide_transformer_precomputed",
             )
+            assert report_a["tasks"][task_name]["dataset_provenance"] == expected_provenance
+            for model_report in report_a["tasks"][task_name]["models"].values():
+                assert model_report["metadata"]["dataset_provenance"] == expected_provenance
 
         assert (
             report_a["tasks"]["promoter"]["models"]["diffbio_frozen_encoder"]["tags"][

@@ -205,6 +205,13 @@ DiffBio sequence encoder, and the current precomputed DNABERT-2 and Nucleotide
 Transformer adapters through the same deterministic reporting layer. This is
 Phase 4 scaffold evidence, not a stable genomics promotion claim.
 
+The genomics suite reports this boundary as machine-readable
+`dataset_provenance`. The default `synthetic_genomics` scaffold records
+`source_type`: `scaffold`, `curation_status`: `synthetic`,
+`biological_validation`: `interface_validation_only`, and
+`promotion_eligible`: `false`. Custom curated datasets must provide their own
+provenance payload before they can enter the foundation-suite report path.
+
 ## TransformerSequenceEncoder
 
 Differentiable transformer encoder for nucleotide sequences. It converts

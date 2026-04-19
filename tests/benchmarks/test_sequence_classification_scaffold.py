@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any
 
 import jax.numpy as jnp
 import numpy as np
@@ -27,6 +28,16 @@ def _make_task_spec() -> SequenceTaskSpec:
         full_samples_per_class=3,
         sequence_length=12,
     )
+
+
+class _StaticSequenceSource:
+    """Test source returning a fixed dataset payload."""
+
+    def __init__(self, data: dict[str, Any]) -> None:
+        self._data = data
+
+    def load(self) -> dict[str, Any]:
+        return self._data
 
 
 class TestSyntheticSequenceClassificationDataset:
@@ -156,3 +167,20 @@ class TestSequenceClassificationBenchmarkDefaults:
 
         assert len(dataset["sequence_ids"]) == 9
         assert dataset["one_hot_sequences"].shape == (9, 12, 4)
+
+    def test_run_core_rejects_malformed_dataset_provenance(self) -> None:
+        dataset = build_synthetic_sequence_classification_dataset(
+            task_name="promoter",
+            samples_per_class=2,
+            sequence_length=12,
+        )
+        dataset["dataset_provenance"] = "synthetic"
+        benchmark = SequenceClassificationBenchmark(
+            DiffBioBenchmarkConfig(name="genomics/promoter", domain="genomics"),
+            task_spec=_make_task_spec(),
+            quick=True,
+            source_factory=lambda _subsample: _StaticSequenceSource(dataset),
+        )
+
+        with pytest.raises(TypeError, match="dataset_provenance must be a dict"):
+            benchmark._run_core()

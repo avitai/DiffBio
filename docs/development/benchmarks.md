@@ -236,6 +236,20 @@ at the benchmark layer. In addition to benchmark tags, the promoted
 This keeps artifact identity and benchmark scenario identity on one shared
 schema for comparison, regression, and provenance tooling.
 
+Genomics Phase 4 scaffold reports also carry `dataset_provenance` so synthetic
+interface validation cannot be mistaken for biological validation. The
+`synthetic_genomics` scaffold is recorded with:
+
+- `dataset_name`: `synthetic_genomics`
+- `source_type`: `scaffold`
+- `curation_status`: `synthetic`
+- `provenance_label`: `deterministic_motif_scaffold`
+- `biological_validation`: `interface_validation_only`
+- `promotion_eligible`: `false`
+
+Any custom or curated genomics source must provide its own `dataset_provenance`
+payload before it can be reported through the foundation suite.
+
 The first supported imported adapters are `GeneformerPrecomputedAdapter` and
 `ScGPTPrecomputedAdapter`. This remains deliberately narrower than generic
 checkpoint support:
