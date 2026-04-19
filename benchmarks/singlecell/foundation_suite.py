@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from calibrax.core.result import BenchmarkResult
 
-from benchmarks._foundation_models import build_foundation_suite_report
+from benchmarks._foundation_models import (
+    build_foundation_promotion_report,
+    build_foundation_suite_report,
+    check_foundation_suite_regressions,
+)
 from benchmarks.singlecell._foundation import (
     SINGLECELL_FOUNDATION_DEFERRED_TASKS,
     SINGLECELL_FOUNDATION_SUITE_SCENARIOS,
@@ -71,3 +76,29 @@ def build_singlecell_foundation_suite_report(
         task_scenarios=SINGLECELL_FOUNDATION_SUITE_SCENARIOS,
         deferred_tasks=SINGLECELL_FOUNDATION_DEFERRED_TASKS,
     )
+
+
+def build_singlecell_foundation_promotion_report(
+    suite_report: dict[str, Any],
+    store_path: Path,
+    *,
+    commit: str | None = None,
+    branch: str | None = None,
+    environment: dict[str, Any] | None = None,
+    metadata: dict[str, Any] | None = None,
+    set_baseline_if_missing: bool = False,
+) -> dict[str, Any]:
+    """Attach the Calibrax guard result to the single-cell promotion report."""
+    if suite_report.get("suite") != "singlecell/foundation_quick_suite":
+        raise ValueError("Single-cell promotion reports require the single-cell foundation suite.")
+
+    guard_result = check_foundation_suite_regressions(
+        suite_report,
+        store_path,
+        commit=commit,
+        branch=branch,
+        environment=environment,
+        metadata=metadata,
+        set_baseline_if_missing=set_baseline_if_missing,
+    )
+    return build_foundation_promotion_report(suite_report, guard_result=guard_result)

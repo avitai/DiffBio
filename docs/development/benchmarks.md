@@ -209,6 +209,11 @@ Calibrax `Store`, and `check_foundation_suite_regressions()` to run the stored
 suite against the `main` baseline with the persisted threshold policy.
 Use `save_foundation_promotion_report()` to persist the promotion-review record
 as canonical JSON once the relevant regression check has been attached.
+For single-cell promotion review, use
+`benchmarks.singlecell.foundation_suite.build_singlecell_foundation_promotion_report()`;
+it attaches the Calibrax guard result before building the shared promotion
+artifact and fails closed unless an existing baseline is available or baseline
+bootstrap is requested explicitly.
 
 ### Imported Foundation-Model Benchmarks
 

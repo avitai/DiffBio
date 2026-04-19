@@ -183,7 +183,10 @@ but unverified work stays explicit in stored artifacts. Today that means
 `grn_transfer` is marked deferred from Phase 3 stable scope until a dedicated foundation-aware GRN harness exists.
 When a stable-scope review is needed, the same suite report can be paired with
 the stored Calibrax regression result to produce one promotion-review artifact
-instead of a benchmark-specific summary path.
+instead of a benchmark-specific summary path. Use
+`build_singlecell_foundation_promotion_report()` for that review; it fails
+closed when no Calibrax baseline exists unless baseline bootstrap is requested
+explicitly.
 
 When scGPT artifacts depend on explicit batch context, that requirement is
 carried in benchmark metadata through `requires_batch_context`, `batch_key`,

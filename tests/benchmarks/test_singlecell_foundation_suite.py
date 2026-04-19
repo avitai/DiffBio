@@ -8,12 +8,14 @@ from typing import Any
 import json
 import jax.numpy as jnp
 import numpy as np
+import pytest
 
 from benchmarks._foundation_models import (
     build_foundation_promotion_report,
     save_foundation_suite_report,
 )
 from benchmarks.singlecell.foundation_suite import (
+    build_singlecell_foundation_promotion_report,
     build_singlecell_foundation_suite_report,
     run_singlecell_foundation_suite,
 )
@@ -250,6 +252,26 @@ class TestSingleCellFoundationSuiteHarness:
             "silhouette_batch",
             "silhouette_label",
         ]
+        promotion_store_path = tmp_path / "singlecell_promotion_store"
+        with pytest.raises(FileNotFoundError, match="No baseline set"):
+            build_singlecell_foundation_promotion_report(report_a, promotion_store_path)
+
+        guarded_promotion_report = build_singlecell_foundation_promotion_report(
+            report_a,
+            promotion_store_path,
+            set_baseline_if_missing=True,
+        )
+        assert guarded_promotion_report["readiness"] == {
+            "required_models_present": True,
+            "regression_check_status": "passed",
+        }
+        assert guarded_promotion_report["promotion_candidate"] is True
+        assert guarded_promotion_report["promotion_blockers"] == []
+        assert guarded_promotion_report["regression_check"] is not None
+        assert (
+            guarded_promotion_report["regression_check"]["baseline_id"]
+            == guarded_promotion_report["regression_check"]["current_id"]
+        )
 
         output_path = save_foundation_suite_report(
             report_a,
