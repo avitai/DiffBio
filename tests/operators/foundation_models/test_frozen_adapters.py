@@ -78,6 +78,51 @@ class TestFrozenSequenceEncoderAdapter:
         assert decode_foundation_text(metadata["preprocessing_version"]) == "one_hot_v1"
         assert decode_foundation_text(metadata["pooling_strategy"]) == "mean"
 
+    def test_exposes_benchmark_metadata(self) -> None:
+        adapter = FrozenSequenceEncoderAdapter(
+            config=TransformerSequenceEncoderConfig(
+                hidden_dim=8,
+                num_layers=1,
+                num_heads=2,
+                intermediate_dim=16,
+                max_length=10,
+                dropout_rate=0.0,
+                pooling="mean",
+                artifact_id="diffbio.sequence_frozen_encoder",
+                preprocessing_version="one_hot_v1",
+                adapter_mode=AdapterMode.FROZEN_ENCODER,
+            ),
+            rngs=nnx.Rngs(42),
+        )
+
+        assert adapter.benchmark_metadata() == {
+            "embedding_source": "in_process_operator",
+            "foundation_source_name": "diffbio_frozen_encoder",
+        }
+
+    def test_rejects_sequence_id_dimension_mismatch(self) -> None:
+        adapter = FrozenSequenceEncoderAdapter(
+            config=TransformerSequenceEncoderConfig(
+                hidden_dim=8,
+                num_layers=1,
+                num_heads=2,
+                intermediate_dim=16,
+                max_length=10,
+                dropout_rate=0.0,
+                pooling="mean",
+                artifact_id="diffbio.sequence_frozen_encoder",
+                preprocessing_version="one_hot_v1",
+                adapter_mode=AdapterMode.FROZEN_ENCODER,
+            ),
+            rngs=nnx.Rngs(42),
+        )
+
+        with pytest.raises(ValueError, match="same leading dimension"):
+            adapter.load_dataset_embeddings(
+                reference_sequence_ids=["seq_a", "seq_b"],
+                one_hot_sequences=_make_one_hot_sequences(),
+            )
+
     def test_matches_precomputed_export_of_the_same_encoder(self, tmp_path: Path) -> None:
         reference_sequence_ids = ["seq_a", "seq_b", "seq_c"]
         one_hot_sequences = _make_one_hot_sequences()

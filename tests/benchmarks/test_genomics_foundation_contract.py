@@ -11,6 +11,7 @@ from benchmarks.genomics._foundation import (
     GENOMICS_FOUNDATION_DATASET_CONTRACT_KEYS,
     GENOMICS_FOUNDATION_DATASET_PROVENANCE,
     GENOMICS_FOUNDATION_DATASET_PROVENANCE_KEYS,
+    GENOMICS_FOUNDATION_SUPPORT_MATRIX,
     GENOMICS_FOUNDATION_SUITE_SCENARIOS,
     compute_sequence_classification_metrics,
     resolve_genomics_dataset_provenance,
@@ -36,6 +37,41 @@ class TestGenomicsFoundationConstants:
             "one_hot_sequences",
             "labels",
         )
+
+    def test_support_matrix_tracks_only_verified_genomics_scaffold_modes(self) -> None:
+        expected_tasks = ("promoter", "tfbs", "splice_site")
+        common_exclusions = (
+            "generic_checkpoint_loading",
+            "tokenizer_interchange",
+            "stable_genomics_promotion",
+        )
+
+        assert GENOMICS_FOUNDATION_SUPPORT_MATRIX == {
+            "FrozenSequenceEncoderAdapter": {
+                "adapter_key": "diffbio_frozen_encoder",
+                "adapter_modes": ("frozen_encoder",),
+                "verified_tasks": expected_tasks,
+                "support_status": "phase_4_scaffold",
+                "scope_exclusions": (
+                    "external_frozen_checkpoint_import",
+                    "stable_genomics_promotion",
+                ),
+            },
+            "DNABERT2PrecomputedAdapter": {
+                "adapter_key": "dnabert2_precomputed",
+                "adapter_modes": ("precomputed",),
+                "verified_tasks": expected_tasks,
+                "support_status": "phase_4_scaffold",
+                "scope_exclusions": common_exclusions,
+            },
+            "NucleotideTransformerPrecomputedAdapter": {
+                "adapter_key": "nucleotide_transformer_precomputed",
+                "adapter_modes": ("precomputed",),
+                "verified_tasks": expected_tasks,
+                "support_status": "phase_4_scaffold",
+                "scope_exclusions": common_exclusions,
+            },
+        }
 
     def test_synthetic_dataset_provenance_marks_scaffold_not_promotable(self) -> None:
         assert GENOMICS_FOUNDATION_DATASET_PROVENANCE_KEYS == (
@@ -114,6 +150,20 @@ class TestGenomicsFoundationConstants:
         assert "Phase 4 scaffold: `DNABERT2PrecomputedAdapter`" in benchmark_guide
         assert "pending genomics realism and promotion evidence" in benchmark_guide
         assert "`source_type`: `scaffold`" in benchmark_guide
+
+    def test_user_guide_exposes_genomics_scaffold_support_matrix(self) -> None:
+        doc_path = (
+            Path(__file__).resolve().parents[2] / "docs/user-guide/operators/foundation-models.md"
+        )
+        doc = doc_path.read_text(encoding="utf-8")
+
+        assert "## Genomics Scaffold Support Matrix" in doc
+        assert "| `FrozenSequenceEncoderAdapter` | `frozen_encoder` |" in doc
+        assert "| `DNABERT2PrecomputedAdapter` | `precomputed` |" in doc
+        assert "| `NucleotideTransformerPrecomputedAdapter` | `precomputed` |" in doc
+        assert "`promoter`, `tfbs`, `splice_site`" in doc
+        assert "stable genomics promotion" in doc
+        assert "generic checkpoint loading" in doc
 
 
 class TestStratifiedSequenceClassificationSplit:

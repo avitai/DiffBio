@@ -9,6 +9,8 @@ import pytest
 
 from diffbio.operators.foundation_models import (
     DNABERT2PrecomputedAdapter,
+    FrozenSequenceEncoderAdapter,
+    NucleotideTransformerPrecomputedAdapter,
     create_foundation_adapter,
     get_foundation_adapter_cls,
 )
@@ -78,6 +80,11 @@ class TestFoundationBenchmarkAdapterRegistry:
 
     def test_builtin_registry_entries(self) -> None:
         assert get_foundation_adapter_cls("dnabert2_precomputed") is DNABERT2PrecomputedAdapter
+        assert (
+            get_foundation_adapter_cls("nucleotide_transformer_precomputed")
+            is NucleotideTransformerPrecomputedAdapter
+        )
+        assert get_foundation_adapter_cls("diffbio_frozen_encoder") is FrozenSequenceEncoderAdapter
 
     def test_factory_instantiates_registered_adapter(self, tmp_path: Path) -> None:
         artifact_path = tmp_path / "dnabert2_embeddings.npz"

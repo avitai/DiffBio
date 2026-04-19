@@ -26,6 +26,38 @@ GENOMICS_FOUNDATION_SUITE_SCENARIOS = {
     "tfbs": "genomics/tfbs",
     "splice_site": "genomics/splice_site",
 }
+_GENOMICS_FOUNDATION_VERIFIED_TASKS = ("promoter", "tfbs", "splice_site")
+_GENOMICS_FOUNDATION_PRECOMPUTED_EXCLUSIONS = (
+    "generic_checkpoint_loading",
+    "tokenizer_interchange",
+    "stable_genomics_promotion",
+)
+GENOMICS_FOUNDATION_SUPPORT_MATRIX = {
+    "FrozenSequenceEncoderAdapter": {
+        "adapter_key": "diffbio_frozen_encoder",
+        "adapter_modes": ("frozen_encoder",),
+        "verified_tasks": _GENOMICS_FOUNDATION_VERIFIED_TASKS,
+        "support_status": "phase_4_scaffold",
+        "scope_exclusions": (
+            "external_frozen_checkpoint_import",
+            "stable_genomics_promotion",
+        ),
+    },
+    "DNABERT2PrecomputedAdapter": {
+        "adapter_key": "dnabert2_precomputed",
+        "adapter_modes": ("precomputed",),
+        "verified_tasks": _GENOMICS_FOUNDATION_VERIFIED_TASKS,
+        "support_status": "phase_4_scaffold",
+        "scope_exclusions": _GENOMICS_FOUNDATION_PRECOMPUTED_EXCLUSIONS,
+    },
+    "NucleotideTransformerPrecomputedAdapter": {
+        "adapter_key": "nucleotide_transformer_precomputed",
+        "adapter_modes": ("precomputed",),
+        "verified_tasks": _GENOMICS_FOUNDATION_VERIFIED_TASKS,
+        "support_status": "phase_4_scaffold",
+        "scope_exclusions": _GENOMICS_FOUNDATION_PRECOMPUTED_EXCLUSIONS,
+    },
+}
 GENOMICS_FOUNDATION_DATASET_CONTRACT_KEYS = (
     "sequence_ids",
     "sequences",

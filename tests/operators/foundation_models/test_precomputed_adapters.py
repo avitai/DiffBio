@@ -205,6 +205,25 @@ class TestNucleotideTransformerPrecomputedAdapter:
         assert decode_foundation_text(metadata["preprocessing_version"]) == "bpe_v1"
         assert decode_foundation_text(metadata["pooling_strategy"]) == "mean"
 
+    def test_load_dataset_embeddings_uses_shared_sequence_contract(self, tmp_path: Path) -> None:
+        artifact_path = tmp_path / "nucleotide_transformer_embeddings.npz"
+        np.savez(
+            artifact_path,
+            embeddings=np.array([[30.0, 31.0], [10.0, 11.0], [20.0, 21.0]], dtype=np.float32),
+            sequence_ids=np.array(["seq_c", "seq_a", "seq_b"]),
+        )
+        adapter = NucleotideTransformerPrecomputedAdapter(artifact_path=artifact_path)
+
+        aligned = adapter.load_dataset_embeddings(
+            reference_sequence_ids=["seq_a", "seq_b", "seq_c"],
+            one_hot_sequences=np.zeros((3, 8, 4), dtype=np.float32),
+        )
+
+        np.testing.assert_allclose(
+            np.asarray(aligned),
+            np.array([[10.0, 11.0], [20.0, 21.0], [30.0, 31.0]], dtype=np.float32),
+        )
+
 
 class TestSequencePrecomputedAdapter:
     """Tests for the shared sequence adapter benchmark contract."""

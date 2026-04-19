@@ -131,6 +131,18 @@ in-process sequence encoder benchmarking. Phase 4 must attach dataset
 provenance, realism, and promotion evidence before genomics can be described as
 stable.
 
+## Genomics Scaffold Support Matrix
+
+This scaffold support matrix is derived from the genomics foundation benchmark
+harness and contract tests. It is intentionally not a stable genomics support
+matrix until Phase 4 promotion evidence exists.
+
+| Adapter | Adapter Mode | Verified Scaffold Tasks | Scope Exclusions |
+|---------|--------------|--------------------------|------------------|
+| `FrozenSequenceEncoderAdapter` | `frozen_encoder` | `promoter`, `tfbs`, `splice_site` | external frozen checkpoint import, stable genomics promotion |
+| `DNABERT2PrecomputedAdapter` | `precomputed` | `promoter`, `tfbs`, `splice_site` | generic checkpoint loading, tokenizer interchange, stable genomics promotion |
+| `NucleotideTransformerPrecomputedAdapter` | `precomputed` | `promoter`, `tfbs`, `splice_site` | generic checkpoint loading, tokenizer interchange, stable genomics promotion |
+
 The expected artifact shape is:
 
 - `embeddings`: `(n_sequences, embedding_dim)`
