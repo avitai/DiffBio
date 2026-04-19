@@ -72,3 +72,53 @@ class TestSpatialDeconvBenchmark:
         assert info["n_reference"] > 0
         assert info["n_spatial"] > 0
         assert info["n_reference"] > info["n_spatial"]
+
+    def test_records_multiomics_provenance_and_contract(self, result: BenchmarkResult) -> None:
+        """Benchmark metadata should expose canonical multi-omics provenance."""
+        assert result.metadata["dataset_provenance"] == {
+            "dataset_name": "seqfish_cortex",
+            "source_type": "curated_spatial_transcriptomics",
+            "modalities": ["rna", "spatial"],
+            "curation_status": "download_required_local_h5ad",
+            "biological_validation": "published_benchmark_dataset",
+            "promotion_eligible": True,
+            "source_path": str(_DATA_DIR / "seqfish_cortex.h5ad"),
+        }
+        assert result.metadata["modality_contract"] == {
+            "modalities": ["rna", "spatial"],
+            "primary_modality": "rna",
+            "spatial_key": "spatial",
+            "label_key": "celltype_mapped_refined",
+            "count_key": "X",
+        }
+        assert result.metadata["multiomics_scope"] == {
+            "promoted_task": "spatial_deconvolution",
+            "stable_scope": "benchmark_backed",
+            "scope_exclusions": [
+                "imported_multiomics_foundation_checkpoint_loading",
+                "stable_metabolomics_benchmark_promotion",
+            ],
+        }
+
+    def test_records_multiomics_artifact_metadata(self, result: BenchmarkResult) -> None:
+        """Operator output artifacts should use the shared artifact metadata contract."""
+        assert result.metadata["multiomics_artifact"] == {
+            "artifact_id": "diffbio.spatial_deconvolution.proportions",
+            "artifact_type": "operator_output",
+            "modalities": ["rna", "spatial"],
+            "embedding_source": "in_process_operator",
+            "foundation_source_name": "SpatialDeconvolution",
+            "promotion_eligible": True,
+        }
+
+
+def test_multiomics_docs_distinguish_verified_and_planned_scope() -> None:
+    """Docs should separate benchmark-backed multi-omics from planned metabolomics."""
+    multiomics_doc = Path("docs/user-guide/operators/multiomics.md").read_text(encoding="utf-8")
+    metabolomics_doc = Path("docs/user-guide/operators/metabolomics.md").read_text(encoding="utf-8")
+
+    assert "Multi-omics benchmark scope" in multiomics_doc
+    assert "seqFISH spatial deconvolution" in multiomics_doc
+    assert "not stable imported multi-omics foundation-model support" in multiomics_doc
+    assert "Metabolomics expansion scope" in metabolomics_doc
+    assert "not yet benchmark-promoted" in metabolomics_doc

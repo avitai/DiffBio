@@ -26,10 +26,12 @@ from diffbio.sources._benchmark_source import (
     encode_label_column,
 )
 from diffbio.sources._utils import to_dense_float32 as _to_dense
+from diffbio.sources.multiomics import build_multiomics_dataset_provenance
 
 logger = logging.getLogger(__name__)
 
 _FILENAME = "seqfish_cortex.h5ad"
+_SEQFISH_MODALITIES = ("rna", "spatial")
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -112,9 +114,11 @@ class SeqFISHSource(BenchmarkDataSource):
         spatial_coords = jnp.array(np.asarray(adata.obsm[config.spatial_key], dtype=np.float32))
 
         gene_names = list(adata.var_names)
+        dataset_path = Path(config.data_dir) / _FILENAME
 
         return {
             "counts": counts,
+            "cell_ids": tuple(str(cell_id) for cell_id in adata.obs_names),
             "cell_type_labels": cell_type_labels,
             "cell_type_names": cell_type_names,
             "spatial_coords": spatial_coords,
@@ -122,4 +126,20 @@ class SeqFISHSource(BenchmarkDataSource):
             "n_cells": adata.n_obs,
             "n_genes": adata.n_vars,
             "n_types": int(len(np.unique(cell_type_labels))),
+            "dataset_provenance": build_multiomics_dataset_provenance(
+                dataset_name="seqfish_cortex",
+                source_type="curated_spatial_transcriptomics",
+                modalities=_SEQFISH_MODALITIES,
+                curation_status="download_required_local_h5ad",
+                biological_validation="published_benchmark_dataset",
+                promotion_eligible=True,
+                source_path=str(dataset_path),
+            ),
+            "modality_contract": {
+                "modalities": list(_SEQFISH_MODALITIES),
+                "primary_modality": "rna",
+                "spatial_key": config.spatial_key,
+                "label_key": config.label_key,
+                "count_key": "X",
+            },
         }

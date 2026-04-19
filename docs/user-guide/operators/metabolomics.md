@@ -10,6 +10,19 @@ Metabolomics operators enable gradient-based optimization for mass spectrometry 
 
 - **DifferentiableSpectralSimilarity**: MS2DeepScore-style Siamese network for predicting molecular structural similarity from MS/MS spectra
 
+## Metabolomics expansion scope
+
+Phase 7 adds shared artifact handling for precomputed metabolomics embeddings
+through `MetabolomicsEmbeddingSource`, which aligns imported spectrum
+embeddings by `spectrum_ids`. This reuses the same indexed embedding substrate
+as other imported artifacts and keeps spectrum-row identity explicit.
+
+The metabolomics operator surface remains operator-tested but not yet benchmark-promoted.
+`DifferentiableSpectralSimilarity` is available for
+synthetic correctness and gradient checks, while stable benchmark promotion
+requires a dedicated metabolomics benchmark with canonical provenance and
+comparison metadata.
+
 ## DifferentiableSpectralSimilarity
 
 Siamese neural network for predicting molecular structural similarity from tandem mass spectra (MS/MS), based on the MS2DeepScore architecture.

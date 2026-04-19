@@ -13,6 +13,21 @@ Multi-omics operators enable end-to-end optimization of:
 - **DifferentiableSpatialGeneDetector**: SpatialDE-style spatial gene detection
 - **DifferentiableMultiOmicsVAE**: Product-of-Experts multi-omics integration
 
+## Multi-omics benchmark scope
+
+The current benchmark-backed multi-omics scope is seqFISH spatial deconvolution.
+The `SeqFISHSource` records canonical provenance for the RNA and
+spatial modalities, and the spatial deconvolution benchmark records both the
+modality contract and the operator-output artifact metadata used for comparison
+tracking.
+
+DiffBio also provides shared indexed loaders for RNA+ATAC or other multi-omics
+embedding artifacts via `MultiOmicsEmbeddingSource`, which aligns imported
+embeddings by `sample_ids`. This is a shared loader and metadata contract, not stable imported multi-omics foundation-model support.
+External multi-omics foundation checkpoint loading and generic tokenizer
+interchange remain outside the verified scope until benchmark evidence is
+attached.
+
 ## SpatialDeconvolution
 
 Cell type deconvolution for spatial transcriptomics data.

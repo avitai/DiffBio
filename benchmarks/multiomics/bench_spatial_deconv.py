@@ -48,6 +48,7 @@ from diffbio.operators.multiomics import (
     SpatialDeconvolution,
     SpatialDeconvolutionConfig,
 )
+from diffbio.sources import build_multiomics_artifact_metadata
 from diffbio.sources.seqfish import SeqFISHConfig, SeqFISHSource
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,14 @@ _REFERENCE_FRACTION = 0.8
 _CELLS_PER_SPOT_MIN = 5
 _CELLS_PER_SPOT_MAX = 10
 _SPATIAL_RADIUS_PERCENTILE = 5
+_MULTIOMICS_SCOPE = {
+    "promoted_task": "spatial_deconvolution",
+    "stable_scope": "benchmark_backed",
+    "scope_exclusions": [
+        "imported_multiomics_foundation_checkpoint_loading",
+        "stable_metabolomics_benchmark_promotion",
+    ],
+}
 
 
 def _split_reference_spatial(
@@ -401,6 +410,19 @@ class SpatialDeconvBenchmark(DiffBioBenchmark):
             },
             "operator_name": "SpatialDeconvolution",
             "dataset_name": "seqfish_cortex",
+            "benchmark_metadata": {
+                "dataset_provenance": dict(data["dataset_provenance"]),
+                "modality_contract": dict(data["modality_contract"]),
+                "multiomics_scope": dict(_MULTIOMICS_SCOPE),
+                "multiomics_artifact": build_multiomics_artifact_metadata(
+                    artifact_id="diffbio.spatial_deconvolution.proportions",
+                    artifact_type="operator_output",
+                    modalities=("rna", "spatial"),
+                    embedding_source="in_process_operator",
+                    foundation_source_name="SpatialDeconvolution",
+                    promotion_eligible=True,
+                ),
+            },
         }
 
 

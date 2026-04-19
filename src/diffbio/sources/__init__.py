@@ -44,6 +44,22 @@ from diffbio.sources.encode_peaks import ENCODEPeakConfig, ENCODEPeakSource
 from diffbio.sources.fasta import FastaSource, FastaSourceConfig
 from diffbio.sources.indexed_view import IndexedViewSource, IndexedViewSourceConfig
 from diffbio.sources.molnet import MolNetSource, MolNetSourceConfig
+from diffbio.sources.multiomics import (
+    MULTIOMICS_ARTIFACT_METADATA_KEYS,
+    MULTIOMICS_DATASET_PROVENANCE_KEYS,
+    MetabolomicsEmbeddingSource,
+    MetabolomicsEmbeddingSourceConfig,
+    MultiOmicsEmbeddingSource,
+    MultiOmicsEmbeddingSourceConfig,
+    align_metabolomics_embeddings,
+    align_multiomics_embeddings,
+    build_multiomics_artifact_metadata,
+    build_multiomics_dataset_provenance,
+    load_metabolomics_embedding_source,
+    load_multiomics_embedding_source,
+    validate_multiomics_artifact_metadata,
+    validate_multiomics_dataset_provenance,
+)
 from diffbio.sources.perturbation import (
     BatchControlMapping,
     ControlMappingConfig,
@@ -90,6 +106,12 @@ __all__ = [
     "IndexedViewSourceConfig",
     "MolNetSource",
     "MolNetSourceConfig",
+    "MULTIOMICS_ARTIFACT_METADATA_KEYS",
+    "MULTIOMICS_DATASET_PROVENANCE_KEYS",
+    "MetabolomicsEmbeddingSource",
+    "MetabolomicsEmbeddingSourceConfig",
+    "MultiOmicsEmbeddingSource",
+    "MultiOmicsEmbeddingSourceConfig",
     "from_anndata",
     "to_anndata",
     # Perturbation
@@ -111,9 +133,17 @@ __all__ = [
     "SequenceEmbeddingSource",
     "SequenceEmbeddingSourceConfig",
     "align_sequence_embeddings",
+    "align_metabolomics_embeddings",
+    "align_multiomics_embeddings",
+    "build_multiomics_artifact_metadata",
+    "build_multiomics_dataset_provenance",
     "load_sequence_embedding_source",
+    "load_metabolomics_embedding_source",
+    "load_multiomics_embedding_source",
     "SingleCellEmbeddingSource",
     "SingleCellEmbeddingSourceConfig",
     "align_singlecell_embeddings",
     "load_singlecell_embedding_source",
+    "validate_multiomics_artifact_metadata",
+    "validate_multiomics_dataset_provenance",
 ]
