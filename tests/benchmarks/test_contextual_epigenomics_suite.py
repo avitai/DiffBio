@@ -14,6 +14,7 @@ from benchmarks.epigenomics.bench_contextual_peak_calling import (
     ContextualPeakCallingBenchmark,
     run_contextual_peak_calling_ablation_suite,
 )
+from benchmarks.epigenomics._contextual import CONTEXTUAL_TRAINING_SUBSTRATE
 from benchmarks.epigenomics.contextual_suite import (
     build_contextual_epigenomics_suite_report,
     run_contextual_epigenomics_suite,
@@ -56,6 +57,17 @@ class TestContextualPeakCallingBenchmark:
         assert result.metadata["contextual_contract"]["target_semantics"] == "binary_peak_mask"
         assert result.metadata["ablation"]["use_tf_context"] is True
         assert result.metadata["ablation"]["use_chromatin_guidance"] is True
+        assert result.metadata["training"]["optimizer_factory"] == (
+            "opifex.core.training.optimizers.create_optimizer"
+        )
+        assert result.metadata["training"]["optimizer_type"] == "adam"
+
+    def test_optimizer_contract_uses_opifex_training_substrate(self) -> None:
+        assert CONTEXTUAL_TRAINING_SUBSTRATE == {
+            "optimizer_factory": "opifex.core.training.optimizers.create_optimizer",
+            "optimizer_config": "opifex.core.training.optimizers.OptimizerConfig",
+            "optimizer_type": "adam",
+        }
 
     def test_missing_context_is_rejected(self) -> None:
         benchmark = ContextualPeakCallingBenchmark(

@@ -57,6 +57,14 @@ class TestFNOPeakCaller:
         assert "peak_scores" in result
         assert "coverage" in result
 
+    def test_uses_opifex_1d_fno_runtime(self, rngs: nnx.Rngs) -> None:
+        """FNO runtime is delegated to Opifex with the 1D signal contract."""
+        config = FNOPeakCallerConfig(hidden_channels=16, modes=8, num_layers=2)
+        op = FNOPeakCaller(config, rngs=rngs)
+
+        assert op.fno.__class__.__module__.startswith("opifex.neural.operators")
+        assert op.fno.spatial_dims == 1
+
     def test_output_shape(self, rngs: nnx.Rngs, coverage_data: dict) -> None:
         """Peak probabilities have same length as input coverage."""
         config = FNOPeakCallerConfig(hidden_channels=16, modes=8, num_layers=2)

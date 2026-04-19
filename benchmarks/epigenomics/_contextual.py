@@ -8,9 +8,9 @@ from typing import Any, Literal, Protocol
 
 import jax.numpy as jnp
 import numpy as np
-import optax
 from datarax.core.config import OperatorConfig
 from flax import nnx
+from opifex.core.training.optimizers import OptimizerConfig, create_optimizer
 
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from diffbio.operators.epigenomics.contextual import (
@@ -30,6 +30,12 @@ _DEFAULT_CONTEXTUAL_VARIANT = "tf_plus_chromatin"
 _TRAIN_STEPS_QUICK = 20
 _TRAIN_STEPS_FULL = 60
 _LEARNING_RATE = 1e-2
+_OPTIMIZER_TYPE = "adam"
+CONTEXTUAL_TRAINING_SUBSTRATE = {
+    "optimizer_factory": "opifex.core.training.optimizers.create_optimizer",
+    "optimizer_config": "opifex.core.training.optimizers.OptimizerConfig",
+    "optimizer_type": _OPTIMIZER_TYPE,
+}
 
 
 class _ContextualSource(Protocol):
@@ -205,7 +211,16 @@ class ContextualEpigenomicsBenchmark(DiffBioBenchmark):
             ablation=self.ablation,
         )
         operator = ContextualEpigenomicsOperator(model_config, rngs=nnx.Rngs(42))
-        optimizer = nnx.Optimizer(operator, optax.adam(_LEARNING_RATE), wrt=nnx.Param)
+        optimizer = nnx.Optimizer(
+            operator,
+            create_optimizer(
+                OptimizerConfig(
+                    optimizer_type=_OPTIMIZER_TYPE,
+                    learning_rate=_LEARNING_RATE,
+                )
+            ),
+            wrt=nnx.Param,
+        )
 
         def loss_fn(
             model: ContextualEpigenomicsOperator, batch_data: dict[str, Any]
@@ -277,6 +292,7 @@ class ContextualEpigenomicsBenchmark(DiffBioBenchmark):
                     "chromatin_guidance_weight": self.ablation.chromatin_guidance_weight,
                 },
                 "training": {
+                    **CONTEXTUAL_TRAINING_SUBSTRATE,
                     "n_steps": n_train_steps,
                     "learning_rate": _LEARNING_RATE,
                     "initial_total_loss": float(initial_losses["total"]),
