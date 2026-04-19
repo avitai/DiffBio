@@ -17,7 +17,8 @@ References:
       Genome Biology, 2018.
 """
 
-# TODO: Migrate to datarax
+# Ownership note: DiffBio owns the AnnData biological schema adapter; batching
+# and iteration stay on Datarax eager-source primitives.
 
 from __future__ import annotations
 

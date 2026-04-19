@@ -1,6 +1,8 @@
 """Optimal transport layers for differentiable assignment and matching.
 
-# TODO: Migrate to artifex
+Ownership note: DiffBio retains this transport-plan layer because downstream
+operators need a differentiable marginal-constrained plan module. Calibrax
+currently exposes scalar Sinkhorn-style metrics, not this operator contract.
 
 This module provides differentiable optimal transport solvers using the
 Sinkhorn algorithm in log-domain for numerical stability.
@@ -24,8 +26,6 @@ __all__ = [
 
 class SinkhornLayer(nnx.Module):
     """Sinkhorn optimal transport layer (log-domain).
-
-    # TODO: Migrate to artifex
 
     Computes the entropy-regularised optimal transport plan between two
     discrete marginal distributions ``a`` and ``b`` given a cost matrix ``C``,

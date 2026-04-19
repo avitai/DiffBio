@@ -1,6 +1,9 @@
 """Shared graph attention components for GNN-based operators.
 
-# TODO: Migrate to artifex
+Ownership note: DiffBio retains these sparse GAT/GATv2 layers because sibling
+repos do not currently expose a GATv2-compatible graph-attention block with the
+same edge-feature and segment-softmax contract. Generic model pieces should
+still come from Artifex where an exact reusable layer exists.
 
 This module provides reusable graph attention building blocks that are needed
 by multiple downstream operators (assembly, cell-cell communication, GRN
@@ -342,8 +345,6 @@ class GraphAttentionBlock(nnx.Module):
 class GATv2Layer(nnx.Module):
     """GATv2 multi-head graph attention layer.
 
-    # TODO: Migrate to artifex
-
     Unlike the original GAT (``GraphAttentionLayer``), GATv2 applies LeakyReLU
     *before* computing the attention scalar, which makes the attention function
     strictly more expressive (it can represent any monotonic scoring function
@@ -534,8 +535,6 @@ class GATv2Layer(nnx.Module):
 
 class GATv2Block(nnx.Module):
     """Full GNN block using GATv2 attention + LayerNorm + residual + FFN.
-
-    # TODO: Migrate to artifex
 
     Architecture::
 
