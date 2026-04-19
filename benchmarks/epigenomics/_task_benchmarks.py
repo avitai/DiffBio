@@ -2,12 +2,24 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Protocol
 
+from calibrax.ci.guard import CIGuard, GuardResult
+from calibrax.core.models import (
+    Metric,
+    MetricDef,
+    MetricDirection,
+    MetricPriority,
+    Point,
+    Run,
+)
 from calibrax.core.result import BenchmarkResult
+from calibrax.storage.store import Store
 
 from benchmarks._base import DiffBioBenchmarkConfig
 from benchmarks.epigenomics._contextual import (
+    CONTEXTUAL_ABLATION_COMPARISON_AXES,
     CONTEXTUAL_ABLATION_ORDER,
     ContextualEpigenomicsBenchmark,
     ContextualEpigenomicsTaskSpec,
@@ -22,6 +34,59 @@ _TASK_METRIC_KEYS = {
     "chromatin_state_prediction": ("accuracy", "chromatin_consistency"),
 }
 _DEFAULT_CONTEXTUAL_VARIANT = "tf_plus_chromatin"
+_CONTEXTUAL_REGRESSION_THRESHOLD = 0.05
+_CONTEXTUAL_EVIDENCE_SCOPE = {
+    "dataset": "synthetic_contextual_epigenomics",
+    "source_type": "synthetic",
+    "promotion_eligible": False,
+    "stable_scope": "excluded",
+    "reason": (
+        "Synthetic contextual epigenomics ablations are regression evidence, "
+        "not stable biological promotion evidence."
+    ),
+}
+_CONTEXTUAL_METRIC_DEF_FACTORIES = {
+    "precision": lambda: MetricDef(
+        name="precision",
+        unit="",
+        direction=MetricDirection.HIGHER,
+        group="quality",
+        priority=MetricPriority.SECONDARY,
+        description="Position-wise peak-calling precision",
+    ),
+    "recall": lambda: MetricDef(
+        name="recall",
+        unit="",
+        direction=MetricDirection.HIGHER,
+        group="quality",
+        priority=MetricPriority.SECONDARY,
+        description="Position-wise peak-calling recall",
+    ),
+    "f1": lambda: MetricDef(
+        name="f1",
+        unit="",
+        direction=MetricDirection.HIGHER,
+        group="quality",
+        priority=MetricPriority.PRIMARY,
+        description="Position-wise peak-calling F1 score",
+    ),
+    "accuracy": lambda: MetricDef(
+        name="accuracy",
+        unit="",
+        direction=MetricDirection.HIGHER,
+        group="quality",
+        priority=MetricPriority.PRIMARY,
+        description="Position-wise chromatin-state accuracy",
+    ),
+    "chromatin_consistency": lambda: MetricDef(
+        name="chromatin_consistency",
+        unit="",
+        direction=MetricDirection.HIGHER,
+        group="structure",
+        priority=MetricPriority.SECONDARY,
+        description="Bounded structural consistency with chromatin contacts",
+    ),
+}
 
 _PEAK_CALLING_CONFIG = DiffBioBenchmarkConfig(
     name="epigenomics/contextual_peak_calling",
@@ -161,6 +226,9 @@ def build_contextual_task_report(
     """Build a deterministic ablation report for one contextual benchmark."""
     variant_order = [variant for variant in CONTEXTUAL_ABLATION_ORDER if variant in results]
     reference_result = results["sequence_only"]
+    dataset = str(reference_result.tags["dataset"])
+    task = str(reference_result.tags["task"])
+    comparison_axes = _resolve_contextual_comparison_axes(results)
     reference_metrics = {
         key: float(reference_result.metrics[key].value)
         for key in _TASK_METRIC_KEYS[reference_result.tags["task"]]
@@ -188,6 +256,7 @@ def build_contextual_task_report(
                 "ablation": result.metadata["ablation"],
                 "training": result.metadata["training"],
             },
+            "comparison_key": _extract_contextual_comparison_key(result),
         }
 
         if variant_name == "sequence_only":
@@ -214,6 +283,9 @@ def build_contextual_task_report(
 
     return {
         "benchmark": benchmark_name,
+        "dataset": dataset,
+        "task": task,
+        "comparison_axes": comparison_axes,
         "contract": first_result.metadata["contextual_contract"],
         "variant_order": variant_order,
         "primary_metric": primary_metric,
@@ -260,12 +332,172 @@ def build_contextual_epigenomics_suite_report(
         )
 
     task_order = [task_name for task_name in _TASK_ORDER if task_name in tasks]
+    regression_expectations = _build_contextual_regression_expectations(tasks, task_order)
     return {
         "suite": "epigenomics/contextual_quick_suite",
+        "comparison_axes": list(CONTEXTUAL_ABLATION_COMPARISON_AXES),
         "task_order": task_order,
+        "contextual_evidence_scope": dict(_CONTEXTUAL_EVIDENCE_SCOPE),
         "contextual_contract": _build_contextual_suite_contract(tasks, task_order),
+        "regression_expectations": regression_expectations,
         "tasks": {task_name: tasks[task_name] for task_name in task_order},
     }
+
+
+def build_contextual_epigenomics_suite_run(
+    report: dict[str, Any],
+    *,
+    commit: str | None = None,
+    branch: str | None = None,
+    environment: dict[str, Any] | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> Run:
+    """Convert a contextual ablation suite report into a Calibrax run."""
+    regression_expectations = report.get("regression_expectations", {})
+    metric_defs_payload = regression_expectations.get("metric_defs", {})
+    if not isinstance(metric_defs_payload, dict):
+        raise ValueError(
+            "Contextual suite report regression_expectations.metric_defs must be a dict"
+        )
+
+    metric_defs = {
+        metric_name: MetricDef.from_dict(metric_payload)
+        for metric_name, metric_payload in metric_defs_payload.items()
+        if isinstance(metric_payload, dict)
+    }
+
+    points: list[Point] = []
+    task_reports = report.get("tasks", {})
+    if not isinstance(task_reports, dict):
+        raise ValueError("Contextual suite report tasks must be a dict")
+
+    for task_name in report.get("task_order", ()):
+        task_report = task_reports.get(task_name)
+        if not isinstance(task_report, dict):
+            continue
+        benchmark_name = str(task_report.get("benchmark", task_name))
+        dataset_name = str(task_report.get("dataset", "unknown"))
+        variants = task_report.get("variants", {})
+        if not isinstance(variants, dict):
+            continue
+
+        for variant_name in task_report.get("variant_order", ()):
+            variant_report = variants.get(variant_name)
+            if not isinstance(variant_report, dict):
+                continue
+            comparison_key = variant_report.get("comparison_key", {})
+            if not isinstance(comparison_key, dict):
+                raise ValueError(
+                    "Contextual suite variant report comparison_key must be a dict: "
+                    f"{benchmark_name}/{variant_name}"
+                )
+            metrics = variant_report.get("metrics", {})
+            if not isinstance(metrics, dict):
+                raise ValueError(
+                    "Contextual suite variant report metrics must be a dict: "
+                    f"{benchmark_name}/{variant_name}"
+                )
+
+            points.append(
+                Point(
+                    name=benchmark_name,
+                    scenario=dataset_name,
+                    tags={
+                        axis: str(value)
+                        for axis, value in comparison_key.items()
+                        if value is not None
+                    },
+                    metrics={
+                        metric_name: Metric(value=float(metric_value))
+                        for metric_name, metric_value in metrics.items()
+                    },
+                )
+            )
+
+    run_metadata = {
+        "suite": report.get("suite"),
+        "comparison_axes": report.get("comparison_axes"),
+        "task_order": report.get("task_order"),
+        "contextual_contract": report.get("contextual_contract"),
+        "contextual_evidence_scope": report.get("contextual_evidence_scope"),
+        "regression_expectations": regression_expectations,
+    }
+    if metadata is not None:
+        run_metadata.update(metadata)
+
+    return Run(
+        points=tuple(points),
+        commit=commit,
+        branch=branch,
+        environment={} if environment is None else dict(environment),
+        metadata=run_metadata,
+        metric_defs=metric_defs,
+    )
+
+
+def save_contextual_epigenomics_suite_run(
+    report: dict[str, Any],
+    store_path: Path,
+    *,
+    commit: str | None = None,
+    branch: str | None = None,
+    environment: dict[str, Any] | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> tuple[Path, Run]:
+    """Persist a contextual ablation suite report into a Calibrax store."""
+    store = Store(store_path)
+    run = build_contextual_epigenomics_suite_run(
+        report,
+        commit=commit,
+        branch=branch,
+        environment=environment,
+        metadata=metadata,
+    )
+    return store.save(run), run
+
+
+def check_contextual_epigenomics_suite_regressions(
+    report: dict[str, Any],
+    store_path: Path,
+    *,
+    commit: str | None = None,
+    branch: str | None = None,
+    environment: dict[str, Any] | None = None,
+    metadata: dict[str, Any] | None = None,
+    set_baseline_if_missing: bool = False,
+) -> GuardResult:
+    """Persist one contextual suite run and compare it against a Calibrax baseline."""
+    store = Store(store_path)
+    _, run = save_contextual_epigenomics_suite_run(
+        report,
+        store_path,
+        commit=commit,
+        branch=branch,
+        environment=environment,
+        metadata=metadata,
+    )
+
+    regression_expectations = report.get("regression_expectations", {})
+    calibrax_policy = regression_expectations.get("calibrax", {})
+    if not isinstance(calibrax_policy, dict):
+        raise ValueError("Contextual suite report regression_expectations.calibrax must be a dict")
+    threshold = float(calibrax_policy.get("threshold", _CONTEXTUAL_REGRESSION_THRESHOLD))
+
+    baseline = store.get_baseline()
+    if baseline is None:
+        if not set_baseline_if_missing:
+            raise FileNotFoundError("No baseline set. Use store.set_baseline() first.")
+        store.set_baseline(run.id)
+        return GuardResult(
+            passed=True,
+            regressions=(),
+            threshold=threshold,
+            baseline_id=run.id,
+            current_id=run.id,
+        )
+
+    guard = CIGuard(store, threshold=threshold)
+    return guard.check(run.id)
 
 
 def _build_contextual_suite_contract(
@@ -295,4 +527,84 @@ def _build_contextual_suite_contract(
         "required_keys": [] if required_keys is None else required_keys,
         "target_semantics_by_task": target_semantics_by_task,
         "num_output_classes_by_task": num_output_classes_by_task,
+    }
+
+
+def _resolve_contextual_comparison_axes(
+    results: dict[str, BenchmarkResult],
+) -> list[str]:
+    """Require one contextual ablation comparison-axis convention."""
+    expected_axes: list[str] = [str(axis) for axis in CONTEXTUAL_ABLATION_COMPARISON_AXES]
+    observed_axes = {
+        variant_name: result.metadata.get("comparison_axes")
+        for variant_name, result in results.items()
+    }
+    if any(axes != expected_axes for axes in observed_axes.values()):
+        raise ValueError(
+            f"Contextual epigenomics results disagree on comparison_axes: {observed_axes}"
+        )
+    return expected_axes
+
+
+def _extract_contextual_comparison_key(result: BenchmarkResult) -> dict[str, Any]:
+    """Return the stored comparison key for one contextual variant."""
+    comparison_key = result.metadata.get("comparison_key")
+    if not isinstance(comparison_key, dict):
+        raise ValueError(
+            "Contextual epigenomics result metadata comparison_key must be a dict: "
+            f"{result.name}/{result.tags.get('contextual_variant')}"
+        )
+    return {axis: comparison_key.get(axis) for axis in CONTEXTUAL_ABLATION_COMPARISON_AXES}
+
+
+def _build_contextual_regression_expectations(
+    tasks: dict[str, Any],
+    task_order: list[str],
+) -> dict[str, Any]:
+    """Build Calibrax regression expectations for contextual ablation variants."""
+    metric_defs = _build_contextual_metric_defs(tasks)
+    return {
+        "comparison_axes": list(CONTEXTUAL_ABLATION_COMPARISON_AXES),
+        "task_order": task_order,
+        "required_variants": {
+            task_name: list(CONTEXTUAL_ABLATION_ORDER) for task_name in task_order
+        },
+        "metric_defs": {
+            metric_name: metric_def.to_dict() for metric_name, metric_def in metric_defs.items()
+        },
+        "calibrax": {
+            "baseline_name": "main",
+            "threshold": _CONTEXTUAL_REGRESSION_THRESHOLD,
+        },
+    }
+
+
+def _build_contextual_metric_defs(tasks: dict[str, Any]) -> dict[str, MetricDef]:
+    """Build explicit Calibrax metric semantics for contextual ablation reports."""
+    metric_names: set[str] = set()
+    for task_report in tasks.values():
+        variants = task_report.get("variants", {})
+        if not isinstance(variants, dict):
+            continue
+        for variant_report in variants.values():
+            if not isinstance(variant_report, dict):
+                continue
+            metrics = variant_report.get("metrics", {})
+            if isinstance(metrics, dict):
+                metric_names.update(str(metric_name) for metric_name in metrics)
+
+    unknown_metrics = sorted(
+        metric_name
+        for metric_name in metric_names
+        if metric_name not in _CONTEXTUAL_METRIC_DEF_FACTORIES
+    )
+    if unknown_metrics:
+        raise ValueError(
+            "Contextual epigenomics suite report includes metrics without "
+            f"Calibrax semantics: {unknown_metrics}"
+        )
+
+    return {
+        metric_name: _CONTEXTUAL_METRIC_DEF_FACTORIES[metric_name]()
+        for metric_name in sorted(metric_names)
     }

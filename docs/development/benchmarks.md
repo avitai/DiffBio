@@ -289,6 +289,9 @@ checkpoint support:
 - supported: deterministic contextual epigenomics ablation benchmarks and
   suite reports for peak calling and chromatin-state prediction across
   `sequence_only`, `tf_context`, and `tf_plus_chromatin`
+- supported: Calibrax-stored contextual epigenomics ablation comparisons using
+  `dataset`, `task`, and `contextual_variant` as comparison axes, with explicit
+  metric semantics for task quality and chromatin consistency
 - not yet supported: arbitrary Geneformer checkpoint loading into DiffBio
 - not yet supported: external frozen DNABERT-2 or Nucleotide Transformer
   checkpoint imports in stable APIs
@@ -297,6 +300,8 @@ checkpoint support:
   the DTI benchmark family
 - not yet supported: real cell-type-resolved epigenomics datasets for the
   contextual benchmark family
+- not yet supported: stable biological promotion of contextual epigenomics
+  ablation gains from the synthetic contextual source alone
 
 > **Important**: Operators with learnable parameters (neural networks,
 > learnable centroids, GLM coefficients) must be trained before

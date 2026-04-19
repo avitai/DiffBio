@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
 import pytest
+from calibrax.core.models import MetricDirection
 
 from benchmarks.epigenomics.bench_chromatin_state_prediction import (
     ChromatinStatePredictionBenchmark,
@@ -17,7 +20,9 @@ from benchmarks.epigenomics.bench_contextual_peak_calling import (
 from benchmarks.epigenomics._contextual import CONTEXTUAL_TRAINING_SUBSTRATE
 from benchmarks.epigenomics.contextual_suite import (
     build_contextual_epigenomics_suite_report,
+    check_contextual_epigenomics_suite_regressions,
     run_contextual_epigenomics_suite,
+    save_contextual_epigenomics_suite_run,
 )
 from tests.benchmarks.conftest import assert_valid_benchmark_result
 
@@ -31,6 +36,12 @@ class _MissingTFContextSource:
             "chromatin_contacts": [[[1.0]]],
             "targets": [[1]],
         }
+
+
+@pytest.fixture(scope="module")
+def contextual_suite_report() -> dict[str, Any]:
+    """Build one contextual suite report for Calibrax governance assertions."""
+    return build_contextual_epigenomics_suite_report(run_contextual_epigenomics_suite(quick=True))
 
 
 class TestContextualPeakCallingBenchmark:
@@ -194,3 +205,108 @@ class TestContextualEpigenomicsSuite:
             ]["accuracy"]
             > 0.0
         )
+
+    def test_suite_report_has_variant_comparison_axes(
+        self,
+        contextual_suite_report: dict[str, Any],
+    ) -> None:
+        report = contextual_suite_report
+
+        assert report["comparison_axes"] == ["dataset", "task", "contextual_variant"]
+        assert report["contextual_evidence_scope"] == {
+            "dataset": "synthetic_contextual_epigenomics",
+            "source_type": "synthetic",
+            "promotion_eligible": False,
+            "stable_scope": "excluded",
+            "reason": (
+                "Synthetic contextual epigenomics ablations are regression evidence, "
+                "not stable biological promotion evidence."
+            ),
+        }
+        assert report["regression_expectations"]["required_variants"] == {
+            "contextual_peak_calling": [
+                "sequence_only",
+                "tf_context",
+                "tf_plus_chromatin",
+            ],
+            "chromatin_state_prediction": [
+                "sequence_only",
+                "tf_context",
+                "tf_plus_chromatin",
+            ],
+        }
+        assert (
+            report["regression_expectations"]["metric_defs"]["f1"]["direction"]
+            == MetricDirection.HIGHER.value
+        )
+        assert (
+            report["regression_expectations"]["metric_defs"]["chromatin_consistency"]["direction"]
+            == MetricDirection.HIGHER.value
+        )
+
+        peak_chromatin = report["tasks"]["contextual_peak_calling"]["variants"]["tf_plus_chromatin"]
+        assert peak_chromatin["comparison_key"] == {
+            "dataset": "synthetic_contextual_epigenomics",
+            "task": "contextual_peak_calling",
+            "contextual_variant": "tf_plus_chromatin",
+        }
+
+    def test_suite_run_persists_calibrax_variant_points(
+        self,
+        contextual_suite_report: dict[str, Any],
+        tmp_path: Path,
+    ) -> None:
+        saved_path, run = save_contextual_epigenomics_suite_run(
+            contextual_suite_report,
+            tmp_path / "contextual_store",
+            commit="abc123",
+            branch="main",
+        )
+
+        assert saved_path.exists()
+        assert run.commit == "abc123"
+        assert run.branch == "main"
+        assert run.metadata["suite"] == "epigenomics/contextual_quick_suite"
+        assert run.metadata["contextual_evidence_scope"]["promotion_eligible"] is False
+        assert run.metric_defs["accuracy"].direction == MetricDirection.HIGHER
+        assert run.metric_defs["f1"].direction == MetricDirection.HIGHER
+        assert len(run.points) == 6
+
+        point = next(
+            point
+            for point in run.points
+            if point.tags["task"] == "contextual_peak_calling"
+            and point.tags["contextual_variant"] == "tf_plus_chromatin"
+        )
+        assert point.name == "epigenomics/contextual_peak_calling"
+        assert point.scenario == "synthetic_contextual_epigenomics"
+        assert "f1" in point.metrics
+        assert "chromatin_consistency" in point.metrics
+
+    def test_suite_regression_check_uses_calibrax_guard(
+        self,
+        contextual_suite_report: dict[str, Any],
+        tmp_path: Path,
+    ) -> None:
+        store_path = tmp_path / "contextual_store"
+        baseline = check_contextual_epigenomics_suite_regressions(
+            contextual_suite_report,
+            store_path,
+            set_baseline_if_missing=True,
+        )
+
+        assert baseline.passed is True
+        assert baseline.baseline_id == baseline.current_id
+
+        current_report = deepcopy(contextual_suite_report)
+        current_report["tasks"]["contextual_peak_calling"]["variants"]["tf_plus_chromatin"][
+            "metrics"
+        ]["f1"] = 0.0
+
+        regression = check_contextual_epigenomics_suite_regressions(
+            current_report,
+            store_path,
+        )
+
+        assert regression.passed is False
+        assert any(item.metric == "f1" for item in regression.regressions)

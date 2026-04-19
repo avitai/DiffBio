@@ -12,7 +12,11 @@ from datarax.core.config import OperatorConfig
 from flax import nnx
 from opifex.core.training.optimizers import OptimizerConfig, create_optimizer
 
-from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
+from benchmarks._base import (
+    DiffBioBenchmark,
+    DiffBioBenchmarkConfig,
+    build_benchmark_comparison_key,
+)
 from diffbio.operators.epigenomics.contextual import (
     ContextualEpigenomicsConfig,
     ContextualEpigenomicsOperator,
@@ -36,6 +40,11 @@ CONTEXTUAL_TRAINING_SUBSTRATE = {
     "optimizer_config": "opifex.core.training.optimizers.OptimizerConfig",
     "optimizer_type": _OPTIMIZER_TYPE,
 }
+CONTEXTUAL_ABLATION_COMPARISON_AXES = (
+    "dataset",
+    "task",
+    "contextual_variant",
+)
 
 
 class _ContextualSource(Protocol):
@@ -252,6 +261,11 @@ class ContextualEpigenomicsBenchmark(DiffBioBenchmark):
             chromatin_contacts=jnp.asarray(data["chromatin_contacts"], dtype=jnp.float32),
             sequence_mask=_get_sequence_mask(data),
         )
+        contextual_tags = {
+            "dataset": _DATASET_NAME,
+            "task": self.task_spec.task_name,
+            "contextual_variant": self.variant_name,
+        }
 
         return {
             "metrics": metrics,
@@ -285,6 +299,11 @@ class ContextualEpigenomicsBenchmark(DiffBioBenchmark):
                 "contextual_variant": self.variant_name,
             },
             "benchmark_metadata": {
+                "comparison_axes": list(CONTEXTUAL_ABLATION_COMPARISON_AXES),
+                "comparison_key": build_benchmark_comparison_key(
+                    comparison_axes=CONTEXTUAL_ABLATION_COMPARISON_AXES,
+                    tags=contextual_tags,
+                ),
                 "contextual_contract": {
                     "required_keys": list(CONTEXTUAL_EPIGENOMICS_DATASET_CONTRACT_KEYS),
                     "target_semantics": self.task_spec.target_semantics,

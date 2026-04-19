@@ -139,6 +139,15 @@ Suite reports also carry one `contextual_contract` block with the canonical
 required source keys, target semantics by task, and output-class counts by
 task, so peak-calling and chromatin-state comparisons stay on the same I/O
 contract.
+For regression tracking, the suite can be mirrored into a Calibrax `Store` with
+`save_contextual_epigenomics_suite_run()` and checked with
+`check_contextual_epigenomics_suite_regressions()`. Those stored comparisons
+use `dataset`, `task`, and `contextual_variant` as the comparison axes.
+
+The current contextual suite uses the deterministic synthetic contextual
+epigenomics source. Treat its ablation gains as reproducible regression
+evidence only; they are not stable biological promotion evidence until a real
+cell-type-resolved epigenomics dataset and promotion gate are added.
 
 ## DifferentiablePeakCaller
 
