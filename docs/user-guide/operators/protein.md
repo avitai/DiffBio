@@ -10,6 +10,20 @@ Protein structure operators enable gradient-based optimization for structural bi
 
 - **DifferentiableSecondaryStructure**: PyDSSP-style DSSP algorithm with continuous hydrogen bond matrix
 
+## Protein foundation-model scope
+
+Phase 7 protein foundation-model support is deliberately narrow. DiffBio now
+uses the shared sequence foundation substrate for protein sequence context in
+the secondary-structure benchmark and provides a strict adapter contract for
+precomputed protein-LM artifacts. This means exported embedding matrices can be
+aligned by `sequence_ids` through the same sequence adapter path used for other
+foundation-model benchmarks.
+
+This is not stable imported protein-LM support. It does not claim external
+protein-LM checkpoint loading, tokenizer interchangeability, or broad protein
+task promotion. The current benchmark evidence is limited to synthetic
+secondary-structure scaffold context with stable scope excluded.
+
 ## DifferentiableSecondaryStructure
 
 Differentiable implementation of the DSSP algorithm for assigning secondary structure (helix, strand, loop) to protein backbone atoms.

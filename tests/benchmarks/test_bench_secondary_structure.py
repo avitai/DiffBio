@@ -10,6 +10,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
+from diffbio.operators.foundation_models import FOUNDATION_BENCHMARK_COMPARISON_AXES
 from benchmarks.protein.bench_secondary_structure import (
     SecondaryStructureBenchmark,
     _generate_coil_backbone,
@@ -229,3 +230,32 @@ class TestSecondaryStructureBenchmark:
         assert info["n_helix"] == 20
         assert info["n_strand"] == 15
         assert info["n_coil"] == 15
+
+    def test_foundation_metadata_uses_protein_sequence_substrate(self, result) -> None:
+        """Protein benchmark should expose the shared sequence foundation contract."""
+        assert result.tags["model_family"] == "sequence_transformer"
+        assert result.tags["adapter_mode"] == "frozen_encoder"
+        assert result.tags["artifact_id"] == "diffbio.protein_sequence_encoder"
+        assert result.tags["preprocessing_version"] == "protein_one_hot_v1"
+        assert result.metadata["comparison_axes"] == list(FOUNDATION_BENCHMARK_COMPARISON_AXES)
+        assert result.metadata["foundation_source_name"] == "diffbio_protein_frozen_encoder"
+        assert result.metadata["embedding_source"] == "in_process_operator"
+        assert result.metadata["protein_lm"] == {
+            "adapter_scope": "protein_sequence_context",
+            "stable_scope": "excluded",
+            "scope_exclusions": [
+                "external_protein_lm_checkpoint_import",
+                "stable_imported_protein_lm_promotion",
+            ],
+        }
+
+
+def test_protein_docs_keep_lm_scope_limited() -> None:
+    """Protein docs should not overstate Phase 7 foundation-model support."""
+    from pathlib import Path
+
+    doc = Path("docs/user-guide/operators/protein.md").read_text(encoding="utf-8")
+
+    assert "Protein foundation-model scope" in doc
+    assert "precomputed protein-LM artifacts" in doc
+    assert "not stable imported protein-LM support" in doc

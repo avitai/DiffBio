@@ -183,6 +183,28 @@ class NucleotideTransformerPrecomputedAdapter(SequencePrecomputedAdapter):
         )
 
 
+class ProteinLMPrecomputedAdapter(SequencePrecomputedAdapter):
+    """Precomputed embedding adapter for exported protein language-model artifacts."""
+
+    def __init__(
+        self,
+        *,
+        artifact_path: Path | str,
+        artifact_id: str = "protein_lm.v1",
+        preprocessing_version: str = "protein_tokens_v1",
+        pooling_strategy: PoolingStrategy = PoolingStrategy.MEAN,
+    ) -> None:
+        super().__init__(
+            artifact_path=artifact_path,
+            artifact_spec=_sequence_precomputed_spec(
+                artifact_id=artifact_id,
+                preprocessing_version=preprocessing_version,
+                pooling_strategy=pooling_strategy,
+            ),
+            source_name="protein_lm_precomputed",
+        )
+
+
 class GeneformerPrecomputedAdapter(SingleCellPrecomputedAdapter):
     """Precomputed embedding adapter for Geneformer artifacts."""
 
@@ -243,5 +265,6 @@ register_foundation_adapter(
     "nucleotide_transformer_precomputed",
     NucleotideTransformerPrecomputedAdapter,
 )
+register_foundation_adapter("protein_lm_precomputed", ProteinLMPrecomputedAdapter)
 register_foundation_adapter("geneformer_precomputed", GeneformerPrecomputedAdapter)
 register_foundation_adapter("scgpt_precomputed", ScGPTPrecomputedAdapter)

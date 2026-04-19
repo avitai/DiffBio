@@ -11,6 +11,7 @@ from diffbio.operators.foundation_models import (
     DNABERT2PrecomputedAdapter,
     FrozenSequenceEncoderAdapter,
     NucleotideTransformerPrecomputedAdapter,
+    ProteinLMPrecomputedAdapter,
     create_foundation_adapter,
     get_foundation_adapter_cls,
 )
@@ -84,6 +85,7 @@ class TestFoundationBenchmarkAdapterRegistry:
             get_foundation_adapter_cls("nucleotide_transformer_precomputed")
             is NucleotideTransformerPrecomputedAdapter
         )
+        assert get_foundation_adapter_cls("protein_lm_precomputed") is ProteinLMPrecomputedAdapter
         assert get_foundation_adapter_cls("diffbio_frozen_encoder") is FrozenSequenceEncoderAdapter
 
     def test_factory_instantiates_registered_adapter(self, tmp_path: Path) -> None:
@@ -100,6 +102,21 @@ class TestFoundationBenchmarkAdapterRegistry:
         )
 
         assert isinstance(adapter, DNABERT2PrecomputedAdapter)
+
+    def test_factory_instantiates_protein_lm_adapter(self, tmp_path: Path) -> None:
+        artifact_path = tmp_path / "protein_lm_embeddings.npz"
+        np.savez(
+            artifact_path,
+            embeddings=np.ones((2, 4), dtype=np.float32),
+            sequence_ids=np.array(["protein_a", "protein_b"]),
+        )
+
+        adapter = create_foundation_adapter(
+            "protein_lm_precomputed",
+            artifact_path=artifact_path,
+        )
+
+        assert isinstance(adapter, ProteinLMPrecomputedAdapter)
 
     def test_unknown_adapter_key_raises(self) -> None:
         with pytest.raises(KeyError, match="unknown_adapter"):

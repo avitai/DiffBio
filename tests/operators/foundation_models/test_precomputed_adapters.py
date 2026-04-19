@@ -12,6 +12,7 @@ from diffbio.operators.foundation_models import (
     FoundationModelKind,
     GeneformerPrecomputedAdapter,
     NucleotideTransformerPrecomputedAdapter,
+    ProteinLMPrecomputedAdapter,
     PoolingStrategy,
     ScGPTPrecomputedAdapter,
     SequencePrecomputedAdapter,
@@ -217,6 +218,46 @@ class TestNucleotideTransformerPrecomputedAdapter:
         aligned = adapter.load_dataset_embeddings(
             reference_sequence_ids=["seq_a", "seq_b", "seq_c"],
             one_hot_sequences=np.zeros((3, 8, 4), dtype=np.float32),
+        )
+
+        np.testing.assert_allclose(
+            np.asarray(aligned),
+            np.array([[10.0, 11.0], [20.0, 21.0], [30.0, 31.0]], dtype=np.float32),
+        )
+
+
+class TestProteinLMPrecomputedAdapter:
+    """Tests for the protein-LM precomputed adapter."""
+
+    def test_exposes_foundation_model_metadata(self, tmp_path: Path) -> None:
+        artifact_path = tmp_path / "protein_lm_embeddings.npz"
+        np.savez(
+            artifact_path,
+            embeddings=np.ones((2, 4), dtype=np.float32),
+            sequence_ids=np.array(["protein_a", "protein_b"]),
+        )
+        adapter = ProteinLMPrecomputedAdapter(artifact_path=artifact_path)
+
+        metadata = adapter.result_data()["foundation_model"]
+
+        assert decode_foundation_text(metadata["model_family"]) == "sequence_transformer"
+        assert decode_foundation_text(metadata["adapter_mode"]) == "precomputed"
+        assert decode_foundation_text(metadata["artifact_id"]) == "protein_lm.v1"
+        assert decode_foundation_text(metadata["preprocessing_version"]) == "protein_tokens_v1"
+        assert decode_foundation_text(metadata["pooling_strategy"]) == "mean"
+
+    def test_load_dataset_embeddings_uses_shared_sequence_contract(self, tmp_path: Path) -> None:
+        artifact_path = tmp_path / "protein_lm_embeddings.npz"
+        np.savez(
+            artifact_path,
+            embeddings=np.array([[30.0, 31.0], [10.0, 11.0], [20.0, 21.0]], dtype=np.float32),
+            sequence_ids=np.array(["protein_c", "protein_a", "protein_b"]),
+        )
+        adapter = ProteinLMPrecomputedAdapter(artifact_path=artifact_path)
+
+        aligned = adapter.load_dataset_embeddings(
+            reference_sequence_ids=["protein_a", "protein_b", "protein_c"],
+            one_hot_sequences=np.zeros((3, 8, 20), dtype=np.float32),
         )
 
         np.testing.assert_allclose(

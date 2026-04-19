@@ -27,6 +27,12 @@ from flax import nnx
 
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.protein import SS_BASELINES
+from benchmarks.alignment._encoding import ALPHABET_SIZE, onehot_encode_sequence
+from diffbio.operators.foundation_models import (
+    AdapterMode,
+    TransformerSequenceEncoder,
+    TransformerSequenceEncoderConfig,
+)
 from diffbio.operators.protein.secondary_structure import (
     DifferentiableSecondaryStructure,
     SecondaryStructureConfig,
@@ -61,6 +67,18 @@ _N_HELIX = 20
 _N_STRAND = 15
 _N_COIL = 15
 _N_TOTAL = _N_HELIX + _N_STRAND + _N_COIL
+_PROTEIN_LM_SEQUENCE = "A" * _N_HELIX + "V" * _N_STRAND + "G" * _N_COIL
+_PROTEIN_LM_ARTIFACT_ID = "diffbio.protein_sequence_encoder"
+_PROTEIN_LM_PREPROCESSING_VERSION = "protein_one_hot_v1"
+_PROTEIN_LM_SOURCE_NAME = "diffbio_protein_frozen_encoder"
+_PROTEIN_LM_SCOPE = {
+    "adapter_scope": "protein_sequence_context",
+    "stable_scope": "excluded",
+    "scope_exclusions": [
+        "external_protein_lm_checkpoint_import",
+        "stable_imported_protein_lm_promotion",
+    ],
+}
 
 
 def _generate_helix_backbone(
@@ -318,6 +336,7 @@ class SecondaryStructureBenchmark(DiffBioBenchmark):
         logger.info("Running DifferentiableSecondaryStructure...")
         input_data: dict[str, Any] = {"coordinates": coords}
         result, _, _ = operator.apply(input_data, {}, None)
+        protein_lm_result = _run_protein_lm_context()
 
         ss_indices = result["ss_indices"][0]  # Remove batch dim
         result["ss_onehot"][0]
@@ -367,10 +386,47 @@ class SecondaryStructureBenchmark(DiffBioBenchmark):
                 "cutoff": op_config.cutoff,
                 "temperature": op_config.temperature,
                 "min_helix_length": op_config.min_helix_length,
+                "protein_lm_encoder": "TransformerSequenceEncoder",
+                "protein_lm_preprocessing_version": _PROTEIN_LM_PREPROCESSING_VERSION,
             },
             "operator_name": "DifferentiableSecondaryStructure",
             "dataset_name": "ideal_structures",
+            "result_data": protein_lm_result,
+            "benchmark_metadata": {
+                "embedding_source": "in_process_operator",
+                "foundation_source_name": _PROTEIN_LM_SOURCE_NAME,
+                "protein_lm": dict(_PROTEIN_LM_SCOPE),
+            },
         }
+
+
+def _run_protein_lm_context() -> dict[str, Any]:
+    """Run a frozen protein sequence encoder for benchmark metadata and context."""
+    protein_one_hot = onehot_encode_sequence(_PROTEIN_LM_SEQUENCE, _N_TOTAL)
+    attention_mask = jnp.ones((_N_TOTAL,), dtype=jnp.float32)
+    encoder_config = TransformerSequenceEncoderConfig(
+        hidden_dim=8,
+        num_layers=1,
+        num_heads=2,
+        intermediate_dim=16,
+        max_length=_N_TOTAL,
+        alphabet_size=ALPHABET_SIZE,
+        dropout_rate=0.0,
+        pooling="mean",
+        artifact_id=_PROTEIN_LM_ARTIFACT_ID,
+        preprocessing_version=_PROTEIN_LM_PREPROCESSING_VERSION,
+        adapter_mode=AdapterMode.FROZEN_ENCODER,
+    )
+    encoder = TransformerSequenceEncoder(encoder_config, rngs=nnx.Rngs(7))
+    result, _, _ = encoder.apply(
+        {
+            "sequence": protein_one_hot,
+            "attention_mask": attention_mask,
+        },
+        {},
+        None,
+    )
+    return result
 
 
 def main() -> None:
