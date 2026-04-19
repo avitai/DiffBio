@@ -29,6 +29,12 @@ These DTI benchmarks are intentionally contract-first. They validate paired
 batch assembly plus regression, classification, and ranking metric packaging
 before the protein-embedding and differentiable drug-encoder integrations land
 in a later Phase 6 task.
+Each DTI benchmark result carries the shared paired-input required keys,
+`dataset_provenance`, and a `metric_contract` that separates Davis regression
+metrics from BioSNAP classification and protein-grouped ranking metrics. The
+default Davis and BioSNAP fallback sources are synthetic scaffolds with
+`promotion_eligible=false`; they are contract evidence, not stable biological
+promotion evidence.
 
 ## Architecture
 

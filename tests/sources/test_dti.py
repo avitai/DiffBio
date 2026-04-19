@@ -28,6 +28,7 @@ class TestDTISourceContract:
             "drug_smiles",
             "targets",
             "task_type",
+            "dataset_provenance",
         )
 
     def test_fallback_sources_load_deterministically(self, tmp_path) -> None:
@@ -50,12 +51,24 @@ class TestDTISourceContract:
         np.testing.assert_array_equal(
             np.asarray(biosnap_a["targets"]), np.asarray(biosnap_b["targets"])
         )
+        assert biosnap_a["dataset_provenance"] == {
+            "dataset_name": "biosnap",
+            "split": "train",
+            "source_type": "synthetic_scaffold",
+            "source_path": None,
+            "seed": 42,
+            "task_type": "binary_interaction",
+            "n_pairs": len(biosnap_a["pair_ids"]),
+            "promotion_eligible": False,
+            "biological_validation": "contract_validation_only",
+        }
 
     def test_split_is_deterministic_and_exhaustive(self, tmp_path) -> None:
-        from diffbio.sources import DTISourceConfig, DavisDTISource
+        from diffbio.sources import BioSNAPDTISource, DTISourceConfig, DavisDTISource
 
         split_names = ("train", "valid", "test")
         split_pair_ids: list[set[str]] = []
+        biosnap_split_pair_ids: list[set[str]] = []
 
         for split_name in split_names:
             data = DavisDTISource(
@@ -66,11 +79,23 @@ class TestDTISourceContract:
                 )
             ).load()
             split_pair_ids.append(set(data["pair_ids"]))
+            biosnap_data = BioSNAPDTISource(
+                DTISourceConfig(
+                    dataset_name="biosnap",
+                    split=split_name,
+                    data_dir=tmp_path,
+                )
+            ).load()
+            biosnap_split_pair_ids.append(set(biosnap_data["pair_ids"]))
 
         assert split_pair_ids[0].isdisjoint(split_pair_ids[1])
         assert split_pair_ids[0].isdisjoint(split_pair_ids[2])
         assert split_pair_ids[1].isdisjoint(split_pair_ids[2])
         assert sum(len(pair_ids) for pair_ids in split_pair_ids) == 12
+        assert biosnap_split_pair_ids[0].isdisjoint(biosnap_split_pair_ids[1])
+        assert biosnap_split_pair_ids[0].isdisjoint(biosnap_split_pair_ids[2])
+        assert biosnap_split_pair_ids[1].isdisjoint(biosnap_split_pair_ids[2])
+        assert sum(len(pair_ids) for pair_ids in biosnap_split_pair_ids) == 12
 
     def test_build_paired_batch_preserves_alignment(self, tmp_path) -> None:
         from diffbio.sources import DTISourceConfig, DavisDTISource, build_paired_dti_batch
@@ -83,6 +108,7 @@ class TestDTISourceContract:
         assert batch["pair_ids"] == data["pair_ids"][:2]
         assert batch["protein_ids"] == data["protein_ids"][:2]
         assert batch["drug_ids"] == data["drug_ids"][:2]
+        assert batch["dataset_provenance"] == data["dataset_provenance"]
         np.testing.assert_allclose(np.asarray(batch["targets"]), np.asarray(data["targets"])[:2])
 
     def test_validate_rejects_misaligned_lengths(self) -> None:
@@ -96,7 +122,34 @@ class TestDTISourceContract:
             "drug_smiles": ["CCO", "CCC"],
             "targets": np.array([1.0, 2.0], dtype=np.float32),
             "task_type": "affinity_regression",
+            "dataset_provenance": {
+                "dataset_name": "davis",
+                "split": "train",
+                "source_type": "synthetic_scaffold",
+                "source_path": None,
+                "seed": 42,
+                "task_type": "affinity_regression",
+                "n_pairs": 2,
+                "promotion_eligible": False,
+                "biological_validation": "contract_validation_only",
+            },
         }
 
         with pytest.raises(ValueError, match="same length"):
+            validate_dti_dataset(bad)
+
+    def test_validate_rejects_missing_provenance(self) -> None:
+        from diffbio.sources.dti import validate_dti_dataset
+
+        bad = {
+            "pair_ids": ["pair_0"],
+            "protein_ids": ["P0"],
+            "protein_sequences": ["MAAA"],
+            "drug_ids": ["D0"],
+            "drug_smiles": ["CCO"],
+            "targets": np.array([1.0], dtype=np.float32),
+            "task_type": "affinity_regression",
+        }
+
+        with pytest.raises(ValueError, match="dataset_provenance"):
             validate_dti_dataset(bad)

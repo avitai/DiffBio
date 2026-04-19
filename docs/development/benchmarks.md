@@ -278,6 +278,9 @@ checkpoint support:
 - supported: deterministic DTI source contracts for Davis affinity regression
   and BioSNAP binary interaction scaffolds, including paired-input batching and
   metric packaging for regression, classification, and ranking
+- supported: DTI benchmark metadata that exposes the shared paired-input
+  required keys, dataset/split provenance, synthetic-scaffold promotion status,
+  and metric groups for regression, classification, and ranking outputs
 - supported: a shared contextual epigenomics source contract with canonical
   `sequence`, `tf_context`, `chromatin_contacts`, and `targets` keys
 - supported: contextual target-semantics validation for `binary_peak_mask` and

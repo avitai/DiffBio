@@ -13,7 +13,13 @@ from flax import nnx
 
 from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.dti import DTI_BASELINE_FAMILIES
-from diffbio.sources import BioSNAPDTISource, DTISourceConfig, DavisDTISource
+from diffbio.sources import (
+    DTI_DATASET_CONTRACT_KEYS,
+    BioSNAPDTISource,
+    DTISourceConfig,
+    DavisDTISource,
+    validate_dti_dataset,
+)
 
 _DAVIS_CONFIG = DiffBioBenchmarkConfig(
     name="drug_discovery/dti_davis",
@@ -32,6 +38,26 @@ _BIOSNAP_CONFIG = DiffBioBenchmarkConfig(
 _TRAIN_STEPS_QUICK = 40
 _TRAIN_STEPS_FULL = 120
 _LEARNING_RATE = 1e-2
+_DTI_METRIC_CONTRACTS = {
+    "affinity_regression": {
+        "task_type": "affinity_regression",
+        "primary_metric": "rmse",
+        "metric_groups": {
+            "regression": ["rmse", "pearson", "spearman"],
+            "classification": [],
+            "ranking": [],
+        },
+    },
+    "binary_interaction": {
+        "task_type": "binary_interaction",
+        "primary_metric": "roc_auc",
+        "metric_groups": {
+            "regression": [],
+            "classification": ["roc_auc", "pr_auc"],
+            "ranking": ["mrr", "recall_at_1", "recall_at_5"],
+        },
+    },
+}
 
 
 class DTIFeatureProbe(nnx.Module):
@@ -60,6 +86,7 @@ class DTIFeatureProbe(nnx.Module):
 
 def build_dti_pair_features(data: dict[str, Any]) -> jnp.ndarray:
     """Encode one paired-input batch as simple numeric scaffold features."""
+    validate_dti_dataset(data)
     protein_lengths = np.asarray([len(sequence) for sequence in data["protein_sequences"]])
     drug_lengths = np.asarray([len(smiles) for smiles in data["drug_smiles"]])
     protein_ids = _encode_identifier_series(list(data["protein_ids"]))
@@ -239,7 +266,7 @@ def _run_dti_probe_benchmark(
             targets=target_array,
             predictions=predictions,
         )
-        paired_contract = {"task_type": task_name, "group_key": None}
+        paired_contract = _build_paired_contract(task_name, group_key=None)
     else:
         metrics = compute_binary_interaction_metrics(
             targets=target_array.astype(np.int32),
@@ -253,7 +280,7 @@ def _run_dti_probe_benchmark(
                 ks=(1, 5),
             )
         )
-        paired_contract = {"task_type": task_name, "group_key": "protein_ids"}
+        paired_contract = _build_paired_contract(task_name, group_key="protein_ids")
 
     return {
         "metrics": metrics,
@@ -277,9 +304,29 @@ def _run_dti_probe_benchmark(
         "task_name": task_name,
         "benchmark_metadata": {
             "paired_contract": paired_contract,
+            "dataset_provenance": dict(data["dataset_provenance"]),
+            "metric_contract": _build_metric_contract(task_name),
             "baseline_families": list(DTI_BASELINE_FAMILIES),
         },
     }
+
+
+def _build_paired_contract(
+    task_name: str,
+    *,
+    group_key: str | None,
+) -> dict[str, Any]:
+    """Build shared paired-input contract metadata for a DTI benchmark."""
+    return {
+        "task_type": task_name,
+        "group_key": group_key,
+        "required_keys": list(DTI_DATASET_CONTRACT_KEYS),
+    }
+
+
+def _build_metric_contract(task_name: str) -> dict[str, Any]:
+    """Return the metric grouping contract for a DTI task."""
+    return dict(_DTI_METRIC_CONTRACTS[task_name])
 
 
 def _rank(values: np.ndarray) -> np.ndarray:

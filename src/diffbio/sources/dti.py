@@ -24,6 +24,18 @@ DTI_DATASET_CONTRACT_KEYS = (
     "drug_smiles",
     "targets",
     "task_type",
+    "dataset_provenance",
+)
+_DTI_PROVENANCE_KEYS = (
+    "dataset_name",
+    "split",
+    "source_type",
+    "source_path",
+    "seed",
+    "task_type",
+    "n_pairs",
+    "promotion_eligible",
+    "biological_validation",
 )
 
 
@@ -67,6 +79,19 @@ def validate_dti_dataset(data: dict[str, Any]) -> None:
         if not unique_values.issubset({0, 1}):
             raise ValueError("Binary DTI targets must contain only 0/1 labels.")
 
+    provenance = data["dataset_provenance"]
+    if not isinstance(provenance, dict):
+        raise ValueError("DTI dataset_provenance must be a dict.")
+    missing_provenance_keys = [key for key in _DTI_PROVENANCE_KEYS if key not in provenance]
+    if missing_provenance_keys:
+        raise ValueError(
+            f"DTI dataset_provenance is missing required keys: {missing_provenance_keys}"
+        )
+    if provenance["task_type"] != task_type:
+        raise ValueError("DTI dataset_provenance.task_type must match task_type.")
+    if int(provenance["n_pairs"]) != lengths[0]:
+        raise ValueError("DTI dataset_provenance.n_pairs must match paired field length.")
+
 
 def deterministic_dti_split(
     n_items: int,
@@ -109,6 +134,7 @@ def build_paired_dti_batch(
         "drug_smiles": [data["drug_smiles"][index] for index in batch_indices],
         "targets": jnp.asarray(np.asarray(data["targets"])[batch_indices]),
         "task_type": data["task_type"],
+        "dataset_provenance": data["dataset_provenance"],
     }
 
 
@@ -156,6 +182,11 @@ class _BaseDTISource(DataSourceModule):
             "targets": jnp.asarray([element.data["target"] for element in self._data]),
             "task_type": self._data[0].data["task_type"],
         }
+        data["dataset_provenance"] = _build_dataset_provenance(
+            cast(DTISourceConfig, self.config),
+            task_type=str(data["task_type"]),
+            n_pairs=len(data["pair_ids"]),
+        )
         validate_dti_dataset(data)
         return data
 
@@ -195,6 +226,31 @@ def _resolve_dataset_path(config: DTISourceConfig) -> Path | None:
         if candidate.exists():
             return candidate
     return None
+
+
+def _build_dataset_provenance(
+    config: DTISourceConfig,
+    *,
+    task_type: str,
+    n_pairs: int,
+) -> dict[str, Any]:
+    """Build one provenance record for the loaded DTI split."""
+    dataset_path = _resolve_dataset_path(config)
+    source_type = "local_table" if dataset_path is not None else "synthetic_scaffold"
+    biological_validation = (
+        "local_table_unverified" if dataset_path is not None else "contract_validation_only"
+    )
+    return {
+        "dataset_name": config.dataset_name,
+        "split": config.split,
+        "source_type": source_type,
+        "source_path": None if dataset_path is None else str(dataset_path),
+        "seed": config.seed,
+        "task_type": task_type,
+        "n_pairs": int(n_pairs),
+        "promotion_eligible": False,
+        "biological_validation": biological_validation,
+    }
 
 
 def _load_records_from_table(
