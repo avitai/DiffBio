@@ -214,6 +214,10 @@ For single-cell promotion review, use
 it attaches the Calibrax guard result before building the shared promotion
 artifact and fails closed unless an existing baseline is available or baseline
 bootstrap is requested explicitly.
+For genomics promotion review, use
+`benchmarks.genomics.foundation_suite.build_genomics_foundation_promotion_report()`;
+it follows the same fail-closed guard path while preserving the current Phase 4
+scaffold provenance boundaries in the stored suite report.
 
 ### Imported Foundation-Model Benchmarks
 

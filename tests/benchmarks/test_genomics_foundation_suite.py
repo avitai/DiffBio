@@ -5,14 +5,19 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import json
 import jax.numpy as jnp
 import numpy as np
-import json
+import pytest
 from flax import nnx
 
-from benchmarks._foundation_models import save_foundation_suite_report
+from benchmarks._foundation_models import (
+    build_foundation_promotion_report,
+    save_foundation_suite_report,
+)
 from benchmarks.genomics._foundation import GENOMICS_FOUNDATION_DATASET_PROVENANCE
 from benchmarks.genomics.foundation_suite import (
+    build_genomics_foundation_promotion_report,
     build_genomics_foundation_suite_report,
     run_genomics_foundation_suite,
 )
@@ -232,9 +237,49 @@ class TestGenomicsFoundationSuiteHarness:
             "pooling_strategy": "mean",
         }
 
+        promotion_report = build_foundation_promotion_report(report_a)
+        assert promotion_report["stable_scope"] == {
+            "in_scope_tasks": ["promoter", "tfbs", "splice_site"],
+            "deferred_tasks": {},
+        }
+        assert promotion_report["readiness"] == {
+            "required_models_present": True,
+            "regression_check_status": "not_attached",
+        }
+        assert promotion_report["promotion_candidate"] is False
+        assert promotion_report["promotion_blockers"] == ["Regression check not attached."]
+
+        promotion_store_path = tmp_path / "genomics_promotion_store"
+        with pytest.raises(FileNotFoundError, match="No baseline set"):
+            build_genomics_foundation_promotion_report(report_a, promotion_store_path)
+
+        guarded_promotion_report = build_genomics_foundation_promotion_report(
+            report_a,
+            promotion_store_path,
+            set_baseline_if_missing=True,
+        )
+        assert guarded_promotion_report["readiness"] == {
+            "required_models_present": True,
+            "regression_check_status": "passed",
+        }
+        assert guarded_promotion_report["promotion_candidate"] is True
+        assert guarded_promotion_report["promotion_blockers"] == []
+        assert guarded_promotion_report["regression_check"] is not None
+        assert (
+            guarded_promotion_report["regression_check"]["baseline_id"]
+            == guarded_promotion_report["regression_check"]["current_id"]
+        )
+
         output_path = save_foundation_suite_report(
             report_a,
             tmp_path / "genomics_foundation_suite.json",
         )
         saved_report = json.loads(output_path.read_text(encoding="utf-8"))
         assert saved_report == report_a
+
+    def test_promotion_report_rejects_non_genomics_suite(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="genomics foundation suite"):
+            build_genomics_foundation_promotion_report(
+                {"suite": "singlecell/foundation_quick_suite"},
+                tmp_path / "genomics_promotion_store",
+            )

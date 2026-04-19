@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from calibrax.core.result import BenchmarkResult
 
-from benchmarks._foundation_models import build_foundation_suite_report
+from benchmarks._foundation_models import (
+    build_foundation_promotion_report,
+    build_foundation_suite_report,
+    check_foundation_suite_regressions,
+)
 from benchmarks.genomics._foundation import GENOMICS_FOUNDATION_SUITE_SCENARIOS
 from benchmarks.genomics.bench_promoter import (
     build_foundation_promoter_report,
@@ -80,3 +85,29 @@ def build_genomics_foundation_suite_report(
         if task_name in task_reports
     }
     return suite_report
+
+
+def build_genomics_foundation_promotion_report(
+    suite_report: dict[str, Any],
+    store_path: Path,
+    *,
+    commit: str | None = None,
+    branch: str | None = None,
+    environment: dict[str, Any] | None = None,
+    metadata: dict[str, Any] | None = None,
+    set_baseline_if_missing: bool = False,
+) -> dict[str, Any]:
+    """Attach the Calibrax guard result to the genomics promotion report."""
+    if suite_report.get("suite") != "genomics/foundation_quick_suite":
+        raise ValueError("Genomics promotion reports require the genomics foundation suite.")
+
+    guard_result = check_foundation_suite_regressions(
+        suite_report,
+        store_path,
+        commit=commit,
+        branch=branch,
+        environment=environment,
+        metadata=metadata,
+        set_baseline_if_missing=set_baseline_if_missing,
+    )
+    return build_foundation_promotion_report(suite_report, guard_result=guard_result)

@@ -223,6 +223,10 @@ The genomics suite reports this boundary as machine-readable
 `biological_validation`: `interface_validation_only`, and
 `promotion_eligible`: `false`. Custom curated datasets must provide their own
 provenance payload before they can enter the foundation-suite report path.
+For promotion review, use `build_genomics_foundation_promotion_report()` so the
+suite report is first persisted into the shared Calibrax guard store and checked
+against an explicit baseline. Without an attached guard result, the shared
+promotion artifact remains a non-candidate by construction.
 
 ## TransformerSequenceEncoder
 
