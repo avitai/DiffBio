@@ -263,5 +263,36 @@ def build_contextual_epigenomics_suite_report(
     return {
         "suite": "epigenomics/contextual_quick_suite",
         "task_order": task_order,
+        "contextual_contract": _build_contextual_suite_contract(tasks, task_order),
         "tasks": {task_name: tasks[task_name] for task_name in task_order},
+    }
+
+
+def _build_contextual_suite_contract(
+    tasks: dict[str, Any],
+    task_order: list[str],
+) -> dict[str, Any]:
+    """Build one suite-level contextual source contract summary."""
+    required_keys: list[str] | None = None
+    target_semantics_by_task: dict[str, str] = {}
+    num_output_classes_by_task: dict[str, int] = {}
+
+    for task_name in task_order:
+        contract = tasks[task_name]["contract"]
+        task_required_keys = list(contract["required_keys"])
+        if required_keys is None:
+            required_keys = task_required_keys
+        elif task_required_keys != required_keys:
+            raise ValueError(
+                "Contextual epigenomics tasks disagree on required source keys: "
+                f"{task_required_keys} != {required_keys}"
+            )
+
+        target_semantics_by_task[task_name] = str(contract["target_semantics"])
+        num_output_classes_by_task[task_name] = int(contract["num_output_classes"])
+
+    return {
+        "required_keys": [] if required_keys is None else required_keys,
+        "target_semantics_by_task": target_semantics_by_task,
+        "num_output_classes_by_task": num_output_classes_by_task,
     }

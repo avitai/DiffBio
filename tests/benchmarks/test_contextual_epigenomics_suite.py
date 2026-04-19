@@ -55,6 +55,7 @@ class TestContextualPeakCallingBenchmark:
             "targets",
         ]
         assert result.metadata["contextual_contract"]["target_semantics"] == "binary_peak_mask"
+        assert result.metadata["contextual_contract"]["num_output_classes"] == 1
         assert result.metadata["ablation"]["use_tf_context"] is True
         assert result.metadata["ablation"]["use_chromatin_guidance"] is True
         assert result.metadata["training"]["optimizer_factory"] == (
@@ -93,6 +94,7 @@ class TestChromatinStatePredictionBenchmark:
         assert result.tags["task"] == "chromatin_state_prediction"
         assert result.tags["contextual_variant"] == "tf_plus_chromatin"
         assert result.metadata["contextual_contract"]["target_semantics"] == "chromatin_state_id"
+        assert result.metadata["contextual_contract"]["num_output_classes"] == 3
         assert result.metadata["ablation"]["use_chromatin_guidance"] is True
 
 
@@ -144,6 +146,17 @@ class TestContextualEpigenomicsSuite:
         report_b = build_contextual_epigenomics_suite_report(results_b)
 
         assert report_a == report_b
+        assert report_a["contextual_contract"] == {
+            "required_keys": ["sequence", "tf_context", "chromatin_contacts", "targets"],
+            "target_semantics_by_task": {
+                "contextual_peak_calling": "binary_peak_mask",
+                "chromatin_state_prediction": "chromatin_state_id",
+            },
+            "num_output_classes_by_task": {
+                "contextual_peak_calling": 1,
+                "chromatin_state_prediction": 3,
+            },
+        }
         assert tuple(report_a["task_order"]) == (
             "contextual_peak_calling",
             "chromatin_state_prediction",

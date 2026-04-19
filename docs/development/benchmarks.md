@@ -280,6 +280,9 @@ checkpoint support:
   metric packaging for regression, classification, and ranking
 - supported: a shared contextual epigenomics source contract with canonical
   `sequence`, `tf_context`, `chromatin_contacts`, and `targets` keys
+- supported: contextual target-semantics validation for `binary_peak_mask` and
+  `chromatin_state_id`, including per-task output-class counts in benchmark
+  metadata and suite reports
 - supported: `ContextualEpigenomicsOperator` with one configurable code path
   for sequence-only, `+TF`, and `+TF+chromatin` modes, backed by an
   Artifex transformer and an optional structured chromatin-guidance loss

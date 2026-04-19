@@ -203,7 +203,11 @@ class ContextualEpigenomicsBenchmark(DiffBioBenchmark):
         """Run one contextual epigenomics benchmark variant."""
         source = self._source_factory(self.config.quick_subsample if self.quick else None)
         data = source.load()
-        validate_contextual_epigenomics_dataset(data)
+        validate_contextual_epigenomics_dataset(
+            data,
+            target_semantics=self.task_spec.target_semantics,
+            num_output_classes=self.task_spec.num_output_classes,
+        )
 
         model_config = _build_model_config(
             data=data,
@@ -284,6 +288,7 @@ class ContextualEpigenomicsBenchmark(DiffBioBenchmark):
                 "contextual_contract": {
                     "required_keys": list(CONTEXTUAL_EPIGENOMICS_DATASET_CONTRACT_KEYS),
                     "target_semantics": self.task_spec.target_semantics,
+                    "num_output_classes": self.task_spec.num_output_classes,
                 },
                 "ablation": {
                     "name": self.ablation.name,

@@ -75,6 +75,28 @@ class TestValidateContextualEpigenomicsDataset:
     def test_accepts_valid_payload(self) -> None:
         validate_contextual_epigenomics_dataset(_make_valid_dataset())
 
+    def test_rejects_non_binary_peak_targets_when_semantics_are_binary(self) -> None:
+        data = _make_valid_dataset()
+        data["targets"] = jnp.asarray([[0, 1, 2, 0], [1, 0, 1, 0]], dtype=jnp.int32)
+
+        with pytest.raises(ValueError, match="binary_peak_mask"):
+            validate_contextual_epigenomics_dataset(
+                data,
+                target_semantics="binary_peak_mask",
+                num_output_classes=1,
+            )
+
+    def test_rejects_chromatin_state_targets_outside_class_range(self) -> None:
+        data = _make_valid_dataset()
+        data["targets"] = jnp.asarray([[0, 1, 2, 3], [1, 0, 1, 0]], dtype=jnp.int32)
+
+        with pytest.raises(ValueError, match="chromatin_state_id"):
+            validate_contextual_epigenomics_dataset(
+                data,
+                target_semantics="chromatin_state_id",
+                num_output_classes=3,
+            )
+
     def test_rejects_missing_required_keys(self) -> None:
         data = _make_valid_dataset()
         del data["tf_context"]

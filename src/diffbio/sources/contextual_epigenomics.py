@@ -23,7 +23,12 @@ CONTEXTUAL_TARGET_SEMANTICS = (
 _GENERIC_MOTIF = "ACGTAC"
 
 
-def validate_contextual_epigenomics_dataset(data: dict[str, Any]) -> None:
+def validate_contextual_epigenomics_dataset(
+    data: dict[str, Any],
+    *,
+    target_semantics: Literal["binary_peak_mask", "chromatin_state_id"] | None = None,
+    num_output_classes: int | None = None,
+) -> None:
     """Validate the shared contextual epigenomics benchmark contract."""
     missing_keys = [key for key in CONTEXTUAL_EPIGENOMICS_DATASET_CONTRACT_KEYS if key not in data]
     if missing_keys:
@@ -75,6 +80,45 @@ def validate_contextual_epigenomics_dataset(data: dict[str, Any]) -> None:
     contacts = np.asarray(chromatin_contacts)
     if not np.allclose(contacts, np.swapaxes(contacts, -1, -2), atol=1e-5):
         raise ValueError("chromatin_contacts must be symmetric.")
+
+    if target_semantics is None:
+        return
+    if target_semantics not in CONTEXTUAL_TARGET_SEMANTICS:
+        raise ValueError(
+            "target_semantics must be one of "
+            f"{CONTEXTUAL_TARGET_SEMANTICS}, got {target_semantics!r}."
+        )
+
+    _validate_target_semantics(
+        targets=targets,
+        target_semantics=target_semantics,
+        num_output_classes=num_output_classes,
+    )
+
+
+def _validate_target_semantics(
+    *,
+    targets: np.ndarray,
+    target_semantics: Literal["binary_peak_mask", "chromatin_state_id"],
+    num_output_classes: int | None,
+) -> None:
+    """Validate target values against the declared contextual task semantics."""
+    if target_semantics == "binary_peak_mask":
+        unique_targets = set(np.unique(targets).tolist())
+        if not unique_targets.issubset({0, 1}):
+            raise ValueError("binary_peak_mask targets must contain only 0/1 labels.")
+        return
+
+    if num_output_classes is None or num_output_classes < 1:
+        raise ValueError("num_output_classes must be positive for chromatin_state_id targets.")
+
+    if not np.all(np.equal(targets, np.floor(targets))):
+        raise ValueError("chromatin_state_id targets must be integer class IDs.")
+
+    if np.any(targets < 0) or np.any(targets >= num_output_classes):
+        raise ValueError(
+            f"chromatin_state_id targets must be in the range [0, {num_output_classes})."
+        )
 
 
 def build_synthetic_contextual_epigenomics_dataset(
@@ -152,7 +196,11 @@ def build_synthetic_contextual_epigenomics_dataset(
         "chromatin_contacts": jnp.asarray(np.stack(chromatin_contacts), dtype=jnp.float32),
         "targets": jnp.asarray(np.stack(targets)),
     }
-    validate_contextual_epigenomics_dataset(dataset)
+    validate_contextual_epigenomics_dataset(
+        dataset,
+        target_semantics=target_semantics,
+        num_output_classes=num_output_classes,
+    )
     return dataset
 
 

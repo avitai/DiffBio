@@ -96,6 +96,12 @@ Expected data keys:
 - `targets`: supervised targets `(batch, length)` or `(length,)`
 - `sequence_mask`: optional binary mask for padded positions
 
+The shared source contract validates shape, leading-dimension alignment,
+one-hot sequence normalization, symmetric contact maps, and declared target
+semantics. `binary_peak_mask` targets must be binary, while
+`chromatin_state_id` targets must be integer class IDs within the task's
+declared `num_output_classes`.
+
 Main outputs:
 
 - `embeddings`: pooled sequence embeddings
@@ -129,6 +135,10 @@ chromatin-consistency score derived from the structured guidance loss. This is
 the supported benchmark path for comparing whether TF conditioning improves the
 task metric and whether chromatin guidance improves structural consistency
 without introducing a second operator implementation.
+Suite reports also carry one `contextual_contract` block with the canonical
+required source keys, target semantics by task, and output-class counts by
+task, so peak-calling and chromatin-state comparisons stay on the same I/O
+contract.
 
 ## DifferentiablePeakCaller
 
