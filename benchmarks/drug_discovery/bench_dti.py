@@ -65,30 +65,6 @@ _DTI_METRIC_CONTRACTS = {
 }
 
 
-class DTIFeatureProbe(nnx.Module):
-    """Small learnable probe over paired drug-protein contract features."""
-
-    def __init__(self, input_dim: int, *, rngs: nnx.Rngs) -> None:
-        super().__init__()
-        self.linear1 = nnx.Linear(input_dim, 16, rngs=rngs)
-        self.linear2 = nnx.Linear(16, 1, rngs=rngs)
-
-    def apply(
-        self,
-        data: dict[str, Any],
-        state: dict[str, Any],
-        metadata: dict[str, Any] | None,
-        random_params: Any = None,
-        stats: dict[str, Any] | None = None,
-    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
-        """Apply the probe to one paired-input batch."""
-        del random_params, stats
-        pair_features = jnp.asarray(data["pair_features"], dtype=jnp.float32)
-        hidden = nnx.gelu(self.linear1(pair_features))
-        scores = self.linear2(hidden).squeeze(-1)
-        return {"scores": scores}, state, metadata
-
-
 def build_dti_pair_features(data: dict[str, Any]) -> jnp.ndarray:
     """Encode one paired-input batch as simple numeric scaffold features."""
     validate_dti_dataset(data)
