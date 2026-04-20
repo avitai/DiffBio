@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, Protocol
 
 from calibrax.ci.guard import CIGuard, GuardResult
 from calibrax.core.models import Metric, MetricDef, Point, Run
+from calibrax.core.result import BenchmarkResult
+from calibrax.profiling.hardware import detect_hardware_specs
+from calibrax.profiling.timing import TimingCollector
 from calibrax.storage.store import Store
 
 
@@ -84,6 +88,36 @@ def save_calibrax_run(run: Run, store_path: Path) -> Path:
     """Persist one Calibrax run through the shared Store boundary."""
     store = Store(store_path)
     return store.save(run)
+
+
+def measure_calibrax_throughput(
+    *,
+    iterate_fn: Callable[[], Any],
+    n_items: int,
+    n_iterations: int,
+) -> Any:
+    """Measure benchmark throughput through the Calibrax profiling boundary."""
+    collector = TimingCollector(warmup_iterations=3)
+    return collector.measure_iteration(
+        iterator=iter(range(n_iterations)),
+        num_batches=n_iterations,
+        process_fn=lambda _: iterate_fn(),
+        count_fn=lambda _: n_items,
+    )
+
+
+def build_calibrax_benchmark_run(results: Sequence[BenchmarkResult]) -> Run:
+    """Build one Calibrax run from benchmark results for the shared runner."""
+    points = tuple(
+        Point(
+            name=result.name,
+            scenario=result.tags.get("dataset", "unknown"),
+            tags=result.tags,
+            metrics=result.metrics,
+        )
+        for result in results
+    )
+    return Run(points=points, environment=detect_hardware_specs())
 
 
 def save_calibrax_suite_run(

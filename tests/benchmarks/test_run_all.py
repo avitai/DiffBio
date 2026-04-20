@@ -5,7 +5,7 @@ from __future__ import annotations
 from calibrax.core.models import Metric
 from calibrax.core.result import BenchmarkResult
 
-from benchmarks.run_all import _build_run
+from benchmarks._calibrax import build_calibrax_benchmark_run
 
 
 class TestBuildRun:
@@ -29,7 +29,7 @@ class TestBuildRun:
             metrics={"score": Metric(value=0.75)},
         )
 
-        run = _build_run([result])
+        run = build_calibrax_benchmark_run([result])
         point = run.points[0]
 
         assert point.name == "singlecell/foundation_smoke"

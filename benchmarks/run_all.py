@@ -19,11 +19,9 @@ import logging
 import time
 from pathlib import Path
 
-from calibrax.core.models import Point, Run
 from calibrax.core.result import BenchmarkResult
-from calibrax.profiling.hardware import detect_hardware_specs
 
-from benchmarks._calibrax import save_calibrax_run
+from benchmarks._calibrax import build_calibrax_benchmark_run, save_calibrax_run
 
 logger = logging.getLogger(__name__)
 
@@ -106,30 +104,6 @@ def _run_single(
         # or resource issues. Log and continue to next benchmark.
         logger.error("Benchmark %s/%s failed: %s", domain, class_name, exc)
         return None
-
-
-def _build_run(results: list[BenchmarkResult]) -> Run:
-    """Build a calibrax Run from benchmark results.
-
-    Each BenchmarkResult becomes a Point in the Run for ranking
-    and comparison.
-    """
-    points: list[Point] = []
-    for r in results:
-        points.append(
-            Point(
-                name=r.name,
-                scenario=r.tags.get("dataset", "unknown"),
-                tags=r.tags,
-                metrics=r.metrics,
-            )
-        )
-
-    hw = detect_hardware_specs()
-    return Run(
-        points=tuple(points),
-        environment=hw,
-    )
 
 
 def _print_summary(
@@ -235,7 +209,7 @@ def main() -> None:
 
     # Build and save Run
     if results:
-        run = _build_run(results)
+        run = build_calibrax_benchmark_run(results)
         try:
             save_calibrax_run(run, Path("benchmarks/results"))
             print("\nRun saved to: benchmarks/results/")

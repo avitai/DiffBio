@@ -20,8 +20,8 @@ from collections.abc import Sequence
 
 from calibrax.core.models import Metric, Point
 from calibrax.core.result import BenchmarkResult
-from calibrax.profiling.timing import TimingCollector
 
+from benchmarks._calibrax import measure_calibrax_throughput
 from benchmarks._gradient import GradientFlowResult, check_gradient_flow
 from diffbio.operators.foundation_models.contracts import (
     FOUNDATION_BENCHMARK_COMPARISON_AXES,
@@ -232,13 +232,11 @@ class DiffBioBenchmark(ABC):
         n_items: int,
         n_iterations: int,
     ) -> Any:
-        """Measure throughput using calibrax TimingCollector."""
-        collector = TimingCollector(warmup_iterations=3)
-        return collector.measure_iteration(
-            iterator=iter(range(n_iterations)),
-            num_batches=n_iterations,
-            process_fn=lambda _: iterate_fn(),
-            count_fn=lambda _: n_items,
+        """Measure throughput through the shared Calibrax profiling helper."""
+        return measure_calibrax_throughput(
+            iterate_fn=iterate_fn,
+            n_items=n_items,
+            n_iterations=n_iterations,
         )
 
     @staticmethod
