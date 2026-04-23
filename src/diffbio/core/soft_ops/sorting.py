@@ -915,6 +915,12 @@ def top_k(
     if not gated_grad:
         soft_index = jax.lax.stop_gradient(soft_index)
 
-    soft_index_k = jnp.take(soft_index, jnp.arange(k), axis=axis)
+    # ``argsort`` appends the probability-distribution axis at index -1 of
+    # ``soft_index``. The rank axis (where we slice the top k entries) is
+    # therefore at position ``axis`` if ``axis >= 0`` — the append only grew
+    # the tail — but at ``axis - 1`` for negative ``axis``, since the new
+    # ``[n]`` dim slid every negatively-indexed axis one slot to the left.
+    rank_axis = axis if axis >= 0 else axis - 1
+    soft_index_k = jnp.take(soft_index, jnp.arange(k), axis=rank_axis)
     values = take_along_axis(x, soft_index_k, axis=axis)
     return values, soft_index_k

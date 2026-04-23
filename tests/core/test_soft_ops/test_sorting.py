@@ -256,3 +256,28 @@ class TestTopK:
             return jnp.sum(values)
 
         assert_finite_grads(fn, (x,))
+
+
+    def test_soft_mode_with_negative_axis(self) -> None:
+        """top_k with axis=-1 produces matching (k, n) soft indices.
+
+        Regression test: the rank axis in soft_index shifts when the
+        probability-distribution axis is appended by argsort. Prior to the
+        fix this path raised ``ValueError: Size of label 'n' ... does not
+        match previous terms`` from the take_along_axis einsum.
+        """
+        from diffbio.core.soft_ops.sorting import top_k
+
+        x = jnp.array([1.0, 5.0, 3.0, 2.0, 4.0])
+        values, indices = top_k(x, k=2, axis=-1, softness=0.1, mode="smooth")
+        assert values.shape == (2,)
+        assert indices.shape == (2, 5)
+
+    def test_soft_mode_with_negative_axis_batched(self) -> None:
+        """top_k with axis=-1 on a 2D batch produces (batch, k, n) indices."""
+        from diffbio.core.soft_ops.sorting import top_k
+
+        x = jnp.array([[1.0, 5.0, 3.0, 2.0, 4.0], [4.0, 1.0, 2.0, 5.0, 3.0]])
+        values, indices = top_k(x, k=2, axis=-1, softness=0.1, mode="smooth")
+        assert values.shape == (2, 2)
+        assert indices.shape == (2, 2, 5)
