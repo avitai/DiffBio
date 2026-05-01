@@ -217,7 +217,11 @@ class TestGradientFlow:
         @nnx.value_and_grad
         def loss_fn(model):
             transformed, _, _ = model.apply(data, state, None, None)
-            return jnp.sum(transformed["sequence"])
+            # Project onto a single alphabet column so the loss is not
+            # invariant to the per-position softmax renormalization
+            # inside the operator (renormalized rows sum to 1, so summing
+            # everything would yield a constant loss with zero gradient).
+            return jnp.sum(transformed["sequence"][:, 0])
 
         loss, grads = loss_fn(op)
 
