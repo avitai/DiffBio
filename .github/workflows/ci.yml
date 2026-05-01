@@ -66,9 +66,54 @@ jobs:
           - id: operators-singlecell
             paths: tests/operators/singlecell
             extra: ""
-          - id: operators-rest
+          - id: operators-a
+            paths: >-
+              tests/operators/alignment
+              tests/operators/assembly
+              tests/operators/crispr
+              tests/operators/drug_discovery
+              tests/operators/epigenomics
+              tests/operators/foundation_models
+            extra: ""
+          - id: operators-b
+            paths: >-
+              tests/operators/language_models
+              tests/operators/mapping
+              tests/operators/metabolomics
+              tests/operators/molecular_dynamics
+              tests/operators/multiomics
+              tests/operators/normalization
+              tests/operators/population
+              tests/operators/preprocessing
+              tests/operators/protein
+              tests/operators/rna_structure
+              tests/operators/rnaseq
+              tests/operators/statistical
+              tests/operators/variant
+            extra: ""
+          - id: operators-toplevel
             paths: tests/operators
-            extra: --ignore=tests/operators/singlecell
+            extra: >-
+              --ignore=tests/operators/alignment
+              --ignore=tests/operators/assembly
+              --ignore=tests/operators/crispr
+              --ignore=tests/operators/drug_discovery
+              --ignore=tests/operators/epigenomics
+              --ignore=tests/operators/foundation_models
+              --ignore=tests/operators/language_models
+              --ignore=tests/operators/mapping
+              --ignore=tests/operators/metabolomics
+              --ignore=tests/operators/molecular_dynamics
+              --ignore=tests/operators/multiomics
+              --ignore=tests/operators/normalization
+              --ignore=tests/operators/population
+              --ignore=tests/operators/preprocessing
+              --ignore=tests/operators/protein
+              --ignore=tests/operators/rna_structure
+              --ignore=tests/operators/rnaseq
+              --ignore=tests/operators/singlecell
+              --ignore=tests/operators/statistical
+              --ignore=tests/operators/variant
 
     steps:
       - uses: actions/checkout@v4
@@ -78,7 +123,9 @@ jobs:
         with:
           python-version: "3.11"
           cache-suffix: unit-${{ matrix.shard.id }}
-          linux-editable-target: ".[dev,test]"
+          # Install genomics extra so pyfaidx / pysam are present for the
+          # error-path tests in tests/sources/test_{fasta,bam}.py.
+          linux-editable-target: ".[dev,test,genomics]"
 
       - name: Run unit tests
         shell: bash
@@ -254,7 +301,7 @@ jobs:
         with:
           python-version: "3.11"
           cache-suffix: coverage
-          linux-editable-target: ".[dev,test]"
+          linux-editable-target: ".[dev,test,genomics]"
 
       - name: Run full unit suite with coverage
         shell: bash
