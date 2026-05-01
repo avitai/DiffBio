@@ -12,14 +12,6 @@ resolution-markers = [
     "python_full_version < '3.12' and sys_platform != 'win32'",
 ]
 
-[manifest]
-overrides = [
-    { name = "avitai-artifex", git = "https://github.com/avitai/artifex.git" },
-    { name = "calibrax", git = "https://github.com/avitai/calibrax.git" },
-    { name = "datarax", git = "https://github.com/avitai/datarax.git" },
-    { name = "opifex", git = "https://github.com/avitai/Opifex.git" },
-]
-
 [[package]]
 name = "absl-py"
 version = "2.4.0"
@@ -436,7 +428,7 @@ wheels = [
 [[package]]
 name = "avitai-artifex"
 version = "0.1.0"
-source = { git = "https://github.com/avitai/artifex.git#1604253e63fd5e20aafc5c9dfbafb14e842cc573" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "blackjax" },
     { name = "calibrax" },
@@ -479,6 +471,10 @@ dependencies = [
     { name = "types-psutil" },
     { name = "typing-extensions" },
     { name = "wandb" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/60/ba/11786d5bfd4018ebd21460ab32465c958f3ef8aee620c3099cf4ce4ced3a/avitai_artifex-0.1.0.tar.gz", hash = "sha256:675542b9e442dc06c3153bb9c84bd2207333cec8c0067b172928d480fe5fe102", size = 679765, upload-time = "2026-04-25T21:02:22.951Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f4/fe/f4ec48762aaf7991cf9b2cf6631ad48570940c15bb794cfdf42889dad280/avitai_artifex-0.1.0-py3-none-any.whl", hash = "sha256:c7ba769b4ccea05df6b45c4af122153bd38e3caf33ccc191d3339c795802b45c", size = 921622, upload-time = "2026-04-25T21:02:19.629Z" },
 ]
 
 [[package]]
@@ -668,7 +664,7 @@ wheels = [
 [[package]]
 name = "calibrax"
 version = "0.1.1"
-source = { git = "https://github.com/avitai/calibrax.git#d1f930257761d0602e24524b82aa179df98947ab" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
     { name = "flax" },
@@ -678,6 +674,10 @@ dependencies = [
     { name = "numpy" },
     { name = "psutil" },
     { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9c/92/977079025210b4c1a1bcfb6304c2b9eb4656f53094775d3d824e24c40f00/calibrax-0.1.1.tar.gz", hash = "sha256:7b792fb19d2eb87c22fcd342a1dfc562291a57539aa33706cd733d0f7d3f8bd2", size = 145563, upload-time = "2026-04-30T21:24:40.506Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b5/1d/e00a150c88e6c88701031e4046de1999332cfc1e3c73cd3f82d142a5013c/calibrax-0.1.1-py3-none-any.whl", hash = "sha256:31c954986a2e53f699f299409fdd3ce001f0276375b614ed044509a7ea7a1047", size = 184196, upload-time = "2026-04-30T21:24:38.133Z" },
 ]
 
 [[package]]
@@ -1320,7 +1320,7 @@ wheels = [
 [[package]]
 name = "datarax"
 version = "0.1.3"
-source = { git = "https://github.com/avitai/datarax.git#bfc6b9fd15d1197ade8f047fdebedaf432487069" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "array-record" },
     { name = "calibrax" },
@@ -1338,6 +1338,10 @@ dependencies = [
     { name = "tensorflow-datasets" },
     { name = "toml" },
     { name = "tomli-w" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/40/a9/47c5d22a5688e2b06c1c43ae67eac3ff645b608271ba009a7e6af8a4312b/datarax-0.1.3.tar.gz", hash = "sha256:fad5ef739f711fba15f8b74a6484124b4f7102ade1f3998975719e1833c0db53", size = 229692, upload-time = "2026-05-01T02:53:12.442Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ce/4f/a2b2abb91353d7079202d8117db97e8da21e53393606f7bc1bffc783a1a0/datarax-0.1.3-py3-none-any.whl", hash = "sha256:15a3fe217f083fb966f5154b7a1a26a5a72955c57db92b323ea050557723cd3b", size = 282938, upload-time = "2026-05-01T02:53:09.623Z" },
 ]
 
 [[package]]
@@ -1658,17 +1662,17 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anndata", specifier = ">=0.9.1" },
-    { name = "avitai-artifex", git = "https://github.com/avitai/artifex.git" },
+    { name = "avitai-artifex", specifier = ">=0.1.0" },
     { name = "bandit", extras = ["toml"], marker = "extra == 'dev'", specifier = ">=1.8.6" },
     { name = "beartype", specifier = ">=0.14.1" },
     { name = "beartype", marker = "extra == 'test'", specifier = ">=0.14.1" },
     { name = "biopython", specifier = ">=1.81" },
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.0.3" },
-    { name = "calibrax", git = "https://github.com/avitai/calibrax.git" },
+    { name = "calibrax", specifier = ">=0.1.1" },
     { name = "chex", specifier = ">=0.1.7" },
     { name = "coverage", marker = "extra == 'dev'", specifier = ">=7" },
     { name = "coverage", marker = "extra == 'test'", specifier = ">=7" },
-    { name = "datarax", git = "https://github.com/avitai/datarax.git" },
+    { name = "datarax", specifier = ">=0.1.3" },
     { name = "deepchem", marker = "extra == 'benchmark'", specifier = ">=2.8.0" },
     { name = "diffbio", extras = ["benchmark", "dev", "docs", "genomics", "gpu", "soft-ops-advanced", "soft-ops-ot", "test", "torch-io"], marker = "extra == 'all'" },
     { name = "diffbio", extras = ["dev", "gpu"], marker = "extra == 'cuda-dev'" },
@@ -1694,7 +1698,7 @@ requires-dist = [
     { name = "mkdocstrings", marker = "extra == 'docs'", specifier = ">=0.28.3" },
     { name = "mkdocstrings-python", marker = "extra == 'docs'", specifier = ">=1.1.2" },
     { name = "numpy", specifier = ">=1.24" },
-    { name = "opifex", git = "https://github.com/avitai/Opifex.git" },
+    { name = "opifex", specifier = ">=0.1.0" },
     { name = "optax", specifier = ">=0.1.4" },
     { name = "optimistix", marker = "extra == 'soft-ops-advanced'", specifier = ">=0.0.9" },
     { name = "orbax-checkpoint", specifier = ">=0.11.10" },
@@ -5501,7 +5505,7 @@ wheels = [
 [[package]]
 name = "opifex"
 version = "0.1.0"
-source = { git = "https://github.com/avitai/Opifex.git#8fe8e53cfd03f9135b9d7e184748b9c05e7bc2d2" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "avitai-artifex" },
     { name = "beartype" },
@@ -5529,6 +5533,10 @@ dependencies = [
     { name = "tqdm" },
     { name = "typer" },
     { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e9/91/31dd78100fea828d148df532804f7e72f0a6c4b47363f04ba2e4f8e4ec63/opifex-0.1.0.tar.gz", hash = "sha256:69aa447ff2f3bd1096d66d33877578a8f827e87677044ba0407c0614604710fd", size = 723857, upload-time = "2026-05-01T19:54:09.959Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7c/ca/368f3b8af004969930081ad9330691ed0cda8461aaf1d61c6db23d68217e/opifex-0.1.0-py3-none-any.whl", hash = "sha256:5b42c7c049bc06ec3547bcb1bc6e1ec48ea7454e993eb12e14c771c40e8e1a2d", size = 907219, upload-time = "2026-05-01T19:54:07.62Z" },
 ]
 
 [[package]]

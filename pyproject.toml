@@ -34,13 +34,13 @@ classifiers = [
 ]
 dependencies = [
   # Datarax - operator, source, and pipeline contracts
-  "datarax @ git+https://github.com/avitai/datarax.git",
+  "datarax>=0.1.3",
   # Artifex - modeling, modality, and transformer substrate
-  "avitai-artifex @ git+https://github.com/avitai/artifex.git",
+  "avitai-artifex>=0.1.0",
   # Opifex - scientific ML, operator learning, and advanced optimization
-  "opifex @ git+https://github.com/avitai/Opifex.git",
+  "opifex>=0.1.0",
   # Calibrax - benchmarking, comparison, profiling, and regression control
-  "calibrax @ git+https://github.com/avitai/calibrax.git",
+  "calibrax>=0.1.1",
   # JAX ecosystem
   "beartype>=0.14.1",
   "chex>=0.1.7",
@@ -379,16 +379,4 @@ order-by-type = false
 convention = "google"
 
 [tool.uv]
-override-dependencies = [
-  "calibrax @ git+https://github.com/avitai/calibrax.git",
-  "datarax @ git+https://github.com/avitai/datarax.git",
-  "avitai-artifex @ git+https://github.com/avitai/artifex.git",
-  "opifex @ git+https://github.com/avitai/Opifex.git"
-]
 python-preference = "only-managed"
-
-[tool.uv.sources]
-avitai-artifex = {git = "https://github.com/avitai/artifex.git"}
-calibrax = {git = "https://github.com/avitai/calibrax.git"}
-datarax = {git = "https://github.com/avitai/datarax.git"}
-opifex = {git = "https://github.com/avitai/Opifex.git"}
