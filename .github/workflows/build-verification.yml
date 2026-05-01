@@ -27,7 +27,7 @@ jobs:
           cache-suffix: build-${{ matrix.os }}-${{ matrix.python-version }}
           linux-editable-target: ".[dev]"
           macos-editable-target: ".[dev]"
-          extra-packages: types-requests types-setuptools
+          extra-packages: build twine types-requests types-setuptools
 
       - name: Build package
         run: uv run python -m build
