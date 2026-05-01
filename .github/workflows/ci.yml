@@ -77,7 +77,6 @@ jobs:
             extra: ""
           - id: operators-b
             paths: >-
-              tests/operators/language_models
               tests/operators/mapping
               tests/operators/metabolomics
               tests/operators/molecular_dynamics
