@@ -221,12 +221,13 @@ jobs:
         env:
           PYTEST_MARKERS: ${{ env.CI_PYTEST_MARKERS }}
         run: |
-          set -uo pipefail
+          set -euo pipefail
           export JAX_PLATFORMS="cpu"
+          ec=0
           uv run pytest tests/ -m "e2e and ${PYTEST_MARKERS}" \
             -n auto --dist worksteal \
-            --cov=src/diffbio --cov-report=xml --cov-report=term-missing --cov-fail-under=0
-          ec=$?
+            --cov=src/diffbio --cov-report=xml --cov-report=term-missing --cov-fail-under=0 \
+            || ec=$?
           # Treat pytest exit code 5 ("no tests collected") as success, so this
           # placeholder job remains green until tests are actually marked @e2e.
           if [ "$ec" -eq 5 ]; then
@@ -276,11 +277,12 @@ jobs:
         env:
           PYTEST_MARKERS: ${{ env.CI_PYTEST_MARKERS }}
         run: |
-          set -uo pipefail
+          set -euo pipefail
           export JAX_PLATFORMS="cpu"
+          ec=0
           uv run pytest tests/ -v -m "(benchmark or performance) and ${PYTEST_MARKERS}" \
-            --benchmark-autosave --benchmark-columns=mean,stddev,min,max --no-cov
-          ec=$?
+            --benchmark-autosave --benchmark-columns=mean,stddev,min,max --no-cov \
+            || ec=$?
           # Treat pytest exit code 5 ("no tests collected") as success, so this
           # placeholder job remains green until tests are actually marked
           # @benchmark / @performance.
