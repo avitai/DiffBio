@@ -132,17 +132,28 @@ jobs:
           PYTEST_MARKERS: ${{ env.CI_PYTEST_MARKERS }}
           SHARD_PATHS: ${{ matrix.shard.paths }}
           SHARD_EXTRA: ${{ matrix.shard.extra }}
+          # Per-shard coverage data file so parallel shards don't collide
+          # when their .coverage files are combined later by the
+          # `coverage` job via `coverage combine`.
+          COVERAGE_FILE: .coverage.${{ matrix.shard.id }}
         run: |
           set -euo pipefail
           export JAX_PLATFORMS="cpu"
-          # No coverage here — coverage is collected once in the dedicated
-          # `coverage` job. Bare unit shards run fast and report results.
           # shellcheck disable=SC2086
           uv run pytest ${SHARD_PATHS} \
             -m "${PYTEST_MARKERS} and not e2e and not benchmark and not performance and not integration" \
             ${SHARD_EXTRA} \
             -n auto --dist worksteal \
-            --no-cov
+            --cov=src/diffbio --cov-report= --cov-fail-under=0
+
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-data-${{ matrix.shard.id }}
+          path: .coverage.${{ matrix.shard.id }}
+          include-hidden-files: true
+          if-no-files-found: error
+        if: always()
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -174,19 +185,21 @@ jobs:
         shell: bash
         env:
           PYTEST_MARKERS: ${{ env.CI_PYTEST_MARKERS }}
+          COVERAGE_FILE: .coverage.integration
         run: |
           set -euo pipefail
           export JAX_PLATFORMS="cpu"
           uv run pytest tests/integration/ -m "${PYTEST_MARKERS}" \
             -n auto --dist worksteal \
-            --cov=src/diffbio --cov-report=xml --cov-report=term-missing --cov-fail-under=0
+            --cov=src/diffbio --cov-report= --cov-fail-under=0
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v4
         with:
-          file: ./coverage.xml
-          flags: integration
-          fail_ci_if_error: false
+          name: coverage-data-integration
+          path: .coverage.integration
+          include-hidden-files: true
+          if-no-files-found: error
         if: always()
 
       - name: Upload test results
@@ -194,8 +207,6 @@ jobs:
         with:
           name: integration-test-results
           path: |
-            .coverage
-            coverage.xml
             test-results/
           include-hidden-files: true
         if: always()
@@ -220,28 +231,33 @@ jobs:
         shell: bash
         env:
           PYTEST_MARKERS: ${{ env.CI_PYTEST_MARKERS }}
+          COVERAGE_FILE: .coverage.e2e
         run: |
           set -euo pipefail
           export JAX_PLATFORMS="cpu"
           ec=0
           uv run pytest tests/ -m "e2e and ${PYTEST_MARKERS}" \
             -n auto --dist worksteal \
-            --cov=src/diffbio --cov-report=xml --cov-report=term-missing --cov-fail-under=0 \
+            --cov=src/diffbio --cov-report= --cov-fail-under=0 \
             || ec=$?
           # Treat pytest exit code 5 ("no tests collected") as success, so this
           # placeholder job remains green until tests are actually marked @e2e.
           if [ "$ec" -eq 5 ]; then
             echo "::notice::No tests matched the e2e marker filter; treating as success."
+            # Emit an empty coverage file so the upload step has something to
+            # consume; coverage combine ignores empty files cleanly.
+            : > .coverage.e2e
             exit 0
           fi
           exit "$ec"
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v4
         with:
-          file: ./coverage.xml
-          flags: e2e
-          fail_ci_if_error: false
+          name: coverage-data-e2e
+          path: .coverage.e2e
+          include-hidden-files: true
+          if-no-files-found: ignore
         if: always()
 
       - name: Upload test results
@@ -306,7 +322,7 @@ jobs:
     name: Test Coverage
     needs: [unit_tests, integration_tests, e2e_tests]
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 15
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
@@ -321,19 +337,39 @@ jobs:
           cache-suffix: coverage
           linux-editable-target: ".[dev,test,genomics]"
 
-      - name: Run full unit suite with coverage
+      - name: Download all coverage data artifacts
+        uses: actions/download-artifact@v4
+        with:
+          # Pulls every artifact whose name starts with `coverage-data-`,
+          # one per shard / integration / e2e job. Each contains a single
+          # `.coverage.<id>` file named uniquely by COVERAGE_FILE.
+          pattern: coverage-data-*
+          path: coverage-artifacts
+          merge-multiple: true
+
+      - name: Combine coverage and report
         shell: bash
-        env:
-          PYTEST_MARKERS: ${{ env.CI_PYTEST_MARKERS }}
         run: |
           set -euo pipefail
-          export JAX_PLATFORMS="cpu"
-          uv run pytest tests/ \
-            -m "${PYTEST_MARKERS} and not e2e and not benchmark and not performance" \
-            --ignore=tests/benchmarks \
-            -n auto --dist worksteal \
-            --cov=src/diffbio --cov-report=xml --cov-report=term-missing \
-            --cov-fail-under=0
+          ls -la coverage-artifacts/ || true
+          # `coverage combine` accepts a list of files or a directory; pass
+          # individual files so each shard's data set is merged. Skip any
+          # zero-byte placeholder files (the e2e job emits one when no e2e
+          # tests are collected).
+          shopt -s nullglob
+          datafiles=()
+          for f in coverage-artifacts/.coverage.*; do
+            if [ -s "$f" ]; then
+              datafiles+=("$f")
+            fi
+          done
+          if [ "${#datafiles[@]}" -eq 0 ]; then
+            echo "::warning::No non-empty coverage data files found; skipping combine."
+            exit 0
+          fi
+          uv run coverage combine "${datafiles[@]}"
+          uv run coverage report
+          uv run coverage xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
