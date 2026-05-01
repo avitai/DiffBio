@@ -1,5 +1,7 @@
 # DiffBio Pre-commit Configuration
-# Based on workshop-data patterns for thorough code quality
+# Aligned with the avitai-org pre-commit conventions used across datarax, artifex,
+# opifex, and calibrax — same anchor-based excludes, same local hook pattern, with
+# DiffBio-specific architecture and complexity gates layered on top.
 
 repos:
   # TOML formatting
@@ -18,22 +20,22 @@ repos:
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
-        exclude: ^(memory-bank)/
+        exclude: &repo_non_source_exclude ^(?:memory-bank|notebooks|\.deprecated)/
       - id: end-of-file-fixer
-        exclude: ^(memory-bank)/
+        exclude: *repo_non_source_exclude
       - id: check-yaml
-        exclude: ^(memory-bank)/(.*)|mkdocs\.yml$
+        exclude: &repo_yaml_syntax_exclude ^(?:memory-bank|notebooks|\.deprecated)/(?:.*)|mkdocs\.yml$
       - id: check-added-large-files
         args: ["--maxkb=2000"]
-        exclude: ^(memory-bank)/
+        exclude: *repo_non_source_exclude
       - id: check-merge-conflict
       - id: check-toml
       - id: check-json
-        exclude: ^(memory-bank)/
+        exclude: *repo_non_source_exclude
       - id: debug-statements
-        exclude: ^(memory-bank)/
+        exclude: *repo_non_source_exclude
       - id: mixed-line-ending
-        exclude: ^(memory-bank)/
+        exclude: *repo_non_source_exclude
 
   # Python linting and formatting with auto-fix
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -41,13 +43,13 @@ repos:
     hooks:
       - id: ruff
         args: [--fix, --unsafe-fixes]
-        exclude: ^(memory-bank)/
+        exclude: *repo_non_source_exclude
         types_or: [python, pyi, jupyter, toml]
       - id: ruff-format
         types_or: [python, pyi, jupyter, toml]
-        exclude: ^(memory-bank)/
+        exclude: *repo_non_source_exclude
 
-  # GitHub Actions simulation
+  # GitHub Actions simulation - exact mirror of CI checks
   - repo: local
     hooks:
       - id: ruff-docstring-whitespace
@@ -55,14 +57,14 @@ repos:
         entry: ruff check --select=W291,W292,W293,F841 --fix --unsafe-fixes
         language: system
         types: [python]
-        exclude: ^(memory-bank)/
+        exclude: *repo_non_source_exclude
         pass_filenames: true
       - id: ruff-github-actions-check
         name: ruff-github-actions-check (mirrors CI)
         entry: uv run ruff check --output-format=github
         language: system
         types: [python]
-        exclude: ^(memory-bank)/
+        exclude: *repo_non_source_exclude
         pass_filenames: false
         always_run: true
       - id: ruff-critical-check
@@ -71,38 +73,48 @@ repos:
         entry: uv run ruff check --select=RUF005,B904,F822,F823 --output-format=github
         language: system
         types: [python]
-        exclude: ^(memory-bank)/
+        exclude: *repo_non_source_exclude
         pass_filenames: false
         always_run: true
 
-  # Type checking with JAX ecosystem support
-  - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.403
+  # Manual-stage strict checks (run with: pre-commit run --hook-stage manual)
+  - repo: local
+    hooks:
+      - id: flake8-functions-names
+        name: flake8-functions-names (FNE)
+        entry: uv run flake8 --select=FNE src tests
+        language: system
+        types: [python]
+        stages: [manual]
+        pass_filenames: false
+      - id: flake8-wemake-wps233
+        name: flake8-wemake WPS233
+        entry: uv run flake8 --select=WPS233 src tests
+        language: system
+        types: [python]
+        stages: [manual]
+        pass_filenames: false
+      - id: pylint-targeted-guide-checks
+        name: pylint targeted guide checks
+        entry: >-
+          uv run pylint --disable=all
+          --enable=duplicate-code,too-many-public-methods,too-many-instance-attributes,too-few-public-methods,too-many-ancestors,inconsistent-return-statements
+          --reports=no --score=no src/diffbio
+        language: system
+        types: [python]
+        stages: [manual]
+        pass_filenames: false
+
+  # Type checking - reuse the project venv so pre-commit stays hermetic
+  - repo: local
     hooks:
       - id: pyright
-        args: ["--warnings"]
-        exclude: ^(memory-bank)/
-        additional_dependencies: [
-            # Core JAX ecosystem
-            beartype,
-            jax,
-            flax,
-            jaxtyping,
-            typing_extensions,
-            optax,
-            chex,
-            orbax-checkpoint,
-
-            # Scientific libraries
-            numpy,
-            scipy,
-
-            # Bioinformatics
-            biopython,
-
-            # Development
-            pytest,
-          ]
+        name: pyright (project environment)
+        entry: uv run pyright --warnings
+        language: system
+        types_or: [python, pyi]
+        files: ^src/.*\.py$
+        pass_filenames: true
 
   # Security scanning
   - repo: https://github.com/PyCQA/bandit
@@ -110,7 +122,7 @@ repos:
     hooks:
       - id: bandit
         args: ["-c", "pyproject.toml"]
-        exclude: ^(memory-bank|tests)/
+        exclude: &repo_non_source_and_tests_exclude ^(?:memory-bank|notebooks|\.deprecated|tests)/
         additional_dependencies: ["bandit[toml]"]
         log_file: /dev/null
 
@@ -119,7 +131,7 @@ repos:
     rev: 6.3.0
     hooks:
       - id: pydocstyle
-        exclude: ^(memory-bank|tests|.deprecated|examples)/
+        exclude: &repo_non_source_tests_examples_exclude ^(?:memory-bank|notebooks|\.deprecated|tests|examples)/
         additional_dependencies: ["pydocstyle[toml]"]
         args: ["--config=pyproject.toml"]
 
@@ -150,7 +162,7 @@ repos:
     rev: 1.9.1
     hooks:
       - id: nbqa-ruff
-        exclude: ^(memory-bank)/
+        exclude: *repo_non_source_exclude
         args: [--fix]
 
   # Shell script quality
@@ -161,7 +173,7 @@ repos:
         entry: shellcheck
         language: system
         types: [shell]
-        exclude: ^(memory-bank)/
+        exclude: *repo_non_source_exclude
         args: ["-e", "SC1091"]
         pass_filenames: true
         always_run: false
@@ -170,11 +182,24 @@ repos:
   - repo: local
     hooks:
       - id: check-file-length
-        name: Check file length
-        entry: "bash -c 'for f in \"$@\"; do lines=$(wc -l < \"$f\"); if [ \"$lines\" -gt 2000 ]; then echo \"FAIL: $f has $lines lines (max 2000)\"; exit 1; elif [ \"$lines\" -gt 1500 ]; then echo \"WARN: $f has $lines lines (consider splitting)\"; fi; done'"
+        name: check-file-length (warn >1500, fail >2000 lines)
+        entry: bash
+        args:
+          - -c
+          - |
+            for file in "$@"; do
+              lines=$(wc -l < "$file" 2>/dev/null || echo 0)
+              if [ "$lines" -gt 2000 ]; then
+                echo "ERROR: $file has $lines lines (limit: 2000)"
+                exit 1
+              elif [ "$lines" -gt 1500 ]; then
+                echo "WARNING: $file has $lines lines (approaching limit of 2000)"
+              fi
+            done
+          - --
         language: system
         types: [python]
-        exclude: ^(memory-bank)/
+        exclude: *repo_non_source_and_tests_exclude
 
 # CI configuration - no autofix, manual testing before commits
 ci:
