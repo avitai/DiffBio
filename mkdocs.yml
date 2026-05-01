@@ -2,8 +2,8 @@ site_name: DiffBio
 site_description: End-to-end differentiable bioinformatics pipelines built on JAX/Flax NNX, Datarax, Artifex, Opifex, and Calibrax
 site_author: Mahdi Shafiei
 site_url: https://docs.avitai.bio/diffbio
-repo_url: https://github.com/mahdi-shafiei/DiffBio
-repo_name: mahdi-shafiei/DiffBio
+repo_url: https://github.com/avitai/DiffBio
+repo_name: avitai/DiffBio
 edit_uri: edit/main/docs/
 
 # Configuration for clean, scientific appearance
@@ -67,7 +67,7 @@ theme:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/mahdi-shafiei/DiffBio
+      link: https://github.com/avitai/DiffBio
     - icon: fontawesome/brands/python
       link: https://pypi.org/project/diffbio/
 

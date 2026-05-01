@@ -8,7 +8,7 @@ Thank you for your interest in contributing to DiffBio! This document provides g
 
 ```bash
 # Clone the repository
-git clone https://github.com/mahdi-shafiei/DiffBio.git
+git clone https://github.com/avitai/DiffBio.git
 cd DiffBio
 
 # Run setup script (creates venv, installs dependencies, detects GPU)

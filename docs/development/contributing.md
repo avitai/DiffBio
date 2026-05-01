@@ -8,7 +8,7 @@ documentation to DiffBio.
 ## Development Setup
 
 ```bash
-git clone https://github.com/mahdi-shafiei/DiffBio.git
+git clone https://github.com/avitai/DiffBio.git
 cd DiffBio
 ./setup.sh
 source ./activate.sh
@@ -331,4 +331,4 @@ code, expected vs actual behavior, full traceback.
 
 Include: use case description, proposed API, related existing operators.
 
-File issues at [github.com/mahdi-shafiei/DiffBio/issues](https://github.com/mahdi-shafiei/DiffBio/issues).
+File issues at [github.com/avitai/DiffBio/issues](https://github.com/avitai/DiffBio/issues).

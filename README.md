@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  Built on <a href="https://github.com/mahdi-shafiei/workshop-data">Datarax</a>, <a href="https://github.com/avitai/artifex">Artifex</a>, <a href="https://github.com/avitai/Opifex">Opifex</a>, and <a href="https://github.com/avitai/calibrax">Calibrax</a> | Powered by <a href="https://jax.readthedocs.io/">JAX</a> & <a href="https://flax.readthedocs.io/">Flax NNX</a>
+  Built on <a href="https://github.com/avitai/datarax">Datarax</a>, <a href="https://github.com/avitai/artifex">Artifex</a>, <a href="https://github.com/avitai/Opifex">Opifex</a>, and <a href="https://github.com/avitai/calibrax">Calibrax</a> | Powered by <a href="https://jax.readthedocs.io/">JAX</a> & <a href="https://flax.readthedocs.io/">Flax NNX</a>
 </p>
 
 ---
@@ -54,7 +54,7 @@ For complete operator and pipeline listings, see the [Operators Overview](https:
 
 ```bash
 # Clone the repository
-git clone https://github.com/mahdi-shafiei/DiffBio.git
+git clone https://github.com/avitai/DiffBio.git
 cd DiffBio
 
 # Install with uv
@@ -176,7 +176,7 @@ DiffBio sits on a layered ecosystem rather than standing alone:
 
 | Layer | Library | Role In DiffBio |
 |---|---|---|
-| Execution contracts | [Datarax](https://github.com/mahdi-shafiei/workshop-data) | Operator, data-source, and pipeline contracts |
+| Execution contracts | [Datarax](https://github.com/avitai/datarax) | Operator, data-source, and pipeline contracts |
 | Modeling substrate | [Artifex](https://github.com/avitai/artifex) | Reusable transformer and generative-model components |
 | Scientific ML substrate | [Opifex](https://github.com/avitai/Opifex) | Scientific optimization, operator learning, and advanced training methods |
 | Evaluation substrate | [Calibrax](https://github.com/avitai/calibrax) | Metrics, benchmarking, comparison, profiling, and regression checks |
@@ -268,7 +268,7 @@ Apache License 2.0. See [LICENSE](LICENSE) for details.
 
 DiffBio builds on ideas from:
 - [SMURF](https://www.biorxiv.org/content/10.1101/2021.10.23.465204): Differentiable Smith-Waterman for end-to-end MSA learning
-- [Datarax](https://github.com/mahdi-shafiei/workshop-data): Composable data processing framework
+- [Datarax](https://github.com/avitai/datarax): Composable data processing framework
 - [Artifex](https://github.com/avitai/artifex): Generative-model and transformer substrate
 - [Opifex](https://github.com/avitai/Opifex): Scientific ML and advanced optimization substrate
 - [Calibrax](https://github.com/avitai/calibrax): Benchmarking, comparison, and regression substrate

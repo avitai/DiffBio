@@ -15,7 +15,7 @@ pip install diffbio
 For the latest development version:
 
 ```bash
-git clone https://github.com/mahdi-shafiei/DiffBio.git
+git clone https://github.com/avitai/DiffBio.git
 cd DiffBio
 pip install -e ".[dev]"
 ```
@@ -31,7 +31,7 @@ uv pip install diffbio
 Or for development:
 
 ```bash
-git clone https://github.com/mahdi-shafiei/DiffBio.git
+git clone https://github.com/avitai/DiffBio.git
 cd DiffBio
 uv sync --all-extras
 ```
@@ -44,7 +44,7 @@ DiffBio depends on the following core packages:
 |---------|---------|
 | [JAX](https://jax.readthedocs.io/) | Automatic differentiation and XLA compilation |
 | [Flax](https://flax.readthedocs.io/) | Neural network library for JAX |
-| [Datarax](https://github.com/mahdi-shafiei/datarax) | Composable data pipeline framework |
+| [Datarax](https://github.com/avitai/datarax) | Composable data pipeline framework |
 | [jaxtyping](https://github.com/google/jaxtyping) | Type annotations for JAX arrays |
 
 ## GPU Support
@@ -89,7 +89,7 @@ print("Installation successful!")
 For contributing to DiffBio:
 
 ```bash
-git clone https://github.com/mahdi-shafiei/DiffBio.git
+git clone https://github.com/avitai/DiffBio.git
 cd DiffBio
 
 # Install with all development dependencies
@@ -148,4 +148,4 @@ DiffBio operators use JAX's XLA compilation which can be memory-intensive for ve
 - Chunking long sequences
 - Enabling memory-efficient attention patterns
 
-For additional help, please [open an issue](https://github.com/mahdi-shafiei/DiffBio/issues) on GitHub.
+For additional help, please [open an issue](https://github.com/avitai/DiffBio/issues) on GitHub.

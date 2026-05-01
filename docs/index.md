@@ -2,7 +2,7 @@
 
 **End-to-end differentiable bioinformatics pipelines built on JAX/Flax and Datarax**
 
-DiffBio provides differentiable implementations of core bioinformatics algorithms, enabling gradient-based optimization of entire genomic analysis pipelines. Built on top of the [Datarax](https://github.com/mahdi-shafiei/workshop-data) framework, DiffBio brings the power of automatic differentiation to sequence alignment, variant calling, and genomic analysis.
+DiffBio provides differentiable implementations of core bioinformatics algorithms, enabling gradient-based optimization of entire genomic analysis pipelines. Built on top of the [Datarax](https://github.com/avitai/datarax) framework, DiffBio brings the power of automatic differentiation to sequence alignment, variant calling, and genomic analysis.
 
 ---
 
@@ -46,7 +46,7 @@ DiffBio provides differentiable implementations of core bioinformatics algorithm
 ### Installation
 
 ```bash
-git clone https://github.com/mahdi-shafiei/DiffBio.git
+git clone https://github.com/avitai/DiffBio.git
 cd DiffBio
 ./setup.sh
 source ./activate.sh
@@ -166,7 +166,7 @@ If you use DiffBio in your research, please cite:
   title={DiffBio: End-to-End Differentiable Bioinformatics Pipelines},
   author={Shafiei, Mahdi},
   year={2024},
-  url={https://github.com/mahdi-shafiei/DiffBio}
+  url={https://github.com/avitai/DiffBio}
 }
 ```
 
@@ -174,7 +174,7 @@ If you use DiffBio in your research, please cite:
 
 ## License
 
-DiffBio is released under the [MIT License](https://github.com/mahdi-shafiei/DiffBio/blob/main/LICENSE).
+DiffBio is released under the [MIT License](https://github.com/avitai/DiffBio/blob/main/LICENSE).
 
 ## Contributing
 

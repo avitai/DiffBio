@@ -133,9 +133,9 @@ test = [
 torch-io = ["torch>=1.13.0"]
 
 [project.urls]
-"Bug Tracker" = "https://github.com/mahdi-shafiei/DiffBio/issues"
+"Bug Tracker" = "https://github.com/avitai/DiffBio/issues"
 Documentation = "https://diffbio.readthedocs.io"
-Source = "https://github.com/mahdi-shafiei/DiffBio"
+Source = "https://github.com/avitai/DiffBio"
 
 [tool.bandit]
 exclude_dirs = ["tests", "scripts", "examples", "memory-bank", ".deprecated", ".venv"]
