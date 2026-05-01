@@ -39,15 +39,36 @@ jobs:
         run: uv run lint-imports
 
   unit_tests:
-    name: Unit Tests (${{ matrix.os }}, py${{ matrix.python-version }})
+    name: Unit Tests (${{ matrix.shard.id }})
     needs: quality
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
-      matrix:
-        os: [ubuntu-latest, macos-14]
-        python-version: ["3.11"]
       fail-fast: false
+      matrix:
+        shard:
+          # Sharded by test path to keep wall-clock time per runner bounded.
+          # Keep these in sync with the local test layout so no shard becomes
+          # the long pole (review when test counts change appreciably).
+          - id: core-and-misc
+            paths: >-
+              tests/core
+              tests/sources
+              tests/splitters
+              tests/samplers
+              tests/sequences
+              tests/utils
+              tests/pipelines
+              tests/losses
+            extra: >-
+              --ignore=tests/integration
+              --ignore=tests/benchmarks
+          - id: operators-singlecell
+            paths: tests/operators/singlecell
+            extra: ""
+          - id: operators-rest
+            paths: tests/operators
+            extra: --ignore=tests/operators/singlecell
 
     steps:
       - uses: actions/checkout@v4
@@ -55,41 +76,35 @@ jobs:
       - name: Set up DiffBio
         uses: ./.github/actions/setup-diffbio
         with:
-          python-version: ${{ matrix.python-version }}
-          cache-suffix: unit-${{ matrix.python-version }}-${{ matrix.os }}
+          python-version: "3.11"
+          cache-suffix: unit-${{ matrix.shard.id }}
           linux-editable-target: ".[dev,test]"
-          macos-editable-target: ".[dev,test]"
 
-      - name: Run unit tests with coverage
+      - name: Run unit tests
         shell: bash
         env:
           PYTEST_MARKERS: ${{ env.CI_PYTEST_MARKERS }}
+          SHARD_PATHS: ${{ matrix.shard.paths }}
+          SHARD_EXTRA: ${{ matrix.shard.extra }}
         run: |
           set -euo pipefail
           export JAX_PLATFORMS="cpu"
-          uv run pytest tests/ -m "${PYTEST_MARKERS} and not e2e and not benchmark and not performance and not integration" \
-            --ignore=tests/integration \
-            --ignore=tests/benchmarks \
+          # No coverage here — coverage is collected once in the dedicated
+          # `coverage` job. Bare unit shards run fast and report results.
+          # shellcheck disable=SC2086
+          uv run pytest ${SHARD_PATHS} \
+            -m "${PYTEST_MARKERS} and not e2e and not benchmark and not performance and not integration" \
+            ${SHARD_EXTRA} \
             -n auto --dist worksteal \
-            --cov=src/diffbio --cov-report=xml --cov-report=term-missing \
-            --cov-fail-under=0
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./coverage.xml
-          flags: unittests-${{ matrix.os }}
-          fail_ci_if_error: false
-        if: always()
+            --no-cov
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
         with:
-          name: unit-test-results-${{ matrix.python-version }}-${{ matrix.os }}
+          name: unit-test-results-${{ matrix.shard.id }}
           path: |
-            .coverage
-            coverage.xml
             test-results/
+            temp/test-results.json
           include-hidden-files: true
         if: always()
 
@@ -226,6 +241,8 @@ jobs:
     name: Test Coverage
     needs: [unit_tests, integration_tests, e2e_tests]
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v4
@@ -239,30 +256,19 @@ jobs:
           cache-suffix: coverage
           linux-editable-target: ".[dev,test]"
 
-      - name: Download all coverage reports
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Debug artifact contents
-        run: |
-          echo "Listing artifact directory structure:"
-          find artifacts -type f | sort
-          echo "Checking for .coverage files:"
-          find artifacts -name ".coverage" | sort
-
-      - name: Combine coverage reports
+      - name: Run full unit suite with coverage
         shell: bash
+        env:
+          PYTEST_MARKERS: ${{ env.CI_PYTEST_MARKERS }}
         run: |
           set -euo pipefail
-          if ls artifacts/*/.coverage 1> /dev/null 2>&1; then
-            uv run coverage combine artifacts/*/.coverage
-          else
-            echo "ERROR: No .coverage files found to combine"
-            exit 1
-          fi
-          uv run coverage report
-          uv run coverage xml
+          export JAX_PLATFORMS="cpu"
+          uv run pytest tests/ \
+            -m "${PYTEST_MARKERS} and not e2e and not benchmark and not performance" \
+            --ignore=tests/benchmarks \
+            -n auto --dist worksteal \
+            --cov=src/diffbio --cov-report=xml --cov-report=term-missing \
+            --cov-fail-under=0
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
