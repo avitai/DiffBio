@@ -40,9 +40,10 @@ jobs:
         run: |
           set -euo pipefail
           export JAX_PLATFORMS="cpu"
-          uv venv test_venv
-          . test_venv/bin/activate
-          uv pip install dist/*.whl
+          # Install the wheel into the existing setup venv (already has all sibling
+          # deps resolved via [tool.uv] overrides) with --no-deps, replacing the
+          # editable install so we exercise the wheel's metadata + import surface.
+          uv pip install --reinstall --no-deps dist/*.whl
           python - <<'PY'
           import diffbio
 
@@ -62,7 +63,6 @@ jobs:
           print("public surface OK:", sorted(expected))
           print("version:", diffbio.__version__)
           PY
-          deactivate
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
