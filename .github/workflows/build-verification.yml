@@ -1,0 +1,71 @@
+name: DiffBio Build Verification
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Package Build Verification (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up DiffBio
+        uses: ./.github/actions/setup-diffbio
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache-suffix: build-${{ matrix.os }}-${{ matrix.python-version }}
+          linux-editable-target: ".[dev]"
+          macos-editable-target: ".[dev]"
+          extra-packages: types-requests types-setuptools
+
+      - name: Build package
+        run: uv run python -m build
+
+      - name: Verify package metadata
+        run: uv run twine check dist/*
+
+      - name: Run install smoke contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          export JAX_PLATFORMS="cpu"
+          uv venv test_venv
+          . test_venv/bin/activate
+          uv pip install dist/*.whl
+          python - <<'PY'
+          import diffbio
+
+          expected = {
+              "configs",
+              "constants",
+              "evaluation",
+              "losses",
+              "operators",
+              "pipelines",
+              "sequences",
+              "utils",
+          }
+          missing = sorted(expected - set(dir(diffbio)))
+          assert not missing, f"missing public submodules: {missing}"
+          assert hasattr(diffbio, "__version__"), "diffbio.__version__ is missing"
+          print("public surface OK:", sorted(expected))
+          print("version:", diffbio.__version__)
+          PY
+          deactivate
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-artifacts-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: dist/

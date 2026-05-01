@@ -1,0 +1,267 @@
+name: DiffBio CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  CI_PYTEST_MARKERS: "not gpu and not gpu_required and not cuda and not slow and not network and not scbench and not spatialbench"
+
+jobs:
+  quality:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up DiffBio
+        uses: ./.github/actions/setup-diffbio
+        with:
+          python-version: "3.11"
+          cache-suffix: quality
+          linux-editable-target: ".[dev]"
+
+      - name: Run Ruff
+        run: uv run ruff check --output-format=github
+
+      - name: Check formatting
+        run: uv run ruff format --check
+
+      - name: Lint imports (architecture contracts)
+        run: uv run lint-imports
+
+  unit_tests:
+    name: Unit Tests (${{ matrix.os }}, py${{ matrix.python-version }})
+    needs: quality
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-14]
+        python-version: ["3.11"]
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up DiffBio
+        uses: ./.github/actions/setup-diffbio
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache-suffix: unit-${{ matrix.python-version }}-${{ matrix.os }}
+          linux-editable-target: ".[dev,test]"
+          macos-editable-target: ".[dev,test]"
+
+      - name: Run unit tests with coverage
+        shell: bash
+        env:
+          PYTEST_MARKERS: ${{ env.CI_PYTEST_MARKERS }}
+        run: |
+          set -euo pipefail
+          export JAX_PLATFORMS="cpu"
+          uv run pytest tests/ -v -m "${PYTEST_MARKERS} and not e2e and not benchmark and not performance and not integration" \
+            --ignore=tests/integration \
+            --ignore=tests/benchmarks \
+            --cov=src/diffbio --cov-report=xml --cov-report=term-missing \
+            --cov-fail-under=0
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unittests-${{ matrix.os }}
+          fail_ci_if_error: false
+        if: always()
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results-${{ matrix.python-version }}-${{ matrix.os }}
+          path: |
+            .coverage
+            coverage.xml
+            test-results/
+          include-hidden-files: true
+        if: always()
+
+  integration_tests:
+    name: Integration Tests
+    needs: unit_tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up DiffBio
+        uses: ./.github/actions/setup-diffbio
+        with:
+          python-version: "3.11"
+          cache-suffix: integration
+          linux-editable-target: ".[dev,test]"
+
+      - name: Run integration tests
+        shell: bash
+        env:
+          PYTEST_MARKERS: ${{ env.CI_PYTEST_MARKERS }}
+        run: |
+          set -euo pipefail
+          export JAX_PLATFORMS="cpu"
+          uv run pytest tests/integration/ -v -m "${PYTEST_MARKERS}" \
+            --cov=src/diffbio --cov-report=xml --cov-report=term-missing --cov-fail-under=0
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: integration
+          fail_ci_if_error: false
+        if: always()
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: |
+            .coverage
+            coverage.xml
+            test-results/
+          include-hidden-files: true
+        if: always()
+
+  e2e_tests:
+    name: End-to-End Tests
+    needs: integration_tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up DiffBio
+        uses: ./.github/actions/setup-diffbio
+        with:
+          python-version: "3.11"
+          cache-suffix: e2e
+          linux-editable-target: ".[dev,test]"
+
+      - name: Run end-to-end tests
+        shell: bash
+        env:
+          PYTEST_MARKERS: ${{ env.CI_PYTEST_MARKERS }}
+        run: |
+          set -euo pipefail
+          export JAX_PLATFORMS="cpu"
+          uv run pytest tests/ -v -m "e2e and ${PYTEST_MARKERS}" \
+            --cov=src/diffbio --cov-report=xml --cov-report=term-missing --cov-fail-under=0
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: e2e
+          fail_ci_if_error: false
+        if: always()
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: |
+            .coverage
+            coverage.xml
+            test-results/
+          include-hidden-files: true
+        if: always()
+
+  performance_tests:
+    name: Performance Tests
+    needs: unit_tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up DiffBio
+        uses: ./.github/actions/setup-diffbio
+        with:
+          python-version: "3.11"
+          cache-suffix: perf
+          linux-editable-target: ".[dev,test,benchmark]"
+
+      - name: Run performance tests
+        shell: bash
+        env:
+          PYTEST_MARKERS: ${{ env.CI_PYTEST_MARKERS }}
+        run: |
+          set -euo pipefail
+          export JAX_PLATFORMS="cpu"
+          uv run pytest tests/ -v -m "(benchmark or performance) and ${PYTEST_MARKERS}" \
+            --benchmark-autosave --benchmark-columns=mean,stddev,min,max --no-cov
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            benchmark-results/
+            benchmark.json
+            histogram.svg
+        if: always()
+
+  coverage:
+    name: Test Coverage
+    needs: [unit_tests, integration_tests, e2e_tests]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up DiffBio
+        uses: ./.github/actions/setup-diffbio
+        with:
+          python-version: "3.11"
+          cache-suffix: coverage
+          linux-editable-target: ".[dev,test]"
+
+      - name: Download all coverage reports
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Debug artifact contents
+        run: |
+          echo "Listing artifact directory structure:"
+          find artifacts -type f | sort
+          echo "Checking for .coverage files:"
+          find artifacts -name ".coverage" | sort
+
+      - name: Combine coverage reports
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ls artifacts/*/.coverage 1> /dev/null 2>&1; then
+            uv run coverage combine artifacts/*/.coverage
+          else
+            echo "ERROR: No .coverage files found to combine"
+            exit 1
+          fi
+          uv run coverage report
+          uv run coverage xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+
+      - name: Upload combined coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-coverage-report
+          path: coverage.xml
+        if: always()

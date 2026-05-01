@@ -1,0 +1,72 @@
+name: Code Quality Checks
+
+on:
+  workflow_dispatch:
+
+jobs:
+  type-safety-report:
+    name: Informational Type-Safety Report
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up DiffBio
+        uses: ./.github/actions/setup-diffbio
+        with:
+          python-version: "3.11"
+          cache-suffix: quality-report
+          linux-editable-target: ".[dev]"
+
+      - name: Generate informational quality report
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          pyright_status=0
+          ruff_status=0
+
+          uv run pyright --warnings --outputjson > pyright-report.json || pyright_status=$?
+          uv run ruff check --statistics --output-format=text > ruff-report.txt || ruff_status=$?
+
+          {
+            echo "## Informational quality report"
+            echo
+            echo "Blocking enforcement lives in .github/workflows/ci.yml."
+            echo "Pyright remains report-only while repo-wide typing debt is still being reduced."
+            echo
+            echo "### Pyright"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("pyright-report.json").read_text())
+          summary = report["summary"]
+          print(f"- Errors: {summary['errorCount']}")
+          print(f"- Warnings: {summary['warningCount']}")
+          print(f"- Information: {summary['informationCount']}")
+          PY
+
+          {
+            echo
+            echo "### Ruff"
+            echo
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          head -20 ruff-report.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$pyright_status" -ne 0 || "$ruff_status" -ne 0 ]]; then
+            exit 1
+          fi
+
+      - name: Upload quality report artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quality-report
+          path: |
+            pyright-report.json
+            ruff-report.txt

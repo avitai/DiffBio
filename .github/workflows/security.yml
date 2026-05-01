@@ -1,0 +1,60 @@
+name: Security
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+jobs:
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up DiffBio
+        uses: ./.github/actions/setup-diffbio
+        with:
+          python-version: "3.11"
+          cache-suffix: security
+          linux-editable-target: ".[dev]"
+
+      - name: Run security scans
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          pip_audit_status=0
+          bandit_status=0
+
+          uv run --with pip-audit pip-audit --local --desc \
+            > pip-audit-report.txt || pip_audit_status=$?
+
+          uv run --with bandit bandit -c pyproject.toml -r src/diffbio/ -f json -o bandit-report.json \
+            || bandit_status=$?
+
+          {
+            echo "## Security audit"
+            echo
+            echo "This workflow participates in automatic pull-request and push enforcement."
+            echo "pip-audit scans the resolved dependency tree against the PyPI advisory database;"
+            echo "bandit scans the DiffBio source tree for common Python security issues."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$pip_audit_status" -ne 0 || "$bandit_status" -ne 0 ]]; then
+            exit 1
+          fi
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-report
+          path: |
+            pip-audit-report.txt
+            bandit-report.json
