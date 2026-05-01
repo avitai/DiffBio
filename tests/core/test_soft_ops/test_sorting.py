@@ -257,7 +257,6 @@ class TestTopK:
 
         assert_finite_grads(fn, (x,))
 
-
     def test_soft_mode_with_negative_axis(self) -> None:
         """top_k with axis=-1 produces matching (k, n) soft indices.
 
