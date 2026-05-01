@@ -255,10 +255,10 @@ Operators can be composed into pipelines using Datarax's composition utilities:
 ### Sequential Composition
 
 ```python
-from datarax.core.operator import CompositeOperator
+from datarax.operators import CompositeOperatorModule
 
 # Chain operators sequentially
-pipeline = CompositeOperator([
+pipeline = CompositeOperatorModule([
     quality_filter,
     aligner,
     pileup_generator,
