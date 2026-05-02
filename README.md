@@ -1,10 +1,10 @@
 # DiffBio
 
 <p align="center">
-  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+"></a>
-  <a href="https://jax.readthedocs.io/"><img src="https://img.shields.io/badge/JAX-0.4.35+-green.svg" alt="JAX"></a>
-  <a href="https://flax.readthedocs.io/"><img src="https://img.shields.io/badge/Flax-0.10+-orange.svg" alt="Flax"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+"></a>
+  <a href="https://jax.readthedocs.io/"><img src="https://img.shields.io/badge/JAX-0.6.1+-green.svg" alt="JAX"></a>
+  <a href="https://flax.readthedocs.io/"><img src="https://img.shields.io/badge/Flax-0.12+-orange.svg" alt="Flax"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
 </p>
 
 <p align="center">
@@ -42,8 +42,8 @@ This enables learning optimal pipeline parameters directly from data, rather tha
 
 ## Features
 
-- **35+ Differentiable Operators** covering alignment, variant calling, single-cell analysis, epigenomics, RNA-seq, preprocessing, normalization, and multi-omics
-- **5 End-to-End Pipelines** for variant calling, single-cell analysis, differential expression, and preprocessing
+- **40+ Differentiable Operators** covering alignment, variant calling, single-cell analysis, epigenomics, RNA-seq, preprocessing, normalization, multi-omics, drug discovery, and protein/RNA structure
+- **6 End-to-End Pipelines** for variant calling, enhanced variant calling, single-cell analysis, differential expression, perturbation, and preprocessing
 - **GPU-Accelerated** computation via JAX's XLA compilation
 - **Composable Architecture** built on the Datarax, Artifex, Opifex, and Calibrax stack
 - **Training Utilities** with gradient clipping, custom loss functions, and synthetic data generation
@@ -70,11 +70,9 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 
-from diffbio.operators import (
-    DifferentiableQualityFilter,
-    DifferentiablePileup,
-    SoftSmithWaterman,
-)
+from diffbio.operators import DifferentiableQualityFilter
+from diffbio.operators.variant.pileup import DifferentiablePileup
+from diffbio.operators.alignment.smith_waterman import SmoothSmithWaterman
 
 # Quality filtering with learnable threshold
 quality_filter = DifferentiableQualityFilter(
@@ -195,19 +193,16 @@ This enables:
 
 ### Operator Composition
 
+Operators are chained by threading the `(data, state, metadata)` triple
+returned by `apply()` into the next operator:
+
 ```python
-from datarax import Batch
+data, state, metadata = quality_filter.apply(batch_data, {}, None)
+data, state, metadata = pileup.apply(data, state, metadata)
+data, state, metadata = classifier.apply(data, state, metadata)
 
-# Create batch from data
-batch = Batch.from_data(batch_data)
-
-# Apply operators in sequence
-batch = quality_filter.apply_batch(batch)
-batch = pileup.apply_batch(batch)
-batch = classifier.apply_batch(batch)
-
-# Extract results
-results = batch.data.get_value()
+# `data` is a dict of JAX arrays — read out the per-position predictions
+predictions = data["logits"]
 ```
 
 ## Testing
@@ -253,16 +248,16 @@ DiffBio/
 
 ## Requirements
 
-- Python 3.12+
-- JAX 0.4.35+
-- Flax 0.10+
-- Optax 0.2.4+
-- jaxtyping 0.2.36+
-- Datarax, Artifex, Opifex, and Calibrax (installed automatically)
+- Python 3.11+
+- JAX 0.6.1+
+- Flax 0.12+
+- Optax 0.1.4+
+- jaxtyping 0.2.20+
+- Datarax, Artifex, Opifex, and Calibrax (installed automatically from PyPI)
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE) for details.
+MIT License. See [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
