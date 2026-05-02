@@ -1,11 +1,12 @@
 # Publish to PyPI when a GitHub Release is created.
 #
-# PyPI trusted publishing must trust:
-#   Owner: avitai
-#   Repository: DiffBio
-#   Workflow name: publish.yml
-#   Environment: pypi
-#   Project name: diffbio
+# Authentication uses API tokens stored as repo secrets:
+#   PYPI_API_TOKEN       — account-scoped token used by the pypi job
+#   TEST_PYPI_API_TOKEN  — account-scoped token used by the testpypi job
+#
+# To migrate to OIDC trusted publishing later, replace the `password` inputs
+# with `permissions: id-token: write` on each publish job and register the
+# project at https://pypi.org/manage/account/publishing/.
 
 name: Publish to PyPI
 
@@ -16,13 +17,18 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: "Target repository"
+        description: "Target operation"
         required: true
         default: "testpypi"
         type: choice
         options:
           - testpypi
           - pypi
+          - github-release
+      version_tag:
+        description: "Existing vX.Y.Z tag for target=github-release"
+        required: false
+        type: string
 
 jobs:
   build:
@@ -30,10 +36,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -49,10 +55,43 @@ jobs:
         run: twine check dist/*
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: python-package-distributions
           path: dist/
+
+  create-github-release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'github-release'
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate release tag
+        env:
+          RELEASE_TAG: ${{ github.event.inputs.version_tag }}
+        run: |
+          if [[ -z "${RELEASE_TAG}" ]]; then
+            echo "version_tag is required when target=github-release" >&2
+            exit 1
+          fi
+          git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" >/dev/null || {
+            echo "Release tag ${RELEASE_TAG} does not exist" >&2
+            exit 1
+          }
+
+      - name: Create release with generated notes
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version_tag }}
+          generate_release_notes: true
 
   publish-testpypi:
     name: Publish to TestPyPI
@@ -63,9 +102,6 @@ jobs:
     environment:
       name: testpypi
       url: https://test.pypi.org/project/diffbio/
-
-    permissions:
-      id-token: write
 
     steps:
       - name: Download build artifacts
@@ -78,21 +114,37 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           verbose: true
           skip-existing: true
 
   publish-pypi:
     name: Publish to PyPI
-    needs: build
+    needs:
+      - build
+      - create-github-release
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'pypi')
+    if: |
+      always() &&
+      needs.build.result == 'success' &&
+      (
+        github.event_name == 'release' ||
+        (
+          github.event_name == 'workflow_dispatch' &&
+          (
+            github.event.inputs.target == 'pypi' ||
+            github.event.inputs.target == 'github-release'
+          )
+        )
+      ) &&
+      (
+        needs.create-github-release.result == 'success' ||
+        needs.create-github-release.result == 'skipped'
+      )
 
     environment:
       name: pypi
       url: https://pypi.org/project/diffbio/
-
-    permissions:
-      id-token: write
 
     steps:
       - name: Download build artifacts
@@ -104,4 +156,5 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
           verbose: true
