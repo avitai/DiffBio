@@ -162,11 +162,12 @@ Traditional bioinformatics pipelines consist of discrete, non-differentiable ope
 If you use DiffBio in your research, please cite:
 
 ```bibtex
-@software{diffbio2024,
+@software{diffbio2026,
   title={DiffBio: End-to-End Differentiable Bioinformatics Pipelines},
   author={Shafiei, Mahdi},
-  year={2024},
-  url={https://github.com/avitai/DiffBio}
+  year={2026},
+  url={https://github.com/avitai/DiffBio},
+  version={0.1.0}
 }
 ```
 

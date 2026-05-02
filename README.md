@@ -17,6 +17,20 @@
 
 ---
 
+> **⚠️ Early Development - API Unstable**
+>
+> DiffBio is currently in early development and undergoing rapid iteration. Please be aware of the following implications:
+>
+> | Area | Status | Impact |
+> |------|--------|--------|
+> | **API** | 🔄 Unstable | Breaking changes are expected. Public interfaces may change without deprecation warnings. Pin to specific commits if stability is required. |
+> | **Tests** | 🔄 In Flux | Test suite is being expanded. Some tests may fail or be skipped. Coverage metrics are improving but not yet full. |
+> | **Documentation** | 🔄 Evolving | Docs may not reflect current implementation. Code examples might be outdated. Refer to source code and tests for accurate usage. |
+>
+> We recommend waiting for a stable release (v1.0) before using DiffBio in production. For research and experimentation, proceed with the understanding that APIs will evolve.
+
+---
+
 ## Overview
 
 DiffBio is a framework for building **end-to-end differentiable bioinformatics
@@ -48,7 +62,7 @@ This enables learning optimal pipeline parameters directly from data, rather tha
 - **Composable Architecture** built on the Datarax, Artifex, Opifex, and Calibrax stack
 - **Training Utilities** with gradient clipping, custom loss functions, and synthetic data generation
 
-For complete operator and pipeline listings, see the [Operators Overview](https://docs.avitai.bio/diffbio/user-guide/operators/overview/) and [Pipelines Overview](https://docs.avitai.bio/diffbio/user-guide/pipelines/overview/) in the documentation.
+For complete operator and pipeline listings, see the [Operators Overview](https://diffbio.readthedocs.io/en/latest/user-guide/operators/overview/) and [Pipelines Overview](https://diffbio.readthedocs.io/en/latest/user-guide/pipelines/overview/) in the documentation.
 
 ## Installation
 
@@ -70,24 +84,22 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 
-from diffbio.operators import DifferentiableQualityFilter
-from diffbio.operators.variant.pileup import DifferentiablePileup
-from diffbio.operators.alignment.smith_waterman import SmoothSmithWaterman
+from diffbio.operators import DifferentiableQualityFilter, QualityFilterConfig
 
-# Quality filtering with learnable threshold
+# Quality filtering with learnable threshold (default initial_threshold=20.0)
 quality_filter = DifferentiableQualityFilter(
-    threshold=20.0,
-    temperature=1.0,
+    QualityFilterConfig(initial_threshold=20.0),
     rngs=nnx.Rngs(0),
 )
 
-# Apply to reads
+# Apply to a one-hot encoded sequence with per-position quality scores
 quality_scores = jnp.array([35.0, 15.0, 28.0, 10.0])
-reads = jax.nn.one_hot(jnp.array([[0, 1, 2, 3]] * 4), 4)
-data = {"reads": reads, "quality": quality_scores}
+sequence = jax.nn.one_hot(jnp.array([0, 1, 2, 3]), 4)  # (length, alphabet=4)
+data = {"sequence": sequence, "quality_scores": quality_scores}
 
 filtered_data, _, _ = quality_filter.apply(data, {}, None)
-# filtered_data["weights"] contains soft weights for each read
+# filtered_data["sequence"]        — sequence with low-quality positions softly suppressed
+# filtered_data["quality_scores"]  — pass-through quality values
 ```
 
 ### Using the Variant Calling Pipeline
@@ -178,7 +190,10 @@ DiffBio sits on a layered ecosystem rather than standing alone:
 | Modeling substrate | [Artifex](https://github.com/avitai/artifex) | Reusable transformer and generative-model components |
 | Scientific ML substrate | [Opifex](https://github.com/avitai/Opifex) | Scientific optimization, operator learning, and advanced training methods |
 | Evaluation substrate | [Calibrax](https://github.com/avitai/calibrax) | Metrics, benchmarking, comparison, profiling, and regression checks |
-| Biology-specific layer | DiffBio | Differentiable biological operators and domain compositions |
+
+DiffBio itself sits on top of these as the biology-specific layer: differentiable
+biological operators and end-to-end pipeline compositions (alignment, variant
+calling, single-cell analysis, drug discovery, structural biology, multi-omics).
 
 Each DiffBio operator inherits from Datarax's `OperatorModule` and implements:
 
@@ -193,16 +208,29 @@ This enables:
 
 ### Operator Composition
 
-Operators are chained by threading the `(data, state, metadata)` triple
-returned by `apply()` into the next operator:
+`apply()` runs an operator on a single element (no batch dimension). Operators
+are chained by threading the `(data, state, metadata)` triple returned by
+`apply()` into the next operator:
 
 ```python
-data, state, metadata = quality_filter.apply(batch_data, {}, None)
+data, state, metadata = quality_filter.apply(element_data, {}, None)
 data, state, metadata = pileup.apply(data, state, metadata)
 data, state, metadata = classifier.apply(data, state, metadata)
 
 # `data` is a dict of JAX arrays — read out the per-position predictions
 predictions = data["logits"]
+```
+
+For batched data wrapped in a Datarax `Batch`, call the operator directly
+(or use `apply_batch()`); both delegate to the same code path:
+
+```python
+from datarax import Batch
+
+batch = Batch.from_parts(...)        # construct from a list of elements
+batch = quality_filter(batch)         # equivalent to quality_filter.apply_batch(batch)
+batch = pileup(batch)
+batch = classifier(batch)
 ```
 
 ## Testing
@@ -225,24 +253,38 @@ uv run pytest tests/integration/ -vv
 ```
 DiffBio/
 ├── src/diffbio/
-│   ├── core/               # Base operators, graph utils, soft ops
-│   ├── operators/           # 35+ differentiable operators
+│   ├── core/                # Base operators, graph utils, soft ops, neural components
+│   ├── operators/           # 40+ differentiable operators
 │   │   ├── alignment/       # Smith-Waterman, profile HMM, soft MSA
-│   │   ├── variant/         # Pileup, classifiers, CNV segmentation
-│   │   ├── singlecell/      # Clustering, trajectory, velocity, GRN, ...
-│   │   ├── drug_discovery/  # Fingerprints, property prediction, ADMET
-│   │   ├── epigenomics/     # Peak calling, chromatin state
-│   │   ├── normalization/   # VAE normalizer, UMAP, PHATE
+│   │   ├── assembly/        # GNN assembly, metagenomic binning
+│   │   ├── crispr/          # Guide RNA scoring
+│   │   ├── drug_discovery/  # Fingerprints, ADMET, AttentiveFP, MACCS keys
+│   │   ├── epigenomics/     # Peak calling, chromatin state, contextual epigenomics
+│   │   ├── foundation_models/ # Geneformer/scGPT adapters, transformer encoders
+│   │   ├── mapping/         # Neural read mapping
+│   │   ├── metabolomics/    # Spectral similarity
+│   │   ├── molecular_dynamics/ # Force fields, MD integrators
+│   │   ├── multiomics/      # Hi-C, spatial deconvolution, multi-omics VAE
+│   │   ├── normalization/   # VAE normalizer, UMAP, PHATE, embeddings
+│   │   ├── population/      # Ancestry estimation
+│   │   ├── preprocessing/   # Adapter removal, duplicate weighting, error correction
+│   │   ├── protein/         # Secondary structure
+│   │   ├── rna_structure/   # RNA folding
+│   │   ├── rnaseq/          # Splicing PSI, motif discovery
+│   │   ├── singlecell/      # Clustering, trajectory, velocity, GRN, batch correction, ...
 │   │   ├── statistical/     # HMM, NB GLM, EM quantification
-│   │   ├── multiomics/      # Hi-C, spatial deconvolution
-│   │   └── ...              # preprocessing, protein, RNA, assembly, ...
-│   ├── pipelines/           # End-to-end pipelines
-│   ├── losses/              # Alignment, single-cell, statistical losses
-│   ├── sources/             # Data loaders (FASTA, BAM, MolNet, ...)
-│   ├── splitters/           # Dataset splitting strategies
-│   └── utils/               # Training utilities
+│   │   └── variant/         # Pileup, classifiers, CNV segmentation
+│   ├── pipelines/           # 6 end-to-end pipelines
+│   ├── losses/              # Alignment, biological-regularization, single-cell, statistical, metric
+│   ├── sources/             # Data loaders (FASTA, BAM, AnnData, MoleculeNet, indexed views)
+│   ├── splitters/           # Random, stratified, scaffold, Tanimoto, sequence-identity
+│   ├── samplers/            # Perturbation samplers
+│   ├── sequences/           # DNA / RNA encoding utilities
+│   ├── evaluation/          # Evaluation runner and graders
+│   └── utils/               # Training utilities, dependency-runtime checks
 ├── tests/                   # Unit, integration, and benchmark tests
 ├── benchmarks/              # Domain benchmarks with training + baselines
+├── examples/                # Runnable example scripts paired with notebooks
 └── docs/                    # MkDocs documentation
 ```
 
@@ -262,7 +304,6 @@ MIT License. See [LICENSE](LICENSE) for details.
 ## Acknowledgments
 
 DiffBio builds on ideas from:
-- [SMURF](https://www.biorxiv.org/content/10.1101/2021.10.23.465204): Differentiable Smith-Waterman for end-to-end MSA learning
 - [Datarax](https://github.com/avitai/datarax): Composable data processing framework
 - [Artifex](https://github.com/avitai/artifex): Generative-model and transformer substrate
 - [Opifex](https://github.com/avitai/Opifex): Scientific ML and advanced optimization substrate
