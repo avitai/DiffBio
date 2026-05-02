@@ -1,6 +1,6 @@
 # Data Sources
 
-DiffBio provides data source modules that integrate seamlessly with the Datarax framework for loading bioinformatics and drug discovery datasets.
+DiffBio provides data source modules that integrate with the Datarax framework for loading bioinformatics and drug discovery datasets.
 
 <span class="operator-md">Data Loading</span> <span class="diff-structural">Structural Module</span>
 
@@ -26,7 +26,7 @@ DataSourceModule (Datarax)
 
 ## Genomics Sources
 
-DiffBio provides optimized data sources for common genomics file formats, built on state-of-the-art libraries.
+DiffBio provides optimized data sources for common genomics file formats, built on widely used libraries.
 
 ### BAMSource - Aligned Reads
 

@@ -32,7 +32,7 @@ SINGLECELL_FOUNDATION_DEFERRED_TASKS = {
         "status": "deferred",
         "stable_scope": "excluded",
         "reason": (
-            "Phase 3 stable imported-model claims are benchmarked only for "
+            "Stable imported-model claims are benchmarked only for "
             "cell_annotation and batch_correction."
         ),
         "required_harness": "dedicated_foundation_grn_harness",

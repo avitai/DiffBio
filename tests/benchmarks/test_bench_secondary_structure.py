@@ -251,7 +251,7 @@ class TestSecondaryStructureBenchmark:
 
 
 def test_protein_docs_keep_lm_scope_limited() -> None:
-    """Protein docs should not overstate Phase 7 foundation-model support."""
+    """Protein docs should not overstate experimental foundation-model support."""
     from pathlib import Path
 
     doc = Path("docs/user-guide/operators/protein.md").read_text(encoding="utf-8")

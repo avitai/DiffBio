@@ -249,7 +249,7 @@ class TestSummarize:
         assert summary.pass_rate == 0.0
 
     def test_all_pass(self) -> None:
-        """All passing results give 100% pass rate."""
+        """All passing results give a pass rate of 1.0."""
         results = [
             EvalResult(
                 problem_id=f"p{i}",

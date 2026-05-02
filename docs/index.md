@@ -14,7 +14,7 @@ DiffBio provides differentiable implementations of core bioinformatics algorithm
   <div class="stat-label">GPU-Accelerated</div>
 </div>
 <div class="stat-card">
-  <div class="stat-value">100%</div>
+  <div class="stat-value">End-to-End</div>
   <div class="stat-label">Differentiable</div>
 </div>
 <div class="stat-card">

@@ -4,7 +4,7 @@ This example demonstrates differentiable multi-omics integration using DiffBio's
 
 ## What is Multi-omics Integration?
 
-Multi-omics integration combines data from multiple biological measurement types (genomics, transcriptomics, epigenomics, proteomics) to gain comprehensive insights into cellular function. Key applications include:
+Multi-omics integration combines data from multiple biological measurement types (genomics, transcriptomics, epigenomics, proteomics) to gain joint insights into cellular function. Key applications include:
 
 - **Spatial transcriptomics**: Mapping gene expression to tissue locations
 - **3D genome organization**: Understanding chromatin folding and gene regulation

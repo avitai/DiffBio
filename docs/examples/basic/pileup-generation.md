@@ -366,7 +366,7 @@ The small mean change with larger max change is expected behavior:
 ### Visualizing Quality Filtering Effect
 
 ```python
-# Create comprehensive visualization
+# Create full visualization
 fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
 # Top left: Original pileup

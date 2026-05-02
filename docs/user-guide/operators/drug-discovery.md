@@ -24,7 +24,7 @@ Drug discovery operators enable gradient-based optimization for chemoinformatics
 The current benchmarked drug-discovery surface has two layers:
 
 - stable property-prediction benchmarking via MoleculeNet BBBP
-- Phase 6 DTI benchmarks for Davis and BioSNAP, using deterministic paired
+- DTI benchmarks for Davis and BioSNAP, using deterministic paired
   protein-plus-drug sources and `DifferentiableDTIPipeline`
 
 The DTI benchmarks are still synthetic-fallback aware, but they now exercise the

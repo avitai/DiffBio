@@ -142,12 +142,12 @@ class TestGenomicsFoundationConstants:
         )
         benchmark_guide = (repo_root / "docs/development/benchmarks.md").read_text(encoding="utf-8")
 
-        assert "Phase 4 pre-promotion scaffold" in user_guide
+        assert "pre-promotion scaffold" in user_guide
         assert "not a stable genomics promotion claim" in user_guide
         assert "`dataset_provenance`" in user_guide
         assert "`promotion_eligible`: `false`" in user_guide
         assert "stable sequence integrations today" not in user_guide
-        assert "Phase 4 scaffold: `DNABERT2PrecomputedAdapter`" in benchmark_guide
+        assert "Pre-promotion scaffold: `DNABERT2PrecomputedAdapter`" in benchmark_guide
         assert "pending genomics realism and promotion evidence" in benchmark_guide
         assert "`source_type`: `scaffold`" in benchmark_guide
 

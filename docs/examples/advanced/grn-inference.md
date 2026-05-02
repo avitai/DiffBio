@@ -37,7 +37,7 @@ Side-by-side heatmaps of the ground truth regulatory matrix (left, blue) and inf
 
 ![Recall at different thresholds](../../assets/examples/singlecell/grn_threshold_recall.png)
 
-Bar chart of recall across thresholds shows 100% recall at threshold 0.0 (all edges predicted) and 0% at higher thresholds for the untrained model, confirming the need for training to produce meaningful regulatory weights.
+Bar chart of recall across thresholds shows recall of 1.0 at threshold 0.0 (all edges predicted) and 0.0 at higher thresholds for the untrained model, confirming the need for training to produce meaningful regulatory weights.
 
 ```
 Ground truth GRN: 5 TFs x 20 genes

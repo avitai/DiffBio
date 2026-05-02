@@ -1,6 +1,6 @@
 # Single-Cell Operators
 
-DiffBio provides comprehensive differentiable operators for single-cell analysis, including clustering, batch correction, and RNA velocity.
+DiffBio provides differentiable operators for single-cell analysis, including clustering, batch correction, and RNA velocity.
 
 <span class="operator-singlecell">Single-Cell</span> <span class="diff-high">Fully Differentiable</span>
 

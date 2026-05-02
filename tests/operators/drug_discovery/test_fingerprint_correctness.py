@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Comprehensive Fingerprint Benchmark for DiffBio.
+"""Fingerprint correctness benchmark for DiffBio.
 
 This benchmark evaluates DiffBio's fingerprint operators including:
 - CircularFingerprintOperator (ECFP4)

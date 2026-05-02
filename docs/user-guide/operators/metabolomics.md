@@ -12,7 +12,7 @@ Metabolomics operators enable gradient-based optimization for mass spectrometry 
 
 ## Metabolomics expansion scope
 
-Phase 7 adds shared artifact handling for precomputed metabolomics embeddings
+Experimental scope adds shared artifact handling for precomputed metabolomics embeddings
 through `MetabolomicsEmbeddingSource`, which aligns imported spectrum
 embeddings by `spectrum_ids`. This reuses the same indexed embedding substrate
 as other imported artifacts and keeps spectrum-row identity explicit.

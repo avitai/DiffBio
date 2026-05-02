@@ -12,7 +12,7 @@ Protein structure operators enable gradient-based optimization for structural bi
 
 ## Protein foundation-model scope
 
-Phase 7 protein foundation-model support is deliberately narrow. DiffBio now
+Experimental protein foundation-model support is deliberately narrow. DiffBio now
 uses the shared sequence foundation substrate for protein sequence context in
 the secondary-structure benchmark and provides a strict adapter contract for
 precomputed protein-LM artifacts. This means exported embedding matrices can be

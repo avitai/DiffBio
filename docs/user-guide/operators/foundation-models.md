@@ -4,7 +4,7 @@ DiffBio provides differentiable foundation-model operators for DNA/RNA
 sequences and single-cell expression. The current stable imported-model surface
 is intentionally narrow: precomputed Geneformer and scGPT artifacts for
 single-cell annotation and batch correction. Sequence/genomics adapters and
-frozen benchmark paths exist as Phase 4 pre-promotion scaffold until genomics
+frozen benchmark paths exist as pre-promotion scaffold until genomics
 realism and promotion evidence is attached.
 
 These operators sit in DiffBio's biology-specific layer and reuse the wider
@@ -37,7 +37,7 @@ profiles into dense embeddings using transformer architectures:
 
 Post-DTI stable boundary: benchmark-backed operator support is separate from imported foundation-model promotion.
 
-For Phase 7 domains, the stable surface is intentionally smaller than the
+For experimental domains, the stable surface is intentionally smaller than the
 available experimental interfaces:
 
 | Domain | Verified Capability | Stable Boundary |
@@ -108,8 +108,8 @@ from intended future scope.
 
 `GRN transfer` remains planned in the single-cell suite scenarios, but it is
 not yet a stable imported-model claim because the imported foundation-model
-path is only benchmarked today on annotation and batch correction. Phase 3
-keeps GRN outside stable imported-model promotion until a dedicated foundation-aware GRN harness exists.
+path is only benchmarked today on annotation and batch correction. The
+stable scope keeps GRN outside imported-model promotion until a dedicated foundation-aware GRN harness exists.
 
 ### Precomputed Adapter Examples
 
@@ -150,7 +150,7 @@ The artifact metadata stays explicit:
 ## Imported Sequence Workflows
 
 DiffBio now also exposes a shared sequence benchmark adapter contract. These
-Phase 4 pre-promotion scaffold integrations are available for interface
+Pre-promotion scaffold integrations are available for interface
 validation and benchmark development:
 
 - `SequencePrecomputedAdapter` for aligned imported artifacts
@@ -172,7 +172,7 @@ This does **not** mean arbitrary DNABERT-2 or Nucleotide Transformer
 checkpoints are already supported in-process, and it does not mean genomics has
 been promoted as a stable imported-model domain. The sequence surface today is
 interface validation over precomputed artifacts plus DiffBio-native frozen
-in-process sequence encoder benchmarking. Phase 4 must attach dataset
+in-process sequence encoder benchmarking. Pre-promotion must attach dataset
 provenance, realism, and promotion evidence before genomics can be described as
 stable.
 
@@ -180,7 +180,7 @@ stable.
 
 This scaffold support matrix is derived from the genomics foundation benchmark
 harness and contract tests. It is intentionally not a stable genomics support
-matrix until Phase 4 promotion evidence exists.
+matrix until promotion evidence exists.
 
 | Adapter | Adapter Mode | Verified Scaffold Tasks | Scope Exclusions |
 |---------|--------------|--------------------------|------------------|
@@ -242,7 +242,7 @@ report = build_singlecell_foundation_suite_report(results)
 
 That suite report also carries one canonical `deferred_tasks` block so planned
 but unverified work stays explicit in stored artifacts. Today that means
-`grn_transfer` is marked deferred from Phase 3 stable scope until a dedicated foundation-aware GRN harness exists.
+`grn_transfer` is marked deferred from stable scope until a dedicated foundation-aware GRN harness exists.
 When a stable-scope review is needed, the same suite report can be paired with
 the stored Calibrax regression result to produce one promotion-review artifact
 instead of a benchmark-specific summary path. Use
@@ -260,7 +260,7 @@ promoter classification, TFBS classification, and splice-site classification.
 That suite can run the native DiffBio sequence encoder, a frozen in-process
 DiffBio sequence encoder, and the current precomputed DNABERT-2 and Nucleotide
 Transformer adapters through the same deterministic reporting layer. This is
-Phase 4 scaffold evidence, not a stable genomics promotion claim.
+pre-promotion scaffold evidence, not a stable genomics promotion claim.
 
 The genomics suite reports this boundary as machine-readable
 `dataset_provenance`. The default `synthetic_genomics` scaffold records

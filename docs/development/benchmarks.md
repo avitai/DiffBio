@@ -216,7 +216,7 @@ artifact and fails closed unless an existing baseline is available or baseline
 bootstrap is requested explicitly.
 For genomics promotion review, use
 `benchmarks.genomics.foundation_suite.build_genomics_foundation_promotion_report()`;
-it follows the same fail-closed guard path while preserving the current Phase 4
+it follows the same fail-closed guard path while preserving the current pre-promotion
 scaffold provenance boundaries in the stored suite report.
 
 ### Imported Foundation-Model Benchmarks
@@ -240,7 +240,7 @@ at the benchmark layer. In addition to benchmark tags, the promoted
 This keeps artifact identity and benchmark scenario identity on one shared
 schema for comparison, regression, and provenance tooling.
 
-Genomics Phase 4 scaffold reports also carry `dataset_provenance` so synthetic
+Genomics pre-promotion scaffold reports also carry `dataset_provenance` so synthetic
 interface validation cannot be mistaken for biological validation. The
 `synthetic_genomics` scaffold is recorded with:
 
@@ -266,13 +266,13 @@ checkpoint support:
 - supported: explicit scGPT batch-context metadata in comparison reports via
   `requires_batch_context`, `batch_key`, and `context_version`
 - supported: canonical single-cell deferral metadata that keeps
-  `grn_transfer` outside Phase 3 stable promotion until a dedicated
+  `grn_transfer` outside stable promotion until a dedicated
   foundation-aware GRN harness exists
-- Phase 4 scaffold: a shared `SequencePrecomputedAdapter` contract plus a
+- Pre-promotion scaffold: a shared `SequencePrecomputedAdapter` contract plus a
   genomics quick-suite scaffold for promoter, TFBS, and splice-site tasks
-- Phase 4 scaffold: `FrozenSequenceEncoderAdapter` for in-process frozen
+- Pre-promotion scaffold: `FrozenSequenceEncoderAdapter` for in-process frozen
   sequence encoder benchmarking under `adapter_mode=frozen_encoder`
-- Phase 4 scaffold: `DNABERT2PrecomputedAdapter` and
+- Pre-promotion scaffold: `DNABERT2PrecomputedAdapter` and
   `NucleotideTransformerPrecomputedAdapter` for aligned precomputed genomics
   artifacts, pending genomics realism and promotion evidence
 - supported: deterministic DTI source contracts for Davis affinity regression

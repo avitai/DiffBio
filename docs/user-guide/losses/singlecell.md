@@ -184,7 +184,7 @@ def velocity_model_loss(model, spliced, unspliced):
 
 ## Combining Losses
 
-For comprehensive single-cell analysis:
+For full single-cell analysis:
 
 ```python
 from diffbio.losses.singlecell_losses import (
