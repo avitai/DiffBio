@@ -790,45 +790,10 @@ $EDITOR docs/examples/path/to/example-name.md
 uv run mkdocs build
 ```
 
-## Example Catalog (Planned)
-
-### Basic
-
-| Example | Domain | Operators | Status |
-|---------|--------|-----------|--------|
-| DNA Encoding | Sequences | one-hot encoding | Exists (docs only) |
-| Simple Alignment | Alignment | SmoothSmithWaterman | Exists (docs only) |
-| Molecular Fingerprints | Drug Discovery | CircularFingerprint | Exists (docs only) |
-| Single-Cell Clustering | Single-Cell | SoftKMeansClustering | Exists (docs only) |
-| Quality Filtering | Preprocessing | DifferentiableQualityFilter | Exists (docs only) |
-| Pileup Generation | Variant | DifferentiablePileup | Exists (docs only) |
-
-### Intermediate (New — Single-Cell Roadmap)
-
-| Example | Domain | Operators | Status |
-|---------|--------|-----------|--------|
-| MAGIC Imputation | Single-Cell | DiffusionImputer | Planned |
-| Trajectory Inference | Single-Cell | Pseudotime + FateProbability | Planned |
-| Cell Type Annotation | Single-Cell | CellAnnotator (3 modes) | Planned |
-| Doublet Detection | Single-Cell | DoubletScorer + SoloDetector | Planned |
-| Batch Correction | Single-Cell | MMD + WGAN correction | Planned |
-| L-R Communication | Single-Cell | LigandReceptor + CellCommunication | Planned |
-
-### Advanced (New — Single-Cell Roadmap)
-
-| Example | Domain | Operators | Status |
-|---------|--------|-----------|--------|
-| scVI Benchmark | Benchmarking | VAENormalizer + calibrax metrics | Planned |
-| Multi-Omics Integration | Multi-Omics | MultiOmicsVAE + GradNorm | Planned |
-| Spatial Transcriptomics | Spatial | SpatialDomain + PASTE alignment | Planned |
-| GRN Inference | Regulatory | DifferentiableGRN + SCENIC comparison | Planned |
-| Foundation Model | Foundation Models | GeneTokenizer + masked prediction | Planned |
-| Full Single-Cell Pipeline | Pipelines | Simulate → Normalize → Impute → Annotate → Trajectory | Planned |
-
 ## Related Files
 
-- `docs/examples/templates/example_template.py` — DiffBio-adapted example template
+- `docs/examples/templates/example_template.py` — DiffBio example template
 - `scripts/jupytext_converter.py` — py/ipynb conversion and sync utility
-- `examples/README.md` (to be created when first example is added)
+- `examples/README.md` — index of runnable examples
 - `CONTRIBUTING.md`
 - `docs/development/contributing.md`
