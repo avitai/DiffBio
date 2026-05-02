@@ -56,7 +56,7 @@ See the [Soft Operations concept guide](../concepts/soft-operations.md) for a de
 | Operator | Description | Status |
 |----------|-------------|--------|
 | `SoftProgressiveMSA` | Differentiable multiple sequence alignment with guide tree | <span class="diff-high">Implemented</span> |
-| `ProfileHMM` | Profile Hidden Markov Model for sequence homology | <span class="diff-high">Implemented</span> |
+| `ProfileHMMSearch` | Profile Hidden Markov Model for sequence homology | <span class="diff-high">Implemented</span> |
 
 ### [Epigenomics Operators](epigenomics.md)
 
@@ -126,8 +126,8 @@ See the [Soft Operations concept guide](../concepts/soft-operations.md) for a de
 | Operator | Description | Status |
 |----------|-------------|--------|
 | `CNNVariantClassifier` | CNN-based variant classification | <span class="diff-high">Implemented</span> |
-| `CNVSegmentation` | Copy number variation segmentation | <span class="diff-high">Implemented</span> |
-| `QualityRecalibration` | Base quality score recalibration | <span class="diff-high">Implemented</span> |
+| `DifferentiableCNVSegmentation` | Copy number variation segmentation | <span class="diff-high">Implemented</span> |
+| `SoftVariantQualityFilter` | Base quality score recalibration | <span class="diff-high">Implemented</span> |
 | `DeepVariantStylePileup` | Multi-channel pileup image generation for DeepVariant-style CNNs | <span class="diff-high">Implemented</span> |
 
 ### [Population Genetics Operators](population.md)

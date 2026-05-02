@@ -64,7 +64,7 @@ batch_loss = BatchMixingLoss(n_neighbors=15, temperature=1.0)
 # Maximize batch mixing in latent space
 loss = batch_loss(
     embeddings=latent_embeddings,  # (n_cells, latent_dim)
-    batch_ids=batch_labels,        # (n_cells,)
+    batch_labels=batch_labels,     # (n_cells,)
 )
 ```
 
@@ -73,7 +73,7 @@ loss = batch_loss(
 ```python
 from diffbio.losses import ClusteringCompactnessLoss
 
-cluster_loss = ClusteringCompactnessLoss(temperature=1.0)
+cluster_loss = ClusteringCompactnessLoss(separation_weight=1.0, min_separation=1.0)
 
 # Encourage tight clusters
 loss = cluster_loss(

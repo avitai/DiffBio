@@ -25,8 +25,8 @@ gap of length $k$.
 |---|---|---|---|
 | **Local** | Smith-Waterman | Best matching subsequence | `SmoothSmithWaterman` |
 | **Global** | Needleman-Wunsch | Full end-to-end alignment | — |
-| **Profile** | Profile HMM | Sequence-to-model alignment | `ProfileHMMAlignment` |
-| **Multiple** | Progressive | Align multiple sequences | `SoftMSA` |
+| **Profile** | Profile HMM | Sequence-to-model alignment | `ProfileHMMSearch` |
+| **Multiple** | Progressive | Align multiple sequences | `SoftProgressiveMSA` |
 
 DiffBio focuses on local alignment (Smith-Waterman) as the foundation.
 
@@ -128,8 +128,8 @@ Both `gap_open` and `gap_extend` are learnable parameters in DiffBio.
 | Output Key | Shape | Description |
 |---|---|---|
 | `score` | scalar | Soft maximum alignment score |
-| `score_matrix` | $(m+1, n+1)$ | Full DP matrix |
-| `alignment_scores` | $(m, n)$ | Per-position alignment scores |
+| `alignment_matrix` | $(m+1, n+1)$ | Full DP matrix |
+| `soft_alignment` | $(m, n)$ | Per-position alignment scores |
 
 The full DP matrix can be used for traceback analysis. The per-position scores
 give a soft alignment probability: higher values indicate positions that

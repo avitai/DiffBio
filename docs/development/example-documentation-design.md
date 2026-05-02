@@ -33,7 +33,7 @@ This guide applies to:
 It also informs contributor-facing documentation in:
 
 - `CONTRIBUTING.md`
-- `docs/community/contributing.md`
+- `docs/development/contributing.md`
 - `examples/README.md`
 
 ## Design Principles
@@ -173,7 +173,8 @@ repo tool, not ad hoc manual notebook edits.
 Start from:
 
 - `docs/examples/templates/example_template.py`
-- `docs/examples/templates/example_template.ipynb`
+
+The paired `.ipynb` is generated from the `.py` via `scripts/jupytext_converter.py` (see Sync the Pair below).
 
 ### Sync the Pair
 
@@ -725,7 +726,7 @@ Also update contributor-facing surfaces if the workflow contract changed:
 
 - `examples/README.md`
 - `CONTRIBUTING.md`
-- `docs/community/contributing.md`
+- `docs/development/contributing.md`
 
 ## Review Checklist
 
@@ -830,4 +831,4 @@ uv run mkdocs build
 - `scripts/jupytext_converter.py` — py/ipynb conversion and sync utility
 - `examples/README.md` (to be created when first example is added)
 - `CONTRIBUTING.md`
-- `docs/community/contributing.md`
+- `docs/development/contributing.md`

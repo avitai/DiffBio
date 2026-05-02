@@ -9,7 +9,7 @@ DiffBio provides advanced differentiable alignment operators for multiple sequen
 Beyond pairwise alignment (Smith-Waterman), DiffBio implements:
 
 - **SoftProgressiveMSA**: Multiple sequence alignment with soft guide tree
-- **ProfileHMM**: Profile Hidden Markov Models for sequence family detection
+- **ProfileHMMSearch**: Profile Hidden Markov Models for sequence family detection
 
 ## SoftProgressiveMSA
 
@@ -68,14 +68,14 @@ consensus = result["consensus_profile"]    # Consensus profile
 3. **Progressive Alignment**: Sequences aligned progressively using soft attention
 4. **Consensus Building**: Weighted profile built from aligned sequences
 
-## ProfileHMM
+## ProfileHMMSearch
 
 Profile Hidden Markov Model for detecting sequence homology to a family profile.
 
 ### Quick Start
 
 ```python
-from diffbio.operators.alignment import ProfileHMM, ProfileHMMConfig
+from diffbio.operators.alignment import ProfileHMMSearch, ProfileHMMConfig
 
 # Configure Profile HMM
 config = ProfileHMMConfig(
@@ -87,7 +87,7 @@ config = ProfileHMMConfig(
 
 # Create operator
 rngs = nnx.Rngs(42)
-profile_hmm = ProfileHMM(config, rngs=rngs)
+profile_hmm = ProfileHMMSearch(config, rngs=rngs)
 
 # Score sequence against profile
 data = {"sequence": sequence}  # (seq_len, alphabet_size)
@@ -127,7 +127,7 @@ Instead of discrete UPGMA clustering, SoftProgressiveMSA uses:
 
 ### Soft Viterbi
 
-ProfileHMM uses temperature-scaled logsumexp for soft Viterbi:
+ProfileHMMSearch uses temperature-scaled logsumexp for soft Viterbi:
 
 ```
 soft_max(x) = temperature * logsumexp(x / temperature)
@@ -139,8 +139,8 @@ This maintains gradient flow through the decoding process.
 
 | Application | Operator | Description |
 |-------------|----------|-------------|
-| Protein family detection | ProfileHMM | Score query against family profile |
-| Homology search | ProfileHMM | Find similar sequences |
+| Protein family detection | ProfileHMMSearch | Score query against family profile |
+| Homology search | ProfileHMMSearch | Find similar sequences |
 | Multiple alignment | SoftProgressiveMSA | Align related sequences |
 | Phylogenetic analysis | SoftProgressiveMSA | Build evolutionary relationships |
 | Consensus building | SoftProgressiveMSA | Extract conserved features |

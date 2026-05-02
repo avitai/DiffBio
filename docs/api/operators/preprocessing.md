@@ -61,7 +61,11 @@ Differentiable preprocessing operators for read quality control, adapter removal
 from flax import nnx
 from diffbio.operators.preprocessing import SoftAdapterRemoval, AdapterRemovalConfig
 
-config = AdapterRemovalConfig(adapter_length=20, alphabet_size=4)
+config = AdapterRemovalConfig(
+    adapter_sequence="AGATCGGAAGAG",
+    temperature=1.0,
+    match_threshold=0.8,
+)
 adapter_removal = SoftAdapterRemoval(config, rngs=nnx.Rngs(42))
 
 data = {"sequence": read, "quality_scores": quality}
@@ -90,7 +94,7 @@ weights = result["weights"]
 ```python
 from diffbio.operators.preprocessing import SoftErrorCorrection, ErrorCorrectionConfig
 
-config = ErrorCorrectionConfig(hidden_dim=64, context_window=5)
+config = ErrorCorrectionConfig(hidden_dim=64, window_size=5)
 error_correction = SoftErrorCorrection(config, rngs=nnx.Rngs(42))
 
 data = {"sequence": read, "quality_scores": quality}

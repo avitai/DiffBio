@@ -272,7 +272,7 @@ uv run pytest tests/operators/singlecell/ -xvs
 uv run pytest tests/ -v --cov=src/diffbio --cov-report=term-missing
 
 # Run a single test
-uv run pytest tests/operators/alignment/test_profile_hmm.py::TestProfileHMM::test_basic -xvs
+uv run pytest tests/operators/alignment/test_profile_hmm.py::TestProfileHMMSearch -xvs
 ```
 
 See [Testing](testing.md) for details on test patterns and fixtures.

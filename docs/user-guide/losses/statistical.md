@@ -18,11 +18,11 @@ from diffbio.losses.statistical_losses import NegativeBinomialLoss
 # Create loss function
 nb_loss = NegativeBinomialLoss()
 
-# Compute loss
+# Compute loss (signature: counts, mu, theta)
 loss = nb_loss(
-    counts=observed_counts,          # (n_samples, n_genes)
-    predicted_mean=model_means,      # (n_samples, n_genes)
-    dispersion=gene_dispersions,     # (n_genes,) or scalar
+    observed_counts,    # (n_samples, n_genes)
+    model_means,        # (n_samples, n_genes) predicted mean (mu)
+    gene_dispersions,   # (n_genes,) dispersion (theta)
 )
 ```
 
@@ -52,10 +52,11 @@ def de_model_loss(model, counts, design):
     data = {"counts": counts, "design": design}
     result, _, _ = model.apply(data, {}, None)
 
+    dispersion = jnp.exp(model.nb_glm.log_dispersion[...])
     return nb_loss(
-        counts=counts,
-        predicted_mean=result["predicted_means"],
-        dispersion=result["dispersions"],
+        counts,
+        result["predicted_mean"],
+        dispersion,
     )
 
 grads = nnx.grad(de_model_loss)(model, counts, design)
@@ -77,15 +78,15 @@ from diffbio.losses.statistical_losses import VAELoss
 # Create loss function
 vae_loss = VAELoss(
     kl_weight=1.0,
-    reconstruction="mse",  # or "nb" for negative binomial
+    reconstruction_type="mse",  # or "bce" for binary cross-entropy
 )
 
-# Compute loss
+# Compute loss (signature: x, x_recon, mean, logvar)
 loss = vae_loss(
-    reconstructed=decoded_output,    # (n_samples, n_features)
-    target=original_input,           # (n_samples, n_features)
-    mu=latent_mean,                  # (n_samples, latent_dim)
-    log_var=latent_log_variance,     # (n_samples, latent_dim)
+    original_input,         # (n_samples, n_features) x
+    decoded_output,         # (n_samples, n_features) x_recon
+    latent_mean,            # (n_samples, latent_dim) encoder mean
+    latent_log_variance,    # (n_samples, latent_dim) encoder logvar
 )
 ```
 
@@ -94,7 +95,7 @@ loss = vae_loss(
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `kl_weight` | float | 1.0 | KL divergence weight (beta-VAE) |
-| `reconstruction` | str | "mse" | Reconstruction loss type |
+| `reconstruction_type` | str | "mse" | Reconstruction loss type ("mse" or "bce") |
 
 ### Algorithm
 
@@ -120,10 +121,10 @@ def vae_training_loss(vae, data):
     result, _, _ = vae.apply({"counts": data}, {}, None)
 
     return vae_loss(
-        reconstructed=result["reconstructed"],
-        target=data,
-        mu=result["mu"],
-        log_var=result["log_var"],
+        data,
+        result["reconstructed"],
+        result["mu"],
+        result["log_var"],
     )
 ```
 
@@ -150,39 +151,42 @@ HMM likelihood loss uses the forward algorithm to compute sequence log-likelihoo
 ### Usage
 
 ```python
+from flax import nnx
 from diffbio.losses.statistical_losses import HMMLikelihoodLoss
 
-# Create loss function
-hmm_loss = HMMLikelihoodLoss()
+# Create loss function (HMM parameters are learnable members)
+hmm_loss = HMMLikelihoodLoss(n_states=3, n_emissions=4, rngs=nnx.Rngs(42))
 
-# Compute loss
-loss = hmm_loss(log_likelihood=forward_log_likelihood)
+# Compute loss (signature: observations)
+loss = hmm_loss(observations)  # (batch, seq_len) integer-encoded sequences
 ```
 
 ### Parameters
 
-The loss takes no configuration parameters.
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `n_states` | int | required | Number of hidden states |
+| `n_emissions` | int | required | Number of emission symbols |
+
+The loss owns learnable initial-state, transition, and emission log-probabilities; the forward algorithm runs internally on the supplied observations.
 
 ### Algorithm
 
-Simply returns negative log-likelihood:
+Returns the mean negative log-likelihood over the batch:
 
-$$L_{HMM} = -\log P(O | \theta)$$
+$$L_{HMM} = -\frac{1}{B}\sum_b \log P(O^{(b)} | \theta)$$
 
-Where $P(O | \theta)$ is computed via the forward algorithm.
+Where $P(O | \theta)$ is computed via the forward algorithm with `logsumexp` for stability.
 
 ### Training Example
 
 ```python
-def hmm_training_loss(hmm, observations):
-    """Train HMM model."""
-    data = {"observations": observations}
-    result, _, _ = hmm.apply(data, {}, None)
-
-    return hmm_loss(log_likelihood=result["log_likelihood"])
+def hmm_training_loss(hmm_loss_fn, observations):
+    """Train HMM model with learnable parameters held inside the loss."""
+    return hmm_loss_fn(observations)
 
 # Train
-grads = nnx.grad(hmm_training_loss)(hmm, train_sequences)
+grads = nnx.grad(hmm_training_loss)(hmm_loss, train_sequences)
 ```
 
 ## Combining Statistical Losses
@@ -196,11 +200,11 @@ def scvi_loss(vae, counts):
     """scVI-style loss with NB reconstruction."""
     result, _, _ = vae.apply({"counts": counts}, {}, None)
 
-    # NB reconstruction loss
+    # NB reconstruction loss (signature: counts, mu, theta)
     recon_loss = nb_loss(
-        counts=counts,
-        predicted_mean=result["reconstructed"],
-        dispersion=result["dispersion"],
+        counts,
+        result["reconstructed"],
+        result["dispersion"],
     )
 
     # KL divergence
@@ -214,18 +218,9 @@ def scvi_loss(vae, counts):
 ### HMM with Emission Learning
 
 ```python
-def hmm_emission_loss(hmm, observations, emission_network):
-    """HMM with learned emissions."""
-    # Get emission probabilities from network
-    emission_probs = emission_network(observations)
-
-    # Run HMM forward algorithm
-    result, _, _ = hmm.apply(
-        {"observations": observations, "emissions": emission_probs},
-        {}, None
-    )
-
-    return hmm_loss(log_likelihood=result["log_likelihood"])
+def hmm_emission_loss(hmm_loss_fn, observations):
+    """HMM with learnable initial/transition/emission log-probabilities."""
+    return hmm_loss_fn(observations)
 ```
 
 ## Numerical Stability

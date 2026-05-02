@@ -55,12 +55,17 @@ significant = result["significant"]
 # Size factors
 size_factors = result["size_factors"]
 
-# Normalized counts
-normalized = result["normalized_counts"]
+# Predicted mean expression
+predicted_mean = result["predicted_mean"]
 
-# Gene dispersions
-dispersions = result["dispersions"]
+# Log fold change estimates
+log_fold_change = result["log_fold_change"]
 
-# Model coefficients
-coefficients = result["coefficients"]
+# Wald test statistics and standard errors
+wald_statistic = result["wald_statistic"]
+standard_error = result["standard_error"]
+
+# P-values and significance indicators
+p_values = result["p_values"]
+significant = result["significant"]
 ```

@@ -53,7 +53,7 @@ data = {
         axis=-1
     ),
     "positions": jax.random.randint(jax.random.PRNGKey(1), (20,), 0, 70),
-    "quality": jax.random.uniform(jax.random.PRNGKey(2), (20, 30), 10, 40),
+    "quality": jax.random.uniform(jax.random.PRNGKey(2), (20, 30), minval=10, maxval=40),
 }
 
 # Run pipeline
@@ -101,7 +101,7 @@ pipeline.eval_mode()
 pipeline.quality_filter.threshold[...]
 
 # Pileup temperature
-pipeline.pileup.temperature[...]
+pipeline.pileup.config.temperature
 
 # Classifier network
 pipeline.classifier

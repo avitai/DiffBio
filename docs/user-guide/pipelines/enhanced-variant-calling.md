@@ -310,7 +310,7 @@ print(f"Variants at positions: {variant_positions}")
 # Get quality-filtered variants (if recalibration enabled)
 if "filter_weights" in result:
     high_quality = result["filter_weights"] > 0.5
-    high_quality_variants = jnp.where(predictions > 0 & high_quality)[0]
+    high_quality_variants = jnp.where((predictions > 0) & high_quality)[0]
 ```
 
 ### JIT Compilation for Performance

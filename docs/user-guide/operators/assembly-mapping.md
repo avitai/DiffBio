@@ -20,10 +20,10 @@ Graph Neural Network for navigating de Bruijn or overlap assembly graphs.
 
 ```python
 from flax import nnx
-from diffbio.operators.assembly import GNNAssemblyNavigator, GNNAssemblyConfig
+from diffbio.operators.assembly import GNNAssemblyNavigator, GNNAssemblyNavigatorConfig
 
 # Configure GNN navigator
-config = GNNAssemblyConfig(
+config = GNNAssemblyNavigatorConfig(
     node_dim=64,
     edge_dim=32,
     hidden_dim=128,
@@ -104,10 +104,10 @@ Cross-attention based neural read mapper for aligning reads to reference.
 ### Quick Start
 
 ```python
-from diffbio.operators.mapping import NeuralReadMapper, NeuralMapperConfig
+from diffbio.operators.mapping import NeuralReadMapper, NeuralReadMapperConfig
 
 # Configure neural mapper
-config = NeuralMapperConfig(
+config = NeuralReadMapperConfig(
     read_length=150,
     reference_length=1000,
     hidden_dim=128,
@@ -349,7 +349,7 @@ def mapping_loss(mapper, reads, reference, true_positions):
 For PacBio/Nanopore reads:
 
 ```python
-config = NeuralMapperConfig(
+config = NeuralReadMapperConfig(
     read_length=10000,
     reference_length=100000,
     hidden_dim=256,

@@ -185,19 +185,16 @@ for i in range(5):
 DifferentiableHarmony enables gradient-based optimization:
 
 ```python
-from diffbio.losses.singlecell import BatchMixingLoss, BatchMixingConfig
+from diffbio.losses.singlecell_losses import BatchMixingLoss
 
-# Create batch mixing loss
-loss_config = BatchMixingConfig(n_batches=n_batches)
-loss_fn = BatchMixingLoss(loss_config, rngs=nnx.Rngs(42))
+# Create batch mixing loss (n_batches must be static for JIT compatibility)
+loss_fn = BatchMixingLoss(n_neighbors=15, n_batches=n_batches, temperature=1.0)
 
 def total_loss(harmony, data):
     result, _, _ = harmony.apply(data, {}, None)
     corrected = result["corrected_embeddings"]
-    # Compute batch mixing entropy
-    loss_data = {"embeddings": corrected, "batch_labels": data["batch_labels"]}
-    loss_result, _, _ = loss_fn.apply(loss_data, {}, None)
-    return loss_result["loss"]
+    # Compute batch mixing entropy directly on the embeddings/labels.
+    return loss_fn(corrected, data["batch_labels"])
 
 # Compute gradients
 grads = nnx.grad(total_loss)(harmony, data)

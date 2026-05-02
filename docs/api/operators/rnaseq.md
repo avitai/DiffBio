@@ -44,7 +44,7 @@ Differentiable operators for RNA-seq analysis including splicing PSI and motif d
 from flax import nnx
 from diffbio.operators.rnaseq import SplicingPSI, SplicingPSIConfig
 
-config = SplicingPSIConfig(temperature=1.0, num_exons=3)
+config = SplicingPSIConfig(temperature=1.0, pseudocount=1.0)
 psi_calc = SplicingPSI(config, rngs=nnx.Rngs(42))
 
 data = {
@@ -60,7 +60,7 @@ psi_values = result["psi"]
 ```python
 from diffbio.operators.rnaseq import DifferentiableMotifDiscovery, MotifDiscoveryConfig
 
-config = MotifDiscoveryConfig(num_motifs=10, motif_length=8)
+config = MotifDiscoveryConfig(num_motifs=10, motif_width=8)
 motif_finder = DifferentiableMotifDiscovery(config, rngs=nnx.Rngs(42))
 
 data = {"sequences": sequences}  # (n_seqs, seq_len, alphabet_size)

@@ -350,6 +350,6 @@ checkpoint support:
 |-----------|-------|
 | Platform | Linux 6.8.0 (Ubuntu) |
 | Python | 3.12.6 |
-| JAX | 0.9.0.1 |
+| JAX | 0.10.0 |
 | GPU | NVIDIA GeForce RTX 4090 (24 GB) |
 | Backend | CUDA |

@@ -9,10 +9,10 @@ DiffBio provides differentiable operators for variant calling, including CNN-bas
 Variant operators enable end-to-end optimization of:
 
 - **CNNVariantClassifier**: CNN-based variant classification
-- **CNVSegmentation**: Copy number variation segmentation
+- **DifferentiableCNVSegmentation**: Copy number variation segmentation
 - **EnhancedCNVSegmentation**: Multi-signal fusion CNV with pyramidal smoothing
 - **CellTypeAwareVariantClassifier**: Per-cell-type variant classification
-- **QualityRecalibration**: Base quality score recalibration
+- **SoftVariantQualityFilter**: Base quality score recalibration
 
 ## CNNVariantClassifier
 
@@ -22,14 +22,17 @@ CNN-based variant classification from pileup images.
 
 ```python
 from flax import nnx
-from diffbio.operators.variant import CNNVariantClassifier, CNNVariantConfig
+from diffbio.operators.variant import CNNVariantClassifier, CNNVariantClassifierConfig
 
 # Configure CNN classifier
-config = CNNVariantConfig(
-    num_classes=3,           # ref, SNP, indel
-    window_size=21,          # Pileup window
-    num_channels=6,          # Read depth, quality, etc.
-    num_filters=[32, 64, 128],
+config = CNNVariantClassifierConfig(
+    num_classes=3,                       # ref, SNP, indel
+    input_height=100,                    # coverage depth
+    input_width=221,                     # context window
+    num_channels=6,                      # A, C, G, T, quality, strand
+    hidden_channels=(64, 128, 256),      # conv filter sizes
+    fc_dims=(256, 128),                  # fully connected dims
+    dropout_rate=0.1,
 )
 
 # Create operator
@@ -85,45 +88,47 @@ graph LR
     style F fill:#d1fae5,stroke:#059669,color:#064e3b
 ```
 
-## CNVSegmentation
+## DifferentiableCNVSegmentation
 
-Copy number variation segmentation using changepoint detection.
+Copy number variation segmentation using attention-based changepoint detection.
 
 ### Quick Start
 
 ```python
-from diffbio.operators.variant import CNVSegmentation, CNVConfig
+from diffbio.operators.variant import DifferentiableCNVSegmentation, CNVSegmentationConfig
 
 # Configure CNV segmentation
-config = CNVConfig(
-    n_states=5,              # Ploidy states (0, 1, 2, 3, 4+)
-    hidden_dim=64,
+config = CNVSegmentationConfig(
+    max_segments=100,        # Maximum number of segments to detect
+    hidden_dim=64,           # Attention hidden dimension
+    attention_heads=4,       # Number of attention heads
     temperature=1.0,
 )
 
 # Create operator
 rngs = nnx.Rngs(42)
-cnv_seg = CNVSegmentation(config, rngs=rngs)
+cnv_seg = DifferentiableCNVSegmentation(config, rngs=rngs)
 
 # Segment copy number
 data = {
-    "log_ratios": log_ratios,    # (n_bins,) or (n_samples, n_bins)
-    "positions": bin_positions,  # (n_bins,) genomic positions
+    "coverage": coverage,        # (n_positions,) coverage signal
 }
 result, state, metadata = cnv_seg.apply(data, {}, None)
 
 # Get segmentation
-segments = result["segments"]              # Segment assignments
-copy_numbers = result["copy_numbers"]      # Inferred CN states
-changepoints = result["changepoints"]      # Changepoint probabilities
+boundary_probs = result["boundary_probs"]            # Soft boundary probabilities
+segment_assignments = result["segment_assignments"]  # Soft segment memberships
+segment_means = result["segment_means"]              # Mean value per segment
+smoothed_coverage = result["smoothed_coverage"]      # Segmented/smoothed signal
 ```
 
 ### Configuration
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `n_states` | int | 5 | Number of copy number states |
-| `hidden_dim` | int | 64 | Network hidden dimension |
+| `max_segments` | int | 100 | Maximum number of segments to detect |
+| `hidden_dim` | int | 64 | Attention hidden dimension |
+| `attention_heads` | int | 4 | Number of attention heads |
 | `temperature` | float | 1.0 | Changepoint detection sharpness |
 
 ### CNV Model
@@ -144,64 +149,68 @@ state_logits = emission_network(log_ratios)
 state_probs = segment_aware_softmax(state_logits, changepoint_probs)
 ```
 
-## QualityRecalibration
+## SoftVariantQualityFilter
 
-Base quality score recalibration using machine learning.
+VQSR-style variant quality recalibration using a differentiable Gaussian
+Mixture Model. Variants are scored by their likelihood under the GMM, and
+soft sigmoid thresholds maintain gradient flow through the filtering step.
 
 ### Quick Start
 
 ```python
-from diffbio.operators.variant import QualityRecalibration, QualityRecalConfig
+from diffbio.operators.variant import SoftVariantQualityFilter, VariantQualityFilterConfig
 
-# Configure recalibration
-config = QualityRecalConfig(
-    n_features=10,           # Context features
-    hidden_dim=32,
-    output_quality_bins=50,
+# Configure GMM-based quality filter
+config = VariantQualityFilterConfig(
+    n_components=3,          # Number of GMM components
+    n_features=4,            # depth, qual, strand_bias, mapq
+    threshold=0.5,           # Quality threshold for soft filtering
+    temperature=1.0,
 )
 
 # Create operator
 rngs = nnx.Rngs(42)
-recal = QualityRecalibration(config, rngs=rngs)
+quality_filter = SoftVariantQualityFilter(config, rngs=rngs)
 
-# Recalibrate quality scores
+# Score and filter variants
 data = {
-    "quality_scores": original_quality,  # (n_bases,)
-    "context_features": features,        # (n_bases, n_features)
+    "variant_features": features,        # (n_variants, n_features)
 }
-result, state, metadata = recal.apply(data, {}, None)
+result, state, metadata = quality_filter.apply(data, {}, None)
 
-# Get recalibrated scores
-recalibrated = result["recalibrated_quality"]
-adjustment = result["quality_adjustment"]
+# Get scored / soft-filtered variants
+quality_scores = result["quality_scores"]      # GMM-derived quality in [0, 1]
+filter_weights = result["filter_weights"]      # Soft pass/fail in [0, 1]
+component_probs = result["component_probs"]    # GMM responsibilities
 ```
 
 ### Configuration
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `n_features` | int | 10 | Number of context features |
-| `hidden_dim` | int | 32 | Network hidden dimension |
-| `output_quality_bins` | int | 50 | Quality score range |
+| `n_components` | int | 3 | Number of GMM components |
+| `n_features` | int | 4 | Number of variant features |
+| `threshold` | float | 0.5 | Quality threshold for soft filtering |
+| `temperature` | float | 1.0 | Softmax/sigmoid sharpness |
 
-### Context Features
+### Variant Features
 
-Features used for recalibration:
+Typical features supplied to the filter:
 
 | Feature | Description |
 |---------|-------------|
-| Original quality | Reported quality score |
-| Read position | Position within read |
-| Cycle | Sequencing cycle |
-| Context | Dinucleotide context |
-| Read group | Library/lane information |
+| Depth | Total read depth at the variant site |
+| Qual | Reported variant quality score |
+| Strand bias | Imbalance between forward/reverse supporting reads |
+| MAPQ | Mean mapping quality of supporting reads |
 
-### Recalibration Model
+### Filtering Model
 
 ```python
-# Neural quality recalibration
-predicted_error_rate = recal_network(context_features)
-recalibrated_quality = -10 * jnp.log10(predicted_error_rate + 1e-10)
+# GMM-based scoring with soft sigmoid threshold
+component_log_probs = quality_filter.compute_component_log_probs(features)
+quality_scores = quality_filter.compute_quality_scores(features)
+filter_weights = jax.nn.sigmoid((quality_scores - threshold) / temperature)
 ```
 
 ## EnhancedCNVSegmentation
@@ -352,9 +361,9 @@ def cnv_loss(cnv_model, log_ratios, true_segments):
 |-------------|----------|-------------|
 | SNP/indel calling | CNNVariantClassifier | Classify variant types |
 | Somatic variants | CNNVariantClassifier | Cancer variant detection |
-| Copy number | CNVSegmentation | Detect CNV regions |
-| Tumor purity | CNVSegmentation | Estimate tumor fraction |
-| Quality control | QualityRecalibration | Improve base qualities |
+| Copy number | DifferentiableCNVSegmentation | Detect CNV regions |
+| Tumor purity | DifferentiableCNVSegmentation | Estimate tumor fraction |
+| Quality control | SoftVariantQualityFilter | Improve base qualities |
 | Enhanced CNV | EnhancedCNVSegmentation | Multi-signal CNV with pyramidal smoothing |
 | Cell-type variants | CellTypeAwareVariantClassifier | Per-cell-type variant calling |
 

@@ -18,13 +18,14 @@ from diffbio.losses.singlecell_losses import BatchMixingLoss
 # Create loss function
 batch_loss = BatchMixingLoss(
     n_neighbors=15,
+    n_batches=3,
     temperature=1.0,
 )
 
-# Compute loss
+# Compute loss (positional: embeddings, batch_labels)
 loss = batch_loss(
-    embeddings=cell_embeddings,  # (n_cells, embedding_dim)
-    batch_ids=batch_labels,      # (n_cells,) integer batch labels
+    cell_embeddings,  # (n_cells, embedding_dim)
+    batch_labels,     # (n_cells,) integer batch labels
 )
 ```
 
@@ -33,6 +34,7 @@ loss = batch_loss(
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `n_neighbors` | int | 15 | Number of neighbors for mixing calculation |
+| `n_batches` | int | 3 | Number of batches (static for JIT compatibility) |
 | `temperature` | float | 1.0 | Softmax temperature |
 
 ### Algorithm
@@ -78,14 +80,14 @@ from diffbio.losses.singlecell_losses import ClusteringCompactnessLoss
 
 # Create loss function
 cluster_loss = ClusteringCompactnessLoss(
-    temperature=1.0,
-    margin=1.0,
+    separation_weight=1.0,
+    min_separation=1.0,
 )
 
-# Compute loss
+# Compute loss (positional: embeddings, soft assignments)
 loss = cluster_loss(
-    embeddings=cell_embeddings,        # (n_cells, embedding_dim)
-    cluster_assignments=assignments,   # (n_cells, n_clusters) soft assignments
+    cell_embeddings,  # (n_cells, embedding_dim)
+    assignments,      # (n_cells, n_clusters) soft assignments
 )
 ```
 
@@ -93,8 +95,8 @@ loss = cluster_loss(
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `temperature` | float | 1.0 | Softmax temperature |
-| `margin` | float | 1.0 | Margin for separation |
+| `separation_weight` | float | 1.0 | Weight for the inter-cluster separation term |
+| `min_separation` | float | 1.0 | Minimum desired distance between cluster centroids |
 
 ### Algorithm
 
@@ -136,15 +138,16 @@ from diffbio.losses.singlecell_losses import VelocityConsistencyLoss
 
 # Create loss function
 velocity_loss = VelocityConsistencyLoss(
-    n_neighbors=30,
-    temperature=1.0,
+    dt=0.1,
+    cosine_weight=1.0,
+    magnitude_weight=1.0,
 )
 
-# Compute loss
+# Compute loss (positional: expression, velocity, future_expression)
 loss = velocity_loss(
-    embeddings=cell_embeddings,  # (n_cells, embedding_dim)
-    velocities=velocity_vectors, # (n_cells, n_genes)
-    expression=expression,       # (n_cells, n_genes)
+    expression,         # (n_cells, n_genes) current expression
+    velocity_vectors,   # (n_cells, n_genes) predicted velocity
+    future_expression,  # (n_cells, n_genes) ground-truth or estimated future expression
 )
 ```
 
@@ -152,8 +155,9 @@ loss = velocity_loss(
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `n_neighbors` | int | 30 | Neighbors for transition matrix |
-| `temperature` | float | 1.0 | Transition probability temperature |
+| `dt` | float | 0.1 | Time step for velocity extrapolation |
+| `cosine_weight` | float | 1.0 | Weight for the directional (cosine) consistency term |
+| `magnitude_weight` | float | 1.0 | Weight for the magnitude consistency term |
 
 ### Algorithm
 
@@ -170,15 +174,15 @@ Where $T_{ij}$ is the transition probability from cell $i$ to $j$.
 ### Training Example
 
 ```python
-def velocity_model_loss(model, spliced, unspliced):
+def velocity_model_loss(model, spliced, unspliced, future_spliced):
     """Train RNA velocity model."""
     data = {"spliced": spliced, "unspliced": unspliced}
     result, _, _ = model.apply(data, {}, None)
 
     return velocity_loss(
-        result["embeddings"],
-        result["velocity"],
         spliced,
+        result["velocity"],
+        future_spliced,
     )
 ```
 

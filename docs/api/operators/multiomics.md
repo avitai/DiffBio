@@ -86,9 +86,9 @@ Differentiable operators for multi-omics analysis including spatial transcriptom
 
 ```python
 from flax import nnx
-from diffbio.operators.multiomics import SpatialDeconvolution, SpatialDeconvConfig
+from diffbio.operators.multiomics import SpatialDeconvolution, SpatialDeconvolutionConfig
 
-config = SpatialDeconvConfig(n_cell_types=10, n_genes=2000)
+config = SpatialDeconvolutionConfig(n_cell_types=10, n_genes=2000)
 deconv = SpatialDeconvolution(config, rngs=nnx.Rngs(42))
 
 data = {
@@ -102,9 +102,9 @@ proportions = result["proportions"]
 ### Hi-C Contact Analysis
 
 ```python
-from diffbio.operators.multiomics import HiCContactAnalysis, HiCConfig
+from diffbio.operators.multiomics import HiCContactAnalysis, HiCContactAnalysisConfig
 
-config = HiCConfig(resolution=10000, hidden_dim=64)
+config = HiCContactAnalysisConfig(n_bins=1000, hidden_dim=64)
 hic_analysis = HiCContactAnalysis(config, rngs=nnx.Rngs(42))
 
 data = {"contact_matrix": hic_matrix}  # (n_bins, n_bins)

@@ -182,7 +182,7 @@ computes a weighted combination.
 
 ## Categories of Operations
 
-The `soft_ops` module organizes operations into six categories. Each function
+The `soft_ops` module organizes operations into seven categories. Each function
 accepts `softness` and `mode` parameters unless otherwise noted.
 
 ### Elementwise
@@ -323,8 +323,8 @@ These are available without additional dependencies:
 
 | Method | Complexity | Default For | Description |
 |---|---|---|---|
-| `"softsort"` | O(n log n) | `argmax`, `argmin` | Sorts input, projects distances onto simplex. Fast and memory-efficient for argmax/argmin where only one row of the permutation matrix is needed. |
-| `"neuralsort"` | O(n^2) | `argsort`, `sort`, `rank` | Computes pairwise absolute differences, then projects onto simplex. Produces higher-quality soft permutation matrices at quadratic cost. |
+| `"softsort"` | O(n log n) | `argmax`, `argmin`, `max`, `min`, `rank` | Sorts input, projects distances onto simplex. Fast and memory-efficient for argmax/argmin where only one row of the permutation matrix is needed. |
+| `"neuralsort"` | O(n^2) | `argsort`, `sort` | Computes pairwise absolute differences, then projects onto simplex. Produces higher-quality soft permutation matrices at quadratic cost. |
 | `"sorting_network"` | O(n log^2 n) | -- | Bitonic sorting network with soft comparators. Deterministic structure, good for moderate n. |
 
 ### Advanced Methods (Optional)

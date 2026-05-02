@@ -401,7 +401,7 @@ Differentiable operators for single-cell analysis including clustering, batch co
 from flax import nnx
 from diffbio.operators.singlecell import SoftKMeansClustering, SoftClusteringConfig
 
-config = SoftClusteringConfig(n_clusters=10, n_embeddings=50)
+config = SoftClusteringConfig(n_clusters=10, n_features=50)
 clustering = SoftKMeansClustering(config, rngs=nnx.Rngs(42))
 
 data = {"embeddings": embeddings}  # (n_cells, n_embeddings)
@@ -414,7 +414,7 @@ assignments = result["cluster_assignments"]
 ```python
 from diffbio.operators.singlecell import DifferentiableHarmony, BatchCorrectionConfig
 
-config = BatchCorrectionConfig(n_clusters=50, n_embeddings=50)
+config = BatchCorrectionConfig(n_clusters=50, n_features=50)
 harmony = DifferentiableHarmony(config, rngs=nnx.Rngs(42))
 
 data = {"embeddings": embeddings, "batch_ids": batch_labels}

@@ -8,7 +8,7 @@ Let's compute a differentiable Smith-Waterman alignment:
 
 ```python
 import jax.numpy as jnp
-from diffbio.operators import SmoothSmithWaterman, SmithWatermanConfig
+from diffbio.operators.alignment import SmoothSmithWaterman, SmithWatermanConfig
 from diffbio.operators.alignment import create_dna_scoring_matrix
 
 # Create a scoring matrix for DNA sequences
@@ -70,7 +70,7 @@ print(f"Gradient:\n{grads}")
 DiffBio operators implement the Datarax `OperatorModule` interface for batch processing:
 
 ```python
-from diffbio.operators import SmoothSmithWaterman, SmithWatermanConfig
+from diffbio.operators.alignment import SmoothSmithWaterman, SmithWatermanConfig
 from diffbio.operators.alignment import create_dna_scoring_matrix
 
 # Setup
@@ -122,7 +122,7 @@ print(f"Filtered sequence sum: {filtered_data['sequence'].sum():.2f}")
 Generate differentiable pileups from aligned reads:
 
 ```python
-from diffbio.operators import DifferentiablePileup, PileupConfig
+from diffbio.operators.variant import DifferentiablePileup, PileupConfig
 
 # Configure pileup generator
 config = PileupConfig(
@@ -167,9 +167,11 @@ Combine operators into a differentiable pipeline:
 
 ```python
 import jax
+from diffbio.operators.alignment import (
+    SmoothSmithWaterman, SmithWatermanConfig,
+)
 from diffbio.operators import (
     DifferentiableQualityFilter, QualityFilterConfig,
-    SmoothSmithWaterman, SmithWatermanConfig,
 )
 from diffbio.operators.alignment import create_dna_scoring_matrix
 

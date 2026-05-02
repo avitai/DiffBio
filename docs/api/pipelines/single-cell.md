@@ -11,9 +11,6 @@ End-to-end differentiable single-cell RNA-seq analysis pipeline with scVI-style 
       members:
         - __init__
         - apply
-        - set_training
-        - train_mode
-        - eval_mode
 
 ## SingleCellPipelineConfig
 
@@ -85,21 +82,17 @@ config = SingleCellPipelineConfig(
 )
 
 pipeline = SingleCellPipeline(config, rngs=nnx.Rngs(42))
-pipeline.eval_mode()
+# Note: this pipeline has no training-mode toggle; submodules manage their
+# own dropout/training state when applicable.
 ```
 
 ### Training Mode
 
 ```python
-# Enable dropout and training behavior
-pipeline.train_mode()
-
-# Training loop
+# SingleCellPipeline does not expose train_mode/eval_mode toggles.
+# Submodules that use dropout manage their own state during apply().
 for batch in dataloader:
     loss = train_step(pipeline, batch)
-
-# Disable for inference
-pipeline.eval_mode()
 ```
 
 ### Access Components

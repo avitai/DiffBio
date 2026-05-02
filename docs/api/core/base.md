@@ -39,7 +39,7 @@ class OperatorModule:
 ### Usage Pattern
 
 ```python
-from diffbio.operators import SmoothSmithWaterman, SmithWatermanConfig
+from diffbio.operators.alignment import SmoothSmithWaterman, SmithWatermanConfig
 from diffbio.operators.alignment import create_dna_scoring_matrix
 
 # Create operator

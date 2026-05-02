@@ -358,7 +358,6 @@ from diffbio.utils.training import (
 
     # Optimizer utilities
     create_optax_optimizer,
-    create_optimizer,  # Alias for backwards compatibility
 
     # Data utilities
     create_synthetic_training_data,

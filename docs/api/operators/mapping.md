@@ -25,14 +25,14 @@ Differentiable operators for read mapping using neural networks.
 
 ```python
 from flax import nnx
-from diffbio.operators.mapping import NeuralReadMapper, NeuralMapperConfig
+from diffbio.operators.mapping import NeuralReadMapper, NeuralReadMapperConfig
 
-config = NeuralMapperConfig(
+config = NeuralReadMapperConfig(
     read_length=150,
-    reference_length=1000,
-    hidden_dim=128,
-    n_layers=4,
-    n_heads=8,
+    reference_window=1000,
+    embedding_dim=128,
+    num_layers=4,
+    num_heads=8,
 )
 mapper = NeuralReadMapper(config, rngs=nnx.Rngs(42))
 

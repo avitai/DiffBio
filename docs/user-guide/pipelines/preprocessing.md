@@ -21,8 +21,9 @@ from diffbio.pipelines import PreprocessingPipeline, PreprocessingPipelineConfig
 
 # Configure pipeline
 config = PreprocessingPipelineConfig(
+    read_length=150,
     quality_threshold=20.0,
-    adapter_length=20,
+    adapter_sequence="AGATCGGAAGAG",
     enable_adapter_removal=True,
     enable_duplicate_weighting=True,
     enable_error_correction=True,
@@ -50,9 +51,14 @@ weights = result["read_weights"]              # Per-read weights
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `quality_threshold` | float | 20.0 | Quality score threshold |
-| `temperature` | float | 1.0 | Soft operation temperature |
-| `adapter_length` | int | 20 | Adapter sequence length |
+| `read_length` | int | 150 | Expected read length for initialization |
+| `adapter_sequence` | str | `"AGATCGGAAGAG"` | Adapter sequence to remove (Illumina universal default) |
+| `quality_threshold` | float | 20.0 | Initial quality score threshold for filtering |
+| `adapter_match_threshold` | float | 0.8 | Threshold for adapter matching |
+| `adapter_temperature` | float | 1.0 | Temperature for soft adapter trimming |
+| `duplicate_similarity_threshold` | float | 0.95 | Similarity threshold for duplicate detection |
+| `error_correction_window` | int | 11 | Window size for error correction |
+| `error_correction_hidden_dim` | int | 64 | Hidden dimension for error correction network |
 | `enable_adapter_removal` | bool | True | Enable adapter trimming |
 | `enable_duplicate_weighting` | bool | True | Enable duplicate detection |
 | `enable_error_correction` | bool | True | Enable error correction |
@@ -61,23 +67,26 @@ weights = result["read_weights"]              # Per-read weights
 
 ```python
 config = PreprocessingPipelineConfig(
+    # General
+    read_length=150,
+
     # Quality filtering
     quality_threshold=20.0,
-    quality_temperature=1.0,
 
     # Adapter removal
     enable_adapter_removal=True,
-    adapter_length=20,
+    adapter_sequence="AGATCGGAAGAG",
+    adapter_match_threshold=0.8,
     adapter_temperature=1.0,
 
     # Duplicate handling
     enable_duplicate_weighting=True,
-    duplicate_embedding_dim=32,
+    duplicate_similarity_threshold=0.95,
 
     # Error correction
     enable_error_correction=True,
+    error_correction_window=11,
     error_correction_hidden_dim=64,
-    error_correction_context=5,
 )
 ```
 

@@ -11,9 +11,6 @@ DeepVariant-style end-to-end differentiable variant calling pipeline with CNN cl
       members:
         - __init__
         - apply
-        - set_training
-        - train_mode
-        - eval_mode
 
 ## EnhancedVariantCallingPipelineConfig
 
@@ -53,7 +50,7 @@ data = {
         axis=-1
     ),
     "positions": jax.random.randint(jax.random.PRNGKey(1), (20,), 0, 70),
-    "quality": jax.random.uniform(jax.random.PRNGKey(2), (20, 30), 10, 40),
+    "quality": jax.random.uniform(jax.random.PRNGKey(2), (20, 30), minval=10, maxval=40),
 }
 
 # Run pipeline
@@ -80,21 +77,17 @@ config = EnhancedVariantCallingPipelineConfig(
 )
 
 pipeline = EnhancedVariantCallingPipeline(config, rngs=nnx.Rngs(42))
-pipeline.eval_mode()
+# Note: this pipeline has no training-mode toggle; dropout state is managed
+# by submodules directly when applicable.
 ```
 
 ### Training Mode
 
 ```python
-# Enable dropout
-pipeline.train_mode()
-
-# Training loop
+# EnhancedVariantCallingPipeline does not expose train_mode/eval_mode toggles.
+# Submodules that use dropout manage their own state during apply().
 for batch in dataloader:
     loss = train_step(pipeline, batch)
-
-# Disable dropout for inference
-pipeline.eval_mode()
 ```
 
 ### Access Components
@@ -105,7 +98,7 @@ if pipeline.quality_filter is not None:
     pipeline.quality_filter.threshold[...]
 
 # Pileup generator
-pipeline.pileup.temperature[...]
+pipeline.pileup.config.temperature
 
 # CNN classifier
 pipeline.cnn_classifier

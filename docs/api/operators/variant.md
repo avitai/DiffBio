@@ -114,7 +114,12 @@ Differentiable operators for variant calling and analysis.
 from flax import nnx
 from diffbio.operators.variant import CNNVariantClassifier, CNNVariantClassifierConfig
 
-config = CNNVariantClassifierConfig(num_classes=3, window_size=21)
+config = CNNVariantClassifierConfig(
+    num_classes=3,
+    input_height=100,
+    input_width=221,
+    num_channels=6,
+)
 classifier = CNNVariantClassifier(config, rngs=nnx.Rngs(42))
 
 data = {"pileup_tensor": pileup}  # (n_positions, window_size, num_channels)
@@ -127,7 +132,7 @@ predictions = result["predictions"]
 ```python
 from diffbio.operators.variant import DifferentiableCNVSegmentation, CNVSegmentationConfig
 
-config = CNVSegmentationConfig(n_states=5, hidden_dim=64)
+config = CNVSegmentationConfig(max_segments=100, hidden_dim=64)
 cnv_seg = DifferentiableCNVSegmentation(config, rngs=nnx.Rngs(42))
 
 data = {"log_ratios": log_ratios, "positions": positions}
@@ -174,7 +179,12 @@ pileup_image = result["pileup_image"]  # (50, 101, 9)
 ```python
 from diffbio.operators.variant import SoftVariantQualityFilter, VariantQualityFilterConfig
 
-config = VariantQualityFilterConfig(n_features=10, hidden_dim=32)
+config = VariantQualityFilterConfig(
+    n_components=3,
+    n_features=4,
+    threshold=0.5,
+    temperature=1.0,
+)
 qf = SoftVariantQualityFilter(config, rngs=nnx.Rngs(42))
 
 data = {"quality_scores": quality, "context_features": features}

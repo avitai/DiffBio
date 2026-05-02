@@ -34,7 +34,8 @@ DiffBio provides specialized loss functions for training differentiable bioinfor
 | Loss | Description |
 |------|-------------|
 | `AlignmentScoreLoss` | Alignment quality loss |
-| `GapPenaltyLoss` | Learnable gap penalty regularization |
+| `AlignmentConsistencyLoss` | Penalises inconsistent soft alignment paths |
+| `SoftEditDistanceLoss` | Differentiable approximation of edit distance |
 
 ## Using Loss Functions
 
@@ -46,11 +47,11 @@ from diffbio.losses import NegativeBinomialLoss
 # Create loss function
 nb_loss = NegativeBinomialLoss()
 
-# Compute loss
+# Compute loss (signature: counts, mu, theta)
 loss = nb_loss(
-    counts=observed_counts,
-    predicted_mean=model_predictions,
-    dispersion=dispersions,
+    observed_counts,
+    model_predictions,
+    dispersions,
 )
 ```
 

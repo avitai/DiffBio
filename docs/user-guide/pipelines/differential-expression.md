@@ -152,14 +152,13 @@ The pipeline returns a dictionary with:
 
 | Key | Shape | Description |
 |-----|-------|-------------|
+| `size_factors` | (n_samples,) | Sample size factors (median-of-ratios) |
+| `predicted_mean` | (n_samples, n_genes) | NB-GLM predicted mean expression |
 | `log_fold_change` | (n_genes,) | Log2 fold change |
-| `pvalues` | (n_genes,) | Raw p-values |
-| `p_values` | (n_genes,) | FDR-adjusted p-values |
-| `significant` | (n_genes,) | Boolean significance mask |
-| `coefficients` | (n_genes, n_conditions) | GLM coefficients |
-| `dispersions` | (n_genes,) | Gene dispersions |
-| `size_factors` | (n_samples,) | Sample size factors |
-| `normalized_counts` | (n_samples, n_genes) | Normalized counts |
+| `wald_statistic` | (n_genes,) | Wald test statistics |
+| `standard_error` | (n_genes,) | Standard errors of treatment coefficient |
+| `p_values` | (n_genes,) | Raw two-sided p-values |
+| `significant` | (n_genes,) | Soft significance indicator |
 
 ## Training / Fine-tuning
 
@@ -172,14 +171,15 @@ nb_loss = NegativeBinomialLoss()
 
 def de_loss(pipeline, counts, design, known_de_genes):
     """Train DE pipeline with known DE genes."""
-    data = {"counts": counts, "design": design, "condition": design[:, 1]}
+    data = {"counts": counts, "design": design}
     result, _, _ = pipeline.apply(data, {}, None)
 
-    # Likelihood loss
+    # Likelihood loss (NB GLM dispersion is held inside the pipeline module)
+    dispersion = jnp.exp(pipeline.nb_glm.log_dispersion[...])
     likelihood = nb_loss(
-        counts=counts,
-        predicted_mean=result["predicted_means"],
-        dispersion=result["dispersions"],
+        counts,
+        result["predicted_mean"],
+        dispersion,
     )
 
     # Optional: supervised loss if DE genes are known
@@ -206,9 +206,10 @@ opt_state = optimizer.init(nnx.state(de_pipeline, nnx.Param))
 @jax.jit
 def train_step(pipeline, counts, design, opt_state):
     def loss_fn(pipe):
-        data = {"counts": counts, "design": design, "condition": design[:, 1]}
+        data = {"counts": counts, "design": design}
         result, _, _ = pipe.apply(data, {}, None)
-        return nb_loss(counts, result["predicted_means"], result["dispersions"])
+        dispersion = jnp.exp(pipe.nb_glm.log_dispersion[...])
+        return nb_loss(counts, result["predicted_mean"], dispersion)
 
     loss, grads = nnx.value_and_grad(loss_fn)(pipeline)
     params = nnx.state(pipeline, nnx.Param)
@@ -257,7 +258,9 @@ plt.show()
 ### MA Plot
 
 ```python
-base_mean = result["normalized_counts"].mean(axis=0)
+# Normalize counts by size factors for the MA plot
+normalized_counts = data["counts"] / result["size_factors"][:, None]
+base_mean = normalized_counts.mean(axis=0)
 log2fc = result["log_fold_change"]
 
 plt.figure(figsize=(10, 8))

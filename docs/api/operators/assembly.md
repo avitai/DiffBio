@@ -52,13 +52,13 @@ Differentiable operators for genome assembly using graph neural networks and VAE
 
 ```python
 from flax import nnx
-from diffbio.operators.assembly import GNNAssemblyNavigator, GNNAssemblyConfig
+from diffbio.operators.assembly import GNNAssemblyNavigator, GNNAssemblyNavigatorConfig
 
-config = GNNAssemblyConfig(
-    node_dim=64,
-    edge_dim=32,
+config = GNNAssemblyNavigatorConfig(
+    node_features=64,
+    edge_features=32,
     hidden_dim=128,
-    n_layers=3,
+    num_layers=3,
 )
 navigator = GNNAssemblyNavigator(config, rngs=nnx.Rngs(42))
 

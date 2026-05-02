@@ -11,6 +11,7 @@ DiffBio pipelines compose multiple operators into end-to-end differentiable work
 | [Single-Cell Analysis](single-cell.md) | scVI-style VAE + Harmony batch correction + soft clustering | <span class="diff-high">Implemented</span> |
 | [Preprocessing](preprocessing.md) | Quality filtering → Adapter removal → Error correction | <span class="diff-high">Implemented</span> |
 | [Differential Expression](differential-expression.md) | DESeq2-style differential expression analysis | <span class="diff-high">Implemented</span> |
+| Perturbation | Cell-load-style perturbation experiment loading and downstream evaluation | <span class="diff-high">Implemented</span> |
 | Alignment Pipeline | Raw reads → Aligned reads | <span class="diff-medium">Planned</span> |
 | De Novo Assembly | Reads → Contigs | <span class="diff-low">Research</span> |
 

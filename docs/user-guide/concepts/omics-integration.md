@@ -2,7 +2,7 @@
 
 Modern biology measures multiple molecular layers -- transcriptomics, epigenomics,
 proteomics, metabolomics, and spatial organization -- each providing a different
-view of the same biological system. DiffBio provides 9 differentiable operators
+view of the same biological system. DiffBio provides 11 differentiable operators
 for integrating these modalities, analyzing epigenomic regulation, quantifying
 splicing, discovering sequence motifs, and comparing mass spectra.
 
@@ -68,13 +68,15 @@ much of each gene's variability is explained by spatial structure.
 ## Chromatin and Epigenomic Analysis
 
 Epigenomic marks -- histone modifications, DNA methylation, chromatin
-accessibility -- control which genes can be transcribed. Two operators provide
+accessibility -- control which genes can be transcribed. Four operators provide
 differentiable analysis of these regulatory signals:
 
 | Operator | Input Data | Method | Output |
 |---|---|---|---|
 | `DifferentiablePeakCaller` | ChIP-seq / ATAC-seq signal | CNN + sigmoid thresholding | Peak regions + scores |
+| `FNOPeakCaller` | ChIP-seq / ATAC-seq signal | Fourier neural operator | Peak regions + scores |
 | `ChromatinStateAnnotator` | Histone modification profiles | HMM with Bernoulli emissions | State assignments |
+| `ContextualEpigenomicsOperator` | Multi-track epigenomic signals | Context-aware encoder + task heads | Joint epigenomic predictions |
 
 ### Peak Calling
 

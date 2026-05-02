@@ -83,11 +83,11 @@ estimator.eval()
 # Population allele frequencies
 pop_freqs = estimator.population_frequencies[...]  # (K, n_snps)
 
-# Temperature parameter
-temperature = estimator.temperature[...]
+# Temperature parameter (read from config; the live Param is `_temperature`)
+temperature = estimator.config.temperature
 
 # Encoder layers
-encoder = estimator.encoder_layers
+encoder = estimator.backbone
 ```
 
 ## Input Specifications

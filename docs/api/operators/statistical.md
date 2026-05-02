@@ -61,7 +61,7 @@ Differentiable statistical operators for probabilistic modeling including HMMs, 
 from flax import nnx
 from diffbio.operators.statistical import DifferentiableHMM, HMMConfig
 
-config = HMMConfig(n_states=5, n_observations=4)
+config = HMMConfig(num_states=5, num_emissions=4)
 hmm = DifferentiableHMM(config, rngs=nnx.Rngs(42))
 
 data = {"observations": observations}  # (seq_length, n_observations)
@@ -75,7 +75,7 @@ posteriors = result["posteriors"]
 ```python
 from diffbio.operators.statistical import DifferentiableNBGLM, NBGLMConfig
 
-config = NBGLMConfig(n_genes=2000, n_covariates=10)
+config = NBGLMConfig(n_features=2000, n_covariates=10)
 nbglm = DifferentiableNBGLM(config, rngs=nnx.Rngs(42))
 
 data = {

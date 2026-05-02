@@ -16,7 +16,7 @@ Multi-omics operators enable end-to-end optimization of:
 ## Multi-omics benchmark scope
 
 The current benchmark-backed multi-omics scope is seqFISH spatial deconvolution.
-The `SeqFISHSource` records canonical provenance for the RNA and
+The `diffbio.sources.seqfish.SeqFISHSource` class records canonical provenance for the RNA and
 spatial modalities, and the spatial deconvolution benchmark records both the
 modality contract and the operator-output artifact metadata used for comparison
 tracking.
@@ -38,10 +38,10 @@ Cell type deconvolution for spatial transcriptomics data.
 
 ```python
 from flax import nnx
-from diffbio.operators.multiomics import SpatialDeconvolution, SpatialDeconvConfig
+from diffbio.operators.multiomics import SpatialDeconvolution, SpatialDeconvolutionConfig
 
 # Configure deconvolution
-config = SpatialDeconvConfig(
+config = SpatialDeconvolutionConfig(
     n_cell_types=10,
     n_genes=2000,
     hidden_dim=128,
@@ -119,10 +119,10 @@ Chromatin contact analysis for Hi-C and related 3C data.
 ### Quick Start
 
 ```python
-from diffbio.operators.multiomics import HiCContactAnalysis, HiCConfig
+from diffbio.operators.multiomics import HiCContactAnalysis, HiCContactAnalysisConfig
 
 # Configure Hi-C analysis
-config = HiCConfig(
+config = HiCContactAnalysisConfig(
     resolution=10000,        # 10kb resolution
     hidden_dim=64,
     n_layers=4,

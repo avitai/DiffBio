@@ -1,6 +1,6 @@
 # Installation
 
-DiffBio requires Python 3.10+ and works on Linux, macOS, and Windows (via WSL).
+DiffBio requires Python 3.11+ and works on Linux, macOS, and Windows (via WSL).
 
 ## Quick Install
 
@@ -72,7 +72,7 @@ print(jax.devices())  # Should show GPU devices
 
 ```python
 import diffbio
-from diffbio.operators import SmoothSmithWaterman, SmithWatermanConfig
+from diffbio.operators.alignment import SmoothSmithWaterman, SmithWatermanConfig
 from diffbio.operators.alignment import create_dna_scoring_matrix
 
 print(f"DiffBio version: {diffbio.__version__}")
