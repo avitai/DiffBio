@@ -2,6 +2,7 @@
 
 import jax
 import jax.numpy as jnp
+import optax
 import pytest
 
 from diffbio.pipelines import create_variant_calling_pipeline
@@ -73,6 +74,42 @@ class TestOptimizer:
         config = TrainingConfig(learning_rate=1e-3, grad_clip_norm=None)
         optimizer = create_optax_optimizer(config)
         assert optimizer is not None
+
+    @staticmethod
+    def _apply_one_step(
+        optimizer: optax.GradientTransformation,
+        params: optax.Params,
+        grads: optax.Params,
+    ) -> optax.Params:
+        """Run a single optimizer update and return the new parameters."""
+        state = optimizer.init(params)
+        updates, _ = optimizer.update(grads, state, params)
+        return optax.apply_updates(params, updates)
+
+    def test_create_optimizer_matches_clip_then_adam(self):
+        """With clipping, one update step matches clip_by_global_norm + adam."""
+        config = TrainingConfig(learning_rate=1e-3, grad_clip_norm=1.0)
+        params = {"w": jnp.array([1.0, -2.0, 3.0]), "b": jnp.array([0.5])}
+        grads = {"w": jnp.array([10.0, -20.0, 5.0]), "b": jnp.array([2.0])}
+
+        new_params = self._apply_one_step(create_optax_optimizer(config), params, grads)
+        reference = optax.chain(optax.clip_by_global_norm(1.0), optax.adam(1e-3))
+        ref_params = self._apply_one_step(reference, params, grads)
+
+        matches = jax.tree.map(lambda a, b: bool(jnp.allclose(a, b)), new_params, ref_params)
+        assert all(jax.tree.leaves(matches))
+
+    def test_create_optimizer_matches_plain_adam_without_clipping(self):
+        """Without clipping, one update step matches plain adam."""
+        config = TrainingConfig(learning_rate=1e-3, grad_clip_norm=None)
+        params = {"w": jnp.array([1.0, -2.0, 3.0]), "b": jnp.array([0.5])}
+        grads = {"w": jnp.array([10.0, -20.0, 5.0]), "b": jnp.array([2.0])}
+
+        new_params = self._apply_one_step(create_optax_optimizer(config), params, grads)
+        ref_params = self._apply_one_step(optax.adam(1e-3), params, grads)
+
+        matches = jax.tree.map(lambda a, b: bool(jnp.allclose(a, b)), new_params, ref_params)
+        assert all(jax.tree.leaves(matches))
 
 
 class TestCrossEntropyLoss:

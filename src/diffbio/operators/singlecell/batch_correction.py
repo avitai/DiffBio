@@ -27,6 +27,7 @@ from jaxtyping import Array, Float, Int, PyTree
 
 
 from diffbio.core.base_operators import TemperatureOperator
+from diffbio.core.graph_utils import compute_cross_squared_distances
 
 logger = logging.getLogger(__name__)
 
@@ -127,12 +128,7 @@ class DifferentiableHarmony(TemperatureOperator):
         Returns:
             Soft assignment probabilities.
         """
-        # Compute squared distances
-        # ||x - c||² = ||x||² + ||c||² - 2 * x · c
-        emb_sq = jnp.sum(embeddings**2, axis=-1, keepdims=True)
-        cent_sq = jnp.sum(centroids**2, axis=-1)
-        dot_product = jnp.einsum("nf,kf->nk", embeddings, centroids)
-        distances_sq = emb_sq + cent_sq - 2 * dot_product
+        distances_sq = compute_cross_squared_distances(embeddings, centroids)
 
         # Soft assignments
         # Use inherited _temperature property from TemperatureOperator

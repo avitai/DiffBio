@@ -9,14 +9,73 @@ imputation, and other graph-based operators.
 import jax
 import jax.numpy as jnp
 
+from diffbio.constants import EPSILON
 from diffbio.core import soft_ops
 
 __all__ = [
     "compute_pairwise_distances",
+    "compute_cross_squared_distances",
+    "scatter_aggregate",
     "compute_knn_graph",
     "compute_fuzzy_membership",
     "symmetrize_graph",
 ]
+
+
+def scatter_aggregate(
+    messages: jax.Array,
+    indices: jax.Array,
+    num_nodes: int,
+    aggregation: str = "sum",
+) -> jax.Array:
+    """Aggregate messages at target nodes via segment-scatter operations.
+
+    Args:
+        messages: Message features of shape ``(num_messages, features)``.
+        indices: Target node index per message, shape ``(num_messages,)``.
+        num_nodes: Total number of nodes (segments).
+        aggregation: One of ``"sum"``, ``"mean"``, or ``"max"``.
+
+    Returns:
+        Aggregated features of shape ``(num_nodes, features)``. For ``"max"``,
+        nodes with no incoming messages are zeroed (``-inf`` is replaced by 0).
+
+    Raises:
+        ValueError: If ``aggregation`` is not a supported mode.
+    """
+    if aggregation == "sum":
+        return jax.ops.segment_sum(messages, indices, num_segments=num_nodes)
+    if aggregation == "mean":
+        sum_messages = jax.ops.segment_sum(messages, indices, num_segments=num_nodes)
+        counts = jax.ops.segment_sum(jnp.ones(messages.shape[0]), indices, num_segments=num_nodes)
+        return sum_messages / (counts[:, None] + EPSILON)
+    if aggregation == "max":
+        result = jax.ops.segment_max(messages, indices, num_segments=num_nodes)
+        return jnp.where(jnp.isinf(result), jnp.zeros_like(result), result)
+    raise ValueError(f"Unknown aggregation: {aggregation}")
+
+
+def compute_cross_squared_distances(
+    features_a: jax.Array,
+    features_b: jax.Array,
+) -> jax.Array:
+    """Squared Euclidean distances between two sets of samples.
+
+    Uses the expansion ``||a - b||^2 = ||a||^2 + ||b||^2 - 2 a . b`` and clips
+    at zero (float32 matmul can yield small negatives).
+
+    Args:
+        features_a: First feature matrix of shape ``(n_a, n_features)``.
+        features_b: Second feature matrix of shape ``(n_b, n_features)``.
+
+    Returns:
+        Squared-distance matrix of shape ``(n_a, n_b)`` where entry ``(i, j)``
+        is ``||features_a[i] - features_b[j]||^2``.
+    """
+    sq_a = jnp.sum(features_a**2, axis=-1, keepdims=True)  # (n_a, 1)
+    sq_b = jnp.sum(features_b**2, axis=-1)  # (n_b,)
+    dot = features_a @ features_b.T  # (n_a, n_b)
+    return jnp.maximum(sq_a + sq_b - 2.0 * dot, 0.0)
 
 
 def compute_pairwise_distances(

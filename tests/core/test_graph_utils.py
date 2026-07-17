@@ -7,6 +7,7 @@ symmetrization functions extracted from UMAP.
 
 import jax
 import jax.numpy as jnp
+import pytest
 
 
 class TestComputePairwiseDistances:
@@ -154,6 +155,95 @@ class TestComputePairwiseDistances:
 
         assert distances.shape == (1, 1)
         assert jnp.isclose(distances[0, 0], 0.0, atol=1e-3)
+
+
+class TestComputeCrossSquaredDistances:
+    """Tests for compute_cross_squared_distances."""
+
+    def test_matches_bruteforce_expansion(self) -> None:
+        """Cross squared distances match the naive pairwise expansion."""
+        from diffbio.core.graph_utils import compute_cross_squared_distances
+
+        a = jnp.array([[0.0, 0.0], [1.0, 0.0], [0.0, 2.0]])
+        b = jnp.array([[0.0, 0.0], [3.0, 4.0]])
+
+        result = compute_cross_squared_distances(a, b)
+        expected = jnp.sum((a[:, None, :] - b[None, :, :]) ** 2, axis=-1)
+
+        assert result.shape == (3, 2)
+        assert jnp.allclose(result, expected, atol=1e-4)
+
+    def test_non_negative(self) -> None:
+        """Squared distances are clipped to be non-negative."""
+        from diffbio.core.graph_utils import compute_cross_squared_distances
+
+        a = jax.random.normal(jax.random.key(0), (5, 8))
+        b = jax.random.normal(jax.random.key(1), (4, 8))
+
+        result = compute_cross_squared_distances(a, b)
+
+        assert result.shape == (5, 4)
+        assert jnp.all(result >= 0.0)
+
+    def test_differentiable(self) -> None:
+        """Gradients flow through the cross-distance computation."""
+        from diffbio.core.graph_utils import compute_cross_squared_distances
+
+        a = jax.random.normal(jax.random.key(0), (3, 4))
+        b = jax.random.normal(jax.random.key(1), (2, 4))
+
+        grad = jax.grad(lambda x: compute_cross_squared_distances(x, b).sum())(a)
+
+        assert grad.shape == a.shape
+        assert jnp.all(jnp.isfinite(grad))
+
+
+class TestScatterAggregate:
+    """Tests for scatter_aggregate."""
+
+    def test_sum(self) -> None:
+        """Sum aggregation adds messages per target node."""
+        from diffbio.core.graph_utils import scatter_aggregate
+
+        messages = jnp.array([[1.0], [2.0], [3.0]])
+        indices = jnp.array([0, 0, 1])
+
+        result = scatter_aggregate(messages, indices, 2, aggregation="sum")
+
+        assert jnp.allclose(result, jnp.array([[3.0], [3.0]]))
+
+    def test_mean(self) -> None:
+        """Mean aggregation averages messages per target node."""
+        from diffbio.core.graph_utils import scatter_aggregate
+
+        messages = jnp.array([[2.0], [4.0], [3.0]])
+        indices = jnp.array([0, 0, 1])
+
+        result = scatter_aggregate(messages, indices, 2, aggregation="mean")
+
+        assert jnp.allclose(result, jnp.array([[3.0], [3.0]]), atol=1e-4)
+
+    def test_max_zeroes_empty_nodes(self) -> None:
+        """Max aggregation zeroes nodes with no incoming messages."""
+        from diffbio.core.graph_utils import scatter_aggregate
+
+        messages = jnp.array([[1.0], [5.0]])
+        indices = jnp.array([0, 0])
+
+        result = scatter_aggregate(messages, indices, 2, aggregation="max")
+
+        # Node 0 -> max(1, 5) = 5; node 1 has no messages -> 0 (not -inf).
+        assert jnp.allclose(result, jnp.array([[5.0], [0.0]]))
+
+    def test_unknown_aggregation_raises(self) -> None:
+        """An unsupported aggregation mode raises ValueError."""
+        from diffbio.core.graph_utils import scatter_aggregate
+
+        messages = jnp.ones((2, 1))
+        indices = jnp.array([0, 1])
+
+        with pytest.raises(ValueError, match="Unknown aggregation"):
+            scatter_aggregate(messages, indices, 2, aggregation="bogus")
 
 
 class TestComputeKnnGraph:

@@ -30,7 +30,8 @@ from artifex.generative_models.core.base import MLP
 from flax import nnx
 from jaxtyping import Array, Float, Int
 
-from diffbio.constants import DEFAULT_TEMPERATURE, EPSILON
+from diffbio.constants import DEFAULT_TEMPERATURE
+from diffbio.core.graph_utils import scatter_aggregate
 from diffbio.utils.nn_utils import get_rng_key
 
 # =============================================================================
@@ -243,24 +244,7 @@ class GraphMessagePassing(nnx.Module):
             messages = messages[0]
 
         # Aggregate messages at destination nodes
-        if self.aggregation == "sum":
-            aggregated = jax.ops.segment_sum(messages, dest_idx, num_segments=num_nodes)
-        elif self.aggregation == "mean":
-            sum_messages = jax.ops.segment_sum(messages, dest_idx, num_segments=num_nodes)
-            counts = jax.ops.segment_sum(jnp.ones(num_edges), dest_idx, num_segments=num_nodes)
-            aggregated = sum_messages / (counts[:, None] + EPSILON)
-        elif self.aggregation == "max":
-            # segment_max with default of -inf for empty segments
-            aggregated = jax.ops.segment_max(
-                messages,
-                dest_idx,
-                num_segments=num_nodes,
-                indices_are_sorted=False,
-            )
-            # Replace -inf with 0 for nodes with no incoming edges
-            aggregated = jnp.where(jnp.isinf(aggregated), jnp.zeros_like(aggregated), aggregated)
-        else:
-            raise ValueError(f"Unknown aggregation: {self.aggregation}")
+        aggregated = scatter_aggregate(messages, dest_idx, num_nodes, self.aggregation)
 
         # Update node features: MLP(concat(node_features, aggregated))
         update_input = jnp.concatenate([node_features, aggregated], axis=-1)

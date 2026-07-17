@@ -1,13 +1,13 @@
 """Uncertainty quantification wrappers for DiffBio operators.
 
-Provides ensemble and conformal prediction wrappers that add
+Provides ensemble and Monte Carlo sampling wrappers that add
 ``uncertainty``, ``confidence_interval_lower``, and
 ``confidence_interval_upper`` keys to any operator's output dict.
 
-Uses ``nnx.vmap`` with ``nnx.StateAxes`` to vectorize multiple forward
-passes across different RNG seeds (ensemble) or dropout samples
-(conformal), computing mean predictions and uncertainty estimates
-without Python for-loops.
+Both estimate empirical quantile bands from repeated stochastic forward
+passes across different RNG seeds. Neither is conformal prediction, and
+neither provides a finite-sample coverage guarantee. Uses ``jax.lax.scan``
+to run the passes without Python for-loops.
 """
 
 from __future__ import annotations
@@ -43,12 +43,12 @@ class EnsembleUQConfig(OperatorConfig):
 
 
 @dataclass(frozen=True)
-class ConformalUQConfig(OperatorConfig):
-    """Configuration for conformal prediction-based UQ.
+class MCSamplingUQConfig(OperatorConfig):
+    """Configuration for Monte Carlo sampling-based UQ.
 
     Attributes:
-        alpha: Significance level (1 - confidence). Smaller alpha
-            gives wider intervals.
+        alpha: Tail probability for the quantile band (1 - confidence).
+            Smaller alpha gives wider intervals.
         num_samples: Number of Monte Carlo samples for interval estimation.
     """
 
@@ -203,12 +203,13 @@ class EnsembleUQOperator(OperatorModule):
         return result, state, metadata
 
 
-class ConformalUQOperator(OperatorModule):
-    """Conformal prediction-based uncertainty quantification wrapper.
+class MCSamplingUQOperator(OperatorModule):
+    """Monte Carlo sampling-based uncertainty quantification wrapper.
 
-    Uses Monte Carlo sampling to estimate empirical prediction intervals.
-    Runs the base operator multiple times via ``jax.lax.scan`` and computes
-    quantile-based intervals at the specified confidence level (1 - alpha).
+    Runs the base operator ``num_samples`` times via ``jax.lax.scan`` (relying
+    on the operator's own RNG-driven stochasticity) and computes quantile-based
+    empirical intervals at the specified confidence level (1 - alpha). This is
+    not conformal prediction and provides no finite-sample coverage guarantee.
 
     Output adds:
         - ``uncertainty``: Standard deviation across samples.
@@ -216,7 +217,7 @@ class ConformalUQOperator(OperatorModule):
         - ``confidence_interval_upper``: Upper quantile bound.
 
     Args:
-        config: ConformalUQConfig with sampling parameters.
+        config: MCSamplingUQConfig with sampling parameters.
         base_operator: The operator to wrap.
         rngs: Random number generators.
         name: Optional operator name.
@@ -224,15 +225,15 @@ class ConformalUQOperator(OperatorModule):
 
     def __init__(
         self,
-        config: ConformalUQConfig,
+        config: MCSamplingUQConfig,
         *,
         base_operator: OperatorModule,
         rngs: nnx.Rngs | None = None,
         name: str | None = None,
     ) -> None:
-        """Initialize conformal UQ operator."""
+        """Initialize the Monte Carlo sampling UQ operator."""
         super().__init__(config, rngs=rngs, name=name)
-        self.config: ConformalUQConfig = config
+        self.config: MCSamplingUQConfig = config
         self.base_operator = base_operator
 
     def apply(
@@ -243,7 +244,7 @@ class ConformalUQOperator(OperatorModule):
         random_params: Any = None,  # noqa: ARG002
         stats: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
-        """Run conformal prediction sampling.
+        """Run Monte Carlo sampling to estimate empirical intervals.
 
         Args:
             data: Input data dict for the base operator.

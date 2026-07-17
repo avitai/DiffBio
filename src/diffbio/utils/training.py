@@ -12,6 +12,10 @@ from typing import Any, Callable
 import jax
 import jax.numpy as jnp
 import optax
+from artifex.generative_models.core.configuration.optimizer_config import (
+    OptimizerConfig,
+)
+from artifex.generative_models.training.optimizers.factory import create_optimizer
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float
@@ -60,7 +64,12 @@ class TrainingState:
 def create_optax_optimizer(
     config: TrainingConfig,
 ) -> optax.GradientTransformation:
-    """Create optax optimizer with optional gradient clipping.
+    """Create an Adam optimizer with optional gradient clipping.
+
+    Delegates construction to the shared artifex optimizer factory so DiffBio
+    reuses one optimizer-building path across the ecosystem. Behaviourally
+    equivalent to
+    ``optax.chain(clip_by_global_norm(grad_clip_norm), adam(learning_rate))``.
 
     Args:
         config: Training configuration
@@ -68,14 +77,13 @@ def create_optax_optimizer(
     Returns:
         Optax optimizer
     """
-    transforms = []
-
-    if config.grad_clip_norm is not None:
-        transforms.append(optax.clip_by_global_norm(config.grad_clip_norm))
-
-    transforms.append(optax.adam(config.learning_rate))
-
-    return optax.chain(*transforms)
+    optimizer_config = OptimizerConfig(
+        name="diffbio_adam",
+        optimizer_type="adam",
+        learning_rate=config.learning_rate,
+        gradient_clip_norm=config.grad_clip_norm,
+    )
+    return create_optimizer(optimizer_config)
 
 
 def cross_entropy_loss(

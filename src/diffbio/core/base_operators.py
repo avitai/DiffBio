@@ -26,7 +26,8 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
-from diffbio.constants import DEFAULT_TEMPERATURE, EPSILON
+from diffbio.constants import DEFAULT_TEMPERATURE
+from diffbio.core.graph_utils import scatter_aggregate as scatter_aggregate_fn
 from diffbio.core.soft_ops import sorting as soft_sorting
 from diffbio.utils.nn_utils import ensure_rngs, get_rng_key, init_learnable_param
 
@@ -403,20 +404,7 @@ class GraphOperator(OperatorModule):
         Returns:
             Aggregated features for each node.
         """
-        if aggregation == "sum":
-            return jax.ops.segment_sum(messages, indices, num_segments=num_nodes)
-        elif aggregation == "mean":
-            sum_messages = jax.ops.segment_sum(messages, indices, num_segments=num_nodes)
-            counts = jax.ops.segment_sum(
-                jnp.ones(messages.shape[0]), indices, num_segments=num_nodes
-            )
-            return sum_messages / (counts[:, None] + EPSILON)
-        elif aggregation == "max":
-            result = jax.ops.segment_max(messages, indices, num_segments=num_nodes)
-            # Replace -inf with 0
-            return jnp.where(jnp.isinf(result), jnp.zeros_like(result), result)
-        else:
-            raise ValueError(f"Unknown aggregation: {aggregation}")
+        return scatter_aggregate_fn(messages, indices, num_nodes, aggregation)
 
     def global_pool(
         self,

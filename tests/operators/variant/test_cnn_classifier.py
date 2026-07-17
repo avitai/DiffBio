@@ -183,8 +183,8 @@ class TestGradientFlow:
 
         loss, grads = loss_fn(op)
 
-        # Check conv layers have gradients
-        assert hasattr(grads, "conv_layers")
+        # Check the CNN feature extractor has gradients
+        assert hasattr(grads, "cnn")
 
 
 class TestJITCompatibility:

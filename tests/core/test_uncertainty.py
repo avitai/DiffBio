@@ -8,8 +8,8 @@ import pytest
 from flax import nnx
 
 from diffbio.core.uncertainty import (
-    ConformalUQOperator,
-    ConformalUQConfig,
+    MCSamplingUQOperator,
+    MCSamplingUQConfig,
     EnsembleUQOperator,
     EnsembleUQConfig,
 )
@@ -95,14 +95,14 @@ class TestEnsembleUQOperator:
             config.n_members = 5  # type: ignore[misc]
 
 
-class TestConformalUQOperator:
-    """Tests for conformal prediction-based uncertainty quantification."""
+class TestMCSamplingUQOperator:
+    """Tests for Monte Carlo sampling-based uncertainty quantification."""
 
     def test_output_has_uncertainty_keys(self, rngs: nnx.Rngs) -> None:
         """Output dict includes uncertainty and confidence intervals."""
         base_op = _make_simple_operator(rngs)
-        config = ConformalUQConfig(alpha=0.1, num_samples=5)
-        uq_op = ConformalUQOperator(config, base_operator=base_op, rngs=rngs)
+        config = MCSamplingUQConfig(alpha=0.1, num_samples=5)
+        uq_op = MCSamplingUQOperator(config, base_operator=base_op, rngs=rngs)
 
         result, _, _ = uq_op.apply(_make_embeddings(), {}, None)
 
@@ -113,8 +113,8 @@ class TestConformalUQOperator:
     def test_confidence_interval_ordering(self, rngs: nnx.Rngs) -> None:
         """Lower bound <= mean <= upper bound."""
         base_op = _make_simple_operator(rngs)
-        config = ConformalUQConfig(alpha=0.1, num_samples=5)
-        uq_op = ConformalUQOperator(config, base_operator=base_op, rngs=rngs)
+        config = MCSamplingUQConfig(alpha=0.1, num_samples=5)
+        uq_op = MCSamplingUQOperator(config, base_operator=base_op, rngs=rngs)
 
         result, _, _ = uq_op.apply(_make_embeddings(), {}, None)
 
@@ -127,12 +127,12 @@ class TestConformalUQOperator:
         base_op = _make_simple_operator(rngs)
         data = _make_embeddings()
 
-        config_wide = ConformalUQConfig(alpha=0.01, num_samples=10)
-        uq_wide = ConformalUQOperator(config_wide, base_operator=base_op, rngs=rngs)
+        config_wide = MCSamplingUQConfig(alpha=0.01, num_samples=10)
+        uq_wide = MCSamplingUQOperator(config_wide, base_operator=base_op, rngs=rngs)
         r_wide, _, _ = uq_wide.apply(data, {}, None)
 
-        config_narrow = ConformalUQConfig(alpha=0.5, num_samples=10)
-        uq_narrow = ConformalUQOperator(config_narrow, base_operator=base_op, rngs=rngs)
+        config_narrow = MCSamplingUQConfig(alpha=0.5, num_samples=10)
+        uq_narrow = MCSamplingUQOperator(config_narrow, base_operator=base_op, rngs=rngs)
         r_narrow, _, _ = uq_narrow.apply(data, {}, None)
 
         width_wide = jnp.mean(
@@ -164,11 +164,11 @@ class TestJITCompatibility:
         assert uncertainty is not None
         assert jnp.all(jnp.isfinite(uncertainty))
 
-    def test_conformal_jit_apply(self, rngs: nnx.Rngs) -> None:
-        """Test ConformalUQOperator works under JIT."""
+    def test_mc_sampling_jit_apply(self, rngs: nnx.Rngs) -> None:
+        """Test MCSamplingUQOperator works under JIT."""
         base_op = _make_simple_operator(rngs)
-        config = ConformalUQConfig(alpha=0.1, num_samples=3)
-        uq_op = ConformalUQOperator(config, base_operator=base_op, rngs=rngs)
+        config = MCSamplingUQConfig(alpha=0.1, num_samples=3)
+        uq_op = MCSamplingUQOperator(config, base_operator=base_op, rngs=rngs)
 
         data = _make_embeddings()
 
@@ -201,11 +201,11 @@ class TestGradientFlow:
         assert grads.shape == data["embeddings"].shape
         assert jnp.all(jnp.isfinite(grads))
 
-    def test_conformal_gradient_through_input(self, rngs: nnx.Rngs) -> None:
-        """Test gradients flow through ConformalUQOperator."""
+    def test_mc_sampling_gradient_through_input(self, rngs: nnx.Rngs) -> None:
+        """Test gradients flow through MCSamplingUQOperator."""
         base_op = _make_simple_operator(rngs)
-        config = ConformalUQConfig(alpha=0.1, num_samples=3)
-        uq_op = ConformalUQOperator(config, base_operator=base_op, rngs=rngs)
+        config = MCSamplingUQConfig(alpha=0.1, num_samples=3)
+        uq_op = MCSamplingUQOperator(config, base_operator=base_op, rngs=rngs)
 
         def loss_fn(embeddings: jnp.ndarray) -> jnp.ndarray:
             result, _, _ = uq_op.apply({"embeddings": embeddings}, {}, None)

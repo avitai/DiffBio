@@ -38,6 +38,7 @@ from jaxtyping import Array, Float, Int, PyTree
 
 from diffbio.constants import DISTANCE_MASK_SENTINEL, EPSILON
 from diffbio.core.base_operators import GraphOperator
+from diffbio.core.graph_utils import compute_cross_squared_distances
 from diffbio.core.gnn_components import GATv2Layer
 from diffbio.core.graph_utils import compute_knn_graph, compute_pairwise_distances
 from diffbio.core.optimal_transport import SinkhornLayer
@@ -362,12 +363,7 @@ class DifferentiableSpatialDomain(GraphOperator):
         """
         prototypes = self.domain_prototypes[...]  # (n_domains, hidden_dim)
 
-        # Squared distances: ||embedding - prototype||^2
-        # Using expansion: ||e||^2 + ||p||^2 - 2*e.p
-        emb_sq = jnp.sum(embeddings**2, axis=-1, keepdims=True)  # (n, 1)
-        proto_sq = jnp.sum(prototypes**2, axis=-1)  # (d,)
-        dot = jnp.einsum("nf,df->nd", embeddings, prototypes)  # (n, d)
-        distances_sq = emb_sq + proto_sq - 2.0 * dot
+        distances_sq = compute_cross_squared_distances(embeddings, prototypes)
 
         # Soft assignment via softmax over negative distances
         return jax.nn.softmax(-distances_sq, axis=-1)
@@ -531,13 +527,9 @@ class DifferentiablePASTEAlignment(GraphOperator):
             Expression cost matrix of shape (n1, n2).
         """
         n_genes = counts1.shape[1]
-        # ||c1_i - c2_j||^2 = ||c1_i||^2 + ||c2_j||^2 - 2 * c1_i . c2_j
-        sq1 = jnp.sum(counts1**2, axis=-1, keepdims=True)  # (n1, 1)
-        sq2 = jnp.sum(counts2**2, axis=-1)  # (n2,)
-        dot = jnp.dot(counts1, counts2.T)  # (n1, n2)
-        cost = sq1 + sq2 - 2.0 * dot
+        cost = compute_cross_squared_distances(counts1, counts2)
         # Normalize by number of genes for stability
-        return jnp.maximum(cost, 0.0) / (n_genes + EPSILON)
+        return cost / (n_genes + EPSILON)
 
     def _compute_spatial_distances(
         self,

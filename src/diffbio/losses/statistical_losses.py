@@ -19,6 +19,36 @@ from diffbio.constants import EPSILON
 from diffbio.core import soft_ops
 
 
+def _nb_log_prob(
+    counts: Float[Array, "..."],
+    mu: Float[Array, "..."],
+    theta: Float[Array, "..."],
+    eps: float = EPSILON,
+) -> Float[Array, "..."]:
+    """Per-element negative binomial log-probability ``log NB(x | mu, theta)``.
+
+    Shared core of :func:`zinb_negative_log_likelihood` and
+    :class:`NegativeBinomialLoss`.
+
+    Args:
+        counts: Observed counts ``x``.
+        mu: Mean parameter (broadcastable to ``counts``).
+        theta: Dispersion parameter (broadcastable to ``counts``).
+        eps: Numerical stability constant.
+
+    Returns:
+        Elementwise log-probability, same shape as ``counts``.
+    """
+    log_theta_mu = jnp.log(theta + mu + eps)
+    return (
+        jax.scipy.special.gammaln(counts + theta)
+        - jax.scipy.special.gammaln(theta)
+        - jax.scipy.special.gammaln(counts + 1.0)
+        + theta * (jnp.log(theta + eps) - log_theta_mu)
+        + counts * (jnp.log(mu + eps) - log_theta_mu)
+    )
+
+
 def zinb_negative_log_likelihood(
     counts: Float[Array, "... n_genes"],
     log_rate: Float[Array, "... n_genes"],
@@ -63,15 +93,9 @@ def zinb_negative_log_likelihood(
     # Case x == 0: log[sigmoid(pi) + (1 - sigmoid(pi)) * NB(0)]
     case_zero = jax.nn.softplus(pi_theta_log) - softplus_pi
 
-    # Case x > 0: log[(1 - sigmoid(pi)) * NB(x)]
-    case_nonzero = (
-        -softplus_pi
-        + pi_theta_log
-        + counts * (jnp.log(mu + eps) - log_theta_mu)
-        + jax.scipy.special.gammaln(counts + theta)
-        - jax.scipy.special.gammaln(theta)
-        - jax.scipy.special.gammaln(counts + 1.0)
-    )
+    # Case x > 0: log[(1 - sigmoid(pi)) * NB(x)]. The bracketed term equals
+    # ``-pi_logit + log NB(x)`` once ``pi_theta_log`` is expanded.
+    case_nonzero = -softplus_pi - pi_logit + _nb_log_prob(counts, mu, theta, eps)
 
     is_zero = soft_ops.less(counts, jnp.array(eps), softness=0.01)
     log_prob = is_zero * case_zero + (1.0 - is_zero) * case_nonzero
@@ -135,20 +159,7 @@ class NegativeBinomialLoss(nnx.Module):
         mu = jnp.maximum(mu, self.eps)
         theta = jnp.maximum(theta, self.eps)
 
-        # Log-likelihood of NB distribution
-        # log P(x | mu, theta) = log Gamma(x + theta) - log Gamma(theta) - log Gamma(x + 1)
-        #                       + theta * log(theta / (theta + mu))
-        #                       + x * log(mu / (theta + mu))
-
-        log_theta_mu = jnp.log(theta[None, :] + mu + self.eps)
-
-        ll = (
-            jax.scipy.special.gammaln(counts + theta[None, :])
-            - jax.scipy.special.gammaln(theta[None, :])
-            - jax.scipy.special.gammaln(counts + 1)
-            + theta[None, :] * (jnp.log(theta[None, :] + self.eps) - log_theta_mu)
-            + counts * (jnp.log(mu + self.eps) - log_theta_mu)
-        )
+        ll = _nb_log_prob(counts, mu, theta[None, :], self.eps)
 
         # Return mean negative log-likelihood
         return -jnp.mean(ll)

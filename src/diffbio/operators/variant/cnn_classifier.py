@@ -15,6 +15,7 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
+from artifex.generative_models.core.base import CNN
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
@@ -64,8 +65,7 @@ class CNNVariantClassifier(OperatorModule):
     pileup images to classify genomic positions as reference, SNV, or indel.
 
     Architecture:
-    - Multiple Conv2D layers with batch normalization and ReLU
-    - Max pooling for spatial reduction
+    - Strided Conv2D feature extractor (artifex ``CNN``) with ReLU
     - Global average pooling before FC layers
     - Fully connected layers with dropout
     - Softmax output for class probabilities
@@ -105,21 +105,24 @@ class CNNVariantClassifier(OperatorModule):
         self.num_classes = config.num_classes
         self.dropout_rate = config.dropout_rate
 
-        # Build convolutional layers
-        conv_layers = []
-        in_channels = config.num_channels
-        for out_channels in config.hidden_channels:
-            conv_layers.append(
-                nnx.Conv(
-                    in_features=in_channels,
-                    out_features=out_channels,
-                    kernel_size=(3, 3),
-                    padding="SAME",
-                    rngs=rngs,
-                )
+        # Convolutional feature extractor (shared artifex CNN). Strided
+        # convolutions provide the spatial downsampling the previous
+        # max-pooling did; a global average pool follows in ``_features``.
+        self.cnn = (
+            CNN(
+                list(config.hidden_channels),
+                in_features=config.num_channels,
+                kernel_size=(3, 3),
+                strides=(2, 2),
+                padding="SAME",
+                activation="relu",
+                use_batch_norm=False,
+                dropout_rate=0.0,
+                rngs=rngs,
             )
-            in_channels = out_channels
-        self.conv_layers = nnx.List(conv_layers)
+            if config.hidden_channels
+            else None
+        )
 
         # Fully connected layers
         fc_layers = []
@@ -139,6 +142,34 @@ class CNNVariantClassifier(OperatorModule):
         # Output layer
         self.output_layer = nnx.Linear(fc_in_dim, config.num_classes, rngs=rngs)
 
+    def _features(
+        self,
+        pileup_image: Float[Array, "batch height width channels"],
+    ) -> Float[Array, "batch num_classes"]:
+        """Run the CNN feature extractor and classification head.
+
+        Args:
+            pileup_image: Batch of pileup images (B, H, W, C).
+
+        Returns:
+            Logits for each variant class per image (B, num_classes).
+        """
+        x = pileup_image
+        if self.cnn is not None:
+            x = self.cnn(x)
+
+        # Global average pooling -> (batch, channels)
+        x = jnp.mean(x, axis=(1, 2))
+
+        # Fully connected head
+        for fc in self.fc_layers:
+            x = fc(x)
+            x = nnx.relu(x)
+            if self.dropout is not None:
+                x = self.dropout(x)
+
+        return self.output_layer(x)
+
     def _classify_single(
         self,
         pileup_image: Float[Array, "height width channels"],
@@ -151,30 +182,7 @@ class CNNVariantClassifier(OperatorModule):
         Returns:
             Logits for each variant class.
         """
-        # Add batch dimension
-        x = pileup_image[None, ...]  # (1, H, W, C)
-
-        # Convolutional layers with ReLU and pooling
-        for conv in self.conv_layers:
-            x = conv(x)
-            x = nnx.relu(x)
-            # Max pooling (2x2 with stride 2)
-            x = nnx.max_pool(x, window_shape=(2, 2), strides=(2, 2), padding="VALID")
-
-        # Global average pooling
-        x = jnp.mean(x, axis=(1, 2))  # (1, channels)
-
-        # Fully connected layers
-        for fc in self.fc_layers:
-            x = fc(x)
-            x = nnx.relu(x)
-            if self.dropout is not None:
-                x = self.dropout(x)
-
-        # Output
-        logits = self.output_layer(x)
-
-        return logits[0]  # Remove batch dimension
+        return self._features(pileup_image[None, ...])[0]
 
     def classify(
         self,
@@ -188,29 +196,7 @@ class CNNVariantClassifier(OperatorModule):
         Returns:
             Logits for each variant class per image.
         """
-        x = pileup_image
-
-        # Convolutional layers with ReLU and pooling
-        for conv in self.conv_layers:
-            x = conv(x)
-            x = nnx.relu(x)
-            # Max pooling (2x2 with stride 2)
-            x = nnx.max_pool(x, window_shape=(2, 2), strides=(2, 2), padding="VALID")
-
-        # Global average pooling
-        x = jnp.mean(x, axis=(1, 2))  # (batch, channels)
-
-        # Fully connected layers
-        for fc in self.fc_layers:
-            x = fc(x)
-            x = nnx.relu(x)
-            if self.dropout is not None:
-                x = self.dropout(x)
-
-        # Output
-        logits = self.output_layer(x)
-
-        return logits
+        return self._features(pileup_image)
 
     def apply(
         self,

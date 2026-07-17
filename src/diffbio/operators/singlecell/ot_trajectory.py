@@ -32,6 +32,7 @@ from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.constants import EPSILON
+from diffbio.core.graph_utils import compute_cross_squared_distances
 from diffbio.core.optimal_transport import SinkhornLayer
 from diffbio.utils.nn_utils import ensure_rngs
 
@@ -152,11 +153,7 @@ class DifferentiableOTTrajectory(OperatorModule):
         Returns:
             Cost matrix of shape ``(n1, n2)``.
         """
-        sq1 = jnp.sum(counts_t1**2, axis=-1, keepdims=True)  # (n1, 1)
-        sq2 = jnp.sum(counts_t2**2, axis=-1)  # (n2,)
-        dot = jnp.dot(counts_t1, counts_t2.T)  # (n1, n2)
-        cost = sq1 + sq2 - 2.0 * dot
-        return jnp.maximum(cost, 0.0)
+        return compute_cross_squared_distances(counts_t1, counts_t2)
 
     def _estimate_growth_rates(
         self,
