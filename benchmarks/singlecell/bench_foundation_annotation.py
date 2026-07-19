@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from typing import Any, Protocol
+from typing import Any
 
 import jax
 import jax.numpy as jnp
@@ -29,6 +29,7 @@ from benchmarks.singlecell._foundation import (
     build_singlecell_foundation_task_report,
     compute_annotation_metrics,
     run_singlecell_foundation_benchmark_suite,
+    SingleCellSource,
     SINGLECELL_FOUNDATION_DATASET_CONTRACT_KEYS,
     SINGLECELL_FOUNDATION_SUITE_SCENARIOS,
     stratified_cell_annotation_split,
@@ -56,14 +57,6 @@ _LEARNING_RATE = 1e-2
 _SPLIT_SEED = 42
 
 
-class _SingleCellSource(Protocol):
-    """Protocol for benchmark data sources."""
-
-    def load(self) -> dict[str, Any]:
-        """Load the dataset payload for the benchmark."""
-        ...
-
-
 class SingleCellFoundationAnnotationBenchmark(DiffBioBenchmark):
     """Evaluate single-cell embeddings on cell annotation transfer."""
 
@@ -73,7 +66,7 @@ class SingleCellFoundationAnnotationBenchmark(DiffBioBenchmark):
         *,
         quick: bool = False,
         data_dir: str = "/media/mahdi/ssd23/Data/scib",
-        source_factory: Callable[[int | None], _SingleCellSource] | None = None,
+        source_factory: Callable[[int | None], SingleCellSource] | None = None,
         embedding_adapter: SingleCellPrecomputedAdapter | None = None,
     ) -> None:
         super().__init__(config, quick=quick, data_dir=data_dir)
@@ -95,7 +88,7 @@ class SingleCellFoundationAnnotationBenchmark(DiffBioBenchmark):
         n_train_steps = _TRAIN_STEPS_QUICK if self.quick else _TRAIN_STEPS_FULL
 
         logger.info("Loading immune_human single-cell dataset...")
-        source: _SingleCellSource = self._source_factory(subsample)
+        source: SingleCellSource = self._source_factory(subsample)
         data = source.load()
 
         labels = np.asarray(data["cell_type_labels"], dtype=np.int32)
@@ -207,7 +200,7 @@ def run_foundation_annotation_suite(
     *,
     quick: bool = False,
     data_dir: str = "/media/mahdi/ssd23/Data/scib",
-    source_factory: Callable[[int | None], _SingleCellSource] | None = None,
+    source_factory: Callable[[int | None], SingleCellSource] | None = None,
     adapters: dict[str, SingleCellPrecomputedAdapter] | None = None,
 ) -> dict[str, BenchmarkResult]:
     """Run the native and imported annotation benchmarks under one harness."""

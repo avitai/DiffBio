@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Protocol
 
 import numpy as np
 from calibrax.core.result import BenchmarkResult
@@ -20,6 +20,15 @@ from benchmarks._baselines.singlecell_foundation import (
     SINGLECELL_FOUNDATION_BASELINE_FAMILIES,
 )
 from diffbio.operators.foundation_models import SingleCellPrecomputedAdapter
+
+
+class SingleCellSource(Protocol):
+    """A single-cell benchmark data source that loads a payload dict."""
+
+    def load(self) -> dict[str, Any]:
+        """Load the dataset payload for the benchmark."""
+        ...
+
 
 SINGLECELL_FOUNDATION_SUITE_SCENARIOS = {
     "cell_annotation": "singlecell/foundation_annotation",

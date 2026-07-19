@@ -27,6 +27,11 @@ logger = logging.getLogger(__name__)
 
 # Registry: (domain, module_path, benchmark_class_name)
 _TIER_1 = [
+    (
+        "singlecell",
+        "benchmarks.singlecell.bench_frozen_annotation",
+        "FrozenAnnotationBaselineBenchmark",
+    ),
     ("singlecell", "benchmarks.singlecell.bench_batch_correction", "BatchCorrectionBenchmark"),
     ("singlecell", "benchmarks.singlecell.bench_clustering", "ClusteringBenchmark"),
     ("singlecell", "benchmarks.singlecell.bench_vae_integration", "VAEIntegrationBenchmark"),
