@@ -5,9 +5,12 @@ for differentiable bioinformatics pipelines.
 """
 
 import jax
+import pytest
 import jax.numpy as jnp
+import numpy as np
 
 from diffbio.losses.singlecell_losses import (
+    gene_weight_sparsity_loss,
     BatchMixingLoss,
     ClusteringCompactnessLoss,
     ShannonDiversityLoss,
@@ -435,4 +438,28 @@ class TestSimpsonDiversityLoss:
         loss_fn = SimpsonDiversityLoss()
         assignments = jnp.ones((15, 6)) / 6
         loss = loss_fn(assignments)
+        assert loss.shape == ()
+
+
+class TestGeneWeightSparsityLoss:
+    """Tests for the L1 gene-weight sparsity penalty."""
+
+    def test_zero_weights_give_zero_loss(self) -> None:
+        """The uniform default (all zeros) has no penalty."""
+        assert float(gene_weight_sparsity_loss(jnp.zeros(10))) == 0.0
+
+    def test_matches_mean_absolute_weight(self) -> None:
+        """The penalty is the mean absolute weight."""
+        weights = jnp.array([1.0, -2.0, 3.0])
+        assert float(gene_weight_sparsity_loss(weights)) == pytest.approx(2.0)
+
+    def test_gradient_pulls_weights_toward_zero(self) -> None:
+        """The subgradient is sign(w) / n, pushing each weight toward zero."""
+        weights = jnp.array([2.0, -3.0, 0.5])
+        grad = jax.grad(gene_weight_sparsity_loss)(weights)
+        assert bool(jnp.all(jnp.isfinite(grad)))
+        np.testing.assert_allclose(np.asarray(grad), np.sign(np.asarray(weights)) / 3.0, atol=1e-6)
+
+    def test_returns_scalar(self) -> None:
+        loss = gene_weight_sparsity_loss(jnp.array([0.1, 0.2, 0.3]))
         assert loss.shape == ()

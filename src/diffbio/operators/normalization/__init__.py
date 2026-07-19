@@ -9,13 +9,33 @@ This module provides operators for:
 All operators maintain gradient flow for end-to-end training.
 """
 
+from diffbio.operators.normalization.differentiable_pca import (
+    DifferentiablePCA,
+    DifferentiablePCAConfig,
+)
 from diffbio.operators.normalization.embedding import (
     SequenceEmbedding,
     SequenceEmbeddingConfig,
 )
+from diffbio.operators.normalization.learnable_normalization import (
+    LearnableNormalization,
+    LearnableNormalizationConfig,
+)
+from diffbio.operators.normalization.learnable_projection import (
+    LearnableProjection,
+    LearnableProjectionConfig,
+)
 from diffbio.operators.normalization.phate import (
     DifferentiablePHATE,
     PHATEConfig,
+)
+from diffbio.operators.normalization.scaling import (
+    DifferentiableScaler,
+    ScalerConfig,
+)
+from diffbio.operators.normalization.soft_pca import (
+    SoftComponentSelection,
+    SoftComponentSelectionConfig,
 )
 from diffbio.operators.normalization.umap import (
     DifferentiableUMAP,
@@ -30,6 +50,21 @@ __all__ = [
     # VAE Normalization
     "VAENormalizerConfig",
     "VAENormalizer",
+    # PCA Dimensionality Reduction
+    "DifferentiablePCAConfig",
+    "DifferentiablePCA",
+    # Learnable count normalization
+    "LearnableNormalizationConfig",
+    "LearnableNormalization",
+    # Learnable projection (task-aware dimensionality reduction)
+    "LearnableProjectionConfig",
+    "LearnableProjection",
+    # Soft component selection (learnable PCA dimensionality)
+    "SoftComponentSelectionConfig",
+    "SoftComponentSelection",
+    # Per-gene standardization
+    "ScalerConfig",
+    "DifferentiableScaler",
     # Sequence Embedding
     "SequenceEmbeddingConfig",
     "SequenceEmbedding",

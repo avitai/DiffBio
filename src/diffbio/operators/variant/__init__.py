@@ -30,6 +30,7 @@ from diffbio.operators.variant.deepvariant_pileup import (
     DeepVariantPileupConfig,
     DeepVariantStylePileup,
 )
+from diffbio.operators.variant.learnable_pileup import LearnablePileup
 from diffbio.operators.variant.pileup import DifferentiablePileup, PileupConfig
 from diffbio.operators.variant.quality_recalibration import (
     SoftVariantQualityFilter,
@@ -43,6 +44,8 @@ __all__ = [
     # DeepVariant-style Pileup
     "DeepVariantStylePileup",
     "DeepVariantPileupConfig",
+    # Learnable Pileup (jointly-trainable encoding)
+    "LearnablePileup",
     # MLP Classifier
     "VariantClassifier",
     "VariantClassifierConfig",

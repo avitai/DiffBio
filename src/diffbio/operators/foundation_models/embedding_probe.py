@@ -37,7 +37,10 @@ class LinearEmbeddingProbe(OperatorModule):
         if rngs is None:
             rngs = nnx.Rngs(0)
 
-        self.hidden = None
+        # Assign ``hidden`` on exactly one code path: a leading ``self.hidden = None``
+        # would register the attribute as a static field, so the later Linear
+        # assignment then conflicts (data vs static) when nnx re-merges the module
+        # inside a training transform.
         if config.hidden_dim is not None:
             self.hidden = nnx.Linear(
                 in_features=config.input_dim,
@@ -46,6 +49,7 @@ class LinearEmbeddingProbe(OperatorModule):
             )
             classifier_in_dim = config.hidden_dim
         else:
+            self.hidden = None
             classifier_in_dim = config.input_dim
 
         self.classifier = nnx.Linear(

@@ -116,6 +116,11 @@ from diffbio.operators.singlecell.sindy_grn import (
     SINDyGRNConfig,
     SINDyGRNOperator,
 )
+from diffbio.operators.singlecell.soft_hvg import (
+    HVGFlavor,
+    SoftHVG,
+    SoftHVGConfig,
+)
 
 __all__ = [
     # Archetypal Analysis
@@ -190,4 +195,8 @@ __all__ = [
     # SINDy GRN
     "SINDyGRNConfig",
     "SINDyGRNOperator",
+    # Soft highly-variable-gene selection
+    "HVGFlavor",
+    "SoftHVG",
+    "SoftHVGConfig",
 ]

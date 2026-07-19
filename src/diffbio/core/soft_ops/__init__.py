@@ -78,6 +78,7 @@ from diffbio.core.soft_ops.sorting import (
     rank,
     sort,
     top_k,
+    top_k_mask,
 )
 
 # --- Quantile ---
@@ -120,6 +121,7 @@ from diffbio.core.soft_ops.straight_through import (
     sign_st,
     sort_st,
     st,
+    top_k_mask_st,
     top_k_st,
 )
 
@@ -175,6 +177,7 @@ __all__ = [
     "rank",
     "sort",
     "top_k",
+    "top_k_mask",
     # Quantile
     "argmedian",
     "argpercentile",
@@ -213,4 +216,5 @@ __all__ = [
     "sign_st",
     "sort_st",
     "top_k_st",
+    "top_k_mask_st",
 ]

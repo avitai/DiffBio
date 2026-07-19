@@ -22,6 +22,7 @@ import jax
 import jax.numpy as jnp
 from jax import Array
 
+from diffbio.core.soft_ops._projections_permutahedron import proj_permutahedron
 from diffbio.core.soft_ops._projections_simplex import SimplexMode, proj_simplex
 from diffbio.core.soft_ops._sorting_network import (
     argsort_via_sorting_network,
@@ -924,3 +925,69 @@ def top_k(
     soft_index_k = jnp.take(soft_index, jnp.arange(k), axis=rank_axis)
     values = take_along_axis(x, soft_index_k, axis=axis)
     return values, soft_index_k
+
+
+def top_k_mask(
+    x: Array,
+    k: int,
+    axis: int = -1,
+    softness: float | Array = 0.1,
+    mode: Literal["hard", "smooth"] = "smooth",
+) -> Array:
+    """Soft top-k selection mask, bounded in ``[0, 1]`` and summing to ``k``.
+
+    Returns a per-element membership mask that is ``1`` for the ``k`` largest
+    entries and ``0`` otherwise. Unlike summing the soft indices of :func:`top_k`
+    -- whose relaxed permutation is row- but not column-stochastic, so per-element
+    memberships can exceed one -- the smooth mask here is the Euclidean projection
+    of ``x`` onto the capped simplex ``{m : 0 <= m <= 1, sum(m) = k}``, i.e. the
+    permutahedron of the top-k pattern ``[1]*k + [0]*(n - k)``. It therefore sums
+    to **exactly ``k``**, is bounded in ``[0, 1]``, and is sparse (genuine ``0``s
+    and ``1``s), sharpening to the exact indicator as ``softness -> 0``.
+
+    This is the convex-analytic sparse top-k operator (Sander et al., "Fast,
+    Differentiable and Sparse Top-k: a Convex Analysis Perspective", ICML 2023,
+    arXiv:2302.01425; Blondel et al., "Fast Differentiable Sorting and Ranking",
+    ICML 2020, arXiv:2002.08871), computed via the pool-adjacent-violators
+    isotonic solver in :func:`proj_permutahedron`. Its gradient couples across the
+    boundary elements (the budget-aware gradient of a top-k) and stays finite.
+
+    In ``"hard"`` mode it returns the exact ``0/1`` top-k indicator (matching the
+    selection of :func:`jax.lax.top_k`); combined with :func:`top_k_mask_st` this
+    gives a straight-through estimator (exact indicator forward, smooth gradient).
+
+    Args:
+        x: Input array of shape ``(..., n, ...)``.
+        k: Number of top elements to select; clamped to ``[0, n]``.
+        axis: Axis along which to select. Default ``-1``.
+        softness: Regularization strength (``> 0``) trading sparsity for
+            smoothness; smaller is sharper (closer to the hard mask).
+        mode: ``"hard"`` for the exact indicator, otherwise the smooth capped-
+            simplex projection.
+
+    Returns:
+        A mask with the same shape as ``x`` and values in ``[0, 1]``.
+    """
+    n = x.shape[axis]
+    # ``min``/``max`` are shadowed by the soft reductions in this module, so clamp
+    # ``k`` into ``[0, n]`` with plain comparisons.
+    if k <= 0:
+        return jnp.zeros_like(x)
+    if k >= n:
+        return jnp.ones_like(x)
+
+    if mode == "hard":
+        # Exact top-k indicator via ranks: exactly ``k`` elements have rank
+        # ``>= n - k``, so the mask sums to exactly ``k`` even when values tie at the
+        # boundary (ties are broken by argsort position, matching the argsort-based
+        # top-k selection). A bare value threshold would over-select on ties.
+        ranks = jnp.argsort(jnp.argsort(x, axis=axis), axis=axis)
+        return (ranks >= n - k).astype(x.dtype)
+
+    # Smooth: exact-k sparse mask via Euclidean projection onto the capped simplex,
+    # i.e. the permutahedron of the top-k 0/1 pattern.
+    x_last = jnp.moveaxis(x, axis, -1)
+    pattern = jnp.concatenate([jnp.ones(k, x.dtype), jnp.zeros(n - k, x.dtype)])
+    weights = jnp.broadcast_to(pattern, x_last.shape)
+    mask = proj_permutahedron(x_last, weights, softness=softness, mode="c0")
+    return jnp.moveaxis(mask, -1, axis)

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+import jax.numpy as jnp
 from flax import nnx
 from jaxtyping import Array, Float
 from opifex.core.physics.gradnorm import GradNormBalancer
@@ -41,7 +42,7 @@ def combine_scalar_losses(
             num_losses=len(loss_values),
             rngs=ensure_rngs(rngs),
         )
-        return balancer(loss_values)
+        return balancer.compute_weighted_loss(jnp.stack(loss_values))
 
     total_loss = loss_values[0]
     for loss_value in loss_values[1:]:

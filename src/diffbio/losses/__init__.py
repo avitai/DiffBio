@@ -22,6 +22,7 @@ from diffbio.losses.singlecell_losses import (
     ShannonDiversityLoss,
     SimpsonDiversityLoss,
     VelocityConsistencyLoss,
+    gene_weight_sparsity_loss,
 )
 from diffbio.losses.metric_losses import DifferentiableAUROC, ExactAUROC
 from diffbio.losses.statistical_losses import (
@@ -51,6 +52,7 @@ __all__ = [
     "ShannonDiversityLoss",
     "SimpsonDiversityLoss",
     "VelocityConsistencyLoss",
+    "gene_weight_sparsity_loss",
     # Statistical losses
     "HMMLikelihoodLoss",
     "NegativeBinomialLoss",

@@ -46,7 +46,7 @@ class TestCombineScalarLosses:
             loss_balancing.combine_scalar_losses({}, use_gradnorm=False)
 
     def test_uses_gradnorm_when_enabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """GradNorm path delegates to the balancer with deterministic inputs."""
+        """GradNorm path delegates to the balancer via its real ``compute_weighted_loss``."""
         calls: dict[str, Any] = {}
 
         class _DummyBalancer:
@@ -54,7 +54,7 @@ class TestCombineScalarLosses:
                 calls["num_losses"] = num_losses
                 calls["rngs_type"] = type(rngs)
 
-            def __call__(self, loss_values: list[jnp.ndarray]) -> jnp.ndarray:
+            def compute_weighted_loss(self, loss_values: jnp.ndarray) -> jnp.ndarray:
                 calls["loss_values"] = loss_values
                 return jnp.array(7.0)
 
@@ -72,7 +72,19 @@ class TestCombineScalarLosses:
         assert jnp.allclose(combined, 7.0)
         assert calls["num_losses"] == 2
         assert calls["rngs_type"] is nnx.Rngs
-        assert len(calls["loss_values"]) == 2
+        assert calls["loss_values"].shape == (2,)
+
+    def test_real_gradnorm_balancer_combines_without_error(self) -> None:
+        """Integration: the real GradNormBalancer path runs (regression for the
+        missing ``__call__`` that a mock had hidden). A fresh balancer has unit
+        weights, so the result is the equal-weighted sum."""
+        combined = loss_balancing.combine_scalar_losses(
+            {"a": jnp.array(1.0), "b": jnp.array(2.0)},
+            use_gradnorm=True,
+            rngs=nnx.Rngs(0),
+        )
+        assert combined.shape == ()
+        assert jnp.allclose(combined, 3.0)
 
 
 class TestLossBalancingMixin:

@@ -93,3 +93,27 @@ class TestLinearEmbeddingProbe:
         grads = nnx.grad(loss_fn)(probe)
 
         assert jnp.any(grads.classifier.kernel[...] != 0.0)
+
+
+def test_probe_with_hidden_layer_trains_under_nnx_grad() -> None:
+    """Regression: a hidden-layer probe must survive an nnx-transformed grad step.
+
+    A leading ``self.hidden = None`` used to register ``hidden`` as a static field, so
+    the MLP head's Linear conflicted (data vs static) when nnx re-merged the module
+    inside a training transform. The gradient step must now run and reach the head.
+    """
+    probe = LinearEmbeddingProbe(
+        EmbeddingProbeConfig(input_dim=8, n_classes=3, hidden_dim=16),
+        rngs=nnx.Rngs(0),
+    )
+    embeddings = jnp.ones((5, 8), dtype=jnp.float32)
+    labels = jnp.array([0, 1, 2, 1, 0], dtype=jnp.int32)
+
+    def loss(module: LinearEmbeddingProbe) -> jax.Array:
+        logits = module.apply({"embeddings": embeddings}, {}, None)[0]["logits"]
+        return -jnp.mean(jax.nn.log_softmax(logits)[jnp.arange(5), labels])
+
+    grads = nnx.grad(loss)(probe)
+    leaves = jax.tree.leaves(nnx.state(grads))
+    assert leaves  # gradient reached the hidden + classifier parameters
+    assert all(bool(jnp.all(jnp.isfinite(leaf))) for leaf in leaves)

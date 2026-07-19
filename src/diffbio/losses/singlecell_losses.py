@@ -385,3 +385,20 @@ class SimpsonDiversityLoss(nnx.Module):
         """
         per_cell_simpson = jnp.sum(assignments**2, axis=-1)
         return jnp.mean(per_cell_simpson)
+
+
+def gene_weight_sparsity_loss(gene_weights: Float[Array, " n_genes"]) -> Float[Array, ""]:
+    """L1 sparsity penalty on learnable highly-variable-gene weights.
+
+    The SoftHVG gene weights are zero in the default (uniform) configuration that
+    reproduces the frozen dispersion ranking. This L1 penalty pulls them back toward
+    zero, so joint optimization only deviates a gene's weight when the downstream
+    loss justifies it -- a focused, sparse set of learned adjustments.
+
+    Args:
+        gene_weights: Per-gene learnable weights ``(n_genes,)``.
+
+    Returns:
+        The mean absolute weight, a non-negative scalar.
+    """
+    return jnp.mean(jnp.abs(gene_weights))

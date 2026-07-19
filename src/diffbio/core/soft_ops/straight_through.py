@@ -259,3 +259,12 @@ def sort_st(*args, **kwargs):
 def top_k_st(*args, **kwargs):
     """Straight-through :func:`~diffbio.core.soft_ops.sorting.top_k`."""
     return _cached_st(sorting.top_k)(*args, **kwargs)
+
+
+def top_k_mask_st(*args, **kwargs):
+    """Straight-through :func:`~diffbio.core.soft_ops.sorting.top_k_mask`.
+
+    Forward pass is the exact ``0/1`` top-k indicator; gradients flow through the
+    smooth capped-simplex (permutahedron) projection.
+    """
+    return _cached_st(sorting.top_k_mask)(*args, **kwargs)
