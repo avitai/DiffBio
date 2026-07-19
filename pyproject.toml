@@ -5,13 +5,15 @@ requires = ["hatchling>=1.18"]
 [dependency-groups]
 dev = [
   "bandit[toml]>=1.8.6",
+  "hypothesis>=6.156.6",
   "import-linter>=2.5",
   "interrogate>=1.7.0",
   "nbqa>=1.9.1",
   "pylint>=3.3.8",
   "pytest-json-report>=1.5.0",
   "pytest-randomly>=3.16.0",
-  "radon>=6.0.1"
+  "radon>=6.0.1",
+  "scikit-learn>=1.8.0"
 ]
 
 [project]
