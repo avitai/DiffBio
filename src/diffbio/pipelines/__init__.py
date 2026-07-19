@@ -5,9 +5,22 @@ workflows such as variant calling, preprocessing, differential expression,
 and single-cell analysis.
 """
 
+from diffbio.pipelines.adapters import (
+    RenameField,
+    RenameFieldConfig,
+)
 from diffbio.pipelines.differential_expression import (
     DEPipelineConfig,
     DifferentialExpressionPipeline,
+)
+from diffbio.pipelines.joint_preprocessing import (
+    JointPreprocessingPipeline,
+    JointPreprocessingPipelineConfig,
+)
+from diffbio.pipelines.joint_training import (
+    JointTrainingConfig,
+    JointTrainingResult,
+    fit_jointly,
 )
 from diffbio.pipelines.enhanced_variant_calling import (
     EnhancedVariantCallingPipeline,
@@ -38,9 +51,18 @@ from diffbio.pipelines.variant_calling import (
 
 
 __all__ = [
+    # Composition adapters
+    "RenameField",
+    "RenameFieldConfig",
     # Differential Expression
     "DEPipelineConfig",
     "DifferentialExpressionPipeline",
+    # Joint single-cell preprocessing -> annotation
+    "JointPreprocessingPipeline",
+    "JointPreprocessingPipelineConfig",
+    "JointTrainingConfig",
+    "JointTrainingResult",
+    "fit_jointly",
     # Enhanced Variant Calling
     "EnhancedVariantCallingPipeline",
     "EnhancedVariantCallingPipelineConfig",
