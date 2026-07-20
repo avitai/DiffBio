@@ -220,7 +220,7 @@ Domain & Representative operators & Relaxation \\
 Alignment & Smith--Waterman, profile HMM, soft MSA & log-sum-exp \\
 Variant & pileup, CNN caller, CNV segmentation, quality recalibration & segment-sum \\
 Single-cell & normalization, soft HVG, PCA, clustering, batch correction, RNA velocity & sigmoid, power \\
-Normalization & VAE normalizer, UMAP, PHATE, learnable projection, soft-$k$ & power, sigmoid \\
+Normalization & VAE normalizer, UMAP, PHATE, learnable / orthonormal projection, matrix-free PCA, soft-$k$ & power, sigmoid \\
 Epi./RNA-seq & peak calling, chromatin state, splicing PSI, motif discovery & sigmoid \\
 Statistical & HMM, EM quantification, NB-GLM & log-sum-exp \\
 Drug disc. & GNN message passing, fingerprints, AttentiveFP, ADMET & GNN \\
@@ -569,6 +569,24 @@ artifact (Figure~\ref{fig:scaleabl}a).
 This is the predicted win-condition---large data plus aggressive reduction---and it doubles
 as an honest negative result (below).
 
+\subsection{Trainable and orthonormal reduction bases}
+\label{sec:trainablebasis}
+
+The PCA-initialized residual projection is one point in a design space the operator library
+now spans; two variants directly address the fixed PCA anchor it carries.
+\emph{Trainable basis.} A matrix-free differentiable PCA---top-$k$ via randomized subspace
+(power) iteration~\citep{halko2011randomized}, never forming the covariance---recomputes the
+basis from the data each step, so gradients flow through the eigensolver to any upstream
+learnable preprocessing: the basis \emph{itself} is trainable, with no fixed anchor. On the
+DNA task ($k{=}5$), pairing it with a learnable per-feature scale lifts held-out macro-F1
+from $0.632$ (frozen basis) to $0.669$ ($+3.7\pp$). \emph{Orthonormal basis.} A learnable
+projection kept orthonormal by a QR retraction on the Stiefel manifold---no eigensolver, so
+no eigengap instability---reaches $0.710$, matching the unconstrained learnable projection
+($0.711$) at a third of its seed variance: on this task orthonormality is essentially free.
+Both solvers stay finite where a differentiated dense eigendecomposition would
+diverge~\citep{wang2019backprop}, realizing the trainable-basis extension at the cost of a
+few matmuls and a QR.
+
 \subsection{When joint optimization does not help}
 
 Three regimes eliminate the advantage, and we report them plainly. \emph{Small data:} below
@@ -613,10 +631,12 @@ Several directions follow directly. \emph{Independent replication and scale:} ex
 mini-batch, fit-once design to 1M+ cell atlases (HLCA, CELLxGENE) via streaming covariance
 estimation, testing whether the gain continues to grow. \emph{Stronger baselines:}
 benchmark against scANVI and supervised metric-learning embeddings, and add a
-random-projection and no-reduction control. \emph{Fully differentiable PCA:} replace the
-fixed anchor with a backpropagation-friendly power-iteration
-eigensolver~\citep{wang2019backprop} to make the basis itself trainable while retaining
-stability. \emph{Deepen the cross-modality results:} with scATAC now characterized in depth (scaling,
+random-projection and no-reduction control. \emph{Trainable-basis reductions:} the
+matrix-free differentiable PCA and Stiefel orthonormal projection of
+Section~\ref{sec:trainablebasis} are now in the library and validated on one task; scaling
+them to the atlas-size joint-optimization experiments---replacing the fixed anchor entirely
+while retaining stability~\citep{wang2019backprop}---is the natural next step.
+\emph{Deepen the cross-modality results:} with scATAC now characterized in depth (scaling,
 domain baseline, controls, disjoint-donor replication), the priorities are the variant
 pipeline's own depth---a domain-caller comparison such as DeepVariant---independent-dataset
 replication of the DNA, Perturb-seq, and variant results, and further reduction machineries
