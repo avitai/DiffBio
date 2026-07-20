@@ -21,9 +21,17 @@ from diffbio.operators.normalization.learnable_normalization import (
     LearnableNormalization,
     LearnableNormalizationConfig,
 )
+from diffbio.operators.normalization.learnable_orthogonal_projection import (
+    LearnableOrthogonalProjection,
+    LearnableOrthogonalProjectionConfig,
+)
 from diffbio.operators.normalization.learnable_projection import (
     LearnableProjection,
     LearnableProjectionConfig,
+)
+from diffbio.operators.normalization.matrix_free_pca import (
+    MatrixFreePCA,
+    MatrixFreePCAConfig,
 )
 from diffbio.operators.normalization.phate import (
     DifferentiablePHATE,
@@ -53,12 +61,16 @@ __all__ = [
     # PCA Dimensionality Reduction
     "DifferentiablePCAConfig",
     "DifferentiablePCA",
+    "MatrixFreePCAConfig",
+    "MatrixFreePCA",
     # Learnable count normalization
     "LearnableNormalizationConfig",
     "LearnableNormalization",
     # Learnable projection (task-aware dimensionality reduction)
     "LearnableProjectionConfig",
     "LearnableProjection",
+    "LearnableOrthogonalProjection",
+    "LearnableOrthogonalProjectionConfig",
     # Soft component selection (learnable PCA dimensionality)
     "SoftComponentSelectionConfig",
     "SoftComponentSelection",
