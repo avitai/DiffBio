@@ -215,8 +215,14 @@ def fig_cross_modality() -> None:
         mpl.patches.Patch(color="#9AA0A6", label="No reduction bottleneck"),
     ]
     ax.legend(
-        handles=handles, frameon=False, fontsize=8, loc="upper center",
-        ncol=3, bbox_to_anchor=(0.5, 1.0), columnspacing=1.4, handletextpad=0.5,
+        handles=handles,
+        frameon=False,
+        fontsize=8,
+        loc="upper center",
+        ncol=3,
+        bbox_to_anchor=(0.5, 1.0),
+        columnspacing=1.4,
+        handletextpad=0.5,
     )
     ax.set_ylim(-4, 25)
     fig.tight_layout()

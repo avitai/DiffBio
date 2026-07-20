@@ -510,6 +510,22 @@ TF-IDF features with no reduction---is $0.749$. Finally, the whole result \emph{
 a disjoint set of 16 CATLAS donors} (127k cells, 41 types): $+8.1\pp$ at $k{=}5$ and
 $+2.3\pp$ at $k{=}10$, the same signature on independent data.
 
+\paragraph{Leakage and overfitting audit.} A stricter audit removes two conveniences of the
+headline split: it holds out whole \emph{donors} (never seen in training) and selects the
+top bins on the training donors only. The gain not only survives but grows---frozen macro-F1
+falls to $0.39$ (a task-agnostic LSI transfers poorly across donors) while the learnable
+projection reaches $0.53$ ($+14\pp$ at $k{=}5$)---so it is not a leakage artifact. This
+harder split does expose overfitting: with $12{,}000$ features and $59{,}000$ training cells
+the learnable projection memorizes the training donors (train F1 $\approx1.0$ vs.\ $0.53$
+held out), while the fixed-basis probe cannot (train $0.53$). Stronger weight decay narrows
+the gap and \emph{raises} held-out F1 ($0.49\!\to\!0.53$), and the orthonormal Stiefel
+projection generalizes best. The effect is scale-dependent: on the lower-dimensional DNA
+($2{,}080$ features, $119$k cells) and Perturb-seq ($2{,}000$ features, $129$k cells)
+pipelines a three-way train/validation/test split shows the joint arm overfitting only
+mildly (train$-$test gap $\le\!6\pp$, validation $\approx$ test) and the frozen arm not at
+all, with the gain intact on both held-out sets ($+7.4$ and $+7.7\pp$). All preprocessing
+throughout is fit on the training split alone.
+
 \paragraph{A different machinery: pooling read evidence.} The pipelines above all learn a
 linear projection. To test whether the effect is specific to that machinery we turn to
 variant calling, where evidence is naturally reduced by pooling across sequencing reads.
@@ -650,8 +666,18 @@ DiffBio is open source (MIT license) and built on JAX~\citep{jax2018} and Flax
 NNX~\citep{flax2020}. All operators, the joint-training utilities, and the benchmark
 harness used here ship with the library, with unit tests and fixed random seeds; the
 figures in this paper are regenerated from the recorded benchmark outputs by a single
-script. Preprocessing statistics are fit on training splits only, and every reported
-number is a mean over at least three seeds.
+script, and every cross-modality result---including the leakage and overfitting audits---is
+reproduced by a documented script under \texttt{benchmarks/crossmodality/}.
+
+Every experiment fits \emph{all} preprocessing (normalization, gene/bin selection,
+PCA/LSI, and the linear baselines) on the \textbf{training split only} and reports held-out
+metrics averaged over at least three seeds. Splits are: stratified cells for scRNA (Tabula
+Sapiens, 80/20); the official disjoint train/test sequences for DNA (Genomic Benchmarks);
+held-out experimental \emph{batches} for Perturb-seq (target-gene columns masked); stratified
+cells for the headline scATAC result and held-out \emph{donors} with train-only bin selection
+for its leak-free audit; and disjoint \emph{genomic regions} for variant calling
+(chr20:2--22\,Mb train, 30--40\,Mb test). Where an experiment reports a validation set, it is
+carved from the training split before any fitting.
 
 {\small
 \bibliographystyle{unsrtnat}
