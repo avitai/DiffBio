@@ -46,8 +46,8 @@ def test_frozen_matches_normalize_total_log1p_formula() -> None:
 
 
 def test_operator_frozen_defaults_match_scanpy() -> None:
-    import anndata as ad  # noqa: PLC0415
-    import scanpy as sc  # noqa: PLC0415
+    ad = pytest.importorskip("anndata")  # optional dep; skip when unavailable (e.g. CI)
+    sc = pytest.importorskip("scanpy")
 
     rng = np.random.default_rng(3)
     counts = rng.poisson(3.0, size=(20, 40)).astype(np.float32)
