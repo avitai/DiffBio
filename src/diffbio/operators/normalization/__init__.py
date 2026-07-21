@@ -9,6 +9,10 @@ This module provides operators for:
 All operators maintain gradient flow for end-to-end training.
 """
 
+from diffbio.operators.normalization.arcsinh_cofactor import (
+    ArcsinhCofactor,
+    ArcsinhCofactorConfig,
+)
 from diffbio.operators.normalization.differentiable_pca import (
     DifferentiablePCA,
     DifferentiablePCAConfig,
@@ -66,6 +70,9 @@ __all__ = [
     # Learnable count normalization
     "LearnableNormalizationConfig",
     "LearnableNormalization",
+    # Learnable CyTOF arcsinh cofactor
+    "ArcsinhCofactorConfig",
+    "ArcsinhCofactor",
     # Learnable projection (task-aware dimensionality reduction)
     "LearnableProjectionConfig",
     "LearnableProjection",
