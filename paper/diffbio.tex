@@ -338,7 +338,8 @@ and held as constants (\texttt{stop\_gradient}), following the batch-normalizati
 pattern~\citep{ioffe2015batchnorm} and DiffPrep's fit-once transform~\citep{li2023diffprep}.
 This keeps the objective stationary and, critically, removes the activation-memory blowup
 of backpropagating through the full-batch pipeline: only the projection and classifier are
-on the gradient tape, so training an atlas-scale batch fits comfortably on a single GPU.
+on the gradient tape, so training an atlas-scale batch fits comfortably on a single GPU
+(Table~\ref{tab:compute}).
 
 \paragraph{Learning the dimension.} The number of components $k$ is itself a design
 choice. We additionally provide a differentiable \emph{soft-$k$} operator that keeps the
@@ -473,7 +474,21 @@ substitution applies to it. On the TS-120k/59 atlas we fix a 4{,}000-gene candid
 the differentiable gate select $k$ genes (Section~\ref{sec:method}), feed the selected genes
 through a fixed 50-component PCA and the identical classifier, and sweep the gene budget $k$;
 both arms share initialization, so the joint arm starts exactly at frozen dispersion selection.
-We report held-out macro-F1 with a paired Wilcoxon test over seeds (Table~\ref{tab:geneselect}).
+We report held-out macro-F1 with a paired Wilcoxon test over seeds (Table~\ref{tab:geneselect},
+Figure~\ref{fig:geneselect}).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.94\columnwidth]{figures/fig_gain_vs_gene_budget.pdf}
+\caption{\textbf{Jointly optimized gene selection mirrors the reduction result.} Held-out
+macro-F1 of frozen dispersion highly-variable-gene selection and the learnable gate as a
+function of the gene budget $k$ (TS-120k, mean $\pm$ s.d.). The advantage is largest at an
+aggressive budget and narrows as $k$ grows---the gain-vs-$k$ signature of
+Figure~\ref{fig:gainvk}, now on the selection axis. The star ($\star$) is the stochastic $L_0$
+gate's self-selected $\sim$90-gene panel; the open circle is frozen dispersion at that same gene
+count, $+62.5\pp$ below it.}
+\label{fig:geneselect}
+\end{figure}
 
 The gain-vs-$k$ signature of the projection experiments recurs on the selection axis. The
 learnable gate beats frozen dispersion selection significantly at an aggressive budget---
@@ -714,6 +729,38 @@ artifact (Figure~\ref{fig:scaleabl}a).
 This is the predicted win-condition---large data plus aggressive reduction---and it doubles
 as an honest negative result (below).
 
+\paragraph{Computational cost.} Joint optimization costs more than fitting frozen PCA once, but
+the fit-once, mini-batch design keeps the overhead small and---crucially---bounds peak memory to
+a single batch (Table~\ref{tab:compute}; peak GPU memory measured with preallocation disabled,
+one configuration per process). At $2{,}000$ features and $k{=}10$, a joint mini-batch step
+(batch $4096$) takes $1.0$\,ms and $38$\,MB of GPU memory against the frozen probe's $0.7$\,ms
+and $8$\,MB---a modest constant factor. The decisive property is scaling: because only the
+projection and classifier are on the gradient tape and a single batch resides on the device, the
+joint arm's peak memory is \emph{independent of dataset size} ($37.5/37.6/37.6$\,MB at
+$50/100/200$k cells) and scales with the batch ($12/38/149$\,MB at batch $512/4096/16384$).
+Back-propagating through the full batch instead---the naive alternative that puts every cell on
+the gradient tape at once---makes peak memory grow linearly with the atlas
+($0.9/1.5/3.1$\,GB at $50/100/200$k cells), the activation-memory blowup the fit-once design
+avoids and the reason atlas-scale joint training fits on a single GPU.
+
+\begin{table}[t]
+\centering\small
+\caption{\textbf{Computational cost}: peak GPU memory (MB) of joint preprocessing as the dataset
+grows ($2{,}000$ features, $k{=}10$, batch $4096$; preallocation off). The fit-once mini-batch
+design's memory is flat in atlas size---bounded by one batch---whereas back-propagating through
+the full batch grows linearly with it. The frozen probe uses $8$\,MB and a step is $0.7$/$1.0$\,ms
+(frozen/joint).}
+\label{tab:compute}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Peak GPU memory (MB) & 50k cells & 100k & 200k \\
+\midrule
+Joint, mini-batch ($b{=}4096$) & $37.5$ & $37.6$ & $37.6$ \\
+Joint, full-batch & $894$ & $1534$ & $3104$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Trainable and orthonormal reduction bases}
 \label{sec:trainablebasis}
 
@@ -769,8 +816,9 @@ curve and a domain baseline; and Perturb-seq adds the knob attribution
 depth---a comparison against a domain caller such as DeepVariant---and independent-dataset
 replication of the DNA, Perturb-seq, and variant results.
 \emph{(iv) Cost.} Joint training is more expensive than fitting frozen PCA once; freezing
-the preprocessing statistics keeps the overhead modest (only the projection and classifier
-are differentiated), but it is nonzero. \emph{(v) Uncertainty.} We report at least three seeds throughout,
+the preprocessing statistics keeps the overhead modest---a small constant factor per step and
+peak memory bounded by one batch rather than the atlas (Table~\ref{tab:compute})---but it is
+nonzero. \emph{(v) Uncertainty.} We report at least three seeds throughout,
 with per-seed signs, and paired Wilcoxon tests wherever a significance claim is made (gene
 selection and the cross-stage studies); heavier seed counts would sharpen boundary cases such
 as the non-significant $k{=}50$ projection point. \emph{(vi) Synthetic mass-spec truth.} The

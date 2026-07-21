@@ -143,6 +143,75 @@ def fig_gain_vs_k() -> None:
     plt.close(fig)
 
 
+def fig_gain_vs_gene_budget() -> None:
+    """Selection-axis analog of gain-vs-k: frozen dispersion vs a learnable gene gate."""
+    # SoftHVG gate vs frozen dispersion HVG (TS-120k/59, 4000-gene pool, PCA-50, 8 seeds).
+    # Source: benchmarks/results/singlecell/hvg_gate.json and hvg_gate_stg_matched.json.
+    k_values = [100, 200, 500, 1000, 2000]
+    frozen = {
+        100: (0.2031, 0.0047),
+        200: (0.4069, 0.0087),
+        500: (0.7337, 0.0071),
+        1000: (0.8231, 0.0040),
+        2000: (0.8334, 0.0031),
+    }
+    joint = {
+        100: (0.2257, 0.0280),
+        200: (0.4966, 0.0230),
+        500: (0.7618, 0.0039),
+        1000: (0.8256, 0.0035),
+        2000: (0.8372, 0.0051),
+    }
+    stg_genes, stg_f1, frozen_matched = 90, 0.8176, 0.1929  # STG L0 panel vs frozen at same count
+
+    fig, ax = plt.subplots(figsize=(5.4, 4.0))
+    ks = np.array(k_values)
+    fm = np.array([frozen[k][0] for k in k_values])
+    fs = np.array([frozen[k][1] for k in k_values])
+    ax.plot(ks, fm, "-o", color=FROZEN, label="Frozen dispersion HVG")
+    ax.fill_between(ks, fm - fs, fm + fs, color=FROZEN, alpha=0.15)
+
+    jm = np.array([joint[k][0] for k in k_values])
+    js = np.array([joint[k][1] for k in k_values])
+    ax.plot(ks, jm, "-s", color=JOINT, label="Learnable gate")
+    ax.fill_between(ks, jm - js, jm + js, color=JOINT, alpha=0.15)
+
+    # STG L0 self-selects ~90 genes; frozen dispersion at that matched budget is far below.
+    ax.plot(
+        [stg_genes],
+        [stg_f1],
+        "*",
+        color=ACCENT,
+        markersize=14,
+        label=rf"STG $L_0$ ($\sim${stg_genes} genes)",
+    )
+    ax.plot([stg_genes], [frozen_matched], "o", mfc="none", mec=FROZEN, markersize=8)
+    ax.annotate(
+        "+62.5pp\n(matched budget)",
+        (stg_genes + 6, (stg_f1 + frozen_matched) / 2),
+        fontsize=7.5,
+        color=ACCENT,
+        ha="left",
+        va="center",
+    )
+    for k in k_values:
+        gain = 100 * (joint[k][0] - frozen[k][0])
+        if gain > 0.5:
+            ax.annotate(
+                f"+{gain:.1f}pp", (k, joint[k][0] + 0.015), ha="center", fontsize=8, color=JOINT
+            )
+    ax.set_xscale("log")
+    ax.set_xticks(k_values)
+    ax.get_xaxis().set_major_formatter(mpl.ticker.ScalarFormatter())
+    ax.set_xlabel("Genes selected  $k$")
+    ax.set_ylabel("Held-out macro-F1")
+    ax.set_title("Joint gene selection: gain concentrates at aggressive budgets")
+    ax.legend(frameon=False, fontsize=8, loc="lower right")
+    fig.tight_layout()
+    fig.savefig(FIG_DIR / "fig_gain_vs_gene_budget.pdf")
+    plt.close(fig)
+
+
 def fig_scaling_and_ablation() -> None:
     """Gain vs dataset size (crossover) and the knob-attribution ablation."""
     fig, axes = plt.subplots(1, 2, figsize=(9.0, 3.6))
@@ -234,6 +303,7 @@ def main() -> None:
     """Generate all manuscript figures."""
     fig_main_result()
     fig_gain_vs_k()
+    fig_gain_vs_gene_budget()
     fig_scaling_and_ablation()
     fig_cross_modality()
     print(f"figures written to {FIG_DIR}")
