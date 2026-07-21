@@ -172,3 +172,29 @@ def test_pytree_features_train_and_preserve_int_dtype() -> None:
     assert result.loss_history[-1] < result.loss_history[0]
     predictions = jnp.argmax(model.logits(features), axis=-1)
     assert float(jnp.mean(predictions == labels)) > 0.9
+
+
+def _weight_norm(model: nnx.Linear) -> float:
+    return float(jnp.sqrt(jnp.sum(model.kernel.value**2)))
+
+
+def test_aux_loss_fn_regularizes_parameters() -> None:
+    """A heavy model-only aux penalty shrinks the weights versus no aux penalty."""
+    features, labels = _separable_task(300, 8, 4, seed=21)
+    config = MiniBatchConfig(batch_size=60, n_epochs=40, learning_rate=5e-2, seed=0)
+
+    baseline = _linear(8, 4, seed=5)
+    train_minibatch(baseline, _forward, features, labels, n_classes=4, config=config)
+
+    regularized = _linear(8, 4, seed=5)
+    train_minibatch(
+        regularized,
+        _forward,
+        features,
+        labels,
+        n_classes=4,
+        config=config,
+        aux_loss_fn=lambda m: 50.0 * jnp.sum(m.kernel.value**2),
+    )
+
+    assert _weight_norm(regularized) < _weight_norm(baseline)

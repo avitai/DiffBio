@@ -111,6 +111,7 @@ def train_minibatch(
     *,
     n_classes: int,
     config: MiniBatchConfig | None = None,
+    aux_loss_fn: Callable[[nnx.Module], jnp.ndarray] | None = None,
 ) -> MiniBatchResult:
     """Train ``model`` by deterministic mini-batch SGD against the label loss.
 
@@ -129,6 +130,8 @@ def train_minibatch(
         labels: ``(n_samples,)`` integer class labels.
         n_classes: Number of classes for the cross-entropy loss.
         config: Training configuration; defaults are used when ``None``.
+        aux_loss_fn: Optional model-only regularizer added to each step's loss, e.g. an
+            L0 sparsity penalty on a gate. Receives the module and returns a scalar.
 
     Returns:
         A :class:`MiniBatchResult` with the mean loss per epoch.
@@ -153,9 +156,12 @@ def train_minibatch(
     )
 
     def loss_fn(module: nnx.Module, batch_features: Any, batch_labels: jnp.ndarray) -> jnp.ndarray:
-        return cross_entropy_loss(
+        loss = cross_entropy_loss(
             forward_fn(module, batch_features), batch_labels, num_classes=n_classes
         )
+        if aux_loss_fn is not None:
+            loss = loss + aux_loss_fn(module)
+        return loss
 
     @nnx.jit
     def train_step(
