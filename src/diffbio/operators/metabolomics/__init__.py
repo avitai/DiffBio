@@ -24,6 +24,15 @@ Example:
     ```
 """
 
+from diffbio.operators.metabolomics.isotope_envelope import (
+    SoftIsotopeEnvelope,
+    SoftIsotopeEnvelopeConfig,
+)
+from diffbio.operators.metabolomics.soft_centroiding import (
+    SoftCentroider,
+    SoftCentroiderConfig,
+    mz_grid,
+)
 from diffbio.operators.metabolomics.spectral_similarity import (
     DifferentiableSpectralSimilarity,
     SpectralSimilarityConfig,
@@ -36,4 +45,11 @@ __all__ = [
     "SpectralSimilarityConfig",
     "bin_spectrum",
     "create_spectral_similarity",
+    # Differentiable soft centroiding (peak picking)
+    "SoftCentroider",
+    "SoftCentroiderConfig",
+    "mz_grid",
+    # Differentiable soft isotope-envelope deisotoping
+    "SoftIsotopeEnvelope",
+    "SoftIsotopeEnvelopeConfig",
 ]
