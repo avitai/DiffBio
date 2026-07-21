@@ -77,7 +77,16 @@ variant calling---and two distinct reduction machineries (linear projection and
 permutation-invariant read pooling), the same substitution yields $\mathbf{+7.5}$ to
 $\mathbf{+16.9\pp}$ at aggressive reduction, while a no-bottleneck control on the same
 variant data shows no gain, pinning the mechanism to compression that discards task signal.
-DiffBio is open source.
+The same regime-dependence governs preprocessing stages beyond reduction. Making gene
+\emph{selection} learnable---a differentiable gate replacing frozen dispersion-based
+highly-variable-gene selection---beats the frozen baseline by up to $\mathbf{+9.0\pp}$
+macro-F1 when the gene budget is aggressive and is neutral once it is generous, and a
+stochastic-gate $L_0$ variant discovers a compact $\sim$90-gene panel that outperforms
+dispersion's top 90 genes \emph{four-fold} at a matched budget while sharing only $12\%$ of
+them. The null side of the rule then appears in two further modalities: a learnable
+per-channel arcsinh cofactor for mass-cytometry gating and a differentiable peak picker for
+mass-spectrometry identification help only when the frozen default is genuinely
+misspecified, and not when it is reasonable. DiffBio is open source.
 \end{abstract}
 
 \section{Introduction}
@@ -124,8 +133,12 @@ $+5.2$ to $+10.2\pp$ macro-F1 under aggressive reduction, growing with atlas siz
 concentrated on rare cell types, surviving a stronger supervised baseline, and narrowing
 to insignificance when reduction is generous---and then \textbf{generalizing} it across
 four further real-data pipelines and a second reduction machinery (permutation-invariant
-read pooling), with a mechanistic no-bottleneck control that isolates the cause
-(Section~\ref{sec:experiments}).
+read pooling), with a mechanistic no-bottleneck control that isolates the cause, and---because
+the same principle should govern any frozen stage that discards task signal---across two
+further preprocessing axes (gene \emph{selection}, decisive exactly when the gene budget is the
+binding bottleneck) and modalities (mass cytometry, mass spectrometry, which exhibit its null
+side). Together these sharpen the effect into a single rule about \emph{which} frozen stage is
+worth learning (Section~\ref{sec:experiments}).
 \end{enumerate}
 
 \section{The DiffBio library}
@@ -219,10 +232,11 @@ Domain & Representative operators & Relaxation \\
 \midrule
 Alignment & Smith--Waterman, profile HMM, soft MSA & log-sum-exp \\
 Variant & pileup, CNN caller, CNV segmentation, quality recalibration & segment-sum \\
-Single-cell & normalization, soft HVG, PCA, clustering, batch correction, RNA velocity & sigmoid, power \\
+Single-cell & normalization, soft HVG, stochastic-gate selection, PCA, clustering, batch correction, RNA velocity & sigmoid, power \\
 Normalization & VAE normalizer, UMAP, PHATE, learnable / orthonormal projection, matrix-free PCA, soft-$k$ & power, sigmoid \\
 Epi./RNA-seq & peak calling, chromatin state, splicing PSI, motif discovery & sigmoid \\
 Statistical & HMM, EM quantification, NB-GLM & log-sum-exp \\
+Mass spec / CyTOF & soft centroiding, isotope-envelope deisotoping, arcsinh cofactor & soft-argmax \\
 Drug disc. & GNN message passing, fingerprints, AttentiveFP, ADMET & GNN \\
 Structure & protein secondary structure, RNA folding & log-sum-exp \\
 Multi-omics & Hi-C contact, spatial deconvolution/detection & segment-sum \\
@@ -309,6 +323,7 @@ directions that separate cell types.
 \paragraph{Joint objective.} We instead make the projection learnable, initialized at the
 PCA solution, and train it jointly with the classifier:
 \begin{equation}
+\label{eq:joint}
 \min_{\theta,\phi}\; \mathcal{L}\big(f_\phi(T(X)\,(V+\Delta_\theta)),\, y\big),
 \end{equation}
 where $\Delta_\theta$ is a residual initialized to zero, so training \emph{starts} exactly
@@ -331,6 +346,21 @@ PCA directions fixed but learns a cumulative-variance coverage threshold, softly
 the eigenvalue-ranked components; it recovers a hard truncation as its temperature
 vanishes and, trained against the loss, selects an effective dimensionality without a grid
 search.
+
+\paragraph{Learnable feature selection.} Selection is a second compressive stage amenable to
+the same treatment. The frozen pipeline keeps the top-$m$ genes by an unsupervised dispersion
+score (the Scanpy highly-variable-gene step~\citep{wolf2018scanpy}); we replace it with a
+differentiable gate that ranks genes by dispersion \emph{modulated by a learnable per-gene
+weight} and applies a straight-through top-$k$ mask, initialized so that at zero weights it
+reproduces the frozen selection exactly. A second variant uses stochastic $L_0$
+gates~\citep{yamada2020stg,louizos2018l0}---per-gene hard-concrete gates trained with a
+differentiable $L_0$ penalty, so that the panel \emph{size} is learned rather than fixed. In
+both, the gated genes feed a fixed PCA and the classifier and only the gate is trained,
+coupling selection to the task exactly as the projection is coupled in Eq.~(\ref{eq:joint}).
+The stochastic gate and the $L_0$ relaxation are established
+primitives~\citep{yamada2020stg,balin2019concrete,lemhadri2021lassonet,covert2023persist,louizos2018l0};
+our contribution is to cast frozen dispersion selection as an instance of the joint-optimization
+bottleneck and to measure it under a matched-budget control (Section~\ref{sec:geneselection}).
 
 \section{Experiments}
 \label{sec:experiments}
@@ -434,6 +464,68 @@ retains nearly all task-relevant structure, leaving little to gain. Joint optimi
 or interpretable low-dimensional embeddings---and is harmless otherwise.} The
 differentiable soft-$k$ operator, given a pool of 50 components, learns to keep an effective
 $\sim$40 and reaches $0.830$, matching the best grid value without a search.
+
+\subsection{Jointly optimized gene selection}
+\label{sec:geneselection}
+
+Gene \emph{selection} is a compressive bottleneck of the same kind as reduction, and the same
+substitution applies to it. On the TS-120k/59 atlas we fix a 4{,}000-gene candidate pool, let
+the differentiable gate select $k$ genes (Section~\ref{sec:method}), feed the selected genes
+through a fixed 50-component PCA and the identical classifier, and sweep the gene budget $k$;
+both arms share initialization, so the joint arm starts exactly at frozen dispersion selection.
+We report held-out macro-F1 with a paired Wilcoxon test over seeds (Table~\ref{tab:geneselect}).
+
+The gain-vs-$k$ signature of the projection experiments recurs on the selection axis. The
+learnable gate beats frozen dispersion selection significantly at an aggressive budget---
+$+9.0\pp$ at $k{=}200$ ($0.407\!\to\!0.497$, $p{=}0.008$) and $+2.8\pp$ at $k{=}500$
+($p{=}0.008$)---and the advantage vanishes once enough genes are retained ($+0.25$ and
+$+0.38\pp$ at $k{=}1000,2000$, both non-significant), exactly as the projection gain vanishes at
+large $k$. At the most aggressive $k{=}100$ both arms are near-floored (100 genes for 59
+fine-grained types) and the gap ($+2.3\pp$) is not significant. This is \emph{consistent} with
+the knob-attribution result of Section~\ref{sec:attribution}, where a learnable gene gate added
+little: there, at a generous 2{,}000-gene budget with an aggressive $k{=}10$ projection,
+selection was not the binding constraint---the projection was. Joint optimization pays on
+whichever stage is the binding bottleneck; when that stage is selection, learning it is
+decisive.
+
+\paragraph{Task-driven selection finds different, better genes.} A stochastic $L_0$
+gate~\citep{yamada2020stg,louizos2018l0}, free to choose its own panel size, converges from a
+$k{=}200$ initialization to a compact $\sim$90-gene panel reaching macro-F1 $0.818$---near the
+full 4{,}000-gene ceiling ($0.837$). To rule out that this merely reflects a different budget,
+we evaluate frozen dispersion selection at the gate's \emph{own} gene count: at $\sim$90 genes
+the learned panel scores $0.818$ against dispersion's $0.193$ ($\mathbf{+62.5\pp}$, $p{=}0.008$),
+and the two 90-gene panels overlap in only $12\%$ of their genes. Task-driven selection
+thus finds a fundamentally different and far better small panel than variance/dispersion
+ranking, not simply more genes---the selection-axis analog of the projection recovering
+low-variance but task-critical directions. The gate and $L_0$ primitives are established
+task-driven selectors (STG~\citep{yamada2020stg}, Concrete
+Autoencoders~\citep{balin2019concrete}, LassoNet~\citep{lemhadri2021lassonet},
+PERSIST~\citep{covert2023persist}); our contribution is the composable differentiable-gate
+operator, the framing of frozen highly-variable-gene selection as a joint-optimization
+bottleneck, and the budget-matched control that isolates selection quality from panel size.
+
+\begin{table}[t]
+\centering\small
+\caption{\textbf{Jointly optimized gene selection} on TS-120k/59 (held-out macro-F1,
+mean$\pm$s.d., 8 seeds; paired Wilcoxon $p$). A learnable gate beats frozen dispersion
+selection when the gene budget $k$ is the bottleneck and is neutral when it is generous. Bottom:
+a stochastic $L_0$ gate versus frozen dispersion at the gate's own selected gene count
+(matched budget), with a $12\%$ gene-set overlap.}
+\label{tab:geneselect}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Genes $k$ & Frozen & Learnable gate & Gain & $p$ \\
+\midrule
+100  & $0.203{\pm}.005$ & $0.226{\pm}.028$ & $+2.3\pp$ & $0.11$ \\
+200  & $0.407{\pm}.009$ & $0.497{\pm}.023$ & $+9.0\pp$ & $\mathbf{.008}$ \\
+500  & $0.734{\pm}.007$ & $0.762{\pm}.004$ & $+2.8\pp$ & $\mathbf{.008}$ \\
+1000 & $0.823{\pm}.004$ & $0.826{\pm}.004$ & $+0.3\pp$ & $0.20$ \\
+2000 & $0.833{\pm}.003$ & $0.837{\pm}.005$ & $+0.4\pp$ & $0.20$ \\
+\midrule
+$\sim$90 \emph{(matched)} & $0.193{\pm}.008$ & $\mathbf{0.818{\pm}.008}$ & $\mathbf{+62.5\pp}$ & $\mathbf{.008}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{The effect generalizes across modalities and machineries}
 \label{sec:crossmodality}
@@ -549,7 +641,42 @@ compressed: the network sees every read. Making the encoding learnable yields no
 data and the same ``many learnable parameters plus a complex model,'' but no reduction
 bottleneck, and the effect disappears---the control that pins the mechanism to compression.
 
+\subsection{Beyond reduction and selection: normalization and peak-picking}
+\label{sec:beyond}
+
+The principle is not specific to reduction or selection; it governs preprocessing stages
+generally, including modalities beyond transcriptomics---and here the null side of the rule is
+most instructive.
+
+\paragraph{Mass cytometry: a well-specified transform is not a bottleneck.} CyTOF marker
+intensities are conventionally variance-stabilized with a fixed $\mathrm{arcsinh}(x/5)$
+transform~\citep{bendall2011cytof}. We make the per-channel cofactor learnable and train it
+through a cell-population gating classifier on the HDCytoData Samusik and Levine
+benchmarks~\citep{weber2019hdcytodata,samusik2016,levine2015}, with held-out donors for
+Samusik. The learned cofactor moves substantially (channel mean $\sim$7 from the fixed 5)
+yet held-out gating macro-F1 does not change---$+0.27\pp$ on Samusik ($p{=}0.46$) and
+$-0.05\pp$ on Levine ($p{=}0.31$), both near-saturated at $\sim$0.98. A reasonable fixed cofactor
+is simply not a bottleneck.
+
+\paragraph{Mass spectrometry: a safety net against bad defaults.} We build a differentiable
+peak picker---soft centroiding (a soft-argmax over $m/z$ with a learnable signal-to-noise
+threshold and peak width) and an isotope-envelope matched filter with a learnable averagine
+decay~\citep{senko1995averagine}---and back-propagate a compound-identification loss into it. No
+existing identification pipeline does this: peak detection and deisotoping are frozen upstream
+steps and the trained model consumes an already-centroided peak
+list~\citep{tautenhahn2008centwave,rost2016openms,yilmaz2022casanovo}. On a synthetic benchmark
+of isotope envelopes that share $m/z$ across charge states (so identity depends on the charge
+the deisotoper infers), training the picker end-to-end recovers charge-discriminating low-SNR
+isotopes and lifts identification accuracy from $0.39$ to $0.999$ ($+60.6\pp$)
+\emph{when the frozen threshold is set too aggressively}. But sweeping that threshold shows the
+gain is almost entirely bad-default recovery: at a reasonable threshold the fixed picker already
+reaches $0.972$ and joint training adds only $+1.0\pp$. Differentiable peak-picking is therefore
+a safety net against misspecified hyperparameters rather than a source of intrinsic gain---the
+same regime-dependence, now on a mass-spectrometry front end. Truth here is synthetic; a
+real-data validation is left to future work (Section~\ref{sec:future}).
+
 \subsection{Attribution and scale}
+\label{sec:attribution}
 
 \begin{figure*}[t]
 \centering
@@ -573,7 +700,9 @@ specifically about learning the reduction directions, consistent with the LEAF/D
 finding that the win lives in the learnable feature extractor. The attribution replicates on
 the Perturb-seq task ($k{=}10$): the learnable projection recovers $+8.2$ of the $+8.3\pp$
 total gain, while a learnable per-gene gate ($+2.7\pp$) and affine scaling ($+3.1\pp$)
-contribute little on their own and do not stack.
+contribute little on their own and do not stack---because here the projection, not selection,
+is the binding bottleneck; when the gene budget itself is the aggressive constraint, the same
+gate becomes decisive (Section~\ref{sec:geneselection}).
 
 \paragraph{The gain grows with scale.} Figure~\ref{fig:scaleabl}a plots the gap against
 dataset size. On small data joint optimization \emph{hurts} (the frozen basis is a strong
@@ -605,16 +734,21 @@ few matmuls and a QR.
 
 \subsection{When joint optimization does not help}
 
-Three regimes eliminate the advantage, and we report them plainly. \emph{Small data:} below
+Four regimes eliminate the advantage, and we report them plainly. \emph{Small data:} below
 $\sim$30k cells the learnable projection overfits and underperforms frozen PCA
 (Figure~\ref{fig:scaleabl}a); the frozen basis is a useful regularizer when labels are
 scarce. \emph{Generous reduction:} at $k{=}50$ the gain is a non-significant $+1.6\pp$
 (Figure~\ref{fig:gainvk}). \emph{No reduction bottleneck:} when the frozen stage merely
 reformats the data rather than compressing it---the learnable-pileup-image control of
 Section~\ref{sec:crossmodality}, where the model sees every read---making it learnable does
-not help ($-1.1\pp$), even with many trainable parameters and a complex head. The method is
-therefore not a universal replacement for frozen preprocessing but a targeted improvement
-for the specific regime of large data reduced through an aggressive, lossy bottleneck.
+not help ($-1.1\pp$), even with many trainable parameters and a complex head.
+\emph{A well-specified non-reduction stage:} when the frozen stage is a reasonable point
+transform rather than a compressive bottleneck, making it learnable is likewise harmless---a
+learnable CyTOF arcsinh cofactor on a near-saturated gating task yields no gain
+($+0.27/{-}0.05\pp$), and a differentiable mass-spec peak picker adds only $+1.0\pp$ once its
+threshold is set reasonably (Section~\ref{sec:beyond}). The method is therefore not a universal
+replacement for frozen preprocessing but a targeted improvement for the specific regime of a
+frozen stage that compresses away, or discards, task-relevant signal.
 
 \section{Discussion and limitations}
 \label{sec:limitations}
@@ -636,9 +770,14 @@ depth---a comparison against a domain caller such as DeepVariant---and independe
 replication of the DNA, Perturb-seq, and variant results.
 \emph{(iv) Cost.} Joint training is more expensive than fitting frozen PCA once; freezing
 the preprocessing statistics keeps the overhead modest (only the projection and classifier
-are differentiated), but it is nonzero. \emph{(v) Uncertainty.} We report three seeds and
-note per-seed signs; larger seed counts with paired significance tests would sharpen the
-$k{=}50$ boundary.
+are differentiated), but it is nonzero. \emph{(v) Uncertainty.} We report at least three seeds throughout,
+with per-seed signs, and paired Wilcoxon tests wherever a significance claim is made (gene
+selection and the cross-stage studies); heavier seed counts would sharpen boundary cases such
+as the non-significant $k{=}50$ projection point. \emph{(vi) Synthetic mass-spec truth.} The
+peak-picking result uses simulated spectra with known ground truth to isolate the mechanism;
+a real-data validation with natural instrument defaults is future work, and its effect size
+(a crippled- versus reasonable-threshold contrast) is a mechanism demonstration, not a natural
+gain.
 
 \section{Future work}
 \label{sec:future}
@@ -656,7 +795,11 @@ while retaining stability~\citep{wang2019backprop}---is the natural next step.
 domain baseline, controls, disjoint-donor replication), the priorities are the variant
 pipeline's own depth---a domain-caller comparison such as DeepVariant---independent-dataset
 replication of the DNA, Perturb-seq, and variant results, and further reduction machineries
-(soft alignment, hidden-Markov decoding). \emph{Automated pipeline
+(soft alignment, hidden-Markov decoding). \emph{Front ends beyond reduction:} validate the differentiable mass-spec peak picker on real
+ProteomeXchange data with instrument-native defaults, and test whether label-free
+self-supervised objectives---DiffBio now ships a masked-value reconstruction loss in the
+scGPT/Geneformer lineage~\citep{cui2024scgpt,theodoris2023geneformer,he2022mae}---make joint
+preprocessing help where labels are scarce. \emph{Automated pipeline
 search:} lift the fixed operator ordering into a differentiable pipeline search in the
 spirit of DiffPrep~\citep{li2023diffprep}, using DiffBio's uniform operator interface.
 
@@ -667,7 +810,11 @@ NNX~\citep{flax2020}. All operators, the joint-training utilities, and the bench
 harness used here ship with the library, with unit tests and fixed random seeds; the
 figures in this paper are regenerated from the recorded benchmark outputs by a single
 script, and every cross-modality result---including the leakage and overfitting audits---is
-reproduced by a documented script under \texttt{benchmarks/crossmodality/}.
+reproduced by a documented script under \texttt{benchmarks/crossmodality/}. The
+gene-selection, stochastic-gate, CyTOF gating, and mass-spec peak-picking studies
+(Sections~\ref{sec:geneselection},~\ref{sec:beyond}), each over eight seeds with paired
+Wilcoxon tests, ship under \texttt{benchmarks/singlecell/} and
+\texttt{benchmarks/metabolomics/}.
 
 Every experiment fits \emph{all} preprocessing (normalization, gene/bin selection,
 PCA/LSI, and the linear baselines) on the \textbf{training split only} and reports held-out
@@ -675,8 +822,10 @@ metrics averaged over at least three seeds. Splits are: stratified cells for scR
 Sapiens, 80/20); the official disjoint train/test sequences for DNA (Genomic Benchmarks);
 held-out experimental \emph{batches} for Perturb-seq (target-gene columns masked); stratified
 cells for the headline scATAC result and held-out \emph{donors} with train-only bin selection
-for its leak-free audit; and disjoint \emph{genomic regions} for variant calling
-(chr20:2--22\,Mb train, 30--40\,Mb test). Where an experiment reports a validation set, it is
+for its leak-free audit; disjoint \emph{genomic regions} for variant calling
+(chr20:2--22\,Mb train, 30--40\,Mb test); held-out \emph{donors} for CyTOF Samusik and
+stratified cells for CyTOF Levine; and simulated spectra with known ground truth for the
+synthetic mass-spec study. Where an experiment reports a validation set, it is
 carved from the training split before any fitting.
 
 {\small
