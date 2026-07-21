@@ -121,6 +121,10 @@ from diffbio.operators.singlecell.soft_hvg import (
     SoftHVG,
     SoftHVGConfig,
 )
+from diffbio.operators.singlecell.stochastic_gate_selector import (
+    StochasticGateSelector,
+    StochasticGateSelectorConfig,
+)
 
 __all__ = [
     # Archetypal Analysis
@@ -199,4 +203,7 @@ __all__ = [
     "HVGFlavor",
     "SoftHVG",
     "SoftHVGConfig",
+    # Stochastic-gate (STG) feature selection
+    "StochasticGateSelector",
+    "StochasticGateSelectorConfig",
 ]
