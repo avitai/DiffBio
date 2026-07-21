@@ -25,6 +25,7 @@ from diffbio.losses.singlecell_losses import (
     gene_weight_sparsity_loss,
 )
 from diffbio.losses.metric_losses import DifferentiableAUROC, ExactAUROC
+from diffbio.losses.self_supervised_losses import MaskedValueLoss, masked_value_loss
 from diffbio.losses.statistical_losses import (
     HMMLikelihoodLoss,
     NegativeBinomialLoss,
@@ -58,4 +59,7 @@ __all__ = [
     "NegativeBinomialLoss",
     "VAELoss",
     "zinb_negative_log_likelihood",
+    # Self-supervised losses
+    "MaskedValueLoss",
+    "masked_value_loss",
 ]
