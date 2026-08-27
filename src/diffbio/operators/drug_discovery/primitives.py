@@ -7,12 +7,30 @@ RDKit is used for parsing only; all graph operations use JAX arrays.
 
 import logging
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 
 import jax.numpy as jnp
-from rdkit import Chem
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _rdkit_chem() -> Any:
+    """Return `rdkit.Chem`, importing it on first use.
+
+    RDKit is an optional dependency, installed with `pip install "diffbio[chem]"`.
+    Importing it at module scope would pull the whole toolkit into every `import
+    diffbio`, for a capability most pipelines never call. The other RDKit call sites
+    in this package are already lazy in the same way; this keeps them consistent.
+    """
+    try:
+        from rdkit import Chem
+    except ImportError as e:  # pragma: no cover - exercised only without RDKit
+        raise ImportError(
+            'Molecular graph primitives require RDKit: pip install "diffbio[chem]"'
+        ) from e
+    return Chem
 
 
 @dataclass(frozen=True)
@@ -103,11 +121,12 @@ def get_atom_features(atom: Any, config: AtomFeatureConfig | None = None) -> jnp
 
     # Hybridization
     hybridization = atom.GetHybridization()
+    chem = _rdkit_chem()
     hyb_types = [
-        Chem.rdchem.HybridizationType.SP,
-        Chem.rdchem.HybridizationType.SP2,
-        Chem.rdchem.HybridizationType.SP3,
-        Chem.rdchem.HybridizationType.SP3D,
+        chem.rdchem.HybridizationType.SP,
+        chem.rdchem.HybridizationType.SP2,
+        chem.rdchem.HybridizationType.SP3,
+        chem.rdchem.HybridizationType.SP3D,
     ]
     hyb_onehot = [0.0] * config.num_hybridization_types
     for i, h in enumerate(hyb_types[: config.num_hybridization_types]):
@@ -141,11 +160,12 @@ def get_bond_features(bond: Any) -> jnp.ndarray:
         Feature vector of shape (4,).
     """
     bond_type = bond.GetBondType()
+    chem = _rdkit_chem()
     features = [
-        1 if bond_type == Chem.rdchem.BondType.SINGLE else 0,
-        1 if bond_type == Chem.rdchem.BondType.DOUBLE else 0,
-        1 if bond_type == Chem.rdchem.BondType.TRIPLE else 0,
-        1 if bond_type == Chem.rdchem.BondType.AROMATIC else 0,
+        1 if bond_type == chem.rdchem.BondType.SINGLE else 0,
+        1 if bond_type == chem.rdchem.BondType.DOUBLE else 0,
+        1 if bond_type == chem.rdchem.BondType.TRIPLE else 0,
+        1 if bond_type == chem.rdchem.BondType.AROMATIC else 0,
     ]
     return jnp.array(features, dtype=jnp.float32)
 
@@ -166,7 +186,7 @@ def smiles_to_graph(smiles: str) -> dict[str, Any]:
     Raises:
         ValueError: If SMILES string is invalid.
     """
-    mol = Chem.MolFromSmiles(smiles)
+    mol = _rdkit_chem().MolFromSmiles(smiles)
     if mol is None:
         raise ValueError(f"Invalid SMILES string: {smiles}")
 
