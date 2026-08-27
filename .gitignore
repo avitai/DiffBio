@@ -220,3 +220,8 @@ data/
 
 # Local tracer-bullet tickets and scratch work
 .scratch/
+
+# Private working notes and per-editor assistant configuration. Local only.
+.claude/
+.cursor/
+AGENTS.md
