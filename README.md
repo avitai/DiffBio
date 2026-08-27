@@ -12,14 +12,13 @@
 </p>
 
 <p align="center">
-  Built on <a href="https://github.com/avitai/datarax">Datarax</a>, <a href="https://github.com/avitai/artifex">Artifex</a>, <a href="https://github.com/avitai/Opifex">Opifex</a>, and <a href="https://github.com/avitai/calibrax">Calibrax</a> | Powered by <a href="https://jax.readthedocs.io/">JAX</a> & <a href="https://flax.readthedocs.io/">Flax NNX</a>
+  Built on <a href="https://github.com/avitai/datarax">Datarax</a>, <a href="https://github.com/avitai/artifex">Artifex</a>, <a href="https://github.com/avitai/opifex">Opifex</a>, and <a href="https://github.com/avitai/calibrax">Calibrax</a> | Powered by <a href="https://jax.readthedocs.io/">JAX</a> & <a href="https://flax.readthedocs.io/">Flax NNX</a>
 </p>
 
 ---
 
-> **⚠️ Early Development - API Unstable**
->
-> DiffBio is currently in early development and undergoing rapid iteration. Please be aware of the following implications:
+> **Research preview.** DiffBio is under rapid iteration and the API will change while we iterate
+> toward v1.0. What that means concretely:
 >
 > | Area | Status | Impact |
 > |------|--------|--------|
@@ -27,7 +26,11 @@
 > | **Tests** | 🔄 In Flux | Test suite is being expanded. Some tests may fail or be skipped. Coverage metrics are improving but not yet full. |
 > | **Documentation** | 🔄 Evolving | Docs may not reflect current implementation. Code examples might be outdated. Refer to source code and tests for accurate usage. |
 >
-> We recommend waiting for a stable release (v1.0) before using DiffBio in production. For research and experimentation, proceed with the understanding that APIs will evolve.
+> Pin a version if you need stability, and do not put it in production yet. For research and
+> experimentation it is ready to use today, with the understanding that APIs will evolve.
+>
+> This is public this early on purpose. Issues, questions and pull requests genuinely steer
+> what gets built next, and a star tells us which layer to push on.
 
 ---
 
@@ -98,8 +101,8 @@ sequence = jax.nn.one_hot(jnp.array([0, 1, 2, 3]), 4)  # (length, alphabet=4)
 data = {"sequence": sequence, "quality_scores": quality_scores}
 
 filtered_data, _, _ = quality_filter.apply(data, {}, None)
-# filtered_data["sequence"]        — sequence with low-quality positions softly suppressed
-# filtered_data["quality_scores"]  — pass-through quality values
+# filtered_data["sequence"]        - sequence with low-quality positions softly suppressed
+# filtered_data["quality_scores"]  - pass-through quality values
 ```
 
 ### Using the Variant Calling Pipeline
@@ -188,7 +191,7 @@ DiffBio sits on a layered ecosystem rather than standing alone:
 |---|---|---|
 | Execution contracts | [Datarax](https://github.com/avitai/datarax) | Operator, data-source, and pipeline contracts |
 | Modeling substrate | [Artifex](https://github.com/avitai/artifex) | Reusable transformer and generative-model components |
-| Scientific ML substrate | [Opifex](https://github.com/avitai/Opifex) | Scientific optimization, operator learning, and advanced training methods |
+| Scientific ML substrate | [Opifex](https://github.com/avitai/opifex) | Scientific optimization, operator learning, and advanced training methods |
 | Evaluation substrate | [Calibrax](https://github.com/avitai/calibrax) | Metrics, benchmarking, comparison, profiling, and regression checks |
 
 DiffBio itself sits on top of these as the biology-specific layer: differentiable
@@ -217,7 +220,7 @@ data, state, metadata = quality_filter.apply(element_data, {}, None)
 data, state, metadata = pileup.apply(data, state, metadata)
 data, state, metadata = classifier.apply(data, state, metadata)
 
-# `data` is a dict of JAX arrays — read out the per-position predictions
+# `data` is a dict of JAX arrays - read out the per-position predictions
 predictions = data["logits"]
 ```
 
@@ -306,6 +309,6 @@ MIT License. See [LICENSE](LICENSE) for details.
 DiffBio builds on ideas from:
 - [Datarax](https://github.com/avitai/datarax): Composable data processing framework
 - [Artifex](https://github.com/avitai/artifex): Generative-model and transformer substrate
-- [Opifex](https://github.com/avitai/Opifex): Scientific ML and advanced optimization substrate
+- [Opifex](https://github.com/avitai/opifex): Scientific ML and advanced optimization substrate
 - [Calibrax](https://github.com/avitai/calibrax): Benchmarking, comparison, and regression substrate
 - [Flax NNX](https://flax.readthedocs.io/): Neural network library for JAX
