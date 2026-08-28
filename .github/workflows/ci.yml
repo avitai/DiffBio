@@ -124,7 +124,10 @@ jobs:
           cache-suffix: unit-${{ matrix.shard.id }}
           # Install genomics extra so pyfaidx / pysam are present for the
           # error-path tests in tests/sources/test_{fasta,bam}.py.
-          linux-editable-target: ".[dev,test,genomics]"
+          # chem carries rdkit, which the drug-discovery, molnet and molecular-splitter
+          # tests exercise. It is an extra so that installing the package does not pull a
+          # chemistry toolkit, but the tests that cover it must still have it.
+          linux-editable-target: ".[dev,test,genomics,chem]"
 
       - name: Run unit tests
         shell: bash
@@ -286,7 +289,9 @@ jobs:
         with:
           python-version: "3.11"
           cache-suffix: perf
-          linux-editable-target: ".[dev,test,benchmark]"
+          # chem carries rdkit, needed by tests/benchmarks/test_bench_dti.py and
+          # test_bench_molnet.py.
+          linux-editable-target: ".[dev,test,benchmark,chem]"
 
       - name: Run performance tests
         shell: bash
@@ -335,7 +340,10 @@ jobs:
         with:
           python-version: "3.11"
           cache-suffix: coverage
-          linux-editable-target: ".[dev,test,genomics]"
+          # chem carries rdkit, which the drug-discovery, molnet and molecular-splitter
+          # tests exercise. It is an extra so that installing the package does not pull a
+          # chemistry toolkit, but the tests that cover it must still have it.
+          linux-editable-target: ".[dev,test,genomics,chem]"
 
       - name: Download all coverage data artifacts
         uses: actions/download-artifact@v4
