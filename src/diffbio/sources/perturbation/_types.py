@@ -8,16 +8,15 @@ label types.
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import TypeAlias
 
 # ---------------------------------------------------------------------------
 # Type aliases
 # ---------------------------------------------------------------------------
 
-CellIndex: TypeAlias = int
-PerturbationLabel: TypeAlias = str
-CellTypeLabel: TypeAlias = str
-BatchLabel: TypeAlias = str
+type CellIndex = int
+type PerturbationLabel = str
+type CellTypeLabel = str
+type BatchLabel = str
 
 
 # ---------------------------------------------------------------------------

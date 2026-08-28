@@ -27,8 +27,8 @@ jobs:
       - name: Set up DiffBio docs environment
         uses: ./.github/actions/setup-diffbio
         with:
-          python-version: '3.11'
-          cache-suffix: docs-py311
+          python-version: '3.12'
+          cache-suffix: docs-py312
           linux-editable-target: ".[docs]"
 
       - name: Build documentation

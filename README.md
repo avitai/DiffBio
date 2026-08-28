@@ -1,7 +1,7 @@
 # DiffBio
 
 <p align="center">
-  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+"></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+"></a>
   <a href="https://jax.readthedocs.io/"><img src="https://img.shields.io/badge/JAX-0.6.1+-green.svg" alt="JAX"></a>
   <a href="https://flax.readthedocs.io/"><img src="https://img.shields.io/badge/Flax-0.12+-orange.svg" alt="Flax"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
@@ -293,7 +293,7 @@ DiffBio/
 
 ## Requirements
 
-- Python 3.11+
+- Python 3.12+
 - JAX 0.6.1+
 - Flax 0.12+
 - Optax 0.1.4+
