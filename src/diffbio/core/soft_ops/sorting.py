@@ -990,4 +990,11 @@ def top_k_mask(
     pattern = jnp.concatenate([jnp.ones(k, x.dtype), jnp.zeros(n - k, x.dtype)])
     weights = jnp.broadcast_to(pattern, x_last.shape)
     mask = proj_permutahedron(x_last, weights, softness=softness, mode="c0")
+    # The projection lands in {m : 0 <= m <= 1, sum(m) = k}, so the bound holds in exact
+    # arithmetic. The isotonic solver averages pooled blocks in float32 and can finish one
+    # ULP outside it: for ``n=4`` with scores from seed 202 the largest entry comes back as
+    # 1.0000001. Saturate the forward value onto the documented bound, but leave the backward
+    # pass on the projection's own gradient -- a plain clip would zero the gradient of
+    # precisely the saturated entries, which are the ones the mask selects.
+    mask = mask + jax.lax.stop_gradient(jnp.clip(mask, 0.0, 1.0) - mask)
     return jnp.moveaxis(mask, -1, axis)
