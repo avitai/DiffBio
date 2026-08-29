@@ -14,7 +14,7 @@ jobs:
       - name: Set up DiffBio
         uses: ./.github/actions/setup-diffbio
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache-suffix: quality-report
           linux-editable-target: ".[dev]"
 

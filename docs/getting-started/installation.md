@@ -1,6 +1,6 @@
 # Installation
 
-DiffBio requires Python 3.11+ and works on Linux, macOS, and Windows (via WSL).
+DiffBio requires Python 3.12+ and works on Linux, macOS, and Windows (via WSL).
 
 ## Quick Install
 

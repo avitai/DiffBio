@@ -20,7 +20,7 @@ source ./activate.sh
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.12+
 - uv package manager
 - Git
 

@@ -30,7 +30,6 @@ classifiers = [
   "Topic :: Software Development :: Libraries",
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "License :: OSI Approved :: MIT License"
 ]
@@ -46,10 +45,13 @@ dependencies = [
   # JAX ecosystem
   "beartype>=0.14.1",
   "chex>=0.1.7",
-  "flax>=0.12.0",
+  # 0.12.1 is where nnx Variable gained set_value / get_value.
+  "flax>=0.12.1",
   "jax>=0.6.1",
   "jaxtyping>=0.2.20",
-  "optax>=0.1.4",
+  # 0.2.8 stopped setting jax_pmap_shmap_merge, which jax removed in 0.10; below it,
+  # importing flax raises AttributeError and collection dies for the whole suite.
+  "optax>=0.2.8",
   "orbax-checkpoint>=0.11.10",
   # Scientific computing
   "numpy>=1.24",
@@ -65,11 +67,11 @@ keywords = ["jax", "flax", "bioinformatics", "differentiable", "variant-calling"
 license = {file = "LICENSE"}
 name = "diffbio"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 version = "0.1.0"
 
 [project.optional-dependencies]
-all = ["diffbio[benchmark,chem,dev,docs,genomics,gpu,soft-ops-advanced,soft-ops-ot,test,torch-io]"]
+all = ["diffbio[benchmark,chem,cuda12,dev,docs,genomics,soft-ops-advanced,soft-ops-ot,test,torch-io]"]
 benchmark = [
   "scib-metrics>=0.5",
   "pynndescent>=0.5",
@@ -79,7 +81,14 @@ benchmark = [
   "pandas>=2.0",
   "matplotlib>=3.7"
 ]
-cuda-dev = ["diffbio[dev,gpu]"]
+# RDKit, for the molecular-graph and fingerprint operators. Every call site imports it
+# lazily, so the rest of diffbio installs and runs without it.
+chem = ["rdkit>=2025.9.3"]
+cuda-dev = ["diffbio[cuda12,dev]"]
+# Named for the CUDA major version, as JAX names its own extras (cuda12, cuda12-local,
+# cuda13); JAX publishes no `gpu` extra. No jaxlib line: every jax cuda extra already
+# requires jaxlib<=X,>=X at its own version, so restating it only lets the two disagree.
+cuda12 = ["jax[cuda12]>=0.6.1"]
 dev = [
   "bandit[toml]>=1.8.6",
   "build>=1.0.3",
@@ -115,11 +124,7 @@ docs = [
   "mkdocstrings-python>=1.1.2",
   "pymdown-extensions>=10.14.3"
 ]
-# RDKit, for the molecular-graph and fingerprint operators. Every call site imports it
-# lazily, so the rest of diffbio installs and runs without it.
-chem = ["rdkit>=2025.9.3"]
 genomics = ["pysam>=0.22.0", "pyfaidx>=0.8.0"]
-gpu = ["jax[cuda12]>=0.6.1", "jaxlib>=0.6.1"]
 soft-ops-advanced = ["optimistix>=0.0.9", "lineax>=0.0.8"]
 soft-ops-ot = ["diffbio[soft-ops-advanced]", "ott-jax>=0.5.0"]
 test = [
@@ -341,7 +346,7 @@ exclude = ["memory-bank", ".deprecated", "examples", ".venv"]
 extend-include = ["*.ipynb"]
 line-length = 100
 src = ["src"]
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.format]
 indent-style = "space"
@@ -365,6 +370,15 @@ ignore = [
   "UP015",
   "UP024",
   "UP035",
+  # PEP 695 generic syntax (`def f[T]`, `class C[T]`). Enabled by target-version py312, but
+  # the docstring gate is pydocstyle 6.3.0, whose parser predates PEP 695: it reports D101 /
+  # D103 "missing docstring" for generic functions, and for generic classes with a bound, on
+  # definitions whose docstring is plainly present. 6.3.0 is its final release (2023-01-17),
+  # so no version of it reads this syntax. Re-enable these together with replacing pydocstyle
+  # with ruff's own D rules, which parse it correctly.
+  "UP046", # Generic class uses Generic subclass instead of type parameters
+  "UP047", # Generic function should use type parameters
+  "UP049", # Private type parameter name
   "RUF005"
 ]
 select = ["E", "F", "UP"]
@@ -384,6 +398,11 @@ convention = "google"
 # setuptools arrives through torch, tensorflow and tensorboard, which require it at
 # runtime; it is not this project's build backend, which is hatchling.
 constraint-dependencies = [
+  # dm-haiku arrives through jax-md. Up to 0.0.16 it does
+  # `DropVar: TypeAlias = jax.core.DropVar` at import time, and jax removed jax.core.DropVar
+  # in 0.11.0, so importing diffbio.operators.molecular_dynamics dies with AttributeError.
+  # 0.0.17 guards it with a try/except onto jax.extend.core.
+  "dm-haiku>=0.0.17",
   "setuptools>=83.0.0" # PYSEC-2026-3447
 ]
 python-preference = "only-managed"

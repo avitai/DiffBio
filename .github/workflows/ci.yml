@@ -25,7 +25,7 @@ jobs:
       - name: Set up DiffBio
         uses: ./.github/actions/setup-diffbio
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache-suffix: quality
           linux-editable-target: ".[dev]"
 
@@ -120,7 +120,7 @@ jobs:
       - name: Set up DiffBio
         uses: ./.github/actions/setup-diffbio
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache-suffix: unit-${{ matrix.shard.id }}
           # Install genomics extra so pyfaidx / pysam are present for the
           # error-path tests in tests/sources/test_{fasta,bam}.py.
@@ -180,7 +180,7 @@ jobs:
       - name: Set up DiffBio
         uses: ./.github/actions/setup-diffbio
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache-suffix: integration
           linux-editable-target: ".[dev,test]"
 
@@ -226,7 +226,7 @@ jobs:
       - name: Set up DiffBio
         uses: ./.github/actions/setup-diffbio
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache-suffix: e2e
           linux-editable-target: ".[dev,test]"
 
@@ -287,7 +287,7 @@ jobs:
       - name: Set up DiffBio
         uses: ./.github/actions/setup-diffbio
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache-suffix: perf
           # chem carries rdkit, needed by tests/benchmarks/test_bench_dti.py and
           # test_bench_molnet.py.
@@ -338,7 +338,7 @@ jobs:
       - name: Set up DiffBio
         uses: ./.github/actions/setup-diffbio
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache-suffix: coverage
           # chem carries rdkit, which the drug-discovery, molnet and molecular-splitter
           # tests exercise. It is an extra so that installing the package does not pull a
