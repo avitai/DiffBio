@@ -24,9 +24,9 @@ import time
 import jax
 import jax.numpy as jnp
 import numpy as np
-import optax
 from flax import nnx
 
+from benchmarks._optimizers import create_benchmark_optimizer
 from benchmarks.singlecell._gate2_arms import (
     _ProjectionProbe,
     _embedding_probe,
@@ -91,7 +91,14 @@ def measure(
     )
     labels = jax.device_put(rng.integers(0, n_classes, size=effective_batch).astype(np.int32))
     model, forward = _build(arm, n_features, n_components, n_classes, seed)
-    optimizer = nnx.Optimizer(model, optax.adamw(1e-3), wrt=nnx.Param)
+    # Routed through the shared Opifex boundary (benchmarks/_optimizers.py) rather than
+    # optax directly. weight_decay=1e-4 is optax.adamw's own default, restated here
+    # because OptimizerConfig defaults it to 0.0 -- this keeps the optimizer identical.
+    optimizer = nnx.Optimizer(
+        model,
+        create_benchmark_optimizer(learning_rate=1e-3, optimizer_type="adamw", weight_decay=1e-4),
+        wrt=nnx.Param,
+    )
 
     # donate_argnames lets XLA reuse the model/optimizer buffers in place (Flax NNX
     # best practice), so peak memory reflects realistic in-place training, not double
