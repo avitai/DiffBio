@@ -35,13 +35,13 @@ classifiers = [
 ]
 dependencies = [
   # Datarax - operator, source, and pipeline contracts
-  "datarax>=0.1.4",
+  "datarax>=0.1.5",
   # Artifex - modeling, modality, and transformer substrate
-  "avitai-artifex>=0.1.2",
+  "avitai-artifex>=0.1.4",
   # Opifex - scientific ML, operator learning, and advanced optimization
-  "opifex>=0.2.0",
+  "opifex>=0.2.1",
   # Calibrax - benchmarking, comparison, profiling, and regression control
-  "calibrax>=0.1.1",
+  "calibrax>=0.1.2",
   # JAX ecosystem
   "beartype>=0.14.1",
   "chex>=0.1.7",
@@ -68,11 +68,15 @@ license = {file = "LICENSE"}
 name = "diffbio"
 readme = "README.md"
 requires-python = ">=3.12"
-version = "0.1.0"
+version = "0.1.1"
 
 [project.optional-dependencies]
 all = ["diffbio[benchmark,chem,cuda12,dev,docs,genomics,soft-ops-advanced,soft-ops-ot,test,torch-io]"]
 benchmark = [
+  # benchmarks/crossmodality/*.py call datasets.load_dataset. It used to arrive
+  # transitively through the sibling packages; they now declare their heavy
+  # dependencies behind extras, so what these scripts use is declared here.
+  "datasets>=2.14",
   "scib-metrics>=0.5",
   "pynndescent>=0.5",
   "squidpy>=1.4",
