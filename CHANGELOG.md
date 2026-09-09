@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-09
+
 ### Changed
 
 - The sibling floors are datarax 0.1.6, avitai-artifex 0.1.5, opifex 0.2.2 and
