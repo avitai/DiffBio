@@ -114,10 +114,12 @@ class BAMSource(IndexedBatchSourceMixin, DataSourceModule):
         super().__init__(config, rngs=rngs, name=name)
 
         # Import pysam lazily to allow installation without it
+        # pysam builds its package ``__all__`` at import time, so the typed name is the
+        # defining module's.
         try:
-            import pysam
+            from pysam.libcalignmentfile import AlignmentFile
 
-            self._pysam = pysam
+            self._alignment_file = AlignmentFile
         except ImportError as err:
             raise ImportError(
                 "pysam is required for BAMSource. Install with: pip install pysam"
@@ -147,9 +149,7 @@ class BAMSource(IndexedBatchSourceMixin, DataSourceModule):
         mode = "rb" if str(config.file_path).endswith(".bam") else "rc"
         reference = str(config.reference_path) if config.reference_path else None
 
-        with self._pysam.AlignmentFile(
-            str(config.file_path), mode, reference_filename=reference
-        ) as bam:
+        with self._alignment_file(str(config.file_path), mode, reference_filename=reference) as bam:
             for read in self._iter_reads(bam):
                 if self._should_skip_read(read):
                     continue

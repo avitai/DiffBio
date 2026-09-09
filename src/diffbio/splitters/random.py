@@ -82,7 +82,8 @@ class RandomSplitter(SplitterModule):
         if self.config.seed is not None:
             key = jax.random.key(self.config.seed)
         elif self.rngs is not None and "split" in self.rngs:
-            key = self.rngs.split()
+            # Subscript, not attribute: ``Rngs.split`` is also a method that takes a count.
+            key = self.rngs["split"]()
         else:
             key = jax.random.key(0)
 

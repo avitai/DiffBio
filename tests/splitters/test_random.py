@@ -149,6 +149,25 @@ class TestRandomSplitter:
         assert jnp.array_equal(result1.valid_indices, result2.valid_indices)
         assert jnp.array_equal(result1.test_indices, result2.test_indices)
 
+    def test_split_draws_from_the_split_stream_without_a_seed(self, mock_data_source):
+        """With no seed, the key comes from the ``split`` rng stream, reproducibly."""
+        from flax import nnx
+
+        from diffbio.splitters import RandomSplitter, RandomSplitterConfig
+
+        results = [
+            RandomSplitter(RandomSplitterConfig(seed=None), rngs=nnx.Rngs(split=7)).split(
+                mock_data_source
+            )
+            for _ in range(2)
+        ]
+        other = RandomSplitter(RandomSplitterConfig(seed=None), rngs=nnx.Rngs(split=8)).split(
+            mock_data_source
+        )
+
+        assert jnp.array_equal(results[0].train_indices, results[1].train_indices)
+        assert not jnp.array_equal(results[0].train_indices, other.train_indices)
+
     def test_split_different_seeds_different_results(self, mock_data_source):
         """Test that different seeds produce different splits."""
         from diffbio.splitters import RandomSplitter, RandomSplitterConfig
