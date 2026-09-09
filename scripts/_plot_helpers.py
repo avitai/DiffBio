@@ -107,30 +107,6 @@ def simulated_loss(
 # ---------------------------------------------------------------------------
 # Heatmap / bar-chart annotation helpers
 # ---------------------------------------------------------------------------
-def annotate_heatmap(
-    ax: plt.Axes,  # type: ignore[type-arg]
-    matrix: np.ndarray,
-    *,
-    threshold: float = 0.5,
-    fmt: str = ".2f",
-    fontsize: int = 9,
-) -> None:
-    """Add text annotations to a heatmap with adaptive text colour."""
-    n_rows, n_cols = matrix.shape
-    for i in range(n_rows):
-        for j in range(n_cols):
-            colour = "white" if matrix[i, j] > threshold else "black"
-            ax.text(
-                j,
-                i,
-                f"{matrix[i, j]:{fmt}}",
-                ha="center",
-                va="center",
-                color=colour,
-                fontsize=fontsize,
-            )
-
-
 def label_bars(
     ax: plt.Axes,  # type: ignore[type-arg]
     bars: plt.BarContainer,  # type: ignore[type-arg]
