@@ -29,6 +29,9 @@ jobs:
           cache-suffix: quality
           linux-editable-target: ".[dev]"
 
+      - name: Check the lock matches pyproject.toml
+        run: uv lock --check
+
       - name: Run Ruff
         run: uv run ruff check --output-format=github
 

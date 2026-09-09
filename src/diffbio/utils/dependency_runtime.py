@@ -10,7 +10,7 @@ from pathlib import Path
 import site
 from types import ModuleType
 
-ECOSYSTEM_PACKAGES: tuple[str, ...] = ("datarax", "artifex", "opifex", "calibrax")
+ECOSYSTEM_PACKAGES: tuple[str, ...] = ("datarax", "artifex", "opifex", "calibrax", "substrax")
 
 
 @dataclass(frozen=True)

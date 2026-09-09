@@ -20,7 +20,7 @@ repos:
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
-        exclude: &repo_non_source_exclude ^(?:memory-bank|notebooks|\.deprecated)/
+        exclude: &repo_non_source_exclude ^(?:memory-bank|notebooks|\.deprecated)/|^uv\.lock$
       - id: end-of-file-fixer
         exclude: *repo_non_source_exclude
       - id: check-yaml

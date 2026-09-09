@@ -458,7 +458,7 @@ def _compute_backbone_constraints(
         BondAngleExtension,
         BondLengthExtension,
     )
-    from artifex.generative_models.extensions.protein.backbone import (  # noqa: PLC0415
+    from artifex.generative_models.core.configuration import (  # noqa: PLC0415
         ProteinExtensionConfig,
     )
 
