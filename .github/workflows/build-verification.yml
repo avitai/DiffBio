@@ -33,7 +33,7 @@ jobs:
         run: uv run python -m build
 
       - name: Verify package metadata
-        run: uv run twine check dist/*
+        run: uv run twine check --strict dist/*
 
       - name: Run install smoke contract
         shell: bash

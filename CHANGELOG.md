@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The sibling floors are datarax 0.1.6, avitai-artifex 0.1.5, opifex 0.2.2 and
+  calibrax 0.1.5, and `substrax` joins the runtime dependencies and the ecosystem
+  packages the runtime check verifies. The declared jax floor is 0.11.1 and the flax
+  floor 0.12.9, what every lock already resolved. Python 3.13 is supported.
+- `ProteinExtensionConfig` is imported from its home,
+  `artifex.generative_models.core.configuration`.
+- `scripts/verify_gpu_setup.py` reports the device identity substrax detects
+  (platform, device kind, count, kinds) and `--require-gpu` reads the kind.
+- `diffbio.__version__` is read from the installed distribution's metadata instead
+  of a hand-maintained string, which had stayed at 0.1.0 through the 0.1.1 release.
+- The four advanced example pages that built `nnx.Optimizer` without `wrt=` and
+  called `update(grads)` now match flax 0.12: `wrt=nnx.Param` and
+  `update(model, grads)`.
+- Publishing uses PyPI trusted publishing (OIDC) and `twine check --strict`; the
+  README installs from PyPI, with `setup.sh` for a source checkout.
+- CI checks that `uv.lock` matches `pyproject.toml`; the ruff hooks no longer
+  receive `uv.lock`, which `identify` classifies as TOML.
+
+### Removed
+
+- The direct `orbax-checkpoint` dependency (nothing in this package imports it; it
+  stays a transitive dependency of the siblings).
+- `scripts/generate_benchmark_plots.py` and the sixteen images it rendered under
+  `docs/assets/images/benchmarks/`, which no page referenced, and the unused
+  `annotate_heatmap` helper.
+
 ## [0.1.1] - 2026-08-30
 
 ### Changed

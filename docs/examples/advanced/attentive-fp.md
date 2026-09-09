@@ -340,7 +340,7 @@ class AFPClassifier(nnx.Module):
         return nnx.sigmoid(logits.squeeze())
 
 model = AFPClassifier(afp_model, rngs=rngs)
-optimizer = nnx.Optimizer(model, optax.adamw(1e-3, weight_decay=0.01))
+optimizer = nnx.Optimizer(model, optax.adamw(1e-3, weight_decay=0.01), wrt=nnx.Param)
 
 print("Model ready for training")
 ```
@@ -391,7 +391,7 @@ def train_step(model, optimizer, graph, label):
         return binary_cross_entropy(pred, label)
 
     loss, grads = nnx.value_and_grad(loss_fn)(model)
-    optimizer.update(grads)
+    optimizer.update(model, grads)
     return loss
 
 # Train

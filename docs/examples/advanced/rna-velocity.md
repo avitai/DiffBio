@@ -393,7 +393,7 @@ Loss functions defined
 
 ```python
 # Create optimizer
-optimizer = nnx.Optimizer(velocity_op, optax.adam(1e-3))
+optimizer = nnx.Optimizer(velocity_op, optax.adam(1e-3), wrt=nnx.Param)
 
 # Training
 n_epochs = 50
@@ -413,7 +413,7 @@ for epoch in range(n_epochs):
         return loss
 
     loss, grads = nnx.value_and_grad(loss_fn)(velocity_op)
-    optimizer.update(grads)
+    optimizer.update(velocity_op, grads)
     losses.append(float(loss))
 
     if (epoch + 1) % 10 == 0:

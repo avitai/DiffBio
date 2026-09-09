@@ -1,12 +1,9 @@
 # Publish to PyPI when a GitHub Release is created.
 #
-# Authentication uses API tokens stored as repo secrets:
-#   PYPI_API_TOKEN       — account-scoped token used by the pypi job
-#   TEST_PYPI_API_TOKEN  — account-scoped token used by the testpypi job
-#
-# To migrate to OIDC trusted publishing later, replace the `password` inputs
-# with `permissions: id-token: write` on each publish job and register the
-# project at https://pypi.org/manage/account/publishing/.
+# Authentication is trusted publishing (OIDC): each publish job requests an
+# id-token and PyPI matches it against the publisher registered for `diffbio`
+# (owner avitai, repository DiffBio, workflow publish.yml, environment `pypi`
+# or `testpypi`). No token secret is read.
 
 name: Publish to PyPI
 
@@ -52,7 +49,7 @@ jobs:
         run: python -m build
 
       - name: Check package
-        run: twine check dist/*
+        run: twine check --strict dist/*
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
@@ -99,6 +96,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'testpypi'
 
+    permissions:
+      id-token: write
+
     environment:
       name: testpypi
       url: https://test.pypi.org/project/diffbio/
@@ -114,7 +114,6 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
-          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           verbose: true
           skip-existing: true
 
@@ -142,6 +141,9 @@ jobs:
         needs.create-github-release.result == 'skipped'
       )
 
+    permissions:
+      id-token: write
+
     environment:
       name: pypi
       url: https://pypi.org/project/diffbio/
@@ -156,5 +158,4 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
           verbose: true

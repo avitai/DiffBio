@@ -218,7 +218,7 @@ X_train, X_test = X[:train_size], X[train_size:]
 y_train, y_test = y[:train_size], y[train_size:]
 
 # Create optimizer
-optimizer = nnx.Optimizer(model, optax.adam(1e-3))
+optimizer = nnx.Optimizer(model, optax.adam(1e-3), wrt=nnx.Param)
 
 # Loss function
 def binary_cross_entropy(pred, target):
@@ -235,7 +235,7 @@ def train_step(model, optimizer, x, y):
         return binary_cross_entropy(pred, y)
 
     loss, grads = nnx.value_and_grad(loss_fn)(model)
-    optimizer.update(grads)
+    optimizer.update(model, grads)
     return loss
 
 # Train for a few epochs

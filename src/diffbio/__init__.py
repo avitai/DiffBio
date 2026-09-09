@@ -1,7 +1,7 @@
 """DiffBio: End-to-end differentiable bioinformatics pipelines built on the wider JAX/NNX ecosystem.
 
 This package provides differentiable bioinformatics pipeline components that
-integrate with Datarax, Artifex, Opifex, and Calibrax for gradient-based
+integrate with Datarax, Artifex, Opifex, Calibrax and Substrax for gradient-based
 optimization of genomics workflows.
 
 Key components:
@@ -12,6 +12,8 @@ Key components:
 - configs: Base configuration classes for operators
 - constants: Centralized constants for the library
 """
+
+import importlib.metadata
 
 from diffbio import (
     configs,
@@ -24,7 +26,7 @@ from diffbio import (
     utils,
 )
 
-__version__ = "0.1.0"
+__version__ = importlib.metadata.version("diffbio")
 
 __all__ = [
     "__version__",

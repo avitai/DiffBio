@@ -70,12 +70,13 @@ For complete operator and pipeline listings, see the [Operators Overview](https:
 ## Installation
 
 ```bash
-# Clone the repository
+# From PyPI
+uv add diffbio          # or: pip install diffbio
+
+# From source
 git clone https://github.com/avitai/DiffBio.git
 cd DiffBio
-
-# Install with uv
-uv sync
+./setup.sh              # detects the backend and syncs the extras
 ```
 
 ## Quick Start
@@ -298,7 +299,7 @@ DiffBio/
 - Flax 0.12+
 - Optax 0.1.4+
 - jaxtyping 0.2.20+
-- Datarax, Artifex, Opifex, and Calibrax (installed automatically from PyPI)
+- Datarax, Artifex, Opifex, Calibrax and Substrax (installed automatically from PyPI)
 
 ## License
 

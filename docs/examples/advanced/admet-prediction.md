@@ -280,7 +280,7 @@ Positive class ratio: 58.00%
 
 ```python
 # Create optimizer
-optimizer = nnx.Optimizer(predictor, optax.adamw(1e-4, weight_decay=0.01))
+optimizer = nnx.Optimizer(predictor, optax.adamw(1e-4, weight_decay=0.01), wrt=nnx.Param)
 
 # Task index for BBB prediction
 bbb_idx = ADMET_TASK_NAMES.index("BBB_Martins")
@@ -302,7 +302,7 @@ def train_step(predictor, optimizer, smiles, label):
         return compute_loss(pred, smiles, label)
 
     loss, grads = nnx.value_and_grad(loss_fn)(predictor)
-    optimizer.update(grads)
+    optimizer.update(predictor, grads)
     return loss
 
 # Train for several epochs
