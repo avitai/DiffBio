@@ -42,7 +42,7 @@ from diffbio.sources.bengrn_ground_truth import (
 
 logger = logging.getLogger(__name__)
 
-_DATA_DIR = "/media/mahdi/ssd23/Works/benGRN/data/GroundTruth/stone_and_sroy"
+_DATA_DIR = "/mnt/ssd2/Works/benGRN/data/GroundTruth/stone_and_sroy"
 
 _CONFIG = DiffBioBenchmarkConfig(
     name="singlecell/grn",

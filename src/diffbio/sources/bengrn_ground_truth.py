@@ -3,7 +3,7 @@
 Loads mESC expression data and ChIP+Perturb ground truth edges from
 the benGRN repository (Stone & Sroy gold standards).
 
-Data source: /media/mahdi/ssd23/Works/benGRN/data/GroundTruth/
+Data source: /mnt/ssd2/Works/benGRN/data/GroundTruth/
 
 References:
     - benGRN: https://github.com/your-org/benGRN
@@ -28,7 +28,7 @@ from datarax.core.data_source import DataSourceModule
 
 logger = logging.getLogger(__name__)
 
-_BASE_DIR = Path("/media/mahdi/ssd23/Works/benGRN/data/GroundTruth/stone_and_sroy")
+_BASE_DIR = Path("/mnt/ssd2/Works/benGRN/data/GroundTruth/stone_and_sroy")
 
 
 @dataclass(frozen=True, kw_only=True)

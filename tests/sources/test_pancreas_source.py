@@ -12,7 +12,7 @@ import pytest
 
 from diffbio.sources.pancreas import PancreasConfig, PancreasSource
 
-_DATA_DIR = Path("/media/mahdi/ssd23/Data/scvelo")
+_DATA_DIR = Path("/mnt/ssd2/Data/scvelo")
 _DATA_EXISTS = (_DATA_DIR / "endocrinogenesis_day15.h5ad").exists()
 
 

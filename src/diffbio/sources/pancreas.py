@@ -42,7 +42,7 @@ class PancreasConfig(StructuralConfig):
         cluster_key: Column in obs for cell type labels.
     """
 
-    data_dir: str = "/media/mahdi/ssd23/Data/scvelo"
+    data_dir: str = "/mnt/ssd2/Data/scvelo"
     subsample: int | None = None
     cluster_key: str = "clusters"
 

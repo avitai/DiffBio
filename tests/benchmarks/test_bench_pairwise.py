@@ -14,7 +14,7 @@ from calibrax.core.result import BenchmarkResult
 from benchmarks.alignment.bench_pairwise import PairwiseBenchmark
 from tests.benchmarks.conftest import assert_valid_benchmark_result
 
-_DATA_DIR = Path("/media/mahdi/ssd23/Works/balifam")
+_DATA_DIR = Path("/mnt/ssd2/Works/balifam")
 _SKIP = not (_DATA_DIR / "balifam100" / "ref").exists()
 
 

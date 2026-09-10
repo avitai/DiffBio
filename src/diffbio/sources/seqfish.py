@@ -46,7 +46,7 @@ class SeqFISHConfig(StructuralConfig):
         spatial_key: Key in obsm for spatial coordinates.
     """
 
-    data_dir: str = "/media/mahdi/ssd23/Data/spatial"
+    data_dir: str = "/mnt/ssd2/Data/spatial"
     subsample: int | None = None
     label_key: str = "celltype_mapped_refined"
     spatial_key: str = "spatial"

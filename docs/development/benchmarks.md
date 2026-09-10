@@ -331,8 +331,8 @@ checkpoint support:
 
 | Dataset | Size | Path | Download |
 |---------|------|------|----------|
-| immune_human | 2.0 GB | `/media/mahdi/ssd23/Data/scib/Immune_ALL_human.h5ad` | [Figshare](https://ndownloader.figshare.com/files/25717328) |
-| pancreas | 51 MB | `/media/mahdi/ssd23/Data/scvelo/endocrinogenesis_day15.h5ad` | [GitHub](https://github.com/theislab/scvelo_notebooks/raw/master/data/Pancreas/endocrinogenesis_day15.h5ad) |
+| immune_human | 2.0 GB | `/mnt/ssd2/Data/scib/Immune_ALL_human.h5ad` | [Figshare](https://ndownloader.figshare.com/files/25717328) |
+| pancreas | 51 MB | `/mnt/ssd2/Data/scvelo/endocrinogenesis_day15.h5ad` | [GitHub](https://github.com/theislab/scvelo_notebooks/raw/master/data/Pancreas/endocrinogenesis_day15.h5ad) |
 
 ### From Cloned Repos
 

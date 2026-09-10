@@ -10,7 +10,7 @@ from calibrax.core.result import BenchmarkResult
 from benchmarks.singlecell.bench_trajectory import TrajectoryBenchmark
 from tests.benchmarks.conftest import assert_valid_benchmark_result
 
-_DATA_DIR = Path("/media/mahdi/ssd23/Data/scvelo")
+_DATA_DIR = Path("/mnt/ssd2/Data/scvelo")
 _SKIP = not (_DATA_DIR / "endocrinogenesis_day15.h5ad").exists()
 
 

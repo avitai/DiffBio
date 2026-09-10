@@ -16,7 +16,7 @@ from diffbio.sources.immune_human import ImmuneHumanConfig, ImmuneHumanSource
 
 # The dataset must be downloaded to this path before running tests.
 # See: benchmarks/README.md for instructions.
-_DATA_DIR = Path("/media/mahdi/ssd23/Data/scib")
+_DATA_DIR = Path("/mnt/ssd2/Data/scib")
 _SKIP_REASON = "Immune human dataset not downloaded"
 
 

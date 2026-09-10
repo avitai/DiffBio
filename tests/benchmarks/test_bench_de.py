@@ -10,7 +10,7 @@ from calibrax.core.result import BenchmarkResult
 from benchmarks.statistical.bench_de import DEBenchmark
 from tests.benchmarks.conftest import assert_valid_benchmark_result
 
-_DATA_DIR = Path("/media/mahdi/ssd23/Data/scib")
+_DATA_DIR = Path("/mnt/ssd2/Data/scib")
 _SKIP = not (_DATA_DIR / "Immune_ALL_human.h5ad").exists()
 
 

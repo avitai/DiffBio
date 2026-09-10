@@ -66,7 +66,7 @@ class BatchCorrectionBenchmark(DiffBioBenchmark):
         config: DiffBioBenchmarkConfig = _CONFIG,
         *,
         quick: bool = False,
-        data_dir: str = "/media/mahdi/ssd23/Data/scib",
+        data_dir: str = "/mnt/ssd2/Data/scib",
         source_factory: Callable[[int | None], _SingleCellSource] | None = None,
         embedding_adapter: SingleCellPrecomputedAdapter | None = None,
     ) -> None:
@@ -183,14 +183,14 @@ def main() -> None:
     DiffBioBenchmark.cli_main(
         BatchCorrectionBenchmark,
         _CONFIG,
-        data_dir="/media/mahdi/ssd23/Data/scib",
+        data_dir="/mnt/ssd2/Data/scib",
     )
 
 
 def run_foundation_batch_correction_suite(
     *,
     quick: bool = False,
-    data_dir: str = "/media/mahdi/ssd23/Data/scib",
+    data_dir: str = "/mnt/ssd2/Data/scib",
     source_factory: Callable[[int | None], _SingleCellSource] | None = None,
     adapters: dict[str, SingleCellPrecomputedAdapter] | None = None,
 ) -> dict[str, BenchmarkResult]:

@@ -121,7 +121,7 @@ class MSABenchmark(DiffBioBenchmark):
         config: DiffBioBenchmarkConfig = _CONFIG,
         *,
         quick: bool = False,
-        data_dir: str = "/media/mahdi/ssd23/Works/balifam",
+        data_dir: str = "/mnt/ssd2/Works/balifam",
     ) -> None:
         super().__init__(config, quick=quick, data_dir=data_dir)
 
@@ -301,7 +301,7 @@ def main() -> None:
     DiffBioBenchmark.cli_main(
         MSABenchmark,
         _CONFIG,
-        data_dir="/media/mahdi/ssd23/Works/balifam",
+        data_dir="/mnt/ssd2/Works/balifam",
     )
 
 

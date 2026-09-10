@@ -19,7 +19,7 @@ from benchmarks.epigenomics.bench_peak_calling import (
 )
 from tests.benchmarks.conftest import assert_valid_benchmark_result
 
-_DATA_PATH = Path("/media/mahdi/ssd23/Data/encode/CTCF_K562_narrowPeak.bed.gz")
+_DATA_PATH = Path("/mnt/ssd2/Data/encode/CTCF_K562_narrowPeak.bed.gz")
 _SKIP = not _DATA_PATH.exists()
 
 

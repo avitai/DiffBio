@@ -14,7 +14,7 @@ from benchmarks.singlecell.gate1_frozen_pipeline import (
     pipeline_frozen_features,
 )
 
-_ATLAS_DATA_DIR = os.environ.get("DIFFBIO_SCIB_DATA_DIR", "/media/mahdi/ssd23/Data/scib")
+_ATLAS_DATA_DIR = os.environ.get("DIFFBIO_SCIB_DATA_DIR", "/mnt/ssd2/Data/scib")
 
 
 def _structured_counts(

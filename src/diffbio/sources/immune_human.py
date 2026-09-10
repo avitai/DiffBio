@@ -48,7 +48,7 @@ class ImmuneHumanConfig(StructuralConfig):
         embedding_key: Key in obsm for precomputed embeddings.
     """
 
-    data_dir: str = "/media/mahdi/ssd23/Data/scib"
+    data_dir: str = "/mnt/ssd2/Data/scib"
     subsample: int | None = None
     batch_key: str = "batch"
     label_key: str = "final_annotation"

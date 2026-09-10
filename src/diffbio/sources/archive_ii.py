@@ -32,7 +32,7 @@ from flax import nnx
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_DATA_DIR = "/media/mahdi/ssd23/Works/RNAFoldAssess/tutorial/processed_data"
+_DEFAULT_DATA_DIR = "/mnt/ssd2/Works/RNAFoldAssess/tutorial/processed_data"
 _STRUCTURE_FILENAME = "example_data_structure.csv"
 
 

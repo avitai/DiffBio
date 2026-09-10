@@ -65,7 +65,7 @@ class SingleCellFoundationAnnotationBenchmark(DiffBioBenchmark):
         config: DiffBioBenchmarkConfig = _CONFIG,
         *,
         quick: bool = False,
-        data_dir: str = "/media/mahdi/ssd23/Data/scib",
+        data_dir: str = "/mnt/ssd2/Data/scib",
         source_factory: Callable[[int | None], SingleCellSource] | None = None,
         embedding_adapter: SingleCellPrecomputedAdapter | None = None,
     ) -> None:
@@ -192,14 +192,14 @@ def main() -> None:
     DiffBioBenchmark.cli_main(
         SingleCellFoundationAnnotationBenchmark,
         _CONFIG,
-        data_dir="/media/mahdi/ssd23/Data/scib",
+        data_dir="/mnt/ssd2/Data/scib",
     )
 
 
 def run_foundation_annotation_suite(
     *,
     quick: bool = False,
-    data_dir: str = "/media/mahdi/ssd23/Data/scib",
+    data_dir: str = "/mnt/ssd2/Data/scib",
     source_factory: Callable[[int | None], SingleCellSource] | None = None,
     adapters: dict[str, SingleCellPrecomputedAdapter] | None = None,
 ) -> dict[str, BenchmarkResult]:

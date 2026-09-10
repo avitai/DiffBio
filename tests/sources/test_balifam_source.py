@@ -16,7 +16,7 @@ from diffbio.sources.balifam import (
     _parse_fasta,
 )
 
-_DATA_DIR = Path("/media/mahdi/ssd23/Works/balifam")
+_DATA_DIR = Path("/mnt/ssd2/Works/balifam")
 _DATA_EXISTS = (_DATA_DIR / "balifam100").exists()
 
 

@@ -90,13 +90,13 @@ Download datasets before running:
 
 ```bash
 # Single-cell (immune_human, 2GB)
-mkdir -p /media/mahdi/ssd23/Data/scib
-wget -O /media/mahdi/ssd23/Data/scib/Immune_ALL_human.h5ad \
+mkdir -p /mnt/ssd2/Data/scib
+wget -O /mnt/ssd2/Data/scib/Immune_ALL_human.h5ad \
     "https://ndownloader.figshare.com/files/25717328"
 
 # Trajectory (pancreas, 51MB)
-mkdir -p /media/mahdi/ssd23/Data/scvelo
-wget -O /media/mahdi/ssd23/Data/scvelo/endocrinogenesis_day15.h5ad \
+mkdir -p /mnt/ssd2/Data/scvelo
+wget -O /mnt/ssd2/Data/scvelo/endocrinogenesis_day15.h5ad \
     "https://github.com/theislab/scvelo_notebooks/raw/master/data/Pancreas/endocrinogenesis_day15.h5ad"
 ```
 

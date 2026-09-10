@@ -33,7 +33,7 @@ from flax import nnx
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_DATA_PATH = "/media/mahdi/ssd23/Data/encode/CTCF_K562_narrowPeak.bed.gz"
+_DEFAULT_DATA_PATH = "/mnt/ssd2/Data/encode/CTCF_K562_narrowPeak.bed.gz"
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -17,7 +17,7 @@ from diffbio.sources.archive_ii import (
     _parse_csv,
 )
 
-_DATA_DIR = Path("/media/mahdi/ssd23/Works/RNAFoldAssess/tutorial/processed_data")
+_DATA_DIR = Path("/mnt/ssd2/Works/RNAFoldAssess/tutorial/processed_data")
 _DATA_EXISTS = (_DATA_DIR / "example_data_structure.csv").exists()
 
 

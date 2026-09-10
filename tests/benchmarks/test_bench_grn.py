@@ -10,7 +10,7 @@ from calibrax.core.result import BenchmarkResult
 from benchmarks.singlecell.bench_grn import GRNBenchmark
 from tests.benchmarks.conftest import assert_valid_benchmark_result
 
-_DATA_DIR = Path("/media/mahdi/ssd23/Works/benGRN/data/GroundTruth/stone_and_sroy")
+_DATA_DIR = Path("/mnt/ssd2/Works/benGRN/data/GroundTruth/stone_and_sroy")
 _SKIP = not (_DATA_DIR / "gold_standards" / "mESC").exists()
 
 

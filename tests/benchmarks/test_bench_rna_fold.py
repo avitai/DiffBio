@@ -21,7 +21,7 @@ from benchmarks.rna_structure.bench_rna_fold import (
 )
 from tests.benchmarks.conftest import assert_valid_benchmark_result
 
-_DATA_DIR = Path("/media/mahdi/ssd23/Works/RNAFoldAssess/tutorial/processed_data")
+_DATA_DIR = Path("/mnt/ssd2/Works/RNAFoldAssess/tutorial/processed_data")
 _SKIP = not (_DATA_DIR / "example_data_structure.csv").exists()
 
 

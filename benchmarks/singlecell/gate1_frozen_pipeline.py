@@ -35,7 +35,7 @@ _SPLIT_SEED = 42
 _DEFAULT_N_TOP_GENES = 2000
 _DEFAULT_N_COMPONENTS = 50
 _DEFAULT_TRAIN_STEPS = 200
-_DEFAULT_DATA_DIR = os.environ.get("DIFFBIO_SCIB_DATA_DIR", "/media/mahdi/ssd23/Data/scib")
+_DEFAULT_DATA_DIR = os.environ.get("DIFFBIO_SCIB_DATA_DIR", "/mnt/ssd2/Data/scib")
 
 
 def pipeline_frozen_features(

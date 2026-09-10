@@ -33,7 +33,7 @@ _TASK_ORDER = ("cell_annotation", "batch_correction")
 def run_singlecell_foundation_suite(
     *,
     quick: bool = False,
-    data_dir: str = "/media/mahdi/ssd23/Data/scib",
+    data_dir: str = "/mnt/ssd2/Data/scib",
     source_factory: Callable[[int | None], Any] | None = None,
     adapters: dict[str, SingleCellPrecomputedAdapter] | None = None,
 ) -> dict[str, dict[str, BenchmarkResult]]:

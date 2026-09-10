@@ -35,7 +35,7 @@ from flax import nnx
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_DATA_DIR = "/media/mahdi/ssd23/Works/balifam"
+_DEFAULT_DATA_DIR = "/mnt/ssd2/Works/balifam"
 
 
 def _parse_fasta(path: Path) -> list[tuple[str, str]]:

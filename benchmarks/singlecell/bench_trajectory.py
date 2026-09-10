@@ -55,7 +55,7 @@ class TrajectoryBenchmark(DiffBioBenchmark):
         config: DiffBioBenchmarkConfig = _CONFIG,
         *,
         quick: bool = False,
-        data_dir: str = "/media/mahdi/ssd23/Data/scvelo",
+        data_dir: str = "/mnt/ssd2/Data/scvelo",
     ) -> None:
         super().__init__(config, quick=quick, data_dir=data_dir)
 
@@ -193,7 +193,7 @@ def main() -> None:
     DiffBioBenchmark.cli_main(
         TrajectoryBenchmark,
         _CONFIG,
-        data_dir="/media/mahdi/ssd23/Data/scvelo",
+        data_dir="/mnt/ssd2/Data/scvelo",
     )
 
 

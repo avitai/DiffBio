@@ -43,7 +43,7 @@ _LEARNING_RATE = 1e-2
 _SPLIT_SEED = 42
 _DEFAULT_N_TOP_GENES = 2000
 _DEFAULT_N_COMPONENTS = 50
-_DEFAULT_DATA_DIR = "/media/mahdi/ssd23/Data/scib"
+_DEFAULT_DATA_DIR = "/mnt/ssd2/Data/scib"
 
 
 class FrozenAnnotationBaselineBenchmark(DiffBioBenchmark):

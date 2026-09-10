@@ -12,7 +12,7 @@ from benchmarks.multiomics.bench_spatial_deconv import (
 )
 from tests.benchmarks.conftest import assert_valid_benchmark_result
 
-_DATA_DIR = Path("/media/mahdi/ssd23/Data/spatial")
+_DATA_DIR = Path("/mnt/ssd2/Data/spatial")
 _SKIP = not (_DATA_DIR / "seqfish_cortex.h5ad").exists()
 
 
