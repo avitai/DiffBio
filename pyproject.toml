@@ -341,7 +341,7 @@ save_data = true
 warmup = true
 warmup_iterations = 3
 
-[tool.pytest-env]
+[tool.pytest_env]
 JAX_ENABLE_X64 = "0"
 JAX_SKIP_CUDA_CONSTRAINTS_CHECK = "1"
 LD_LIBRARY_PATH = "/usr/local/cuda/lib64"
