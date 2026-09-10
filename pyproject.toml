@@ -37,7 +37,7 @@ classifiers = [
 ]
 dependencies = [
   # Datarax - operator, source, and pipeline contracts
-  "datarax>=0.1.6",
+  "datarax>=0.1.7",
   # Artifex - modeling, modality, and transformer substrate
   "avitai-artifex>=0.1.5",
   # Opifex - scientific ML, operator learning, and advanced optimization

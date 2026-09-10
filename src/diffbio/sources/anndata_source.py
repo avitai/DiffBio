@@ -34,7 +34,7 @@ from flax import nnx
 
 from datarax.core.config import StructuralConfig
 from datarax.core.data_source import DataSourceModule
-from datarax.sources._eager_source_ops import eager_get_batch, eager_iter, eager_reset
+from datarax.sources import eager_get_batch, eager_iter, eager_reset
 
 from diffbio.sources._anndata_shared import (
     build_anndata_data,

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `eager_iter`, `eager_get_batch` and `eager_reset` are imported from `datarax.sources`,
+  their public home in datarax 0.1.7; the private `datarax.sources._eager_source_ops`
+  path this package used is gone there, so the floor is `datarax>=0.1.7`.
+
 ## [0.1.2] - 2026-09-09
 
 ### Changed
