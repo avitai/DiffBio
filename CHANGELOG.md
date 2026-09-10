@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-09-09
+
 ### Changed
 
 - `eager_iter`, `eager_get_batch` and `eager_reset` are imported from `datarax.sources`,

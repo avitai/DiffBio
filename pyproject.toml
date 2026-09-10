@@ -70,7 +70,7 @@ license = {file = "LICENSE"}
 name = "diffbio"
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
-version = "0.1.2"
+version = "0.1.3"
 
 [project.optional-dependencies]
 all = ["diffbio[benchmark,chem,cuda12,dev,docs,genomics,soft-ops-advanced,soft-ops-ot,test,torch-io]"]
