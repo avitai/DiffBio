@@ -1005,6 +1005,7 @@ all = [
     { name = "interrogate" },
     { name = "ipykernel" },
     { name = "jax", extra = ["cuda12"] },
+    { name = "jax-metal", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
     { name = "lineax" },
     { name = "matplotlib" },
     { name = "mkdocs" },
@@ -1124,6 +1125,9 @@ genomics = [
     { name = "pyfaidx" },
     { name = "pysam" },
 ]
+metal = [
+    { name = "jax-metal", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
+]
 soft-ops-advanced = [
     { name = "lineax" },
     { name = "optimistix" },
@@ -1181,7 +1185,7 @@ requires-dist = [
     { name = "datarax", specifier = ">=0.1.7" },
     { name = "datasets", marker = "extra == 'benchmark'", specifier = ">=2.14" },
     { name = "deepchem", marker = "extra == 'benchmark'", specifier = ">=2.8.0" },
-    { name = "diffbio", extras = ["benchmark", "chem", "cuda12", "dev", "docs", "genomics", "soft-ops-advanced", "soft-ops-ot", "test", "torch-io"], marker = "extra == 'all'" },
+    { name = "diffbio", extras = ["benchmark", "chem", "cuda12", "dev", "docs", "genomics", "metal", "soft-ops-advanced", "soft-ops-ot", "test", "torch-io"], marker = "extra == 'all'" },
     { name = "diffbio", extras = ["cuda12", "dev"], marker = "extra == 'cuda-dev'" },
     { name = "diffbio", extras = ["soft-ops-advanced"], marker = "extra == 'soft-ops-ot'" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.0" },
@@ -1195,6 +1199,7 @@ requires-dist = [
     { name = "jax", specifier = ">=0.11.1" },
     { name = "jax", extras = ["cuda12"], marker = "extra == 'cuda12'", specifier = ">=0.11.1" },
     { name = "jax-md", specifier = ">=0.2.27" },
+    { name = "jax-metal", marker = "platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'metal'", specifier = ">=0.1.0" },
     { name = "jaxtyping", specifier = ">=0.2.20" },
     { name = "lineax", marker = "extra == 'soft-ops-advanced'", specifier = ">=0.0.8" },
     { name = "matplotlib", marker = "extra == 'benchmark'", specifier = ">=3.7" },
@@ -1246,7 +1251,7 @@ requires-dist = [
     { name = "torch", marker = "extra == 'torch-io'", specifier = ">=1.13.0" },
     { name = "wemake-python-styleguide", marker = "extra == 'dev'", specifier = ">=1.0" },
 ]
-provides-extras = ["all", "benchmark", "chem", "cuda-dev", "cuda12", "dev", "docs", "genomics", "soft-ops-advanced", "soft-ops-ot", "test", "torch-io"]
+provides-extras = ["all", "benchmark", "chem", "cuda-dev", "cuda12", "dev", "docs", "genomics", "metal", "soft-ops-advanced", "soft-ops-ot", "test", "torch-io"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -2238,6 +2243,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ee/a1/e2eaeb39dc7838e810af1ead6226f392d780eac25c00f48640cecdc2476b/jax_md-0.2.28.tar.gz", hash = "sha256:de899bdcbf1c176271f4cfce4075876f2fe94ebc7855f5988a2b50807bb33e08", size = 16341222, upload-time = "2026-03-22T10:07:23.651Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f1/f5/328becb0d7e27f5447386f20b5a51e5865338a4899bf75a0f42548da4df0/jax_md-0.2.28-py3-none-any.whl", hash = "sha256:22964fb2620849a3cce25a404f7753e3c416590d5d91d92d0012061d00f6a0ba", size = 233889, upload-time = "2026-03-22T10:07:22.013Z" },
+]
+
+[[package]]
+name = "jax-metal"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "jax" },
+    { name = "jaxlib" },
+    { name = "six" },
+    { name = "wheel" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/09/dc/6d8fbfc29d902251cf333414cf7dcfaf4b252a9920c881354584ed36270d/jax_metal-0.1.1-py3-none-macosx_13_0_arm64.whl", hash = "sha256:f1dbfecb298cdd3ba6da3ad6dc9a2adb63d71741f8b8ece28c296b32d608b6c8", size = 41179678, upload-time = "2024-10-08T16:56:31.563Z" },
 ]
 
 [[package]]
@@ -5776,6 +5795,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/78/eb/c0ed67f144c6b5426cd444ccd22a22da4971e50a345c84bae187d1bfce27/wemake_python_styleguide-1.6.2.tar.gz", hash = "sha256:59c7d52b0677519aeb49714fca558eb93f278d8a7e18eadead455db8620ceb2f", size = 158636, upload-time = "2026-04-27T05:51:41.03Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7c/0c/c77f5bbb2e018d80916442022609cfbbfaa88a9579724f5332cf4a66e57c/wemake_python_styleguide-1.6.2-py3-none-any.whl", hash = "sha256:857690cb0e36132e7b3b5d339a11714014d539634ed27cf04cf08107f1c347cb", size = 221687, upload-time = "2026-04-27T05:51:42.481Z" },
+]
+
+[[package]]
+name = "wheel"
+version = "0.48.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d0/20/50ed6bdf27dec98b568a8ae25dc599f35baa3d9709f9e83fd1edb56b9a90/wheel-0.48.0.tar.gz", hash = "sha256:94800765601e9171bf5d58d066e640662842bcedcbab982b2c90787a2c987322", size = 66471, upload-time = "2026-08-11T22:02:27.327Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2e/29/69cfbb602cd91690c55d38ba9fe53e6a7e76a6fa647bf38f19c138d25449/wheel-0.48.0-py3-none-any.whl", hash = "sha256:3217dcc807155e45db462d7ef2431f5ddda0d7273b700d05a67b271ceb1287ab", size = 33320, upload-time = "2026-08-11T22:02:26.1Z" },
 ]
 
 [[package]]

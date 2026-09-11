@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   integration job own, `tests/benchmarks` has its own shard, and
   `tests/test_ci_shards.py` fails when a test module is left out. The `test` extra gains
   `pyyaml`, which that check reads.
+- `./setup.sh` on Apple Silicon syncs a `metal` extra that was never declared, so it
+  failed at `uv sync`; the extra is now declared (`jax-metal`, arm64 macOS only) and
+  included in `all`. Its help named a `gpu` extra renamed `cuda12` in 0.1.1. A test
+  checks that every extra `setup.sh` names is declared.
 
 ## [0.1.3] - 2026-09-09
 
