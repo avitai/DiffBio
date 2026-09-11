@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scib-metrics bridge tests import; the Lennard-Jones benchmark tests, whose 4,096-particle
   run takes over 300 s on a CPU runner, are marked `slow`; the positioning test names
   Substrax with the other siblings.
+- The combined coverage floor is checked on pull requests too, not only on pushes to main,
+  and coverage is no longer uploaded to Codecov: the upload was never read back, and
+  coverage.py in the Test Coverage job is the gate. `tests/test_ci_coverage.py` checks both.
 
 ## [0.1.3] - 2026-09-09
 

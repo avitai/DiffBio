@@ -223,7 +223,6 @@ jobs:
     needs: [unit_tests, integration_tests]
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v4
@@ -260,12 +259,6 @@ jobs:
           uv run coverage combine coverage-artifacts/.coverage.*
           uv run coverage report
           uv run coverage xml
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage.xml
-          fail_ci_if_error: false
 
       - name: Upload combined coverage report
         uses: actions/upload-artifact@v4
