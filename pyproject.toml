@@ -143,7 +143,9 @@ test = [
   "pytest-env>=1.0.1",
   "pytest-randomly>=3.16.0",
   "pytest-timeout>=2.1",
-  "pytest-xdist>=3.6"
+  "pytest-xdist>=3.6",
+  # tests/test_ci_shards.py reads the CI workflow.
+  "pyyaml>=6"
 ]
 torch-io = ["torch>=1.13.0"]
 

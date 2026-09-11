@@ -53,19 +53,17 @@ jobs:
           # Sharded by test path to keep wall-clock time per runner bounded.
           # Keep these in sync with the local test layout so no shard becomes
           # the long pole (review when test counts change appreciably).
+          # Everything the other shards and the integration job do not run, so a new
+          # test directory or root-level test module is collected without an edit here.
           - id: core-and-misc
-            paths: >-
-              tests/core
-              tests/sources
-              tests/splitters
-              tests/samplers
-              tests/sequences
-              tests/utils
-              tests/pipelines
-              tests/losses
+            paths: tests
             extra: >-
+              --ignore=tests/operators
               --ignore=tests/integration
               --ignore=tests/benchmarks
+          - id: benchmarks
+            paths: tests/benchmarks
+            extra: ""
           - id: operators-singlecell
             paths: tests/operators/singlecell
             extra: ""

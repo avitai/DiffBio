@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- CI runs every test module. The unit-test shards named test directories one by one, so
+  `tests/benchmarks`, `tests/reductions`, `tests/scripts` and the root-level test modules
+  ran in no job. The general shard now runs `tests` minus what the other shards and the
+  integration job own, `tests/benchmarks` has its own shard, and
+  `tests/test_ci_shards.py` fails when a test module is left out. The `test` extra gains
+  `pyyaml`, which that check reads.
+
 ## [0.1.3] - 2026-09-09
 
 ### Changed

@@ -1031,6 +1031,7 @@ all = [
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
     { name = "python-dotenv" },
+    { name = "pyyaml" },
     { name = "radon" },
     { name = "rdkit" },
     { name = "ruff" },
@@ -1143,6 +1144,7 @@ test = [
     { name = "pytest-randomly" },
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
+    { name = "pyyaml" },
 ]
 torch-io = [
     { name = "torch" },
@@ -1231,6 +1233,7 @@ requires-dist = [
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.6" },
     { name = "pytest-xdist", marker = "extra == 'test'", specifier = ">=3.6" },
     { name = "python-dotenv", marker = "extra == 'dev'", specifier = ">=1" },
+    { name = "pyyaml", marker = "extra == 'test'", specifier = ">=6" },
     { name = "radon", marker = "extra == 'dev'", specifier = ">=6.0.1" },
     { name = "rdkit", marker = "extra == 'chem'", specifier = ">=2025.9.3" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.5" },
