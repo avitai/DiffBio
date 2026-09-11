@@ -62,8 +62,13 @@ class TestVelocityGeneration:
         assert float(jnp.max(jnp.abs(com))) < 1e-5
 
 
+@pytest.mark.slow
 class TestLJBenchmark:
-    """Tests for the full LJ benchmark (quick mode)."""
+    """Tests for the full LJ benchmark (quick mode).
+
+    Quick mode simulates 4,096 particles; on a CPU-only runner the shared benchmark run
+    takes more than 300 s, so these tests run only where ``slow`` tests are selected.
+    """
 
     @pytest.fixture(scope="class")
     def result(self) -> BenchmarkResult:

@@ -73,6 +73,6 @@ def test_public_positioning_names_diffbio_as_biology_specific_layer() -> None:
     package_doc = (ROOT / "src/diffbio/__init__.py").read_text(encoding="utf-8")
 
     assert "biology-specific differentiable operator layer" in readme
-    for sibling_repo in ("Datarax", "Artifex", "Opifex", "Calibrax"):
+    for sibling_repo in ("Datarax", "Artifex", "Opifex", "Calibrax", "Substrax"):
         assert sibling_repo in readme
-    assert "integrate with Datarax, Artifex, Opifex, and Calibrax" in package_doc
+    assert "integrate with Datarax, Artifex, Opifex, Calibrax and Substrax" in package_doc
