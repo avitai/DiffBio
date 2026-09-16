@@ -3,7 +3,7 @@
 The `diffbio.core.soft_ops` module provides smooth, differentiable relaxations of discrete, piecewise-linear, and sharp operations. These relaxations enable end-to-end gradient-based optimization through operations that are normally non-differentiable -- comparisons, sorting, indexing, rounding, and logical gates all become continuous functions with well-defined gradients.
 
 !!! note "Acknowledgment"
-    The soft operations in this module are based on the algorithms and implementations from [SoftJAX](https://github.com/a-paulus/softjax) (Paulus et al., 2026; [arXiv:2603.08824](https://arxiv.org/abs/2603.08824)), adapted for the DiffBio/JAX/Flax NNX ecosystem.
+    The relaxation families in this module are based on the algorithms and implementations from [SoftJAX](https://github.com/a-paulus/softjax) (Paulus et al., 2026; [arXiv:2603.08824](https://arxiv.org/abs/2603.08824)), adapted for the DiffBio/JAX/Flax NNX ecosystem.
 
 All soft operations are JIT-compatible and support `jax.grad` and `jax.vmap`. Most accept a `softness` parameter controlling the width of the transition region (higher = smoother) and a `mode` parameter selecting the smoothness family:
 
@@ -29,6 +29,34 @@ All soft operations are JIT-compatible and support `jax.grad` and `jax.vmap`. Mo
     ```python
     from diffbio.core.soft_ops import max as soft_max
     ```
+
+---
+
+## Temperature normalization
+
+`temperature_softmax` is a separate range-aware normalization primitive for small
+axes. It retains the usual softmax formula while jointly evaluating derivative
+coefficients involving probabilities, score gaps and inverse temperature powers.
+This prevents a reciprocal square from overflowing before multiplication by a
+small probability and retains representable derivatives of underflowed tails.
+The native shifted forward evaluation follows the numerical guidance in
+[Blanchard, Higham and Higham](https://arxiv.org/abs/1909.03469); its custom
+coefficient derivatives are a DiffBio extension, not a SoftJAX port.
+
+::: diffbio.core.soft_ops.temperature_softmax
+    options:
+      show_root_heading: true
+      show_source: false
+
+First derivatives require quadratic work in the normalization axis, with greater
+cost for higher orders. Use native JAX softmax or existing smooth sorting
+operations when this stronger numerical range is unnecessary. Existing simplex,
+sorting and quantile paths retain their native smooth normalization.
+
+Positive finite scalar temperature is a caller precondition. Masked values are
+ignored, and fully masked slices yield zero weights and derivatives. Included
+score differences, derivative coefficients and necessary sums must fit the dtype;
+this operation does not guarantee arbitrary finite-range or all-order accuracy.
 
 ---
 

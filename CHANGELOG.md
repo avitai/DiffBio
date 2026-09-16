@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-09-16
+
+### Added
+
+- Public `diffbio.core.soft_ops.temperature_softmax` for small masked mixtures,
+  with jointly evaluated temperature/score derivative coefficients, axis support,
+  empty-mask semantics, and JAX/Flax NNX transformation regressions.
+- Explicit numerical range and quadratic derivative-cost contracts. Existing
+  smooth sorting and quantile kernels retain their current implementations.
+
 ### Fixed
 
 - CI runs every test module. The unit-test shards named test directories one by one, so

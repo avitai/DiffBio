@@ -81,6 +81,9 @@ from diffbio.core.soft_ops.sorting import (
     top_k_mask,
 )
 
+# --- Range-aware normalization ---
+from diffbio.core.soft_ops.normalization import temperature_softmax
+
 # --- Quantile ---
 from diffbio.core.soft_ops.quantile import (
     argmedian,
@@ -126,6 +129,7 @@ from diffbio.core.soft_ops.straight_through import (
 )
 
 __all__ = [
+    "temperature_softmax",
     # Types
     "SoftBool",
     "SoftIndex",

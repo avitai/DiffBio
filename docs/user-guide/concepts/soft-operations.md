@@ -36,9 +36,23 @@ from diffbio.core import soft_ops
 
 ---
 
+## Temperature normalization for small mixtures
+
+Use `soft_ops.temperature_softmax(scores, temperature, axis=-1, where=mask)`
+when trainable temperature may enter a regime where native division AD overflows
+or rounded probabilities lose representable sensitivities. It accepts a dynamic
+boolean mask and scalar temperature, supports JIT, JVP, reverse AD and NNX
+parameter gradients, and returns zeros for fully masked slices. The application
+validates that temperature is positive and finite.
+
+This operation has quadratic first-derivative cost and is intended for small
+mixtures. It does not replace the large-axis sorting/quantile normalization path.
+See the [API contract](../../api/core/soft-ops.md#temperature-normalization) for
+range limits and provenance.
+
 ## Smoothness Modes
 
-Every soft operation accepts a `mode` parameter that controls the mathematical
+Most relaxation operations accept a `mode` parameter that controls the mathematical
 class of the smoothing function. The five modes trade off computation cost against
 the regularity of the resulting function:
 
