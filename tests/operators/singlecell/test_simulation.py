@@ -46,8 +46,8 @@ def sample_output(
 ) -> tuple[dict, dict, dict[str, Any] | None]:
     """Provide a sample apply() output for reuse."""
     rng = jax.random.key(99)
-    random_params = simulator.generate_random_params(rng, {})
-    return simulator.apply({}, {}, None, random_params=random_params)
+    key = rng
+    return simulator.apply({}, {}, None, key=key)
 
 
 class TestSimulationConfig:
@@ -178,25 +178,12 @@ class TestDifferentiableSimulator:
     def test_state_and_metadata_passthrough(self, simulator: DifferentiableSimulator) -> None:
         """State and metadata should pass through unchanged."""
         rng = jax.random.key(0)
-        rp = simulator.generate_random_params(rng, {})
+        rp = rng
         in_state = {"key": "value"}
         in_meta = {"info": 42}
-        _, out_state, out_meta = simulator.apply({}, in_state, in_meta, random_params=rp)
+        _, out_state, out_meta = simulator.apply({}, in_state, in_meta, key=rp)
         assert out_state is in_state
         assert out_meta is in_meta
-
-    def test_generate_random_params(self, simulator: DifferentiableSimulator) -> None:
-        """generate_random_params should return a dict of JAX arrays."""
-        rng = jax.random.key(0)
-        rp = simulator.generate_random_params(rng, {})
-        assert isinstance(rp, dict)
-        # Should have keys for each sampling step
-        assert "gene_means_key" in rp
-        assert "lib_sizes_key" in rp
-        assert "group_key" in rp
-        assert "de_mask_key" in rp
-        assert "de_fold_key" in rp
-        assert "poisson_key" in rp
 
 
 class TestDEGroups:
@@ -215,8 +202,8 @@ class TestDEGroups:
         )
         sim = DifferentiableSimulator(config, rngs=rngs)
         rng = jax.random.key(7)
-        rp = sim.generate_random_params(rng, {})
-        result, _, _ = sim.apply({}, {}, None, random_params=rp)
+        rp = rng
+        result, _, _ = sim.apply({}, {}, None, key=rp)
 
         de_mask = result["de_mask"]
         # At least some genes should be DE (marked in de_mask)
@@ -240,11 +227,11 @@ class TestGradientFlow:
         """Gradients should flow through gene_means learnable parameters."""
         sim = DifferentiableSimulator(default_config, rngs=rngs)
         rng = jax.random.key(0)
-        rp = sim.generate_random_params(rng, {})
+        rp = rng
 
         @nnx.value_and_grad
         def loss_fn(model: DifferentiableSimulator) -> jax.Array:
-            result, _, _ = model.apply({}, {}, None, random_params=rp)
+            result, _, _ = model.apply({}, {}, None, key=rp)
             return jnp.mean(result["counts"])
 
         loss, grads = loss_fn(sim)
@@ -264,11 +251,11 @@ class TestGradientFlow:
         )
         sim = DifferentiableSimulator(config, rngs=rngs)
         rng = jax.random.key(0)
-        rp = sim.generate_random_params(rng, {})
+        rp = rng
 
         @nnx.value_and_grad
         def loss_fn(model: DifferentiableSimulator) -> jax.Array:
-            result, _, _ = model.apply({}, {}, None, random_params=rp)
+            result, _, _ = model.apply({}, {}, None, key=rp)
             return jnp.mean(result["counts"])
 
         loss, grads = loss_fn(sim)
@@ -284,11 +271,11 @@ class TestJITCompatibility:
     def test_jit_apply(self, simulator: DifferentiableSimulator) -> None:
         """jax.jit(apply) should compile and produce correct shapes."""
         rng = jax.random.key(0)
-        rp = simulator.generate_random_params(rng, {})
+        rp = rng
 
         @jax.jit
         def jit_apply(data: dict, state: dict) -> tuple[dict, dict, dict[str, Any] | None]:
-            return simulator.apply(data, state, None, random_params=rp)
+            return simulator.apply(data, state, None, key=rp)
 
         result, _, _ = jit_apply({}, {})
         assert result["counts"].shape == (N_CELLS, N_GENES)
@@ -298,12 +285,12 @@ class TestJITCompatibility:
         """jax.jit + nnx.value_and_grad should work together."""
         sim = DifferentiableSimulator(default_config, rngs=rngs)
         rng = jax.random.key(0)
-        rp = sim.generate_random_params(rng, {})
+        rp = rng
 
         @jax.jit
         @nnx.value_and_grad
         def jit_loss(model: DifferentiableSimulator) -> jax.Array:
-            result, _, _ = model.apply({}, {}, None, random_params=rp)
+            result, _, _ = model.apply({}, {}, None, key=rp)
             return jnp.mean(result["counts"])
 
         loss, grads = jit_loss(sim)
@@ -324,8 +311,8 @@ class TestEdgeCases:
         )
         sim = DifferentiableSimulator(config, rngs=rngs)
         rng = jax.random.key(0)
-        rp = sim.generate_random_params(rng, {})
-        result, _, _ = sim.apply({}, {}, None, random_params=rp)
+        rp = rng
+        result, _, _ = sim.apply({}, {}, None, key=rp)
 
         assert result["counts"].shape == (N_CELLS, N_GENES)
         assert jnp.all(result["counts"] >= 0.0)
@@ -342,8 +329,8 @@ class TestEdgeCases:
         )
         sim = DifferentiableSimulator(config, rngs=rngs)
         rng = jax.random.key(0)
-        rp = sim.generate_random_params(rng, {})
-        result, _, _ = sim.apply({}, {}, None, random_params=rp)
+        rp = rng
+        result, _, _ = sim.apply({}, {}, None, key=rp)
 
         # All cells belong to batch 0
         assert jnp.all(result["batch_labels"] == 0)
@@ -359,8 +346,8 @@ class TestEdgeCases:
         )
         sim = DifferentiableSimulator(config, rngs=rngs)
         rng = jax.random.key(0)
-        rp = sim.generate_random_params(rng, {})
-        result, _, _ = sim.apply({}, {}, None, random_params=rp)
+        rp = rng
+        result, _, _ = sim.apply({}, {}, None, key=rp)
 
         labels = result["batch_labels"]
         assert jnp.all(labels >= 0)
@@ -369,8 +356,8 @@ class TestEdgeCases:
     def test_input_data_passthrough(self, simulator: DifferentiableSimulator) -> None:
         """Existing data keys should be preserved in output."""
         rng = jax.random.key(0)
-        rp = simulator.generate_random_params(rng, {})
+        rp = rng
         input_data = {"extra_key": jnp.array(42.0)}
-        result, _, _ = simulator.apply(input_data, {}, None, random_params=rp)
+        result, _, _ = simulator.apply(input_data, {}, None, key=rp)
         assert "extra_key" in result
         assert result["extra_key"] == 42.0

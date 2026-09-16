@@ -225,7 +225,7 @@ class SoftHVG(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict | None,
-        random_params: dict | None = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[dict, dict, dict | None]:
         """Gate ``data["features"]`` by the highly-variable-gene mask.
@@ -234,7 +234,7 @@ class SoftHVG(OperatorModule):
             data: Dictionary containing ``"features"`` ``(n_cells, n_genes)``.
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
-            random_params: Optional random parameters (unused).
+            key: Unused.
             stats: Optional statistics dictionary (unused).
 
         Returns:
@@ -242,7 +242,7 @@ class SoftHVG(OperatorModule):
             ``"features"`` by the mask and adds ``"hvg_weights"`` (the soft mask)
             and ``"hvg_dispersion"`` (the ranking score).
         """
-        del random_params, stats
+        del key, stats
         config: SoftHVGConfig = self.config
         mask, dispersion = soft_hvg_mask(
             data["features"],

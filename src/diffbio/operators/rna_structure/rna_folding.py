@@ -66,7 +66,6 @@ DEFAULT_MIN_HAIRPIN = 3
 class _RNAFoldRuntimeConfig:
     """Runtime and caching configuration for RNA folding."""
 
-    cacheable: bool = True
     temperature: float = 1.0
     min_hairpin_loop: int = DEFAULT_MIN_HAIRPIN
 
@@ -419,7 +418,7 @@ class DifferentiableRNAFold(TemperatureOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply RNA folding prediction to sequence data.
@@ -430,7 +429,7 @@ class DifferentiableRNAFold(TemperatureOperator):
                   Shape: (length, 4) or (batch, length, 4)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used
+            key: Unused.
             stats: Not used
 
         Returns:
@@ -443,7 +442,7 @@ class DifferentiableRNAFold(TemperatureOperator):
                 - state is passed through unchanged
                 - metadata is passed through unchanged
         """
-        del random_params, stats  # Unused
+        del key, stats  # Unused
 
         sequence = data["sequence"]
 

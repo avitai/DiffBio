@@ -21,6 +21,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
@@ -391,7 +392,7 @@ class DifferentiableSecondaryStructure(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict[str, Any] | None,
-        random_params: Any = None,  # noqa: ARG002
+        key: jax.Array | None = None,  # noqa: ARG002
         stats: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
         """Apply secondary structure prediction.
@@ -401,7 +402,7 @@ class DifferentiableSecondaryStructure(OperatorModule):
                 - coordinates: Float[Array, "batch length 4 3"]
             state: Element state (passed through).
             metadata: Element metadata (passed through).
-            random_params: Random parameters (unused).
+            key: Unused.
             stats: Optional statistics (unused).
 
         Returns:

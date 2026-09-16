@@ -31,6 +31,7 @@ from diffbio.operators.preprocessing.error_correction import (
 )
 
 if TYPE_CHECKING:
+    from flax import nnx
     from datarax.core.operator import OperatorModule
     from datarax.operators import ProbabilisticOperator
 
@@ -38,23 +39,27 @@ if TYPE_CHECKING:
 def wrap_probabilistic(
     operator: OperatorModule,
     probability: float = 0.5,
+    *,
+    rngs: nnx.Rngs,
 ) -> ProbabilisticOperator:
     """Wrap a preprocessing operator in a ProbabilisticOperator.
 
-    The wrapped operator is applied with the given probability during
-    each forward pass, enabling random augmentation during training.
-    When not applied, the input data passes through unchanged.
+    The wrapped operator is applied with the given probability for each record,
+    enabling random augmentation during training. When not applied, the input data
+    passes through unchanged. The wrapper is stochastic, so it takes the ``rngs`` its
+    base key is drawn from.
 
     Args:
         operator: A preprocessing operator to wrap.
         probability: Probability of applying the operator (0.0 to 1.0).
+        rngs: Flax NNX random number generators.
 
     Returns:
         A ProbabilisticOperator wrapping the given operator.
 
     Example:
         >>> adapter_remover = SoftAdapterRemoval(AdapterRemovalConfig(), rngs=rngs)
-        >>> prob_remover = wrap_probabilistic(adapter_remover, probability=0.8)
+        >>> prob_remover = wrap_probabilistic(adapter_remover, probability=0.8, rngs=rngs)
     """
     from datarax.operators import (  # noqa: PLC0415
         ProbabilisticOperator,
@@ -62,7 +67,7 @@ def wrap_probabilistic(
     )
 
     config = ProbabilisticOperatorConfig(operator=operator, probability=probability)
-    return ProbabilisticOperator(config)
+    return ProbabilisticOperator(config, rngs=rngs)
 
 
 __all__ = [

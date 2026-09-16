@@ -158,10 +158,8 @@ class TestDifferentiableFoundationModel:
         sample_data: dict[str, jax.Array],
     ) -> None:
         """Test that apply returns all expected output keys."""
-        rp = model.generate_random_params(
-            jax.random.key(0), {"counts": sample_data["counts"].shape}
-        )
-        result, state, metadata = model.apply(sample_data, {}, None, random_params=rp)
+        rp = jax.random.key(0)
+        result, state, metadata = model.apply(sample_data, {}, None, key=rp)
 
         assert "embeddings" in result
         assert "token_embeddings" in result
@@ -177,10 +175,8 @@ class TestDifferentiableFoundationModel:
         sample_data: dict[str, jax.Array],
     ) -> None:
         """Test correct output tensor shapes."""
-        rp = model.generate_random_params(
-            jax.random.key(0), {"counts": sample_data["counts"].shape}
-        )
-        result, _, _ = model.apply(sample_data, {}, None, random_params=rp)
+        rp = jax.random.key(0)
+        result, _, _ = model.apply(sample_data, {}, None, key=rp)
 
         assert result["embeddings"].shape == (N_CELLS, HIDDEN_DIM)
         assert result["token_embeddings"].shape == (N_CELLS, N_GENES, HIDDEN_DIM)
@@ -192,10 +188,8 @@ class TestDifferentiableFoundationModel:
         sample_data: dict[str, jax.Array],
     ) -> None:
         """Test that masked gene expressions are predicted (not NaN/Inf)."""
-        rp = model.generate_random_params(
-            jax.random.key(0), {"counts": sample_data["counts"].shape}
-        )
-        result, _, _ = model.apply(sample_data, {}, None, random_params=rp)
+        rp = jax.random.key(0)
+        result, _, _ = model.apply(sample_data, {}, None, key=rp)
 
         predicted = result["predicted_expression"]
         assert jnp.all(jnp.isfinite(predicted))
@@ -206,20 +200,16 @@ class TestDifferentiableFoundationModel:
         sample_data: dict[str, jax.Array],
     ) -> None:
         """Test that canonical embedding outputs are finite."""
-        rp = model.generate_random_params(
-            jax.random.key(0), {"counts": sample_data["counts"].shape}
-        )
-        result, _, _ = model.apply(sample_data, {}, None, random_params=rp)
+        rp = jax.random.key(0)
+        result, _, _ = model.apply(sample_data, {}, None, key=rp)
 
         assert jnp.all(jnp.isfinite(result["embeddings"]))
         assert jnp.all(jnp.isfinite(result["token_embeddings"]))
 
     def test_foundation_metadata(self, model, sample_data: dict[str, jax.Array]) -> None:
         """Test canonical foundation-model metadata for the single-cell operator."""
-        rp = model.generate_random_params(
-            jax.random.key(0), {"counts": sample_data["counts"].shape}
-        )
-        result, _, _ = model.apply(sample_data, {}, None, random_params=rp)
+        rp = jax.random.key(0)
+        result, _, _ = model.apply(sample_data, {}, None, key=rp)
         metadata = result["foundation_model"]
 
         assert decode_foundation_text(metadata["model_family"]) == "single_cell_transformer"
@@ -248,11 +238,11 @@ class TestGradientFlow:
         """Test gradient flows from predicted expression back to input counts."""
         gene_ids = sample_data["gene_ids"]
         counts = sample_data["counts"]
-        rp = model.generate_random_params(jax.random.key(0), {"counts": counts.shape})
+        rp = jax.random.key(0)
 
         def loss_fn(c: jax.Array) -> jax.Array:
             data = {"counts": c, "gene_ids": gene_ids}
-            result, _, _ = model.apply(data, {}, None, random_params=rp)
+            result, _, _ = model.apply(data, {}, None, key=rp)
             return jnp.mean(result["predicted_expression"] ** 2)
 
         grad = jax.grad(loss_fn)(counts)
@@ -269,11 +259,11 @@ class TestGradientFlow:
         """Test gradient flows from token embeddings back to input counts."""
         gene_ids = sample_data["gene_ids"]
         counts = sample_data["counts"]
-        rp = model.generate_random_params(jax.random.key(0), {"counts": counts.shape})
+        rp = jax.random.key(0)
 
         def loss_fn(c: jax.Array) -> jax.Array:
             data = {"counts": c, "gene_ids": gene_ids}
-            result, _, _ = model.apply(data, {}, None, random_params=rp)
+            result, _, _ = model.apply(data, {}, None, key=rp)
             return jnp.mean(result["token_embeddings"] ** 2)
 
         grad = jax.grad(loss_fn)(counts)
@@ -299,12 +289,12 @@ class TestJITCompatibility:
         """Test that apply runs under jax.jit."""
         gene_ids = sample_data["gene_ids"]
         counts = sample_data["counts"]
-        rp = model.generate_random_params(jax.random.key(0), {"counts": counts.shape})
+        rp = jax.random.key(0)
 
         @jax.jit
         def run(c: jax.Array) -> dict[str, jax.Array]:
             data = {"counts": c, "gene_ids": gene_ids}
-            result, _, _ = model.apply(data, {}, None, random_params=rp)
+            result, _, _ = model.apply(data, {}, None, key=rp)
             return result
 
         result = run(counts)
@@ -319,13 +309,13 @@ class TestJITCompatibility:
         """Test that gradient computation runs under jax.jit."""
         gene_ids = sample_data["gene_ids"]
         counts = sample_data["counts"]
-        rp = model.generate_random_params(jax.random.key(0), {"counts": counts.shape})
+        rp = jax.random.key(0)
 
         @jax.jit
         def grad_fn(c: jax.Array) -> jax.Array:
             def loss(x: jax.Array) -> jax.Array:
                 data = {"counts": x, "gene_ids": gene_ids}
-                result, _, _ = model.apply(data, {}, None, random_params=rp)
+                result, _, _ = model.apply(data, {}, None, key=rp)
                 return jnp.mean(result["predicted_expression"])
 
             return jax.grad(loss)(c)
@@ -363,8 +353,8 @@ class TestEdgeCases:
         gene_ids = jnp.arange(N_GENES, dtype=jnp.int32)
         data = {"counts": counts, "gene_ids": gene_ids}
 
-        rp = mdl.generate_random_params(jax.random.key(0), {"counts": counts.shape})
-        result, _, _ = mdl.apply(data, {}, None, random_params=rp)
+        rp = jax.random.key(0)
+        result, _, _ = mdl.apply(data, {}, None, key=rp)
 
         assert result["embeddings"].shape == (1, HIDDEN_DIM)
         assert result["token_embeddings"].shape == (1, N_GENES, HIDDEN_DIM)
@@ -391,8 +381,8 @@ class TestEdgeCases:
         gene_ids = jnp.arange(N_GENES, dtype=jnp.int32)
         data = {"counts": counts, "gene_ids": gene_ids}
 
-        rp = mdl.generate_random_params(jax.random.key(0), {"counts": counts.shape})
-        result, _, _ = mdl.apply(data, {}, None, random_params=rp)
+        rp = jax.random.key(0)
+        result, _, _ = mdl.apply(data, {}, None, key=rp)
 
         assert result["predicted_expression"].shape == (N_CELLS, N_GENES)
         assert jnp.all(jnp.isfinite(result["predicted_expression"]))

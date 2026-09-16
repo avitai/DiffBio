@@ -165,7 +165,7 @@ class SplicingPSI(TemperatureOperator):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict | None,
-        random_params: dict | None = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[dict, dict, dict | None]:
         """Apply PSI calculation to junction read counts.
@@ -176,7 +176,7 @@ class SplicingPSI(TemperatureOperator):
                 - 'exclusion_counts': Reads supporting exon exclusion
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
-            random_params: Optional random parameters (unused).
+            key: Unused.
             stats: Optional statistics dictionary (unused).
 
         Returns:
@@ -188,7 +188,7 @@ class SplicingPSI(TemperatureOperator):
                 - 'psi_confidence': Confidence in PSI estimates
                 - 'psi_variance': Variance of PSI estimates
         """
-        del random_params, stats  # Unused
+        del key, stats  # Unused
 
         inclusion = data["inclusion_counts"]
         exclusion = data["exclusion_counts"]

@@ -140,7 +140,7 @@ class MDIntegratorOperator(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
         """Run MD simulation for specified number of steps.
@@ -151,7 +151,7 @@ class MDIntegratorOperator(OperatorModule):
                 - velocities: Initial particle velocities (n_particles, dim)
             state: Per-element state (passed through).
             metadata: Optional metadata.
-            random_params: Unused random parameters.
+            key: Unused.
             stats: Optional statistics dictionary.
 
         Returns:

@@ -210,7 +210,7 @@ class DifferentiableEMQuantifier(TemperatureOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply EM quantification to read assignment data.
@@ -226,7 +226,7 @@ class DifferentiableEMQuantifier(TemperatureOperator):
                   (n_transcripts,)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used (deterministic operator)
+            key: Unused.
             stats: Not used
 
         Returns:

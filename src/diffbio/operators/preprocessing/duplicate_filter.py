@@ -224,7 +224,7 @@ class DifferentiableDuplicateWeighting(TemperatureOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply duplicate weighting to sequence data.
@@ -239,7 +239,7 @@ class DifferentiableDuplicateWeighting(TemperatureOperator):
                 - "quality_scores": Quality scores (length,) or (batch, length)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used (deterministic operator)
+            key: Unused.
             stats: Not used
 
         Returns:

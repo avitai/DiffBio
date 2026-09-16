@@ -19,6 +19,7 @@ import jax
 import jax.numpy as jnp
 from artifex.generative_models.core.losses.divergence import gaussian_kl_divergence
 from datarax.core.config import OperatorConfig
+from datarax.core.operator import require_key
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
@@ -196,7 +197,7 @@ class VAENormalizer(CountReconstructionMixin, CountVAEBackboneMixin, EncoderDeco
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply VAE normalization to count data.
@@ -210,7 +211,7 @@ class VAENormalizer(CountReconstructionMixin, CountVAEBackboneMixin, EncoderDeco
                 - "library_size": Total counts for the cell
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Optional random parameters (not used)
+            key: The record's PRNG key; the latent sample is drawn from it.
             stats: Not used
 
         Returns:
@@ -232,9 +233,7 @@ class VAENormalizer(CountReconstructionMixin, CountVAEBackboneMixin, EncoderDeco
         # Encode to latent distribution
         mean, logvar = self.encode(counts)
 
-        # Sample from latent distribution using inherited reparameterize
-        # (uses self.rngs from EncoderDecoderOperator)
-        z = self.reparameterize(mean, logvar)
+        z = self.reparameterize(mean, logvar, require_key(key, self))
 
         # Decode to gene expression rates (returns dict)
         decode_output = self.decode(z, library_size)

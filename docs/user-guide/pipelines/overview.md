@@ -212,7 +212,7 @@ class CustomPipeline(OperatorModule):
         self.op2 = Operator2(config.op2_config, rngs=rngs)
         self.op3 = Operator3(config.op3_config, rngs=rngs)
 
-    def apply(self, data, state, metadata, random_params=None, stats=None):
+    def apply(self, data, state, metadata, key=None, stats=None):
         # Chain operators
         data, state, metadata = self.op1.apply(data, state, metadata)
         data, state, metadata = self.op2.apply(data, state, metadata)

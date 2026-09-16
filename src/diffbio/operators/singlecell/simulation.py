@@ -24,6 +24,7 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
+from datarax.core.operator import require_key
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
@@ -134,8 +135,8 @@ class DifferentiableSimulator(OperatorModule):
         >>> config = SimulationConfig(n_cells=100, n_genes=50, n_groups=2)
         >>> sim = DifferentiableSimulator(config, rngs=nnx.Rngs(0, sample=1))
         >>> rng = jax.random.key(0)
-        >>> rp = sim.generate_random_params(rng, {})
-        >>> result, state, meta = sim.apply({}, {}, None, random_params=rp)
+        >>> rp = rng
+        >>> result, state, meta = sim.apply({}, {}, None, key=rp)
         >>> result["counts"].shape
         (100, 50)
     """
@@ -170,30 +171,6 @@ class DifferentiableSimulator(OperatorModule):
 
         # Learnable batch shift (additive on log scale)
         self.batch_shift = nnx.Param(jnp.zeros(config.n_batches))
-
-    def generate_random_params(
-        self,
-        rng: jax.Array,
-        data_shapes: PyTree,
-    ) -> dict[str, jax.Array]:
-        """Generate random keys for all stochastic sampling steps.
-
-        Args:
-            rng: JAX random key.
-            data_shapes: PyTree with shapes (unused, kept for interface).
-
-        Returns:
-            Dictionary of JAX random keys for each sampling step.
-        """
-        keys = jax.random.split(rng, 6)
-        return {
-            "gene_means_key": keys[0],
-            "lib_sizes_key": keys[1],
-            "group_key": keys[2],
-            "de_mask_key": keys[3],
-            "de_fold_key": keys[4],
-            "poisson_key": keys[5],
-        }
 
     def _sample_gene_means(
         self,
@@ -362,7 +339,7 @@ class DifferentiableSimulator(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Simulate a single-cell count matrix.
@@ -375,7 +352,8 @@ class DifferentiableSimulator(OperatorModule):
             data: Input dictionary (may be empty; existing keys are preserved).
             state: Element state (passed through unchanged).
             metadata: Element metadata (passed through unchanged).
-            random_params: Dictionary of JAX random keys from generate_random_params.
+            key: The record's PRNG key; the six sampling steps draw from keys split
+                from it.
             stats: Not used.
 
         Returns:
@@ -387,19 +365,21 @@ class DifferentiableSimulator(OperatorModule):
                 - "gene_means": Per-gene expression means (n_genes,).
                 - "de_mask": Binary DE indicator (n_groups, n_genes).
         """
-        rp = random_params or {}
+        gene_means_key, lib_sizes_key, group_key, de_mask_key, de_fold_key, poisson_key = (
+            jax.random.split(require_key(key, self), 6)
+        )
 
         # Step 1: Gene means from learnable logits + Gamma perturbation
-        gene_means = self._sample_gene_means(rp["gene_means_key"])
+        gene_means = self._sample_gene_means(gene_means_key)
 
         # Step 2: Library sizes from LogNormal
-        lib_sizes = self._sample_library_sizes(rp["lib_sizes_key"])
+        lib_sizes = self._sample_library_sizes(lib_sizes_key)
 
         # Step 3: Group assignments
-        group_labels, soft_assignments = self._assign_groups(rp["group_key"])
+        group_labels, soft_assignments = self._assign_groups(group_key)
 
         # Step 4: DE fold-changes per group
-        fold_changes, de_mask = self._compute_de_fold_changes(rp["de_mask_key"], rp["de_fold_key"])
+        fold_changes, de_mask = self._compute_de_fold_changes(de_mask_key, de_fold_key)
 
         # Step 5: Compute cell means = lib_size * gene_mean * group_fold_change
         # Use soft assignments for differentiability:
@@ -426,7 +406,7 @@ class DifferentiableSimulator(OperatorModule):
 
         # Step 8: Continuous relaxation of Poisson sampling
         # Use the reparameterization: counts ~ Poisson(lambda) ≈ lambda + sqrt(lambda) * noise
-        noise = jax.random.normal(rp["poisson_key"], cell_means.shape)
+        noise = jax.random.normal(poisson_key, cell_means.shape)
         counts = cell_means + jnp.sqrt(cell_means + EPSILON) * noise
         # Ensure non-negative counts
         counts = jax.nn.relu(counts)

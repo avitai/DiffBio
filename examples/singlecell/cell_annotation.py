@@ -70,11 +70,13 @@ base = jax.random.poisson(k1, jnp.ones((n_cells, n_genes)) * 1.0)
 
 # Per-type marker upregulation: each type upregulates a distinct gene block
 # Type 0: genes 0-6 upregulated, Type 1: genes 7-13, Type 2: genes 14-19
-type_labels_true = jnp.concatenate([
-    jnp.full(n_cells_per_type, 0),
-    jnp.full(n_cells_per_type, 1),
-    jnp.full(n_cells_per_type, 2),
-])
+type_labels_true = jnp.concatenate(
+    [
+        jnp.full(n_cells_per_type, 0),
+        jnp.full(n_cells_per_type, 1),
+        jnp.full(n_cells_per_type, 2),
+    ]
+)
 
 marker_signal = jnp.zeros((n_cells, n_genes))
 marker_signal = marker_signal.at[:50, :7].set(10.0)
@@ -215,8 +217,9 @@ probs_sv = result_sv["cell_type_probabilities"]
 labels_sv = result_sv["cell_type_labels"]
 
 print(f"Scanvi predicted labels: {jnp.bincount(labels_sv, length=n_types)}")
-print(f"Labelled cell predictions match known: "
-      f"{bool(jnp.all(labels_sv[:n_labeled] == known_labels))}")
+print(
+    f"Labelled cell predictions match known: {bool(jnp.all(labels_sv[:n_labeled] == known_labels))}"
+)
 
 # %% [markdown]
 # ## 5. Compare Predictions Across Modes
@@ -237,8 +240,10 @@ for name, probs, labels in [
 ]:
     counts_per_type = jnp.bincount(labels, length=n_types)
     mean_conf = probs.max(axis=1).mean()
-    print(f"{name:<12} {int(counts_per_type[0]):>8} {int(counts_per_type[1]):>8} "
-          f"{int(counts_per_type[2]):>8} {float(mean_conf):>16.4f}")
+    print(
+        f"{name:<12} {int(counts_per_type[0]):>8} {int(counts_per_type[1]):>8} "
+        f"{int(counts_per_type[2]):>8} {float(mean_conf):>16.4f}"
+    )
 
 # Check cellassign accuracy (should be best with explicit markers)
 accuracy_ca = jnp.mean(labels_ca == type_labels_true)
@@ -270,7 +275,8 @@ for bar, val in zip(bars, mean_confidences):
 plt.tight_layout()
 plt.savefig(
     "docs/assets/examples/singlecell/annotation_confidence.png",
-    dpi=150, bbox_inches="tight",
+    dpi=150,
+    bbox_inches="tight",
 )
 plt.show()
 
@@ -423,7 +429,8 @@ ax.set_xticks(labelled_counts)
 plt.tight_layout()
 plt.savefig(
     "docs/assets/examples/singlecell/annotation_labelled_fraction.png",
-    dpi=150, bbox_inches="tight",
+    dpi=150,
+    bbox_inches="tight",
 )
 plt.show()
 

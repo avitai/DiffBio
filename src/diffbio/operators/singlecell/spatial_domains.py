@@ -373,7 +373,7 @@ class DifferentiableSpatialDomain(GraphOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply spatial domain identification to spatial transcriptomics data.
@@ -384,7 +384,7 @@ class DifferentiableSpatialDomain(GraphOperator):
                 - ``"spatial_coords"``: Spatial coordinates ``(n_cells, 2)``
             state: Element state (passed through unchanged).
             metadata: Element metadata (passed through unchanged).
-            random_params: Not used (non-stochastic operator).
+            key: Unused.
             stats: Not used.
 
         Returns:
@@ -592,7 +592,7 @@ class DifferentiablePASTEAlignment(GraphOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply PASTE-style alignment between two spatial transcriptomics slices.
@@ -605,7 +605,7 @@ class DifferentiablePASTEAlignment(GraphOperator):
                 - ``"slice2_coords"``: Spatial coordinates for slice 2 ``(n2, 2)``
             state: Element state (passed through unchanged).
             metadata: Element metadata (passed through unchanged).
-            random_params: Not used (non-stochastic operator).
+            key: Unused.
             stats: Not used.
 
         Returns:

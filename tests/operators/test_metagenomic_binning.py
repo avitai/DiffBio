@@ -80,7 +80,7 @@ class TestMetagenomicBinnerBasic:
 
     def test_forward_pass(self, binner, sample_data):
         """Test forward pass produces expected outputs."""
-        result, state, metadata = binner.apply(sample_data, {}, None)
+        result, state, metadata = binner.apply(sample_data, {}, None, jax.random.key(0))
 
         n_contigs = sample_data["tnf"].shape[0]
         latent_dim = binner.config.latent_dim
@@ -112,7 +112,7 @@ class TestMetagenomicBinnerBasic:
 
     def test_cluster_assignments_sum_to_one(self, binner, sample_data):
         """Test that soft cluster assignments are valid probabilities."""
-        result, _, _ = binner.apply(sample_data, {}, None)
+        result, _, _ = binner.apply(sample_data, {}, None, jax.random.key(0))
         assignments = result["cluster_assignments"]
 
         # Should sum to 1 along cluster dimension
@@ -124,7 +124,7 @@ class TestMetagenomicBinnerBasic:
 
     def test_reconstructed_tnf_valid(self, binner, sample_data):
         """Test that reconstructed TNF is a valid distribution."""
-        result, _, _ = binner.apply(sample_data, {}, None)
+        result, _, _ = binner.apply(sample_data, {}, None, jax.random.key(0))
         tnf_recon = result["reconstructed_tnf"]
 
         # Should sum to 1 (TNF is a frequency distribution)
@@ -136,7 +136,7 @@ class TestMetagenomicBinnerBasic:
 
     def test_reconstructed_abundance_positive(self, binner, sample_data):
         """Test that reconstructed abundance is positive."""
-        result, _, _ = binner.apply(sample_data, {}, None)
+        result, _, _ = binner.apply(sample_data, {}, None, jax.random.key(0))
         abundance_recon = result["reconstructed_abundance"]
 
         # Abundance should be positive (softplus output)
@@ -175,7 +175,7 @@ class TestMetagenomicBinnerDifferentiability:
 
         @nnx.value_and_grad
         def loss_fn(model):
-            result, _, _ = model.apply(sample_data, {}, None)
+            result, _, _ = model.apply(sample_data, {}, None, jax.random.key(0))
             # Simple loss: encourage tight clusters
             return result["latent_z"].mean()
 
@@ -193,7 +193,7 @@ class TestMetagenomicBinnerDifferentiability:
 
         @nnx.value_and_grad
         def loss_fn(model):
-            result, _, _ = model.apply(sample_data, {}, None)
+            result, _, _ = model.apply(sample_data, {}, None, jax.random.key(0))
             # Reconstruction loss
             tnf_loss = jnp.mean((result["reconstructed_tnf"] - sample_data["tnf"]) ** 2)
             abundance_loss = jnp.mean(
@@ -213,7 +213,7 @@ class TestMetagenomicBinnerDifferentiability:
 
         @nnx.value_and_grad
         def loss_fn(model):
-            result, _, _ = model.apply(sample_data, {}, None)
+            result, _, _ = model.apply(sample_data, {}, None, jax.random.key(0))
             # Clustering compactness loss
             assignments = result["cluster_assignments"]
             entropy = -jnp.sum(assignments * jnp.log(assignments + 1e-10), axis=-1)
@@ -251,7 +251,7 @@ class TestMetagenomicBinnerJIT:
 
         @jax.jit
         def forward(model, data):
-            result, _, _ = model.apply(data, {}, None)
+            result, _, _ = model.apply(data, {}, None, jax.random.key(0))
             return result["cluster_assignments"]
 
         # Should not raise
@@ -289,8 +289,8 @@ class TestMetagenomicBinnerTrainingMode:
         """Test that eval mode produces deterministic outputs."""
         binner.eval()  # Uses nnx.Module built-in method
 
-        result1, _, _ = binner.apply(sample_data, {}, None)
-        result2, _, _ = binner.apply(sample_data, {}, None)
+        result1, _, _ = binner.apply(sample_data, {}, None, jax.random.key(0))
+        result2, _, _ = binner.apply(sample_data, {}, None, jax.random.key(0))
 
         # In eval mode, outputs should be identical
         assert jnp.allclose(result1["latent_z"], result2["latent_z"])
@@ -300,7 +300,7 @@ class TestMetagenomicBinnerTrainingMode:
         binner.train()  # Uses nnx.Module built-in method
 
         # In train mode, z = mu + std * eps, so z != mu
-        result, _, _ = binner.apply(sample_data, {}, None)
+        result, _, _ = binner.apply(sample_data, {}, None, jax.random.key(0))
 
         # mu and z should differ (due to noise)
         # Note: They could be close by chance, so we just check they're computed

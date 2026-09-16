@@ -115,7 +115,7 @@ class VariantClassifier(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply variant classification to pileup data.
@@ -131,7 +131,7 @@ class VariantClassifier(OperatorModule):
                 - "pileup_window": Pileup data around position (window_size, 4)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used (dropout handled by eval/train mode)
+            key: Unused.
             stats: Not used
 
         Returns:
@@ -284,7 +284,7 @@ class CellTypeAwareVariantClassifier(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply cell-type-aware variant classification.
@@ -298,7 +298,7 @@ class CellTypeAwareVariantClassifier(OperatorModule):
                 - "cell_type_assignments": Soft cell-type weights, shape (n, n_cell_types).
             state: Element state (passed through unchanged).
             metadata: Element metadata (passed through unchanged).
-            random_params: Not used.
+            key: Unused.
             stats: Not used.
 
         Returns:

@@ -74,8 +74,10 @@ y_coords = jnp.tile(jnp.arange(grid_size, dtype=jnp.float32), grid_size)
 spatial_coords = jnp.stack([x_coords, y_coords], axis=1)
 
 print(f"Spatial coords shape: {spatial_coords.shape}")
-print(f"Grid extent: x=[{float(x_coords.min())}, {float(x_coords.max())}], "
-      f"y=[{float(y_coords.min())}, {float(y_coords.max())}]")
+print(
+    f"Grid extent: x=[{float(x_coords.min())}, {float(x_coords.max())}], "
+    f"y=[{float(y_coords.min())}, {float(y_coords.max())}]"
+)
 
 # %%
 # Assign domains based on spatial location:
@@ -137,9 +139,11 @@ config_domain = SpatialDomainConfig(
 )
 domain_op = DifferentiableSpatialDomain(config_domain, rngs=nnx.Rngs(0))
 print(f"SpatialDomain operator created: {type(domain_op).__name__}")
-print(f"  hidden_dim={config_domain.hidden_dim}, "
-      f"num_heads={config_domain.num_heads}, "
-      f"n_domains={config_domain.n_domains}")
+print(
+    f"  hidden_dim={config_domain.hidden_dim}, "
+    f"num_heads={config_domain.num_heads}, "
+    f"n_domains={config_domain.n_domains}"
+)
 
 # %%
 # Run spatial domain identification
@@ -157,8 +161,7 @@ print(f"Spatial embeddings shape: {embeddings.shape}")
 
 # Predicted domains (argmax of soft assignments)
 predicted_domains = jnp.argmax(assignments, axis=-1)
-print(f"Predicted domain distribution: "
-      f"{jnp.bincount(predicted_domains, length=n_domains_true)}")
+print(f"Predicted domain distribution: {jnp.bincount(predicted_domains, length=n_domains_true)}")
 
 # %%
 # Verify spatial coherence: check that neighboring spots tend to share domains
@@ -223,10 +226,14 @@ coords_slice2 = coords_slice2 + jax.random.normal(k4, coords_slice2.shape) * 0.1
 # Slice 2 expression: same domains, small independent noise
 counts_slice2 = counts + jax.random.normal(k5, counts.shape) * 0.5
 
-print(f"Slice 1: {counts.shape[0]} spots, coords range: "
-      f"[{float(spatial_coords.min()):.1f}, {float(spatial_coords.max()):.1f}]")
-print(f"Slice 2: {counts_slice2.shape[0]} spots, coords range: "
-      f"[{float(coords_slice2.min()):.1f}, {float(coords_slice2.max()):.1f}]")
+print(
+    f"Slice 1: {counts.shape[0]} spots, coords range: "
+    f"[{float(spatial_coords.min()):.1f}, {float(spatial_coords.max()):.1f}]"
+)
+print(
+    f"Slice 2: {counts_slice2.shape[0]} spots, coords range: "
+    f"[{float(coords_slice2.min()):.1f}, {float(coords_slice2.max()):.1f}]"
+)
 
 # %%
 from diffbio.operators.singlecell import (
@@ -270,8 +277,7 @@ plan_entropy = -jnp.sum(
     transport_plan * jnp.log(transport_plan + 1e-10),
 )
 max_entropy = -jnp.log(jnp.array(1.0 / (n_spots * n_spots))) * n_spots * n_spots
-print(f"Transport plan entropy: {float(plan_entropy):.4f} "
-      f"(max uniform: {float(max_entropy):.4f})")
+print(f"Transport plan entropy: {float(plan_entropy):.4f} (max uniform: {float(max_entropy):.4f})")
 
 # %%
 # Figure 2: PASTE transport plan heatmap
@@ -423,8 +429,7 @@ for paste_alpha in [0.0, 0.1, 0.3, 0.5, 0.9]:
     aligned = res["aligned_coords"]
     err = float(jnp.sqrt(jnp.sum((aligned - spatial_coords) ** 2, axis=1)).mean())
     plan_max = float(res["transport_plan"].max())
-    print(f"  alpha={paste_alpha:.1f} -> alignment error: {err:.4f}, "
-          f"plan max: {plan_max:.6f}")
+    print(f"  alpha={paste_alpha:.1f} -> alignment error: {err:.4f}, plan max: {plan_max:.6f}")
 
 # %% [markdown]
 # ## Summary

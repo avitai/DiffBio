@@ -8,6 +8,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
@@ -121,10 +122,6 @@ class MolecularSimilarityOperator(OperatorModule):
         super().__init__(config, rngs=rngs)
         self.config: MolecularSimilarityConfig = config
 
-        # Fix: wrap _unique_id as static for jax.grad compatibility
-        # (datarax stores it as plain int which causes gradient errors)
-        self._unique_id = nnx.static(self._unique_id)
-
         # Select similarity function
         if config.similarity_type == "tanimoto":
             self._similarity_fn = tanimoto_similarity
@@ -140,7 +137,7 @@ class MolecularSimilarityOperator(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
         """Compute similarity between two fingerprints.
@@ -151,7 +148,7 @@ class MolecularSimilarityOperator(OperatorModule):
                 - fingerprint_b: Second fingerprint vector
             state: Per-element state (passed through).
             metadata: Optional metadata.
-            random_params: Unused random parameters.
+            key: Unused.
             stats: Optional statistics dictionary.
 
         Returns:

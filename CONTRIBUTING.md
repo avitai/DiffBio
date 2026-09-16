@@ -106,7 +106,7 @@ class MyOperator(OperatorModule):
     def __init__(self, config: MyOperatorConfig, *, rngs: nnx.Rngs = None):
         super().__init__(config, rngs=rngs)
 
-    def apply(self, data, state, metadata, random_params=None, stats=None):
+    def apply(self, data, state, metadata, key=None, stats=None):
         # Implementation
         return {**data, "output": result}, state, metadata
 ```

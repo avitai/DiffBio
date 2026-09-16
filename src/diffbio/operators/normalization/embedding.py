@@ -169,7 +169,7 @@ class SequenceEmbedding(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply sequence embedding to sequence data.
@@ -182,7 +182,7 @@ class SequenceEmbedding(OperatorModule):
                 - "sequence": One-hot encoded sequence (length, alphabet_size)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used (deterministic operator)
+            key: Unused.
             stats: Not used
 
         Returns:

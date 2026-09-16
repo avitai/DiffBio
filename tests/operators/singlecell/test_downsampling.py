@@ -22,7 +22,7 @@ class TestReadDownsampler:
         )
         op = ReadDownsampler(config, rngs=nnx.Rngs(0))
         data = {"counts": jnp.array([[100.0, 200.0, 50.0]])}
-        result, _, _ = op.apply(data, {}, None)
+        result, _, _ = op.apply(data, {}, None, jax.random.key(0))
         # Downsampled counts should be lower on average
         assert float(result["counts"].sum()) < float(data["counts"].sum())
 
@@ -32,7 +32,7 @@ class TestReadDownsampler:
         )
         op = ReadDownsampler(config, rngs=nnx.Rngs(0))
         data = {"counts": jnp.array([[10.0, 20.0, 30.0]])}
-        result, _, _ = op.apply(data, {}, None)
+        result, _, _ = op.apply(data, {}, None, jax.random.key(0))
         np.testing.assert_allclose(result["counts"], data["counts"], atol=1e-5)
 
     def test_target_depth_mode(self) -> None:
@@ -45,7 +45,7 @@ class TestReadDownsampler:
         op = ReadDownsampler(config, rngs=nnx.Rngs(0))
         # Cell with 1000 total reads -> target 100 -> fraction ~0.1
         data = {"counts": jnp.array([[500.0, 300.0, 200.0]])}
-        result, _, _ = op.apply(data, {}, None)
+        result, _, _ = op.apply(data, {}, None, jax.random.key(0))
         total = float(result["counts"].sum())
         # Should be roughly around 100 (stochastic)
         assert total < 500
@@ -61,7 +61,7 @@ class TestReadDownsampler:
         raw_counts = jnp.array([[100.0, 200.0, 50.0]])
         log_counts = jnp.log1p(raw_counts)
         data = {"counts": log_counts}
-        result, _, _ = op.apply(data, {}, None)
+        result, _, _ = op.apply(data, {}, None, jax.random.key(0))
         # Output should be log1p-transformed (non-negative, smaller than input)
         assert jnp.all(result["counts"] >= 0)
 
@@ -73,7 +73,7 @@ class TestReadDownsampler:
 
         def loss_fn(operator: ReadDownsampler, counts: jnp.ndarray) -> jnp.ndarray:
             data = {"counts": counts}
-            result, _, _ = operator.apply(data, {}, None)
+            result, _, _ = operator.apply(data, {}, None, jax.random.key(0))
             return result["counts"].sum()
 
         counts = jnp.array([[100.0, 200.0, 50.0]])
@@ -92,7 +92,7 @@ class TestReadDownsampler:
             "pert_code": 1,
             "other": "preserved",
         }
-        result, _, _ = op.apply(data, {}, None)
+        result, _, _ = op.apply(data, {}, None, jax.random.key(0))
         assert result["pert_code"] == 1
         assert result["other"] == "preserved"
 
@@ -106,7 +106,7 @@ class TestReadDownsampler:
         @jax.jit
         def compute(operator: ReadDownsampler, counts: jnp.ndarray) -> jnp.ndarray:
             data = {"counts": counts}
-            result, _, _ = operator.apply(data, {}, None)
+            result, _, _ = operator.apply(data, {}, None, jax.random.key(0))
             return result["counts"]
 
         counts = jnp.array([[100.0, 200.0, 50.0]])
@@ -120,5 +120,5 @@ class TestReadDownsampler:
         )
         op = ReadDownsampler(config, rngs=nnx.Rngs(42))
         data = {"counts": jnp.array([[50.0, 100.0, 200.0, 10.0, 5.0]])}
-        result, _, _ = op.apply(data, {}, None)
+        result, _, _ = op.apply(data, {}, None, jax.random.key(0))
         assert jnp.all(result["counts"] >= 0)

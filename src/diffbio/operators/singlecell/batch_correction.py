@@ -223,7 +223,7 @@ class DifferentiableHarmony(TemperatureOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply batch correction to cell embeddings.
@@ -234,7 +234,7 @@ class DifferentiableHarmony(TemperatureOperator):
                 - "batch_labels": Batch assignments (n_cells,)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used
+            key: Unused.
             stats: Not used
 
         Returns:

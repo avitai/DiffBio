@@ -74,8 +74,8 @@ class TestDifferentiableDoubletScorer:
         """Test that apply returns doublet_scores and predicted_doublets."""
         op = DifferentiableDoubletScorer(default_config, rngs=rngs)
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(rng_key, {"counts": count_data["counts"].shape})
-        result, state, metadata = op.apply(count_data, {}, None, random_params=random_params)
+        key = rng_key
+        result, state, metadata = op.apply(count_data, {}, None, key=key)
 
         assert "doublet_scores" in result
         assert "predicted_doublets" in result
@@ -91,8 +91,8 @@ class TestDifferentiableDoubletScorer:
         op = DifferentiableDoubletScorer(default_config, rngs=rngs)
         n_cells = count_data["counts"].shape[0]
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(rng_key, {"counts": count_data["counts"].shape})
-        result, _, _ = op.apply(count_data, {}, None, random_params=random_params)
+        key = rng_key
+        result, _, _ = op.apply(count_data, {}, None, key=key)
 
         assert result["doublet_scores"].shape == (n_cells,)
         assert result["predicted_doublets"].shape == (n_cells,)
@@ -106,8 +106,8 @@ class TestDifferentiableDoubletScorer:
         """Test that Bayesian doublet scores are non-negative."""
         op = DifferentiableDoubletScorer(default_config, rngs=rngs)
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(rng_key, {"counts": count_data["counts"].shape})
-        result, _, _ = op.apply(count_data, {}, None, random_params=random_params)
+        key = rng_key
+        result, _, _ = op.apply(count_data, {}, None, key=key)
 
         scores = result["doublet_scores"]
         assert jnp.all(scores >= 0.0)
@@ -121,8 +121,8 @@ class TestDifferentiableDoubletScorer:
         """Test that all doublet scores are finite (no NaN or Inf)."""
         op = DifferentiableDoubletScorer(default_config, rngs=rngs)
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(rng_key, {"counts": count_data["counts"].shape})
-        result, _, _ = op.apply(count_data, {}, None, random_params=random_params)
+        key = rng_key
+        result, _, _ = op.apply(count_data, {}, None, key=key)
 
         assert jnp.isfinite(result["doublet_scores"]).all()
         assert jnp.isfinite(result["predicted_doublets"]).all()
@@ -156,8 +156,8 @@ class TestDifferentiableDoubletScorer:
         )
         op = DifferentiableDoubletScorer(config, rngs=rngs)
         rng_key = jax.random.key(42)
-        random_params = op.generate_random_params(rng_key, {"counts": counts.shape})
-        result, _, _ = op.apply({"counts": counts}, {}, None, random_params=random_params)
+        key = rng_key
+        result, _, _ = op.apply({"counts": counts}, {}, None, key=key)
 
         scores = result["doublet_scores"]
         singlet_scores = scores[:n_singlets]
@@ -193,11 +193,11 @@ class TestDifferentiableDoubletScorer:
         op_low = DifferentiableDoubletScorer(config_low, rngs=rngs)
         op_high = DifferentiableDoubletScorer(config_high, rngs=rngs)
 
-        rp_low = op_low.generate_random_params(rng_key, {"counts": counts.shape})
-        rp_high = op_high.generate_random_params(rng_key, {"counts": counts.shape})
+        rp_low = rng_key
+        rp_high = rng_key
 
-        result_low, _, _ = op_low.apply(data, {}, None, random_params=rp_low)
-        result_high, _, _ = op_high.apply(data, {}, None, random_params=rp_high)
+        result_low, _, _ = op_low.apply(data, {}, None, key=rp_low)
+        result_high, _, _ = op_high.apply(data, {}, None, key=rp_high)
 
         assert jnp.mean(result_high["doublet_scores"]) > jnp.mean(result_low["doublet_scores"])
 
@@ -250,10 +250,10 @@ class TestGradientFlow:
         counts = jnp.abs(jax.random.normal(key, (20, 15))) + 0.1
 
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(rng_key, {"counts": counts.shape})
+        key = rng_key
 
         def loss_fn(c: jax.Array) -> jax.Array:
-            result, _, _ = op.apply({"counts": c}, {}, None, random_params=random_params)
+            result, _, _ = op.apply({"counts": c}, {}, None, key=key)
             return jnp.sum(result["doublet_scores"])
 
         grad = jax.grad(loss_fn)(counts)
@@ -268,10 +268,10 @@ class TestGradientFlow:
         counts = jnp.abs(jax.random.normal(key, (20, 15))) + 0.1
 
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(rng_key, {"counts": counts.shape})
+        key = rng_key
 
         def loss_fn(c: jax.Array) -> jax.Array:
-            result, _, _ = op.apply({"counts": c}, {}, None, random_params=random_params)
+            result, _, _ = op.apply({"counts": c}, {}, None, key=key)
             return jnp.sum(result["doublet_scores"])
 
         grad = jax.grad(loss_fn)(counts)
@@ -297,16 +297,16 @@ class TestJITCompatibility:
         counts = jnp.abs(jax.random.normal(key, (20, 15))) + 0.1
 
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(rng_key, {"counts": counts.shape})
+        key = rng_key
 
         @jax.jit
         def jit_apply(
             d: dict[str, jax.Array],
             rp: jax.Array,
         ) -> tuple:
-            return op.apply(d, {}, None, random_params=rp)
+            return op.apply(d, {}, None, key=rp)
 
-        result, _, _ = jit_apply({"counts": counts}, random_params)
+        result, _, _ = jit_apply({"counts": counts}, key)
         assert jnp.isfinite(result["doublet_scores"]).all()
 
     def test_jit_gradient(self, rngs: nnx.Rngs, config: DoubletScorerConfig) -> None:
@@ -316,12 +316,12 @@ class TestJITCompatibility:
         counts = jnp.abs(jax.random.normal(key, (20, 15))) + 0.1
 
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(rng_key, {"counts": counts.shape})
+        key = rng_key
 
         @jax.jit
         def grad_fn(c: jax.Array) -> jax.Array:
             def loss(x: jax.Array) -> jax.Array:
-                result, _, _ = op.apply({"counts": x}, {}, None, random_params=random_params)
+                result, _, _ = op.apply({"counts": x}, {}, None, key=key)
                 return jnp.sum(result["doublet_scores"])
 
             return jax.grad(loss)(c)
@@ -345,8 +345,8 @@ class TestEdgeCases:
         counts = jnp.abs(jax.random.normal(key, (10, 8))) + 0.1
 
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(rng_key, {"counts": counts.shape})
-        result, _, _ = op.apply({"counts": counts}, {}, None, random_params=random_params)
+        key = rng_key
+        result, _, _ = op.apply({"counts": counts}, {}, None, key=key)
 
         assert result["doublet_scores"].shape == (10,)
         assert jnp.isfinite(result["doublet_scores"]).all()
@@ -363,8 +363,8 @@ class TestEdgeCases:
         )
         op = DifferentiableDoubletScorer(config, rngs=rngs)
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(rng_key, {"counts": counts.shape})
-        result, _, _ = op.apply({"counts": counts}, {}, None, random_params=random_params)
+        key = rng_key
+        result, _, _ = op.apply({"counts": counts}, {}, None, key=key)
 
         scores = result["doublet_scores"]
         # All identical cells -> scores should have very low variance
@@ -431,10 +431,8 @@ class TestDifferentiableSoloDetector:
         """Test that apply returns doublet_probabilities, doublet_labels, latent."""
         op = DifferentiableSoloDetector(solo_config, rngs=rngs)
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(
-            rng_key, {"counts": solo_count_data["counts"].shape}
-        )
-        result, _, _ = op.apply(solo_count_data, {}, None, random_params=random_params)
+        key = rng_key
+        result, _, _ = op.apply(solo_count_data, {}, None, key=key)
 
         assert "doublet_probabilities" in result
         assert "doublet_labels" in result
@@ -451,10 +449,8 @@ class TestDifferentiableSoloDetector:
         op = DifferentiableSoloDetector(solo_config, rngs=rngs)
         n_cells = solo_count_data["counts"].shape[0]
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(
-            rng_key, {"counts": solo_count_data["counts"].shape}
-        )
-        result, _, _ = op.apply(solo_count_data, {}, None, random_params=random_params)
+        key = rng_key
+        result, _, _ = op.apply(solo_count_data, {}, None, key=key)
 
         assert result["doublet_probabilities"].shape == (n_cells,)
         assert result["doublet_labels"].shape == (n_cells,)
@@ -469,10 +465,8 @@ class TestDifferentiableSoloDetector:
         """Test that all doublet probabilities are in [0, 1]."""
         op = DifferentiableSoloDetector(solo_config, rngs=rngs)
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(
-            rng_key, {"counts": solo_count_data["counts"].shape}
-        )
-        result, _, _ = op.apply(solo_count_data, {}, None, random_params=random_params)
+        key = rng_key
+        result, _, _ = op.apply(solo_count_data, {}, None, key=key)
 
         probs = result["doublet_probabilities"]
         assert jnp.all(probs >= 0.0)
@@ -487,10 +481,8 @@ class TestDifferentiableSoloDetector:
         """Test that doublet labels are binary (0 or 1)."""
         op = DifferentiableSoloDetector(solo_config, rngs=rngs)
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(
-            rng_key, {"counts": solo_count_data["counts"].shape}
-        )
-        result, _, _ = op.apply(solo_count_data, {}, None, random_params=random_params)
+        key = rng_key
+        result, _, _ = op.apply(solo_count_data, {}, None, key=key)
 
         labels = result["doublet_labels"]
         # Labels should be soft-thresholded but still in {0, 1} range
@@ -517,10 +509,10 @@ class TestSoloGradientFlow:
         counts = jnp.abs(jax.random.normal(key, (N_CELLS_SOLO, N_GENES_SOLO))) * 5.0 + 0.1
 
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(rng_key, {"counts": counts.shape})
+        key = rng_key
 
         def loss_fn(c: jax.Array) -> jax.Array:
-            result, _, _ = op.apply({"counts": c}, {}, None, random_params=random_params)
+            result, _, _ = op.apply({"counts": c}, {}, None, key=key)
             return jnp.sum(result["doublet_probabilities"])
 
         grad = jax.grad(loss_fn)(counts)
@@ -537,10 +529,10 @@ class TestSoloGradientFlow:
         counts = jnp.abs(jax.random.normal(key, (N_CELLS_SOLO, N_GENES_SOLO))) * 5.0 + 0.1
 
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(rng_key, {"counts": counts.shape})
+        key = rng_key
 
         def loss_fn(model: DifferentiableSoloDetector) -> jax.Array:
-            result, _, _ = model.apply({"counts": counts}, {}, None, random_params=random_params)
+            result, _, _ = model.apply({"counts": counts}, {}, None, key=key)
             return jnp.sum(result["doublet_probabilities"])
 
         grads = nnx.grad(loss_fn)(op)
@@ -572,7 +564,7 @@ class TestSoloJIT:
         counts = jnp.abs(jax.random.normal(key, (N_CELLS_SOLO, N_GENES_SOLO))) * 5.0 + 0.1
 
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(rng_key, {"counts": counts.shape})
+        key = rng_key
 
         @nnx.jit
         def jit_apply(
@@ -580,9 +572,9 @@ class TestSoloJIT:
             d: dict[str, jax.Array],
             rp: jax.Array,
         ) -> tuple:
-            return model.apply(d, {}, None, random_params=rp)
+            return model.apply(d, {}, None, key=rp)
 
-        result, _, _ = jit_apply(op, {"counts": counts}, random_params)
+        result, _, _ = jit_apply(op, {"counts": counts}, key)
         assert jnp.isfinite(result["doublet_probabilities"]).all()
 
     def test_jit_gradient(self, rngs: nnx.Rngs, solo_config: SoloDetectorConfig) -> None:
@@ -592,12 +584,12 @@ class TestSoloJIT:
         counts = jnp.abs(jax.random.normal(key, (N_CELLS_SOLO, N_GENES_SOLO))) * 5.0 + 0.1
 
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(rng_key, {"counts": counts.shape})
+        key = rng_key
 
         @jax.jit
         def grad_fn(c: jax.Array) -> jax.Array:
             def loss(x: jax.Array) -> jax.Array:
-                result, _, _ = op.apply({"counts": x}, {}, None, random_params=random_params)
+                result, _, _ = op.apply({"counts": x}, {}, None, key=key)
                 return jnp.sum(result["doublet_probabilities"])
 
             return jax.grad(loss)(c)
@@ -622,8 +614,8 @@ class TestSoloEdgeCases:
         counts = jnp.abs(jax.random.normal(key, (10, 20))) + 0.1
 
         rng_key = jax.random.key(99)
-        random_params = op.generate_random_params(rng_key, {"counts": counts.shape})
-        result, _, _ = op.apply({"counts": counts}, {}, None, random_params=random_params)
+        key = rng_key
+        result, _, _ = op.apply({"counts": counts}, {}, None, key=key)
 
         assert result["doublet_probabilities"].shape == (10,)
         assert result["latent"].shape == (10, 3)

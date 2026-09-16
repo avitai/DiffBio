@@ -135,7 +135,7 @@ class TaskAdapter:
         else:
             adapted = data_dict
 
-        result, _, _ = operator.apply(adapted, {}, None)
+        result, _, _ = operator.apply(adapted, {}, None, jax.random.key(self._seed))
         # Propagate retention info
         if "retention_weights" not in result and "quality_scores" in adapted:
             quality = adapted["quality_scores"]
@@ -160,7 +160,7 @@ class TaskAdapter:
             temperature=temperature,
         )
         operator = SoftKMeansClustering(op_config, rngs=nnx.Rngs(self._seed))
-        result, _, _ = operator.apply(data_dict, {}, None)
+        result, _, _ = operator.apply(data_dict, {}, None, jax.random.key(self._seed))
         return result
 
     def _run_de(self, data_dict: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
@@ -178,7 +178,7 @@ class TaskAdapter:
             n_conditions=n_conditions,
         )
         pipeline = DifferentialExpressionPipeline(op_config, rngs=nnx.Rngs(self._seed))
-        result, _, _ = pipeline.apply(data_dict, {}, None)
+        result, _, _ = pipeline.apply(data_dict, {}, None, jax.random.key(self._seed))
 
         # Add gene names for grader extraction
         if "gene_names" not in result:
@@ -202,7 +202,7 @@ class TaskAdapter:
             n_clusters=n_clusters,
         )
         operator = DifferentiableHarmony(op_config, rngs=nnx.Rngs(self._seed))
-        result, _, _ = operator.apply(data_dict, {}, None)
+        result, _, _ = operator.apply(data_dict, {}, None, jax.random.key(self._seed))
         return result
 
     def _run_normalization(
@@ -222,7 +222,7 @@ class TaskAdapter:
             latent_dim=latent_dim,
         )
         operator = VAENormalizer(op_config, rngs=nnx.Rngs(self._seed))
-        result, _, _ = operator.apply(data_dict, {}, None)
+        result, _, _ = operator.apply(data_dict, {}, None, jax.random.key(self._seed))
         return result
 
     def _run_trajectory(self, data_dict: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
@@ -240,7 +240,7 @@ class TaskAdapter:
             n_diffusion_components=n_diffusion_components,
         )
         operator = DifferentiablePseudotime(op_config, rngs=nnx.Rngs(self._seed))
-        result, _, _ = operator.apply(data_dict, {}, None)
+        result, _, _ = operator.apply(data_dict, {}, None, jax.random.key(self._seed))
         return result
 
     def _run_spatial_analysis(
@@ -260,7 +260,7 @@ class TaskAdapter:
             n_domains=n_domains,
         )
         operator = DifferentiableSpatialDomain(op_config, rngs=nnx.Rngs(self._seed))
-        result, _, _ = operator.apply(data_dict, {}, None)
+        result, _, _ = operator.apply(data_dict, {}, None, jax.random.key(self._seed))
         return result
 
     def _run_cell_annotation(

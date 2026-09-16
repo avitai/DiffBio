@@ -443,7 +443,7 @@ class ChromatinStateAnnotator(TemperatureOperator):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict | None,
-        random_params: dict | None = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[dict, dict, dict | None]:
         """Apply chromatin state annotation to histone mark data.
@@ -456,7 +456,7 @@ class ChromatinStateAnnotator(TemperatureOperator):
                   (num_cell_types,) when conditioning is enabled
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
-            random_params: Optional random parameters (unused).
+            key: Unused.
             stats: Optional statistics dictionary (unused).
 
         Returns:
@@ -469,7 +469,7 @@ class ChromatinStateAnnotator(TemperatureOperator):
                 - 'log_likelihood': Log likelihood of the sequence
                 - 'gamma': Soft state assignment (only when conditioning enabled)
         """
-        del random_params, stats  # Unused
+        del key, stats  # Unused
 
         marks = data["histone_marks"]
         cell_type = data.get("cell_type") if self._use_conditioning else None

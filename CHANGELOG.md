@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Requires `datarax>=0.1.10`; the lock moves datarax from 0.1.7 to 0.1.10 and, through it,
+  substrax from 0.1.5 to 0.1.7. datarax hands `apply` the record's PRNG key as its fourth
+  argument and no longer calls `generate_random_params`, so every operator names that
+  argument `key`, the four `generate_random_params` methods are gone (the simulator splits
+  its six keys inside `apply`; the doublet scorers and masked-gene operators use the key
+  directly), and the operators that drew from a stored `Rngs` inside `apply` draw from the
+  key instead: `EncoderDecoderOperator.reparameterize` takes the key (the VAE normalizer,
+  ambient removal, multi-omics VAE and metagenomic binner pass the record's; `compute_elbo_loss`
+  keeps the operator's `sample` stream), `ReadDownsampler` rounds from the key, and
+  `StochasticGateSelector` draws its gate noise from it. A stochastic operator handed no key
+  raises instead of drawing from a fixed seed; masking genes with `mask_ratio > 0` needs a
+  key. `wrap_probabilistic` takes `rngs`, which the wrapper it builds requires.
+- The `_unique_id` workaround in the drug-discovery operators is gone with the attribute it
+  wrapped, as are the `cacheable` config fields nothing read and the cache argument of
+  `eager_reset` on the AnnData source.
+
 ## [0.1.4] - 2026-09-16
 
 ### Added

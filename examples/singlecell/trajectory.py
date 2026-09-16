@@ -83,29 +83,36 @@ branch_b_x = 3.0 + t_branch_a * 3.0
 branch_b_y = -t_branch_a * 3.0
 
 # Combine 2D positions
-positions_2d = jnp.stack([
-    jnp.concatenate([stem_x, branch_a_x, branch_b_x]),
-    jnp.concatenate([stem_y, branch_a_y, branch_b_y]),
-], axis=-1)
+positions_2d = jnp.stack(
+    [
+        jnp.concatenate([stem_x, branch_a_x, branch_b_x]),
+        jnp.concatenate([stem_y, branch_a_y, branch_b_y]),
+    ],
+    axis=-1,
+)
 
 # Add noise
 noise = jax.random.normal(k1, positions_2d.shape) * 0.15
 positions_2d = positions_2d + noise
 
 # Ground truth pseudotime: stem [0, 0.5), branches [0.5, 1.0]
-true_pseudotime = jnp.concatenate([
-    t_stem * 0.5,
-    0.5 + t_branch_a * 0.5,
-    0.5 + t_branch_a * 0.5,
-])
+true_pseudotime = jnp.concatenate(
+    [
+        t_stem * 0.5,
+        0.5 + t_branch_a * 0.5,
+        0.5 + t_branch_a * 0.5,
+    ]
+)
 
 # Ground truth fate labels: stem=neither, branch_a=0, branch_b=1
 # For evaluation, stem cells closer to branch A get label 0, others get 1
-true_fate = jnp.concatenate([
-    jnp.zeros(n_stem, dtype=jnp.int32),  # stem -> assigned post-hoc
-    jnp.zeros(n_branch, dtype=jnp.int32),  # branch A
-    jnp.ones(n_branch, dtype=jnp.int32),  # branch B
-])
+true_fate = jnp.concatenate(
+    [
+        jnp.zeros(n_stem, dtype=jnp.int32),  # stem -> assigned post-hoc
+        jnp.zeros(n_branch, dtype=jnp.int32),  # branch A
+        jnp.ones(n_branch, dtype=jnp.int32),  # branch B
+    ]
+)
 
 n_cells = positions_2d.shape[0]
 
@@ -180,7 +187,8 @@ fig.colorbar(sc, ax=ax, label="Pseudotime")
 plt.tight_layout()
 plt.savefig(
     "docs/assets/examples/singlecell/trajectory_pseudotime.png",
-    dpi=150, bbox_inches="tight",
+    dpi=150,
+    bbox_inches="tight",
 )
 plt.show()
 
@@ -229,13 +237,12 @@ print(f"Macrostates shape: {macrostates.shape}")
 # Row sums should be ~1
 fate_sums = fate_probs.sum(axis=-1)
 print(
-    f"Fate probability row sums:"
-    f" min={float(fate_sums.min()):.4f}, max={float(fate_sums.max()):.4f}"
+    f"Fate probability row sums: min={float(fate_sums.min()):.4f}, max={float(fate_sums.max()):.4f}"
 )
 
 # Branch A cells should favor terminal A (column 0)
-branch_a_fate = fate_probs[n_stem:n_stem + n_branch, 0]
-branch_b_fate = fate_probs[n_stem + n_branch:, 1]
+branch_a_fate = fate_probs[n_stem : n_stem + n_branch, 0]
+branch_b_fate = fate_probs[n_stem + n_branch :, 1]
 print(f"Branch A cells -> fate A probability: mean={float(branch_a_fate.mean()):.4f}")
 print(f"Branch B cells -> fate B probability: mean={float(branch_b_fate.mean()):.4f}")
 
@@ -248,8 +255,14 @@ fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
 # Left: scatter colored by fate A probability
 sc0 = axes[0].scatter(
-    positions_2d[:, 0], positions_2d[:, 1],
-    c=fate_probs[:, 0], cmap="RdYlBu_r", s=20, alpha=0.8, vmin=0, vmax=1,
+    positions_2d[:, 0],
+    positions_2d[:, 1],
+    c=fate_probs[:, 0],
+    cmap="RdYlBu_r",
+    s=20,
+    alpha=0.8,
+    vmin=0,
+    vmax=1,
 )
 axes[0].set_title("Fate A Probability")
 axes[0].set_xlabel("PC 1")
@@ -303,9 +316,9 @@ for g_idx in range(n_switch_genes):
     counts_synthetic = counts_synthetic.at[:, g_idx].set(sigmoid_val * 5.0)
 
 # Add noise
-counts_synthetic = counts_synthetic + jax.random.normal(
-    jax.random.key(100), counts_synthetic.shape
-) * 0.3
+counts_synthetic = (
+    counts_synthetic + jax.random.normal(jax.random.key(100), counts_synthetic.shape) * 0.3
+)
 
 switch_config = SwitchDEConfig(n_genes=n_switch_genes, temperature=0.5)
 switch_op = DifferentiableSwitchDE(switch_config, rngs=nnx.Rngs(42))
@@ -326,6 +339,7 @@ print(f"Predicted expression shape: {switch_result['predicted_expression'].shape
 # Verify gradient flow for both operators independently, confirming that
 # DiffBio's trajectory operators are end-to-end differentiable.
 
+
 # %%
 # Pseudotime gradient flow
 def pt_loss_fn(input_data):
@@ -340,6 +354,7 @@ print("Pseudotime operator gradients:")
 print(f"  Shape: {pt_grad_emb.shape}")
 print(f"  Non-zero: {bool(jnp.any(pt_grad_emb != 0))}")
 print(f"  Finite: {bool(jnp.all(jnp.isfinite(pt_grad_emb)))}")
+
 
 # Fate probability gradient flow (through transition matrix).
 # Only differentiate with respect to the float-valued transition_matrix,

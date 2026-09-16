@@ -27,6 +27,7 @@ import jax
 import jax.numpy as jnp
 from artifex.generative_models.core.losses.divergence import gaussian_kl_divergence
 from datarax.core.config import OperatorConfig
+from datarax.core.operator import require_key
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
@@ -127,9 +128,9 @@ class DifferentiableDoubletScorer(OperatorModule):
         ...                              n_genes=2000)
         >>> scorer = DifferentiableDoubletScorer(config, rngs=nnx.Rngs(0))
         >>> rng = jax.random.key(0)
-        >>> rp = scorer.generate_random_params(rng, {"counts": (500, 2000)})
+        >>> rp = rng
         >>> result, state, meta = scorer.apply({"counts": counts}, {}, None,
-        ...                                    random_params=rp)
+        ...                                    key=rp)
         >>> result["doublet_scores"].shape
         (500,)
     """
@@ -149,26 +150,6 @@ class DifferentiableDoubletScorer(OperatorModule):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-    def generate_random_params(
-        self,
-        rng: jax.Array,
-        data_shapes: PyTree,
-    ) -> jax.Array:
-        """Generate random parameters for doublet pair selection.
-
-        Produces two arrays of random cell indices used to form synthetic
-        doublets by pairwise summation.
-
-        Args:
-            rng: JAX random key.
-            data_shapes: PyTree with shapes, must contain ``"counts"`` key
-                whose first dimension is the number of cells.
-
-        Returns:
-            A JAX random key for reproducible pair generation inside apply.
-        """
-        return rng
 
     def _pca_embed(
         self,
@@ -261,7 +242,7 @@ class DifferentiableDoubletScorer(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply doublet detection to single-cell count data.
@@ -280,7 +261,7 @@ class DifferentiableDoubletScorer(OperatorModule):
                 - ``"counts"``: Gene expression matrix ``(n_cells, n_genes)``
             state: Element state (passed through unchanged).
             metadata: Element metadata (passed through unchanged).
-            random_params: JAX random key for synthetic doublet generation.
+            key: The record's PRNG key; the synthetic doublet pairs are drawn from it.
             stats: Not used.
 
         Returns:
@@ -297,8 +278,7 @@ class DifferentiableDoubletScorer(OperatorModule):
         n_cells = counts.shape[0]
         config = self.config
 
-        # Use provided random key or fallback
-        rng = random_params if random_params is not None else jax.random.key(0)
+        rng = require_key(key, self)
 
         # Step 1: Generate synthetic doublets (n_cells * sim_doublet_ratio)
         synthetic = generate_synthetic_doublets(counts, rng, config.sim_doublet_ratio)
@@ -415,8 +395,8 @@ class DifferentiableSoloDetector(CountVAEBackboneMixin, EncoderDecoderOperator):
         >>> config = SoloDetectorConfig(n_genes=2000, latent_dim=10)
         >>> detector = DifferentiableSoloDetector(config, rngs=nnx.Rngs(42))
         >>> rng = jax.random.key(0)
-        >>> rp = detector.generate_random_params(rng, {"counts": (500, 2000)})
-        >>> result, _, _ = detector.apply({"counts": counts}, {}, None, random_params=rp)
+        >>> rp = rng
+        >>> result, _, _ = detector.apply({"counts": counts}, {}, None, key=rp)
         >>> result["doublet_probabilities"].shape
         (500,)
     """
@@ -450,22 +430,6 @@ class DifferentiableSoloDetector(CountVAEBackboneMixin, EncoderDecoderOperator):
             out_features=1,
             rngs=safe_rngs,
         )
-
-    def generate_random_params(
-        self,
-        rng: jax.Array,
-        data_shapes: PyTree,
-    ) -> jax.Array:
-        """Generate random parameters for synthetic doublet pair selection.
-
-        Args:
-            rng: JAX random key.
-            data_shapes: PyTree with shapes (must contain ``"counts"`` key).
-
-        Returns:
-            A JAX random key for reproducible pair generation inside apply.
-        """
-        return rng
 
     def decode(
         self,
@@ -528,7 +492,7 @@ class DifferentiableSoloDetector(CountVAEBackboneMixin, EncoderDecoderOperator):
     def compute_solo_loss(
         self,
         counts: Float[Array, "batch n_genes"],
-        random_params: jax.Array,
+        key: jax.Array,
         classifier_weight: float = 1.0,
     ) -> dict[str, Float[Array, ""]]:
         """Full Solo training loss: VAE ELBO + classifier binary cross-entropy.
@@ -540,7 +504,7 @@ class DifferentiableSoloDetector(CountVAEBackboneMixin, EncoderDecoderOperator):
 
         Args:
             counts: Real gene expression counts, shape ``(n_real, n_genes)``.
-            random_params: JAX random key for synthetic doublet generation.
+            key: The record's PRNG key; the synthetic doublet pairs are drawn from it.
             classifier_weight: Weight for the classifier BCE term
                 (default 1.0).
 
@@ -551,9 +515,7 @@ class DifferentiableSoloDetector(CountVAEBackboneMixin, EncoderDecoderOperator):
         n_real = counts.shape[0]
 
         # 1. Generate synthetic doublets
-        synthetic = generate_synthetic_doublets(
-            counts, random_params, self.config.sim_doublet_ratio
-        )
+        synthetic = generate_synthetic_doublets(counts, key, self.config.sim_doublet_ratio)
         n_synthetic = synthetic.shape[0]
 
         # 2. Combine real + synthetic
@@ -589,7 +551,7 @@ class DifferentiableSoloDetector(CountVAEBackboneMixin, EncoderDecoderOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply Solo-style VAE doublet detection.
@@ -607,7 +569,7 @@ class DifferentiableSoloDetector(CountVAEBackboneMixin, EncoderDecoderOperator):
                 - ``"counts"``: Gene expression matrix ``(n_cells, n_genes)``
             state: Element state (passed through unchanged).
             metadata: Element metadata (passed through unchanged).
-            random_params: JAX random key for synthetic doublet generation.
+            key: The record's PRNG key; the synthetic doublet pairs are drawn from it.
             stats: Not used.
 
         Returns:
@@ -625,8 +587,7 @@ class DifferentiableSoloDetector(CountVAEBackboneMixin, EncoderDecoderOperator):
         n_cells = counts.shape[0]
         config = self.config
 
-        # Use provided random key or fallback
-        rng = random_params if random_params is not None else jax.random.key(0)
+        rng = require_key(key, self)
 
         # Step 1: Generate synthetic doublets
         synthetic = generate_synthetic_doublets(counts, rng, config.sim_doublet_ratio)

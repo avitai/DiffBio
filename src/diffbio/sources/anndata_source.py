@@ -317,7 +317,7 @@ class AnnDataSource(DataSourceModule):
             seed: Unused (uses config seed).
         """
         del seed
-        eager_reset(self.index, self.epoch, self._cache)
+        eager_reset(self.index, self.epoch)
 
     def set_shuffle(self, shuffle: bool) -> None:
         """Enable or disable shuffling.

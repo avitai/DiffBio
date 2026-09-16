@@ -6,6 +6,7 @@ the expected interfaces and data structures across the DiffBio codebase.
 
 from typing import Any, Protocol, TypedDict, runtime_checkable
 
+import jax
 from jaxtyping import Array, Float
 
 # =============================================================================
@@ -166,7 +167,7 @@ class DifferentiableOperator(Protocol):
         data: dict[str, Any],
         state: StateDict,
         metadata: MetadataDict,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> OperatorOutput:
         """Apply the operator to input data.
@@ -175,7 +176,7 @@ class DifferentiableOperator(Protocol):
             data: Input data dictionary.
             state: Element state.
             metadata: Element metadata.
-            random_params: Random parameters for stochastic operations.
+            key: The record's PRNG key; a stochastic operator draws from it.
             stats: Statistics dictionary.
 
         Returns:

@@ -190,7 +190,7 @@ class DifferentiableHMM(HMMOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply HMM to observation sequence.
@@ -203,7 +203,7 @@ class DifferentiableHMM(HMMOperator):
                 - "observations": Integer-encoded observations (seq_len,)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used (deterministic operator)
+            key: Unused.
             stats: Not used
 
         Returns:

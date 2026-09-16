@@ -374,7 +374,7 @@ class DeepVariantStylePileup(TemperatureOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,  # noqa: ARG002
+        key: jax.Array | None = None,  # noqa: ARG002
         stats: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply DeepVariant-style pileup generation.
@@ -389,7 +389,7 @@ class DeepVariantStylePileup(TemperatureOperator):
                 - "positions": Read start positions in window (num_reads,)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used (deterministic operator)
+            key: Unused.
             stats: Not used
 
         Returns:
@@ -398,7 +398,7 @@ class DeepVariantStylePileup(TemperatureOperator):
                 - state is passed through unchanged
                 - metadata is passed through unchanged
         """
-        del random_params, stats  # Unused parameters
+        del key, stats  # Unused parameters
 
         reads = data["reads"]
         reference = data["reference"]

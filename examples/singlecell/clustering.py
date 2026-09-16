@@ -65,11 +65,13 @@ n_clusters_true = 3
 n_features = 20
 
 # 2D cluster centers, well-separated
-centers_2d = jnp.array([
-    [-3.0, -3.0],
-    [3.0, -3.0],
-    [0.0, 3.0],
-])
+centers_2d = jnp.array(
+    [
+        [-3.0, -3.0],
+        [3.0, -3.0],
+        [0.0, 3.0],
+    ]
+)
 
 # Generate 2D points around each center
 keys = jax.random.split(key, n_clusters_true + 1)
@@ -144,6 +146,7 @@ n_steps = 100
 @jax.jit
 def train_step(params, other, opt_state, input_data):
     """One gradient step minimizing within-cluster dispersion."""
+
     def loss_fn(params):
         model = nnx.merge(graphdef, params, other)
         result, _, _ = model.apply(input_data, {}, None)
@@ -153,7 +156,7 @@ def train_step(params, other, opt_state, input_data):
         # Squared distances from each cell to each centroid
         emb = input_data["embeddings"]
         diff = emb[:, None, :] - centroids[None, :, :]
-        sq_dist = jnp.sum(diff ** 2, axis=-1)  # (n_cells, n_clusters)
+        sq_dist = jnp.sum(diff**2, axis=-1)  # (n_cells, n_clusters)
 
         # Weighted dispersion: sum of (assignment * distance)
         return jnp.sum(assignments * sq_dist)
@@ -222,9 +225,7 @@ emb_2d = embeddings @ jnp.linalg.pinv(projection)
 
 fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
-scatter0 = axes[0].scatter(
-    emb_2d[:, 0], emb_2d[:, 1], c=true_labels, cmap="Set1", s=20, alpha=0.8
-)
+scatter0 = axes[0].scatter(emb_2d[:, 0], emb_2d[:, 1], c=true_labels, cmap="Set1", s=20, alpha=0.8)
 axes[0].set_title("True Labels")
 axes[0].set_xlabel("Dim 1")
 axes[0].set_ylabel("Dim 2")
@@ -248,6 +249,7 @@ plt.show()
 # Confirm that gradients flow from the clustering loss back through the
 # operator into the input embeddings.
 
+
 # %%
 def loss_fn(input_data):
     """Within-cluster dispersion loss from soft assignments and centroids."""
@@ -256,7 +258,7 @@ def loss_fn(input_data):
     centroids = result["centroids"]
     emb = input_data["embeddings"]
     diff = emb[:, None, :] - centroids[None, :, :]
-    sq_dist = jnp.sum(diff ** 2, axis=-1)
+    sq_dist = jnp.sum(diff**2, axis=-1)
     return jnp.sum(assignments * sq_dist)
 
 

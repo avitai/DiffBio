@@ -356,7 +356,7 @@ class DifferentiableSpatialGeneDetector(TemperatureOperator):
         data: dict[str, Array],
         state: dict[str, Any],
         metadata: dict[str, Any] | None,
-        random_params: Any = None,  # noqa: ARG002
+        key: jax.Array | None = None,  # noqa: ARG002
         stats: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> tuple[dict[str, Array], dict[str, Any], dict[str, Any] | None]:
         """Apply spatial gene detection.

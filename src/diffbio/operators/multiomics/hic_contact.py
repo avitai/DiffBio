@@ -309,7 +309,7 @@ class HiCContactAnalysis(TemperatureOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply Hi-C contact analysis.
@@ -320,7 +320,7 @@ class HiCContactAnalysis(TemperatureOperator):
                 - "bin_features": Bin genomic features (n_bins, bin_features)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used
+            key: Unused.
             stats: Not used
 
         Returns:

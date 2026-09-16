@@ -26,6 +26,7 @@ from datarax.operators import (
     CompositeOperatorModule,
     CompositionStrategy,
 )
+import jax
 from flax import nnx
 
 from diffbio.operators.foundation_models import EmbeddingProbeConfig, LinearEmbeddingProbe
@@ -166,7 +167,7 @@ class JointPreprocessingPipeline(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict | None,
-        random_params: dict | None = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[dict, dict, dict | None]:
         """Run the full preprocessing-to-annotation pipeline on ``data``.
@@ -175,7 +176,7 @@ class JointPreprocessingPipeline(OperatorModule):
             data: Dictionary containing ``"counts"`` ``(n_cells, n_genes)``.
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
-            random_params: Optional random parameters (forwarded to the composite).
+            key: The record's PRNG key (forwarded to the composite).
             stats: Optional statistics dictionary (forwarded to the composite).
 
         Returns:
@@ -183,7 +184,7 @@ class JointPreprocessingPipeline(OperatorModule):
             the PCA ``"embeddings"`` and the probe's ``"logits"``,
             ``"probabilities"``, and ``"predicted_labels"``.
         """
-        return self.composite.apply(data, state, metadata, random_params, stats)
+        return self.composite.apply(data, state, metadata, key, stats)
 
     def _child(self, operator_type: type[_OperatorT]) -> _OperatorT:
         """Return the first composed child operator of ``operator_type``.

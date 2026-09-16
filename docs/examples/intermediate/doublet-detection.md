@@ -23,9 +23,9 @@ config_scrub = DoubletScorerConfig(
     n_pca_components=20, n_genes=50,
 )
 scorer = DifferentiableDoubletScorer(config_scrub, rngs=nnx.Rngs(0))
-random_params = scorer.generate_random_params(jax.random.key(10), {"counts": counts.shape})
+key = jax.random.key(10)
 
-result_scrub, _, _ = scorer.apply({"counts": counts}, {}, None, random_params=random_params)
+result_scrub, _, _ = scorer.apply({"counts": counts}, {}, None, key=key)
 scores = result_scrub["doublet_scores"]
 ```
 

@@ -109,9 +109,7 @@ print(f"Network density: {n_true_edges / (n_tfs * n_genes):.2%}")
 # %%
 # Simulate TF expression: each TF has a base level plus cell-specific noise
 tf_base = jnp.array([10.0, 8.0, 12.0, 6.0, 9.0])
-tf_expression = (
-    tf_base[None, :] + jax.random.normal(k1, (n_cells, n_tfs)) * 2.0
-)
+tf_expression = tf_base[None, :] + jax.random.normal(k1, (n_cells, n_tfs)) * 2.0
 tf_expression = jnp.maximum(tf_expression, 0.1)  # non-negative
 
 # Generate target gene expression as a function of TF activity:
@@ -136,7 +134,7 @@ print(f"Mean expression (targets): {counts[:, n_tfs:].mean():.2f}")
 
 # Verify that strongly regulated genes have higher expression than weakly regulated
 strong_mask = grn_truth.sum(axis=0) >= 1.0  # genes with direct TF regulation
-weak_mask = grn_truth.sum(axis=0) < 1.0     # genes with weak or no TF regulation
+weak_mask = grn_truth.sum(axis=0) < 1.0  # genes with weak or no TF regulation
 print(f"Mean expr (strongly regulated): {counts[:, strong_mask].mean():.2f}")
 print(f"Mean expr (weakly regulated): {counts[:, weak_mask].mean():.2f}")
 
@@ -163,9 +161,11 @@ config_grn = GRNInferenceConfig(
 )
 grn_op = DifferentiableGRN(config_grn, rngs=nnx.Rngs(0))
 print(f"GRN operator created: {type(grn_op).__name__}")
-print(f"  hidden_dim={config_grn.hidden_dim}, "
-      f"num_heads={config_grn.num_heads}, "
-      f"sparsity_temp={config_grn.sparsity_temperature}")
+print(
+    f"  hidden_dim={config_grn.hidden_dim}, "
+    f"num_heads={config_grn.num_heads}, "
+    f"sparsity_temp={config_grn.sparsity_temperature}"
+)
 
 # %%
 # Run GRN inference
@@ -181,8 +181,10 @@ tf_activity = result_grn["tf_activity"]
 print(f"Inferred GRN matrix shape: {grn_matrix.shape}")
 print(f"TF activity shape: {tf_activity.shape}")
 print(f"GRN value range: [{float(grn_matrix.min()):.4f}, {float(grn_matrix.max()):.4f}]")
-print(f"GRN sparsity (fraction near zero, |w| < 0.01): "
-      f"{float((jnp.abs(grn_matrix) < 0.01).mean()):.4f}")
+print(
+    f"GRN sparsity (fraction near zero, |w| < 0.01): "
+    f"{float((jnp.abs(grn_matrix) < 0.01).mean()):.4f}"
+)
 
 # %%
 # Figure 1: Ground truth vs inferred GRN
@@ -218,8 +220,7 @@ truth_binary = (grn_truth > 0).astype(jnp.float32)
 
 # Compute overlap statistics at different thresholds
 print("=== GRN Comparison with Ground Truth ===\n")
-print(f"{'Threshold':>10} {'TP':>5} {'FP':>5} {'FN':>5} {'Precision':>10} "
-      f"{'Recall':>10}")
+print(f"{'Threshold':>10} {'TP':>5} {'FP':>5} {'FN':>5} {'Precision':>10} {'Recall':>10}")
 print("-" * 50)
 
 thresholds = [0.0, 0.01, 0.05, 0.1, 0.5]
@@ -233,8 +234,10 @@ for threshold in thresholds:
     precision = tp / (tp + fp + 1e-10)
     recall = tp / (tp + fn + 1e-10)
     recall_values.append(recall)
-    print(f"{threshold:>10.2f} {int(tp):>5} {int(fp):>5} {int(fn):>5} "
-          f"{precision:>10.4f} {recall:>10.4f}")
+    print(
+        f"{threshold:>10.2f} {int(tp):>5} {int(fp):>5} {int(fn):>5} "
+        f"{precision:>10.4f} {recall:>10.4f}"
+    )
 
 # %%
 # Figure 2: Recall at different thresholds
@@ -251,20 +254,26 @@ ax.set_ylabel("Recall")
 ax.set_title("Recall @ Threshold")
 ax.set_ylim(0, 1.05)
 for bar, val in zip(bars, recall_values):
-    ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.02,
-            f"{val:.2f}", ha="center", va="bottom", fontsize=9)
+    ax.text(
+        bar.get_x() + bar.get_width() / 2,
+        bar.get_height() + 0.02,
+        f"{val:.2f}",
+        ha="center",
+        va="bottom",
+        fontsize=9,
+    )
 plt.tight_layout()
 plt.savefig(
     "docs/assets/examples/singlecell/grn_threshold_recall.png",
-    dpi=150, bbox_inches="tight",
+    dpi=150,
+    bbox_inches="tight",
 )
 plt.show()
 
 # %%
 # Per-TF analysis: which TF's targets are best recovered
 print("\n=== Per-TF Regulatory Strength ===\n")
-print(f"{'TF':>4} {'True Targets':>14} {'Mean |inferred|':>16} "
-      f"{'Max |inferred|':>16}")
+print(f"{'TF':>4} {'True Targets':>14} {'Mean |inferred|':>16} {'Max |inferred|':>16}")
 print("-" * 54)
 
 for tf_idx in range(n_tfs):
@@ -272,8 +281,7 @@ for tf_idx in range(n_tfs):
     target_mask = grn_truth[tf_idx] > 0
     mean_strength = float(jnp.where(target_mask, grn_abs[tf_idx], 0.0).sum() / true_targets)
     max_strength = float(grn_abs[tf_idx].max())
-    print(f"{tf_idx:>4} {true_targets:>14} {mean_strength:>16.4f} "
-          f"{max_strength:>16.4f}")
+    print(f"{tf_idx:>4} {true_targets:>14} {mean_strength:>16.4f} {max_strength:>16.4f}")
 
 # %%
 # Compare inferred TF activity with ground truth TF activity
@@ -289,7 +297,7 @@ for tf_idx in range(n_tfs):
     true_centered = true - true.mean()
     corr = float(
         (inferred_centered * true_centered).sum()
-        / (jnp.sqrt((inferred_centered ** 2).sum() * (true_centered ** 2).sum()) + 1e-10)
+        / (jnp.sqrt((inferred_centered**2).sum() * (true_centered**2).sum()) + 1e-10)
     )
     print(f"  TF {tf_idx}: correlation = {corr:.4f}")
 
@@ -384,8 +392,7 @@ for temp in [0.01, 0.05, 0.1, 0.5, 1.0]:
     grn = res["grn_matrix"]
     sparsity = float((jnp.abs(grn) < 0.01).mean())
     value_range = float(jnp.abs(grn).max())
-    print(f"  temp={temp:.2f} -> sparsity: {sparsity:.4f}, "
-          f"max |weight|: {value_range:.4f}")
+    print(f"  temp={temp:.2f} -> sparsity: {sparsity:.4f}, max |weight|: {value_range:.4f}")
 
 # %% [markdown]
 # ### Vary the number of attention heads
@@ -415,8 +422,10 @@ for n_heads in [1, 2, 4, 8]:
     pred_bin = (grn_a > 0.01).astype(jnp.float32)
     tp = float((pred_bin * truth_binary).sum())
     recall = tp / (float(truth_binary.sum()) + 1e-10)
-    print(f"  heads={n_heads}, hidden={hdim} -> recall@0.01: {recall:.4f}, "
-          f"max |w|: {float(grn_a.max()):.4f}")
+    print(
+        f"  heads={n_heads}, hidden={hdim} -> recall@0.01: {recall:.4f}, "
+        f"max |w|: {float(grn_a.max()):.4f}"
+    )
 
 # %% [markdown]
 # ### Vary the number of cells
@@ -448,8 +457,7 @@ for n_c in [20, 50, 100, 200]:
     pred_bin = (grn_a > 0.01).astype(jnp.float32)
     tp = float((pred_bin * truth_binary).sum())
     recall = tp / (float(truth_binary.sum()) + 1e-10)
-    print(f"  n_cells={n_c:>3} -> recall@0.01: {recall:.4f}, "
-          f"max |w|: {float(grn_a.max()):.4f}")
+    print(f"  n_cells={n_c:>3} -> recall@0.01: {recall:.4f}, max |w|: {float(grn_a.max()):.4f}")
 
 # %% [markdown]
 # ## Summary

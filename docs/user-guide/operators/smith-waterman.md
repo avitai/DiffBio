@@ -128,7 +128,7 @@ def apply(
     data: PyTree,
     state: PyTree,
     metadata: dict | None,
-    random_params: Any = None,
+    key: jax.Array | None = None,
     stats: dict | None = None,
 ) -> tuple[PyTree, PyTree, dict | None]:
     """Apply alignment to sequence pair data (Datarax interface).

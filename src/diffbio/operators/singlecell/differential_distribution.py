@@ -190,7 +190,7 @@ class DifferentiableDifferentialDistribution(TemperatureOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply differentiable differential distribution testing.
@@ -204,7 +204,7 @@ class DifferentiableDifferentialDistribution(TemperatureOperator):
                 - "condition_labels": Binary condition labels (n_cells,)
             state: Element state (passed through unchanged).
             metadata: Element metadata (passed through unchanged).
-            random_params: Not used.
+            key: Unused.
             stats: Not used.
 
         Returns:

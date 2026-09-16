@@ -18,6 +18,7 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
+from datarax.core.operator import require_key
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float
@@ -109,7 +110,7 @@ class SingleCellPipeline(OperatorModule):
         ```python
         config = SingleCellPipelineConfig(n_genes=2000, n_clusters=10)
         pipeline = SingleCellPipeline(config, rngs=nnx.Rngs(42))
-        result, state, meta = pipeline.apply(data, {}, None)
+        result, state, meta = pipeline.apply(data, {}, None, jax.random.key(0))
         clusters = result["cluster_assignments"]
         ```
     """
@@ -200,7 +201,7 @@ class SingleCellPipeline(OperatorModule):
         data: dict[str, Array],
         state: dict[str, Any],
         metadata: dict[str, Any] | None,
-        random_params: Any = None,  # noqa: ARG002
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> tuple[dict[str, Array], dict[str, Any], dict[str, Any] | None]:
         """Apply the full single-cell analysis pipeline.
@@ -212,7 +213,8 @@ class SingleCellPipeline(OperatorModule):
                 - batch_labels: Int[Array, "n_cells"]
             state: Element state (passed through).
             metadata: Element metadata (passed through).
-            random_params: Random parameters for stochastic operations.
+            key: The record's PRNG key; each stage draws from a key folded from it by
+                its position, and the per-cell normalizer from one split per cell.
             stats: Optional statistics dict.
 
         Returns:
@@ -221,6 +223,8 @@ class SingleCellPipeline(OperatorModule):
         """
         counts = data["counts"]
         n_cells = counts.shape[0]
+        record_key = require_key(key, self)
+        stage_keys = jax.random.split(record_key, 5)
 
         # Step 1: Ambient RNA removal (optional)
         if self.ambient_removal is not None:
@@ -228,23 +232,27 @@ class SingleCellPipeline(OperatorModule):
                 "counts": counts,
                 "ambient_profile": data["ambient_profile"],
             }
-            ambient_result, _, _ = self.ambient_removal.apply(ambient_data, {}, None)
+            ambient_result, _, _ = self.ambient_removal.apply(ambient_data, {}, None, stage_keys[0])
             decontaminated = ambient_result["decontaminated_counts"]
         else:
             decontaminated = counts
 
         # Step 2: VAE normalization (per-cell using vmap for efficiency)
         # The VAE normalizer expects single-cell input with library_size
-        def normalize_cell(cell_counts: Float[Array, "n_genes"]) -> dict[str, Array]:
+        def normalize_cell(
+            cell_counts: Float[Array, "n_genes"], cell_key: jax.Array
+        ) -> dict[str, Array]:
             # Compute library size (total counts per cell)
             library_size = cell_counts.sum()
             vae_data = {"counts": cell_counts, "library_size": library_size}
-            result, _, _ = self.vae_normalizer.apply(vae_data, {}, None)
+            result, _, _ = self.vae_normalizer.apply(vae_data, {}, None, cell_key)
             return result
 
-        # Use vmap for batch processing
+        # Use vmap for batch processing, one key per cell
         vmap_normalize = jax.vmap(normalize_cell)
-        normalized_results = vmap_normalize(decontaminated)
+        normalized_results = vmap_normalize(
+            decontaminated, jax.random.split(stage_keys[1], n_cells)
+        )
 
         normalized = normalized_results["normalized"]
         latent = normalized_results["latent_z"]  # VAENormalizer outputs latent_z
@@ -255,7 +263,7 @@ class SingleCellPipeline(OperatorModule):
                 "embeddings": latent,
                 "batch_labels": data["batch_labels"],
             }
-            batch_result, _, _ = self.batch_correction.apply(batch_data, {}, None)
+            batch_result, _, _ = self.batch_correction.apply(batch_data, {}, None, stage_keys[2])
             corrected_embeddings = batch_result["corrected_embeddings"]
         else:
             corrected_embeddings = latent
@@ -263,7 +271,7 @@ class SingleCellPipeline(OperatorModule):
         # Step 4: Dimensionality reduction (optional)
         if self.dim_reduction is not None:
             umap_data = {"features": corrected_embeddings}
-            umap_result, _, _ = self.dim_reduction.apply(umap_data, {}, None)
+            umap_result, _, _ = self.dim_reduction.apply(umap_data, {}, None, stage_keys[3])
             embeddings_2d = umap_result["embedding"]  # UMAP outputs singular "embedding"
         else:
             # Use first 2 dimensions of latent if no UMAP
@@ -272,7 +280,7 @@ class SingleCellPipeline(OperatorModule):
         # Step 5: Clustering (optional)
         if self.clustering is not None:
             cluster_data = {"embeddings": corrected_embeddings}
-            cluster_result, _, _ = self.clustering.apply(cluster_data, {}, None)
+            cluster_result, _, _ = self.clustering.apply(cluster_data, {}, None, stage_keys[4])
             cluster_assignments = cluster_result["cluster_assignments"]
         else:
             # Return uniform assignments if no clustering

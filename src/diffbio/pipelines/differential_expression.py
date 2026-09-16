@@ -206,7 +206,7 @@ class DifferentialExpressionPipeline(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict | None,
-        random_params: dict | None = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[dict, dict, dict | None]:
         """Apply differential expression analysis.
@@ -217,7 +217,7 @@ class DifferentialExpressionPipeline(OperatorModule):
                 - 'design': Design matrix of shape (n_samples, n_conditions)
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
-            random_params: Optional random parameters (unused).
+            key: Unused.
             stats: Optional statistics dictionary (unused).
 
         Returns:
@@ -233,7 +233,7 @@ class DifferentialExpressionPipeline(OperatorModule):
                 - 'p_values': P-values for differential expression
                 - 'significant': Soft significance indicators
         """
-        del random_params, stats  # Unused
+        del key, stats  # Unused
 
         counts = data["counts"]
         design = data["design"]

@@ -44,8 +44,10 @@ def _operator(
     return StochasticGateSelector(config, init_gate=init_gate, rngs=rngs)
 
 
-def _apply(operator: StochasticGateSelector, features: jnp.ndarray) -> dict:
-    return operator.apply({"features": features}, {}, None)[0]
+def _apply(
+    operator: StochasticGateSelector, features: jnp.ndarray, key: jax.Array | None = None
+) -> dict:
+    return operator.apply({"features": features}, {}, None, key)[0]
 
 
 # --- Deterministic (eval) gate ---------------------------------------------------
@@ -132,10 +134,12 @@ def test_l0_penalty_gradient_pushes_mu_down() -> None:
 def test_stochastic_gate_varies_and_stays_bounded() -> None:
     operator = _operator(200, stochastic=True, mu_init=0.5, seed=7)
     features = _features(2, 200, 8)
-    gate_a = np.asarray(_apply(operator, features)["gate"])
-    gate_b = np.asarray(_apply(operator, features)["gate"])
+    gate_a = np.asarray(_apply(operator, features, jax.random.key(1))["gate"])
+    gate_b = np.asarray(_apply(operator, features, jax.random.key(2))["gate"])
+    again = np.asarray(_apply(operator, features, jax.random.key(1))["gate"])
     assert np.all(gate_a >= 0.0) and np.all(gate_a <= 1.0)
-    assert not np.allclose(gate_a, gate_b)  # fresh noise each call
+    assert not np.allclose(gate_a, gate_b)  # the noise follows the record's key
+    assert np.array_equal(gate_a, again)
 
 
 # --- Config validation -----------------------------------------------------------

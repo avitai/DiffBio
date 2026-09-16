@@ -173,8 +173,8 @@ print("Pseudotime: n_neighbors=5, n_components=3, root=cell 0")
 # batch effects, and expression-dependent dropout.
 
 # %%
-rp = simulator.generate_random_params(jax.random.key(42), {})
-sim_result, sim_state, sim_meta = simulator.apply({}, {}, None, random_params=rp)
+rp = jax.random.key(42)
+sim_result, sim_state, sim_meta = simulator.apply({}, {}, None, key=rp)
 
 print("=== Step 1: Simulation ===")
 print(f"  Output keys: {sorted(sim_result.keys())}")
@@ -286,9 +286,7 @@ axes[0].set_title("Input Counts (first 20 genes)")
 plt.colorbar(im0, ax=axes[0], label="Count")
 
 # Panel 2: Cluster assignments heatmap
-im1 = axes[1].imshow(
-    cluster_result["cluster_assignments"], cmap="coolwarm", aspect="auto"
-)
+im1 = axes[1].imshow(cluster_result["cluster_assignments"], cmap="coolwarm", aspect="auto")
 axes[1].set_xlabel("Cluster")
 axes[1].set_ylabel("Cell index")
 axes[1].set_title("Cluster Assignments")

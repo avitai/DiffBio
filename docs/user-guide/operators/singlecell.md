@@ -310,9 +310,9 @@ config = TransformerDenoiserConfig(
 denoiser = DifferentiableTransformerDenoiser(
     config, rngs=nnx.Rngs(params=0, sample=1, dropout=2)
 )
-rp = denoiser.generate_random_params(jax.random.key(0), {"counts": (100, 2000)})
+rp = jax.random.key(0)
 data = {"counts": counts, "gene_ids": jnp.arange(2000)}
-result, state, metadata = denoiser.apply(data, {}, None, random_params=rp)
+result, state, metadata = denoiser.apply(data, {}, None, key=rp)
 
 imputed = result["imputed_counts"]  # (n_cells, n_genes)
 mask = result["mask"]               # (n_genes,)
@@ -514,8 +514,8 @@ config = DoubletScorerConfig(
 )
 
 scorer = DifferentiableDoubletScorer(config, rngs=nnx.Rngs(0))
-rp = scorer.generate_random_params(jax.random.key(0), {"counts": (500, 2000)})
-result, state, metadata = scorer.apply({"counts": counts}, {}, None, random_params=rp)
+rp = jax.random.key(0)
+result, state, metadata = scorer.apply({"counts": counts}, {}, None, key=rp)
 
 doublet_scores = result["doublet_scores"]         # (n_cells,)
 predicted_doublets = result["predicted_doublets"]  # (n_cells,) soft [0, 1]
@@ -549,8 +549,8 @@ config = SoloDetectorConfig(
 )
 
 detector = DifferentiableSoloDetector(config, rngs=nnx.Rngs(42))
-rp = detector.generate_random_params(jax.random.key(0), {"counts": (500, 2000)})
-result, state, metadata = detector.apply({"counts": counts}, {}, None, random_params=rp)
+rp = jax.random.key(0)
+result, state, metadata = detector.apply({"counts": counts}, {}, None, key=rp)
 
 doublet_probs = result["doublet_probabilities"]  # (n_cells,)
 latent = result["latent"]                        # (n_cells, latent_dim)
@@ -925,8 +925,8 @@ config = SimulationConfig(
 )
 
 sim = DifferentiableSimulator(config, rngs=nnx.Rngs(0, sample=1))
-rp = sim.generate_random_params(jax.random.key(0), {})
-result, state, metadata = sim.apply({}, {}, None, random_params=rp)
+rp = jax.random.key(0)
+result, state, metadata = sim.apply({}, {}, None, key=rp)
 
 counts = result["counts"]           # (n_cells, n_genes)
 group_labels = result["group_labels"]  # (n_cells,)

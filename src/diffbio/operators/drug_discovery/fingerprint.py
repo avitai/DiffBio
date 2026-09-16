@@ -12,6 +12,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 import numpy as np
 from datarax.core.config import OperatorConfig
@@ -25,7 +26,6 @@ from diffbio.operators.drug_discovery._graph_utils import (
     ensure_rngs,
     graph_sum_readout,
     initialize_graph_encoder,
-    stabilize_operator_id,
     unpack_graph_inputs,
 )
 
@@ -110,7 +110,7 @@ class DifferentiableMolecularFingerprint(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
         """Compute molecular fingerprint.
@@ -122,7 +122,7 @@ class DifferentiableMolecularFingerprint(OperatorModule):
                 - node_mask: (num_nodes,) mask for valid nodes
             state: Per-element state (passed through).
             metadata: Optional metadata.
-            random_params: Unused random parameters.
+            key: Unused.
             stats: Optional statistics dictionary.
 
         Returns:
@@ -244,7 +244,6 @@ class CircularFingerprintOperator(OperatorModule):
         """
         super().__init__(config, rngs=rngs)
 
-        stabilize_operator_id(self)
         rngs = ensure_rngs(rngs)
 
         if config.differentiable:
@@ -368,7 +367,7 @@ class CircularFingerprintOperator(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
         """Compute circular fingerprint.
@@ -383,7 +382,7 @@ class CircularFingerprintOperator(OperatorModule):
                     - smiles: SMILES string
             state: Per-element state (passed through).
             metadata: Optional metadata.
-            random_params: Unused random parameters.
+            key: Unused.
             stats: Optional statistics dictionary.
 
         Returns:

@@ -15,6 +15,7 @@ import jax
 import jax.numpy as jnp
 from artifex.generative_models.core.base import MLP
 from flax import nnx
+from datarax.core.operator import require_key
 from jaxtyping import Array, Float
 
 from diffbio.configs import TemperatureConfig, apply_stochastic_sampling_defaults
@@ -212,7 +213,7 @@ class DifferentiableMetagenomicBinner(TemperatureOperator, EncoderDecoderOperato
         data: dict[str, Array],
         state: dict[str, Any],
         metadata: dict[str, Any] | None,
-        random_params: Any = None,  # noqa: ARG002
+        key: jax.Array | None = None,  # noqa: ARG002
         stats: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> tuple[dict[str, Array], dict[str, Any], dict[str, Any] | None]:
         """Apply metagenomic binning.
@@ -223,7 +224,8 @@ class DifferentiableMetagenomicBinner(TemperatureOperator, EncoderDecoderOperato
                 - abundance: Float[Array, "n_contigs n_samples"]
             state: Element state (passed through).
             metadata: Element metadata (passed through).
-            random_params: Random parameters.
+            key: The record's PRNG key; in train mode the latent sample is drawn
+                from it, in eval mode the mean is used and no key is needed.
             stats: Optional statistics dict.
 
         Returns:
@@ -242,7 +244,7 @@ class DifferentiableMetagenomicBinner(TemperatureOperator, EncoderDecoderOperato
         if self.latent_sampling_mode.deterministic:
             z = mu  # Eval mode: deterministic
         else:
-            z = self.reparameterize(mu, logvar)  # Train mode: stochastic
+            z = self.reparameterize(mu, logvar, require_key(key, self))  # Train mode
 
         # Decode
         tnf_recon, abundance_recon = self.decode(z)

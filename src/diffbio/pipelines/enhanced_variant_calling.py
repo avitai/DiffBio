@@ -14,8 +14,10 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
+from datarax.core.operator import require_key
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array
@@ -106,7 +108,7 @@ class EnhancedVariantCallingPipeline(OperatorModule):
         ```python
         config = EnhancedVariantCallingPipelineConfig(reference_length=1000)
         pipeline = EnhancedVariantCallingPipeline(config, rngs=nnx.Rngs(42))
-        result, state, meta = pipeline.apply(data, {}, None)
+        result, state, meta = pipeline.apply(data, {}, None, jax.random.key(0))
         probs = result["probabilities"]
         ```
     """
@@ -180,7 +182,7 @@ class EnhancedVariantCallingPipeline(OperatorModule):
         data: dict[str, Array],
         state: dict[str, Any],
         metadata: dict[str, Any] | None,
-        random_params: Any = None,  # noqa: ARG002
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> tuple[dict[str, Array], dict[str, Any], dict[str, Any] | None]:
         """Apply the enhanced variant calling pipeline.
@@ -192,7 +194,8 @@ class EnhancedVariantCallingPipeline(OperatorModule):
                 - quality: Float[Array, "num_reads read_length"]
             state: Element state (passed through).
             metadata: Element metadata (passed through).
-            random_params: Random parameters for stochastic operations.
+            key: The record's PRNG key; each stage draws from a key folded from it by
+                its position.
             stats: Optional statistics dict.
 
         Returns:
@@ -202,6 +205,7 @@ class EnhancedVariantCallingPipeline(OperatorModule):
         reads = data["reads"]
         positions = data["positions"]
         quality = data["quality"]
+        stage_keys = jax.random.split(require_key(key, self), 4)
 
         # Step 1: Quality filtering (optional)
         if self.quality_filter is not None:
@@ -211,7 +215,7 @@ class EnhancedVariantCallingPipeline(OperatorModule):
             quality_flat = quality.reshape(-1)
 
             filter_data = {"sequence": reads_flat, "quality_scores": quality_flat}
-            filter_result, _, _ = self.quality_filter.apply(filter_data, {}, None)
+            filter_result, _, _ = self.quality_filter.apply(filter_data, {}, None, stage_keys[0])
 
             reads = filter_result["sequence"].reshape(num_reads, read_length, 4)
             quality = filter_result["quality_scores"].reshape(num_reads, read_length)
@@ -222,7 +226,7 @@ class EnhancedVariantCallingPipeline(OperatorModule):
             "positions": positions,
             "quality": quality,
         }
-        pileup_result, _, _ = self.pileup.apply(pileup_data, {}, None)
+        pileup_result, _, _ = self.pileup.apply(pileup_data, {}, None, stage_keys[1])
         pileup = pileup_result["pileup"]  # (reference_length, 4)
 
         # Step 3: CNN classification
@@ -245,7 +249,7 @@ class EnhancedVariantCallingPipeline(OperatorModule):
 
         # Apply CNN classifier
         cnn_data = {"pileup_image": pileup_images}
-        cnn_result, _, _ = self.cnn_classifier.apply(cnn_data, {}, None)
+        cnn_result, _, _ = self.cnn_classifier.apply(cnn_data, {}, None, stage_keys[2])
 
         logits = cnn_result["logits"]  # (ref_length, num_classes)
         probabilities = cnn_result["class_probs"]  # CNN outputs class_probs
@@ -275,7 +279,9 @@ class EnhancedVariantCallingPipeline(OperatorModule):
             )  # (ref_length, 4)
 
             recal_data = {"variant_features": variant_features}
-            recal_result, _, _ = self.quality_recalibration.apply(recal_data, {}, None)
+            recal_result, _, _ = self.quality_recalibration.apply(
+                recal_data, {}, None, stage_keys[3]
+            )
 
             output_data["quality_scores"] = recal_result["quality_scores"]
             output_data["filter_weights"] = recal_result["filter_weights"]

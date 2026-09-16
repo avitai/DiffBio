@@ -97,11 +97,11 @@ class ContextualEpigenomicsOperator(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
         """Apply the contextual epigenomics operator to one batch."""
-        del random_params, stats
+        del key, stats
 
         sequence = jnp.asarray(data["sequence"], dtype=jnp.float32)
         tf_context = data.get("tf_context")

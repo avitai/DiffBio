@@ -92,7 +92,7 @@ class TestDifferentiableAmbientRemoval:
         """Test that output contains decontaminated counts."""
         op = DifferentiableAmbientRemoval(small_config, rngs=rngs)
 
-        transformed, _, _ = op.apply(sample_data, {}, None, None)
+        transformed, _, _ = op.apply(sample_data, {}, None, jax.random.key(0))
 
         assert "decontaminated_counts" in transformed
         assert transformed["decontaminated_counts"].shape == (50, 100)
@@ -101,7 +101,7 @@ class TestDifferentiableAmbientRemoval:
         """Test that output contains estimated contamination fraction."""
         op = DifferentiableAmbientRemoval(small_config, rngs=rngs)
 
-        transformed, _, _ = op.apply(sample_data, {}, None, None)
+        transformed, _, _ = op.apply(sample_data, {}, None, jax.random.key(0))
 
         assert "contamination_fraction" in transformed
         # One contamination fraction per cell
@@ -111,7 +111,7 @@ class TestDifferentiableAmbientRemoval:
         """Test that contamination fraction is between 0 and 1."""
         op = DifferentiableAmbientRemoval(small_config, rngs=rngs)
 
-        transformed, _, _ = op.apply(sample_data, {}, None, None)
+        transformed, _, _ = op.apply(sample_data, {}, None, jax.random.key(0))
 
         frac = transformed["contamination_fraction"]
         assert jnp.all(frac >= 0)
@@ -121,7 +121,7 @@ class TestDifferentiableAmbientRemoval:
         """Test that output contains latent representation."""
         op = DifferentiableAmbientRemoval(small_config, rngs=rngs)
 
-        transformed, _, _ = op.apply(sample_data, {}, None, None)
+        transformed, _, _ = op.apply(sample_data, {}, None, jax.random.key(0))
 
         assert "latent" in transformed
         assert transformed["latent"].shape == (50, 32)  # latent_dim
@@ -130,7 +130,7 @@ class TestDifferentiableAmbientRemoval:
         """Test that outputs are finite."""
         op = DifferentiableAmbientRemoval(small_config, rngs=rngs)
 
-        transformed, _, _ = op.apply(sample_data, {}, None, None)
+        transformed, _, _ = op.apply(sample_data, {}, None, jax.random.key(0))
 
         assert jnp.isfinite(transformed["decontaminated_counts"]).all()
         assert jnp.isfinite(transformed["contamination_fraction"]).all()
@@ -140,7 +140,7 @@ class TestDifferentiableAmbientRemoval:
         """Test that decontaminated counts are non-negative."""
         op = DifferentiableAmbientRemoval(small_config, rngs=rngs)
 
-        transformed, _, _ = op.apply(sample_data, {}, None, None)
+        transformed, _, _ = op.apply(sample_data, {}, None, jax.random.key(0))
 
         assert jnp.all(transformed["decontaminated_counts"] >= 0)
 
@@ -174,7 +174,7 @@ class TestGradientFlow:
 
         def loss_fn(c):
             data = {"counts": c, "ambient_profile": ambient}
-            transformed, _, _ = op.apply(data, {}, None, None)
+            transformed, _, _ = op.apply(data, {}, None, jax.random.key(0))
             return transformed["decontaminated_counts"].sum()
 
         grad = jax.grad(loss_fn)(counts)
@@ -201,7 +201,7 @@ class TestGradientFlow:
 
         @nnx.value_and_grad
         def loss_fn(model):
-            transformed, _, _ = model.apply(data, state, None, None)
+            transformed, _, _ = model.apply(data, state, None, jax.random.key(0))
             return transformed["reconstructed"].sum()
 
         loss, grads = loss_fn(op)
@@ -245,7 +245,7 @@ class TestJITCompatibility:
 
         @jax.jit
         def jit_apply(data, state):
-            return op.apply(data, state, None, None)
+            return op.apply(data, state, None, jax.random.key(0))
 
         transformed, _, _ = jit_apply(data, state)
         assert jnp.isfinite(transformed["decontaminated_counts"]).all()
@@ -270,7 +270,7 @@ class TestEdgeCases:
         ambient = jax.nn.softmax(jax.random.normal(key, (30,)))
 
         data = {"counts": counts, "ambient_profile": ambient}
-        transformed, _, _ = op.apply(data, {}, None, None)
+        transformed, _, _ = op.apply(data, {}, None, jax.random.key(0))
         assert jnp.isfinite(transformed["decontaminated_counts"]).all()
 
     def test_high_ambient_prior(self, rngs):
@@ -290,5 +290,5 @@ class TestEdgeCases:
         ambient = jax.nn.softmax(jax.random.normal(key, (30,)))
 
         data = {"counts": counts, "ambient_profile": ambient}
-        transformed, _, _ = op.apply(data, {}, None, None)
+        transformed, _, _ = op.apply(data, {}, None, jax.random.key(0))
         assert jnp.isfinite(transformed["decontaminated_counts"]).all()

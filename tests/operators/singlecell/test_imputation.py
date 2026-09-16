@@ -328,8 +328,8 @@ class TestDifferentiableTransformerDenoiser:
         rngs = nnx.Rngs(params=0, sample=1, dropout=2)
         op = DifferentiableTransformerDenoiser(config, rngs=rngs)
         rng = jax.random.key(99)
-        rp = op.generate_random_params(rng, {"counts": (N_CELLS, N_GENES)})
-        result, _, _ = op.apply(sample_data, {}, None, random_params=rp)
+        rp = rng
+        result, _, _ = op.apply(sample_data, {}, None, key=rp)
 
         assert "imputed_counts" in result
         # Original data preserved
@@ -345,8 +345,8 @@ class TestDifferentiableTransformerDenoiser:
         rngs = nnx.Rngs(params=0, sample=1, dropout=2)
         op = DifferentiableTransformerDenoiser(config, rngs=rngs)
         rng = jax.random.key(99)
-        rp = op.generate_random_params(rng, {"counts": (N_CELLS, N_GENES)})
-        result, _, _ = op.apply(sample_data, {}, None, random_params=rp)
+        rp = rng
+        result, _, _ = op.apply(sample_data, {}, None, key=rp)
 
         assert result["imputed_counts"].shape == (N_CELLS, N_GENES)
 
@@ -359,8 +359,8 @@ class TestDifferentiableTransformerDenoiser:
         rngs = nnx.Rngs(params=0, sample=1, dropout=2)
         op = DifferentiableTransformerDenoiser(config, rngs=rngs)
         rng = jax.random.key(99)
-        rp = op.generate_random_params(rng, {"counts": (N_CELLS, N_GENES)})
-        result, _, _ = op.apply(sample_data, {}, None, random_params=rp)
+        rp = rng
+        result, _, _ = op.apply(sample_data, {}, None, key=rp)
 
         assert jnp.isfinite(result["imputed_counts"]).all()
 
@@ -373,8 +373,8 @@ class TestDifferentiableTransformerDenoiser:
         rngs = nnx.Rngs(params=0, sample=1, dropout=2)
         op = DifferentiableTransformerDenoiser(config, rngs=rngs)
         rng = jax.random.key(99)
-        rp = op.generate_random_params(rng, {"counts": (N_CELLS, N_GENES)})
-        result, _, _ = op.apply(sample_data, {}, None, random_params=rp)
+        rp = rng
+        result, _, _ = op.apply(sample_data, {}, None, key=rp)
 
         imputed = result["imputed_counts"]
         mask = result["mask"]
@@ -409,11 +409,11 @@ class TestTransformerDenoiserGradientFlow:
         counts = jnp.abs(jax.random.normal(key, (N_CELLS, N_GENES))) + 0.1
         gene_ids = jnp.arange(N_GENES)
         rng = jax.random.key(99)
-        rp = op.generate_random_params(rng, {"counts": (N_CELLS, N_GENES)})
+        rp = rng
 
         def loss_fn(c: jax.Array) -> jax.Array:
             data = {"counts": c, "gene_ids": gene_ids}
-            result, _, _ = op.apply(data, {}, None, random_params=rp)
+            result, _, _ = op.apply(data, {}, None, key=rp)
             return jnp.sum(result["imputed_counts"])
 
         grad = jax.grad(loss_fn)(counts)
@@ -430,14 +430,14 @@ class TestTransformerDenoiserGradientFlow:
         counts = jnp.abs(jax.random.normal(key, (N_CELLS, N_GENES))) + 0.1
         gene_ids = jnp.arange(N_GENES)
         rng = jax.random.key(99)
-        rp = op.generate_random_params(rng, {"counts": (N_CELLS, N_GENES)})
+        rp = rng
         data = {"counts": counts, "gene_ids": gene_ids}
 
         @nnx.value_and_grad
         def loss_fn(
             model: DifferentiableTransformerDenoiser,
         ) -> jax.Array:
-            result, _, _ = model.apply(data, {}, None, random_params=rp)
+            result, _, _ = model.apply(data, {}, None, key=rp)
             return jnp.sum(result["imputed_counts"])
 
         loss, grads = loss_fn(op)
@@ -470,14 +470,14 @@ class TestTransformerDenoiserJIT:
         gene_ids = jnp.arange(N_GENES)
         data = {"counts": counts, "gene_ids": gene_ids}
         rng = jax.random.key(99)
-        rp = op.generate_random_params(rng, {"counts": (N_CELLS, N_GENES)})
+        rp = rng
 
         @jax.jit
         def jit_apply(
             d: dict[str, jax.Array],
-            random_params: jax.Array,
+            key: jax.Array | None,
         ) -> tuple:
-            return op.apply(d, {}, None, random_params=random_params)
+            return op.apply(d, {}, None, key=key)
 
         result, _, _ = jit_apply(data, rp)
         assert jnp.isfinite(result["imputed_counts"]).all()
@@ -490,13 +490,13 @@ class TestTransformerDenoiserJIT:
         counts = jnp.abs(jax.random.normal(key, (N_CELLS, N_GENES))) + 0.1
         gene_ids = jnp.arange(N_GENES)
         rng = jax.random.key(99)
-        rp = op.generate_random_params(rng, {"counts": (N_CELLS, N_GENES)})
+        rp = rng
 
         @jax.jit
         def grad_fn(c: jax.Array) -> jax.Array:
             def loss(x: jax.Array) -> jax.Array:
                 data = {"counts": x, "gene_ids": gene_ids}
-                result, _, _ = op.apply(data, {}, None, random_params=rp)
+                result, _, _ = op.apply(data, {}, None, key=rp)
                 return jnp.sum(result["imputed_counts"])
 
             return jax.grad(loss)(c)
@@ -525,9 +525,9 @@ class TestTransformerDenoiserEdgeCases:
         gene_ids = jnp.arange(N_GENES)
         data = {"counts": counts, "gene_ids": gene_ids}
         rng = jax.random.key(99)
-        rp = op.generate_random_params(rng, {"counts": (1, N_GENES)})
+        rp = rng
 
-        result, _, _ = op.apply(data, {}, None, random_params=rp)
+        result, _, _ = op.apply(data, {}, None, key=rp)
         assert result["imputed_counts"].shape == (1, N_GENES)
         assert jnp.isfinite(result["imputed_counts"]).all()
 
@@ -548,9 +548,9 @@ class TestTransformerDenoiserEdgeCases:
         gene_ids = jnp.arange(N_GENES)
         data = {"counts": counts, "gene_ids": gene_ids}
         rng = jax.random.key(99)
-        rp = op.generate_random_params(rng, {"counts": (N_CELLS, N_GENES)})
+        rp = rng
 
-        result, _, _ = op.apply(data, {}, None, random_params=rp)
+        result, _, _ = op.apply(data, {}, None, key=rp)
         # With mask_ratio=0, no genes are masked so imputed == original counts
         # (the unmasked positions are kept from original counts)
         assert jnp.allclose(result["imputed_counts"], counts, atol=1e-5)

@@ -265,7 +265,7 @@ class DifferentiableMMDBatchCorrection(LossBalancingMixin, OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Encode, decode, and compute MMD + reconstruction losses.
@@ -276,7 +276,7 @@ class DifferentiableMMDBatchCorrection(LossBalancingMixin, OperatorModule):
                 - ``"batch_labels"``: Integer batch assignments ``(n_cells,)``
             state: Pipeline state (passed through unchanged).
             metadata: Pipeline metadata (passed through unchanged).
-            random_params: Unused.
+            key: Unused.
             stats: Unused.
 
         Returns:
@@ -438,7 +438,7 @@ class DifferentiableWGANBatchCorrection(LossBalancingMixin, OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Encode, decode, and compute adversarial + reconstruction losses.
@@ -453,7 +453,7 @@ class DifferentiableWGANBatchCorrection(LossBalancingMixin, OperatorModule):
                 - ``"batch_labels"``: Integer batch assignments ``(n_cells,)``
             state: Pipeline state (passed through unchanged).
             metadata: Pipeline metadata (passed through unchanged).
-            random_params: Unused.
+            key: Unused.
             stats: Unused.
 
         Returns:

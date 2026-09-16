@@ -11,6 +11,7 @@ from typing import Any
 from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
+import jax
 from flax import nnx
 
 from diffbio.operators.drug_discovery._graph_utils import (
@@ -96,7 +97,7 @@ class MolecularPropertyPredictor(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
         """Predict molecular properties from graph representation.
@@ -109,7 +110,7 @@ class MolecularPropertyPredictor(OperatorModule):
                 - node_mask: (num_nodes,) mask for valid nodes
             state: Per-element state (passed through).
             metadata: Optional metadata.
-            random_params: Unused random parameters.
+            key: Unused.
             stats: Optional statistics dictionary.
 
         Returns:

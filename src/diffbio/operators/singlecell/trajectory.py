@@ -23,6 +23,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
@@ -238,7 +239,7 @@ class DifferentiablePseudotime(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply pseudotime computation to cell embeddings.
@@ -248,7 +249,7 @@ class DifferentiablePseudotime(OperatorModule):
                 - ``"embeddings"``: Cell embeddings ``(n_cells, n_features)``
             state: Element state (passed through unchanged).
             metadata: Element metadata (passed through unchanged).
-            random_params: Not used (deterministic operator).
+            key: Unused.
             stats: Not used.
 
         Returns:
@@ -404,7 +405,7 @@ class DifferentiableFateProbability(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply fate probability estimation.
@@ -417,7 +418,7 @@ class DifferentiableFateProbability(OperatorModule):
                   ``(n_terminal,)``
             state: Element state (passed through unchanged).
             metadata: Element metadata (passed through unchanged).
-            random_params: Not used (deterministic operator).
+            key: Unused.
             stats: Not used.
 
         Returns:

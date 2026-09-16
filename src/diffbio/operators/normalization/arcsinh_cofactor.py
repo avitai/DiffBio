@@ -118,7 +118,7 @@ class ArcsinhCofactor(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict | None,
-        random_params: dict | None = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[dict, dict, dict | None]:
         """Transform ``data["intensities"]`` and add ``"transformed"`` to the output.
@@ -127,14 +127,14 @@ class ArcsinhCofactor(OperatorModule):
             data: Dictionary containing ``"intensities"`` ``(n_channels,)`` for one cell.
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
-            random_params: Optional random parameters (unused).
+            key: Unused.
             stats: Optional statistics dictionary (unused).
 
         Returns:
             Tuple of ``(output_data, state, metadata)`` where ``output_data`` adds the
             ``"transformed"`` arcsinh-cofactor intensities.
         """
-        del random_params, stats
+        del key, stats
         config: ArcsinhCofactorConfig = self.config
         cofactor = jax.nn.softplus(self.raw_cofactor[...])
         if not config.trainable:
