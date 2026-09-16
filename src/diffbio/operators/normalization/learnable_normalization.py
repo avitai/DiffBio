@@ -131,7 +131,7 @@ class LearnableNormalization(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict | None,
-        random_params: dict | None = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[dict, dict, dict | None]:
         """Normalize ``data["counts"]`` and add ``"normalized"`` to the output.
@@ -140,14 +140,14 @@ class LearnableNormalization(OperatorModule):
             data: Dictionary containing ``"counts"`` ``(n_genes,)`` for one cell.
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
-            random_params: Optional random parameters (unused).
+            key: Unused.
             stats: Optional statistics dictionary (unused).
 
         Returns:
             Tuple of ``(output_data, state, metadata)`` where ``output_data`` adds
             the ``"normalized"`` log-normalized expression.
         """
-        del random_params, stats
+        del key, stats
         config: LearnableNormalizationConfig = self.config
         pseudocount = jax.nn.softplus(self.raw_pseudocount[...])
         normalized = normalize_counts(

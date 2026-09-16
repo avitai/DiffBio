@@ -41,7 +41,6 @@ class ProfileHMMConfig(OperatorConfig):
         learnable_profile: Whether profile parameters are learnable.
     """
 
-    cacheable: bool = True
     profile_length: int = 100
     alphabet_size: int = 20  # Amino acids by default
     temperature: float = 1.0
@@ -309,7 +308,7 @@ class ProfileHMMSearch(TemperatureOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply profile HMM search to sequence.
@@ -319,7 +318,7 @@ class ProfileHMMSearch(TemperatureOperator):
                 - "sequence": One-hot encoded sequence (seq_len, alphabet_size)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used (deterministic operator)
+            key: Unused.
             stats: Not used
 
         Returns:

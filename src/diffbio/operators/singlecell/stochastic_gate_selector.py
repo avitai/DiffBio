@@ -23,11 +23,11 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
+from datarax.core.operator import require_key
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jax.typing import ArrayLike
 
-from diffbio.utils.nn_utils import get_rng_key
 
 _DEFAULT_SIGMA = 0.5
 _DEFAULT_MU_INIT = 0.5
@@ -112,7 +112,7 @@ class StochasticGateSelector(OperatorModule):
             init_gate: Optional ``(n_genes,)`` initial gate values (e.g. a frozen 0/1
                 selection mask); the deterministic gate then reproduces it. Defaults to a
                 uniform ``config.mu_init``.
-            rngs: RNG state supplying the ``"sample"`` stream for gate noise.
+            rngs: Flax NNX random number generators (the base key is drawn from them).
             name: Optional module name.
         """
         super().__init__(config, rngs=rngs, name=name)
@@ -121,14 +121,13 @@ class StochasticGateSelector(OperatorModule):
         else:
             mu = jnp.asarray(init_gate, dtype=jnp.float32)
         self.mu = nnx.Param(mu)
-        self.rngs = rngs
 
     def apply(
         self,
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict | None,
-        random_params: dict | None = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[dict, dict, dict | None]:
         """Gate ``data["features"]`` by the stochastic gates and expose the L0 penalty.
@@ -137,20 +136,18 @@ class StochasticGateSelector(OperatorModule):
             data: Dictionary containing ``"features"`` ``(n_cells, n_genes)``.
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
-            random_params: Optional random parameters (unused).
+            key: The record's PRNG key; in stochastic mode the gate noise is drawn from it.
             stats: Optional statistics dictionary (unused).
 
         Returns:
             Tuple of ``(output_data, state, metadata)`` where ``output_data`` gates
             ``"features"`` and adds ``"gate"`` (the per-gene gate) and ``"l0_penalty"``.
         """
-        del random_params, stats
+        del stats
         config: StochasticGateSelectorConfig = self.config
         mu = self.mu[...]
         if config.stochastic:
-            # stream_name is validated non-None whenever stochastic is set.
-            key = get_rng_key(self.rngs, config.stream_name or "gate_noise", fallback_seed=0)
-            noise = config.sigma * jax.random.normal(key, mu.shape)
+            noise = config.sigma * jax.random.normal(require_key(key, self), mu.shape)
         else:
             noise = jnp.zeros_like(mu)
         gate = hard_sigmoid_gate(mu, noise)

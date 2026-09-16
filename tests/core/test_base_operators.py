@@ -453,7 +453,7 @@ class TestOperatorComposition:
                 TemperatureOperator.__init__(self, config, rngs=rngs)
                 SequenceOperator.__init__(self, config, rngs=rngs)
 
-            def apply(self, data, state, metadata, random_params=None, stats=None):
+            def apply(self, data, state, metadata, key=None, stats=None):
                 return data, state, metadata
 
         aligner = TestAligner(AlignmentConfig(), rngs=rngs)

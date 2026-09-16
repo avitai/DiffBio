@@ -219,7 +219,7 @@ class DifferentiableUMAP(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict | None,
-        random_params: dict | None = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[dict, dict, dict | None]:
         """Apply UMAP dimensionality reduction.
@@ -229,7 +229,7 @@ class DifferentiableUMAP(OperatorModule):
                 - 'features': High-dimensional features of shape (n_samples, n_features)
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
-            random_params: Optional random parameters (unused).
+            key: Unused.
             stats: Optional statistics dictionary (unused).
 
         Returns:
@@ -240,7 +240,7 @@ class DifferentiableUMAP(OperatorModule):
                 - 'high_dim_similarities': Fuzzy set memberships (p_ij)
                 - 'low_dim_similarities': Embedding similarities (q_ij)
         """
-        del random_params, stats  # Unused
+        del key, stats  # Unused
 
         features = data["features"]
 

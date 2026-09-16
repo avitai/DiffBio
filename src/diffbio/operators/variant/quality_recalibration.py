@@ -226,7 +226,7 @@ class SoftVariantQualityFilter(TemperatureOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply quality filtering to variants.
@@ -236,7 +236,7 @@ class SoftVariantQualityFilter(TemperatureOperator):
                 - "variant_features": Feature vectors (n_variants, n_features)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used
+            key: Unused.
             stats: Not used
 
         Returns:

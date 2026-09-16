@@ -17,6 +17,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
@@ -27,7 +28,6 @@ from diffbio.operators.drug_discovery._graph_utils import (
     attach_fingerprint,
     ensure_rngs,
     initialize_graph_encoder,
-    stabilize_operator_id,
     unpack_graph_inputs,
 )
 
@@ -126,7 +126,6 @@ class MACCSKeysOperator(OperatorModule):
             )
         else:
             # RDKit mode
-            stabilize_operator_id(self)
             try:
                 from rdkit import Chem
                 from rdkit.Chem import MACCSkeys as RDKitMACCS
@@ -184,7 +183,7 @@ class MACCSKeysOperator(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict[str, Any] | None,
-        random_params: Any = None,  # noqa: ARG002
+        key: jax.Array | None = None,  # noqa: ARG002
         stats: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
         """Compute MACCS keys fingerprint.
@@ -199,7 +198,7 @@ class MACCSKeysOperator(OperatorModule):
                     - smiles: SMILES string
             state: Per-element state (passed through).
             metadata: Optional metadata.
-            random_params: Unused random parameters.
+            key: Unused.
             stats: Optional statistics dictionary.
 
         Returns:
@@ -208,7 +207,7 @@ class MACCSKeysOperator(OperatorModule):
                 - unchanged state
                 - unchanged metadata
         """
-        del random_params, stats  # Unused
+        del key, stats  # Unused
 
         if self.config.differentiable:
             node_features, adjacency, edge_features, node_mask = unpack_graph_inputs(data)

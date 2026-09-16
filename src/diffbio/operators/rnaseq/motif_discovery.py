@@ -210,7 +210,7 @@ class DifferentiableMotifDiscovery(TemperatureOperator):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict | None,
-        random_params: dict | None = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[dict, dict, dict | None]:
         """Apply motif discovery to sequence data.
@@ -221,7 +221,7 @@ class DifferentiableMotifDiscovery(TemperatureOperator):
                   (length, alphabet_size) or (batch, length, alphabet_size)
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
-            random_params: Optional random parameters (unused).
+            key: Unused.
             stats: Optional statistics dictionary (unused).
 
         Returns:
@@ -232,7 +232,7 @@ class DifferentiableMotifDiscovery(TemperatureOperator):
                 - 'motif_positions': Soft motif occurrence indicators
                 - 'pwm': Current Position Weight Matrix
         """
-        del random_params, stats  # Unused
+        del key, stats  # Unused
 
         sequence = data["sequence"]
 

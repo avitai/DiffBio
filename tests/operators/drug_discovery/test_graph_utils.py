@@ -16,9 +16,6 @@ from diffbio.operators.drug_discovery.message_passing import StackedMessagePassi
 class _DummyModule:
     """Minimal object compatible with graph utility initialization helpers."""
 
-    def __init__(self) -> None:
-        self._unique_id = "dummy"
-
 
 @dataclass(frozen=True)
 class _MessagePassingConfig:

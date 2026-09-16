@@ -139,7 +139,7 @@ class TemperatureOperator(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Base apply method - should be overridden by subclasses."""
@@ -233,7 +233,7 @@ class SequenceOperator(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Base apply method - should be overridden by subclasses."""
@@ -278,6 +278,7 @@ class EncoderDecoderOperator(OperatorModule):
         self,
         mean: Float[Array, "... latent_dim"],
         log_var: Float[Array, "... latent_dim"],
+        key: jax.Array | None = None,
     ) -> Float[Array, "... latent_dim"]:
         """Sample from latent distribution using reparameterization trick.
 
@@ -288,11 +289,16 @@ class EncoderDecoderOperator(OperatorModule):
         Args:
             mean: Mean of the latent distribution.
             log_var: Log variance of the latent distribution.
+            key: The key to draw epsilon from. ``apply`` passes the record's key, so a
+                record's sample follows the record; a training loss such as
+                ``compute_elbo_loss`` passes none and draws from the operator's ``sample``
+                stream, which advances on every call.
 
         Returns:
             Sampled latent representation.
         """
-        key = get_rng_key(self.rngs, "sample", fallback_seed=0)
+        if key is None:
+            key = get_rng_key(self.rngs, "sample", fallback_seed=0)
         std = jnp.exp(0.5 * log_var)
         epsilon = jax.random.normal(key, mean.shape)
         return mean + std * epsilon
@@ -345,7 +351,7 @@ class EncoderDecoderOperator(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Base apply method - should be overridden by subclasses."""
@@ -442,7 +448,7 @@ class GraphOperator(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Base apply method - should be overridden by subclasses."""
@@ -593,7 +599,7 @@ class HMMOperator(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Base apply method - should be overridden by subclasses."""

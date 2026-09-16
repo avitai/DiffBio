@@ -14,6 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 import numpy as np
 from datarax.core.config import OperatorConfig
@@ -150,11 +151,11 @@ class DifferentiableDTIPipeline(nnx.Module):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
         """Score a prepared paired protein/drug DTI batch."""
-        del random_params, stats
+        del key, stats
 
         protein_result, _, _ = self.protein_encoder.apply(
             {

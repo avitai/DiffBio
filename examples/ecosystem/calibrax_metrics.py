@@ -246,11 +246,22 @@ metric_names = ["ARI", "NMI", "Silhouette"]
 metric_values = [float(ari), float(nmi), float(sil)]
 
 fig, ax = plt.subplots(figsize=(6, 4))
-bars = ax.bar(metric_names, metric_values, color=["tab:blue", "tab:orange", "tab:green"],
-              edgecolor="k", linewidth=0.5)
+bars = ax.bar(
+    metric_names,
+    metric_values,
+    color=["tab:blue", "tab:orange", "tab:green"],
+    edgecolor="k",
+    linewidth=0.5,
+)
 for bar, val in zip(bars, metric_values):
-    ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.02,
-            f"{val:.3f}", ha="center", va="bottom", fontsize=10)
+    ax.text(
+        bar.get_x() + bar.get_width() / 2,
+        bar.get_height() + 0.02,
+        f"{val:.3f}",
+        ha="center",
+        va="bottom",
+        fontsize=10,
+    )
 ax.set_ylabel("Score")
 ax.set_title("Calibrax Evaluation Metrics")
 ax.set_ylim(0, max(metric_values) * 1.2 if max(metric_values) > 0 else 1.0)
@@ -453,8 +464,15 @@ for temp in temp_values:
 # Figure 3: ARI and Silhouette vs temperature
 fig, ax = plt.subplots(figsize=(7, 4))
 ax.plot(temp_values, ari_by_temp, "o-", label="ARI", color="tab:blue", linewidth=2, markersize=7)
-ax.plot(temp_values, sil_by_temp, "s--", label="Silhouette", color="tab:orange",
-        linewidth=2, markersize=7)
+ax.plot(
+    temp_values,
+    sil_by_temp,
+    "s--",
+    label="Silhouette",
+    color="tab:orange",
+    linewidth=2,
+    markersize=7,
+)
 ax.set_xlabel("Temperature")
 ax.set_ylabel("Score")
 ax.set_title("ARI and Silhouette vs Temperature")

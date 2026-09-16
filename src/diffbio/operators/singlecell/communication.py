@@ -248,7 +248,7 @@ class DifferentiableLigandReceptor(TemperatureOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply ligand-receptor co-expression scoring.
@@ -260,7 +260,7 @@ class DifferentiableLigandReceptor(TemperatureOperator):
                   row is ``[ligand_gene_idx, receptor_gene_idx]``
             state: Element state (passed through unchanged).
             metadata: Element metadata (passed through unchanged).
-            random_params: Not used (non-stochastic operator).
+            key: Unused.
             stats: Not used.
 
         Returns:
@@ -647,7 +647,7 @@ class DifferentiableCellCommunication(GraphOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply GNN-based cell-cell communication analysis.
@@ -660,7 +660,7 @@ class DifferentiableCellCommunication(GraphOperator):
                 - ``"lr_pairs"``: L-R pair gene indices ``(n_pairs, 2)``
             state: Element state (passed through unchanged).
             metadata: Element metadata (passed through unchanged).
-            random_params: Not used (non-stochastic operator).
+            key: Unused.
             stats: Not used.
 
         Returns:

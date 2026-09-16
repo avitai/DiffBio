@@ -162,7 +162,7 @@ class PreprocessingPipeline(OperatorModule):
         data: dict[str, Array],
         state: dict[str, Any],
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Array], dict[str, Any], dict[str, Any] | None]:
         """Apply the full preprocessing pipeline to reads.
@@ -173,7 +173,7 @@ class PreprocessingPipeline(OperatorModule):
                 - quality: Float[Array, "num_reads read_length"]
             state: Element state (passed through).
             metadata: Element metadata (passed through).
-            random_params: Not used (deterministic pipeline).
+            key: Unused.
             stats: Optional statistics dict.
 
         Returns:

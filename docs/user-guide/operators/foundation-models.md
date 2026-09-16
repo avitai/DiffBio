@@ -499,9 +499,9 @@ config = FoundationModelConfig(
 model = DifferentiableFoundationModel(
     config, rngs=nnx.Rngs(params=0, sample=1, dropout=2)
 )
-rp = model.generate_random_params(jax.random.key(0), {"counts": (100, 2000)})
+rp = jax.random.key(0)
 data = {"counts": counts, "gene_ids": jnp.arange(2000)}
-result, state, metadata = model.apply(data, {}, None, random_params=rp)
+result, state, metadata = model.apply(data, {}, None, key=rp)
 
 cell_embeddings = result["embeddings"]             # (n_cells, hidden_dim)
 gene_context = result["token_embeddings"]          # (n_cells, n_genes, hidden_dim)

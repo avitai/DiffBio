@@ -12,11 +12,6 @@ from diffbio.utils.nn_utils import ensure_rngs
 logger = logging.getLogger(__name__)
 
 
-def stabilize_operator_id(module: Any) -> None:
-    """Mark operator unique ID as static for NNX/JAX transformations."""
-    module._unique_id = nnx.static(module._unique_id)
-
-
 def build_encoder(
     *,
     hidden_dim: int,
@@ -56,8 +51,7 @@ def initialize_graph_encoder(
     num_edge_features: int | None = None,
     attr: str = "encoder",
 ) -> nnx.Rngs:
-    """Stabilize ID, ensure RNGs, and attach a message-passing encoder."""
-    stabilize_operator_id(module)
+    """Ensure RNGs and attach a message-passing encoder."""
     resolved_rngs = ensure_rngs(rngs)
     setattr(
         module,

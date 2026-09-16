@@ -144,7 +144,7 @@ class TestEnhancedVariantCallingPipeline:
 
     def test_apply_full_pipeline(self, pipeline, sample_data):
         """Test full pipeline apply method."""
-        result, state, metadata = pipeline.apply(sample_data, {}, None)
+        result, state, metadata = pipeline.apply(sample_data, {}, None, jax.random.key(0))
 
         # Check output keys
         assert "pileup" in result
@@ -178,7 +178,7 @@ class TestEnhancedVariantCallingPipeline:
         )
         pipeline = EnhancedVariantCallingPipeline(config, rngs=rngs)
 
-        result, _, _ = pipeline.apply(sample_data, {}, None)
+        result, _, _ = pipeline.apply(sample_data, {}, None, jax.random.key(0))
 
         # Should still have core outputs
         assert "pileup" in result
@@ -188,7 +188,7 @@ class TestEnhancedVariantCallingPipeline:
 
     def test_probabilities_valid(self, pipeline, sample_data):
         """Test that probabilities are valid."""
-        result, _, _ = pipeline.apply(sample_data, {}, None)
+        result, _, _ = pipeline.apply(sample_data, {}, None, jax.random.key(0))
 
         probs = result["probabilities"]
 
@@ -201,14 +201,14 @@ class TestEnhancedVariantCallingPipeline:
 
     def test_output_finite(self, pipeline, sample_data):
         """Test that all outputs are finite."""
-        result, _, _ = pipeline.apply(sample_data, {}, None)
+        result, _, _ = pipeline.apply(sample_data, {}, None, jax.random.key(0))
 
         for key in ["pileup", "logits", "probabilities", "quality_scores"]:
             assert jnp.all(jnp.isfinite(result[key])), f"{key} contains non-finite values"
 
     def test_preserves_original_data(self, pipeline, sample_data):
         """Test that original data is preserved in output."""
-        result, _, _ = pipeline.apply(sample_data, {}, None)
+        result, _, _ = pipeline.apply(sample_data, {}, None, jax.random.key(0))
 
         assert "reads" in result
         assert "positions" in result
@@ -249,7 +249,7 @@ class TestEnhancedVariantCallingDifferentiability:
                 "positions": positions,
                 "quality": quality,
             }
-            result, _, _ = pipe.apply(data, {}, None)
+            result, _, _ = pipe.apply(data, {}, None, jax.random.key(0))
             return result["probabilities"].sum()
 
         num_reads = 10
@@ -283,7 +283,7 @@ class TestEnhancedVariantCallingDifferentiability:
                 "positions": positions,
                 "quality": quality,
             }
-            result, _, _ = pipeline.apply(data, {}, None)
+            result, _, _ = pipeline.apply(data, {}, None, jax.random.key(0))
             return result["probabilities"].sum()
 
         num_reads = 10
@@ -336,7 +336,7 @@ class TestEnhancedVariantCallingJITCompatibility:
                 "positions": positions,
                 "quality": quality,
             }
-            result, _, _ = pipeline.apply(data, {}, None)
+            result, _, _ = pipeline.apply(data, {}, None, jax.random.key(0))
             return result["probabilities"]
 
         num_reads = 10

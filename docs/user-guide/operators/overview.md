@@ -196,7 +196,7 @@ class OperatorModule:
         data: PyTree,
         state: PyTree,
         metadata: dict | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[PyTree, PyTree, dict | None]:
         """Transform data through the operator.
@@ -205,7 +205,7 @@ class OperatorModule:
             data: Input data as a PyTree (typically dict)
             state: Per-element state (passed through or modified)
             metadata: Optional metadata
-            random_params: Random parameters for stochastic operators
+            key: The record's PRNG key; a stochastic operator draws from it
             stats: Optional statistics dictionary
 
         Returns:

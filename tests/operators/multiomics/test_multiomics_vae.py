@@ -127,7 +127,7 @@ class TestMultiOmicsVAE:
     def test_output_keys(self, rngs, small_config, sample_data) -> None:
         """apply() output dict contains all expected keys."""
         op = DifferentiableMultiOmicsVAE(small_config, rngs=rngs)
-        result, state, meta = op.apply(sample_data, {}, None)
+        result, state, meta = op.apply(sample_data, {}, None, jax.random.key(0))
 
         assert "joint_latent" in result
         assert "rna_reconstructed" in result
@@ -137,7 +137,7 @@ class TestMultiOmicsVAE:
     def test_output_shapes(self, rngs, small_config, sample_data) -> None:
         """Output arrays have correct shapes."""
         op = DifferentiableMultiOmicsVAE(small_config, rngs=rngs)
-        result, _, _ = op.apply(sample_data, {}, None)
+        result, _, _ = op.apply(sample_data, {}, None, jax.random.key(0))
 
         assert result["joint_latent"].shape == (N_CELLS, LATENT_DIM)
         assert result["rna_reconstructed"].shape == (N_CELLS, RNA_DIM)
@@ -146,14 +146,14 @@ class TestMultiOmicsVAE:
     def test_latent_finite(self, rngs, small_config, sample_data) -> None:
         """Joint latent representation contains only finite values."""
         op = DifferentiableMultiOmicsVAE(small_config, rngs=rngs)
-        result, _, _ = op.apply(sample_data, {}, None)
+        result, _, _ = op.apply(sample_data, {}, None, jax.random.key(0))
 
         assert jnp.all(jnp.isfinite(result["joint_latent"]))
 
     def test_reconstructions_finite(self, rngs, small_config, sample_data) -> None:
         """Reconstructed outputs contain only finite values."""
         op = DifferentiableMultiOmicsVAE(small_config, rngs=rngs)
-        result, _, _ = op.apply(sample_data, {}, None)
+        result, _, _ = op.apply(sample_data, {}, None, jax.random.key(0))
 
         assert jnp.all(jnp.isfinite(result["rna_reconstructed"]))
         assert jnp.all(jnp.isfinite(result["atac_reconstructed"]))
@@ -161,7 +161,7 @@ class TestMultiOmicsVAE:
     def test_elbo_finite_and_scalar(self, rngs, small_config, sample_data) -> None:
         """ELBO loss is a finite scalar."""
         op = DifferentiableMultiOmicsVAE(small_config, rngs=rngs)
-        result, _, _ = op.apply(sample_data, {}, None)
+        result, _, _ = op.apply(sample_data, {}, None, jax.random.key(0))
 
         loss = result["elbo_loss"]
         assert loss.ndim == 0
@@ -170,7 +170,7 @@ class TestMultiOmicsVAE:
     def test_original_data_preserved(self, rngs, small_config, sample_data) -> None:
         """Original input keys are preserved in output."""
         op = DifferentiableMultiOmicsVAE(small_config, rngs=rngs)
-        result, _, _ = op.apply(sample_data, {}, None)
+        result, _, _ = op.apply(sample_data, {}, None, jax.random.key(0))
 
         assert "rna_counts" in result
         assert "atac_counts" in result
@@ -258,7 +258,7 @@ class TestLearnableWeights:
         op = DifferentiableMultiOmicsVAE(learnable_config, rngs=rngs)
 
         def loss_fn(model: DifferentiableMultiOmicsVAE) -> jax.Array:
-            result, _, _ = model.apply(sample_data, {}, None)
+            result, _, _ = model.apply(sample_data, {}, None, jax.random.key(0))
             return result["elbo_loss"]
 
         grads = nnx.grad(loss_fn)(op)
@@ -278,7 +278,7 @@ class TestGradientFlow:
         op = DifferentiableMultiOmicsVAE(small_config, rngs=rngs)
 
         def loss_fn(model: DifferentiableMultiOmicsVAE) -> jax.Array:
-            result, _, _ = model.apply(sample_data, {}, None)
+            result, _, _ = model.apply(sample_data, {}, None, jax.random.key(0))
             return result["elbo_loss"]
 
         grads = nnx.grad(loss_fn)(op)
@@ -300,7 +300,7 @@ class TestGradientFlow:
         op = DifferentiableMultiOmicsVAE(small_config, rngs=rngs)
 
         def loss_fn(model: DifferentiableMultiOmicsVAE) -> jax.Array:
-            result, _, _ = model.apply(sample_data, {}, None)
+            result, _, _ = model.apply(sample_data, {}, None, jax.random.key(0))
             return result["elbo_loss"]
 
         grads = nnx.grad(loss_fn)(op)
@@ -323,7 +323,7 @@ class TestJITCompatibility:
 
         @nnx.jit
         def run(model: DifferentiableMultiOmicsVAE) -> dict:
-            result, _, _ = model.apply(sample_data, {}, None)
+            result, _, _ = model.apply(sample_data, {}, None, jax.random.key(0))
             return result
 
         result = run(op)
@@ -337,7 +337,7 @@ class TestJITCompatibility:
         @nnx.jit
         def grad_fn(model: DifferentiableMultiOmicsVAE) -> jax.Array:
             def loss_fn(m: DifferentiableMultiOmicsVAE) -> jax.Array:
-                result, _, _ = m.apply(sample_data, {}, None)
+                result, _, _ = m.apply(sample_data, {}, None, jax.random.key(0))
                 return result["elbo_loss"]
 
             grads = nnx.grad(loss_fn)(model)
@@ -368,7 +368,7 @@ class TestEdgeCases:
         key = jax.random.key(99)
         data = {"modality_0_counts": jax.random.uniform(key, (N_CELLS, RNA_DIM))}
 
-        result, _, _ = op.apply(data, {}, None)
+        result, _, _ = op.apply(data, {}, None, jax.random.key(0))
         assert result["joint_latent"].shape == (N_CELLS, LATENT_DIM)
         assert result["modality_0_reconstructed"].shape == (N_CELLS, RNA_DIM)
         assert jnp.all(jnp.isfinite(result["joint_latent"]))
@@ -377,7 +377,7 @@ class TestEdgeCases:
     def test_three_modalities(self, rngs, three_mod_config, three_mod_data) -> None:
         """Three-modality fusion produces correct shapes."""
         op = DifferentiableMultiOmicsVAE(three_mod_config, rngs=rngs)
-        result, _, _ = op.apply(three_mod_data, {}, None)
+        result, _, _ = op.apply(three_mod_data, {}, None, jax.random.key(0))
 
         assert result["joint_latent"].shape == (N_CELLS, LATENT_DIM)
         assert result["modality_0_reconstructed"].shape == (N_CELLS, RNA_DIM)
@@ -391,7 +391,7 @@ class TestEdgeCases:
         op = DifferentiableMultiOmicsVAE(three_mod_config, rngs=rngs)
 
         def loss_fn(model: DifferentiableMultiOmicsVAE) -> jax.Array:
-            result, _, _ = model.apply(three_mod_data, {}, None)
+            result, _, _ = model.apply(three_mod_data, {}, None, jax.random.key(0))
             return result["elbo_loss"]
 
         grads = nnx.grad(loss_fn)(op)

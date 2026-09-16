@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
@@ -99,7 +100,7 @@ class DifferentiableScaler(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict | None,
-        random_params: dict | None = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[dict, dict, dict | None]:
         """Standardize ``data["features"]`` in place.
@@ -108,14 +109,14 @@ class DifferentiableScaler(OperatorModule):
             data: Dictionary containing ``"features"`` ``(n_cells, n_genes)``.
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
-            random_params: Optional random parameters (unused).
+            key: Unused.
             stats: Optional statistics dictionary (unused).
 
         Returns:
             Tuple of ``(output_data, state, metadata)`` where ``output_data``
             replaces ``"features"`` with the standardized, clipped matrix.
         """
-        del random_params, stats
+        del key, stats
         config: ScalerConfig = self.config
         scaled = standardize_features(data["features"], clip=config.clip)
         return {**data, "features": scaled}, state, metadata

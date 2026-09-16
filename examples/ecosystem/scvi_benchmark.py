@@ -530,8 +530,14 @@ bars = ax.bar(
     linewidth=0.5,
 )
 for bar, val in zip(bars, ari_by_ldim):
-    ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.02,
-            f"{val:.3f}", ha="center", va="bottom", fontsize=10)
+    ax.text(
+        bar.get_x() + bar.get_width() / 2,
+        bar.get_height() + 0.02,
+        f"{val:.3f}",
+        ha="center",
+        va="bottom",
+        fontsize=10,
+    )
 ax.set_xlabel("Latent Dimension")
 ax.set_ylabel("ARI")
 ax.set_title("ARI Across Latent Dimensions")
@@ -586,10 +592,24 @@ fig, ax1 = plt.subplots(figsize=(7, 4))
 max_loss = max(abs(v) for v in likelihood_final_losses) if likelihood_final_losses else 1.0
 norm_losses = [v / max_loss for v in likelihood_final_losses]
 
-bars1 = ax1.bar(x_pos - width / 2, norm_losses, width, label="Final Loss (normalized)",
-                color="tab:red", edgecolor="k", linewidth=0.5)
-bars2 = ax1.bar(x_pos + width / 2, likelihood_silhouettes, width, label="Silhouette",
-                color="tab:cyan", edgecolor="k", linewidth=0.5)
+bars1 = ax1.bar(
+    x_pos - width / 2,
+    norm_losses,
+    width,
+    label="Final Loss (normalized)",
+    color="tab:red",
+    edgecolor="k",
+    linewidth=0.5,
+)
+bars2 = ax1.bar(
+    x_pos + width / 2,
+    likelihood_silhouettes,
+    width,
+    label="Silhouette",
+    color="tab:cyan",
+    edgecolor="k",
+    linewidth=0.5,
+)
 
 ax1.set_xticks(x_pos)
 ax1.set_xticklabels([n.upper() for n in likelihood_names])
@@ -598,11 +618,23 @@ ax1.set_title("Poisson vs ZINB: Final Loss and Silhouette")
 ax1.legend()
 
 for bar, val in zip(bars1, likelihood_final_losses):
-    ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.02,
-             f"{val:.0f}", ha="center", va="bottom", fontsize=8)
+    ax1.text(
+        bar.get_x() + bar.get_width() / 2,
+        bar.get_height() + 0.02,
+        f"{val:.0f}",
+        ha="center",
+        va="bottom",
+        fontsize=8,
+    )
 for bar, val in zip(bars2, likelihood_silhouettes):
-    ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.02,
-             f"{val:.3f}", ha="center", va="bottom", fontsize=8)
+    ax1.text(
+        bar.get_x() + bar.get_width() / 2,
+        bar.get_height() + 0.02,
+        f"{val:.3f}",
+        ha="center",
+        va="bottom",
+        fontsize=8,
+    )
 
 plt.tight_layout()
 plt.savefig("docs/assets/examples/ecosystem/scvi_likelihood.png", dpi=150, bbox_inches="tight")

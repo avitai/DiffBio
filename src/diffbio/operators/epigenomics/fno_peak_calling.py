@@ -20,6 +20,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
@@ -110,7 +111,7 @@ class FNOPeakCaller(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,  # noqa: ARG002
+        key: jax.Array | None = None,  # noqa: ARG002
         stats: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply FNO peak detection to coverage signal.
@@ -120,7 +121,7 @@ class FNOPeakCaller(OperatorModule):
                 or ``(length,)`` for unbatched.
             state: Element state (passed through).
             metadata: Element metadata (passed through).
-            random_params: Unused.
+            key: Unused.
             stats: Unused.
 
         Returns:

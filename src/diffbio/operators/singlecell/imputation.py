@@ -24,6 +24,7 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
+from datarax.core.operator import require_key
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
@@ -222,7 +223,7 @@ class DifferentiableDiffusionImputer(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply diffusion imputation to single-cell count data.
@@ -232,7 +233,7 @@ class DifferentiableDiffusionImputer(OperatorModule):
                 - ``"counts"``: Gene expression matrix ``(n_cells, n_genes)``
             state: Element state (passed through unchanged).
             metadata: Element metadata (passed through unchanged).
-            random_params: Not used (deterministic operator).
+            key: Unused.
             stats: Not used.
 
         Returns:
@@ -302,10 +303,9 @@ class DifferentiableTransformerDenoiser(
         >>> config = TransformerDenoiserConfig(n_genes=2000, hidden_dim=128)
         >>> denoiser = DifferentiableTransformerDenoiser(
         ...     config, rngs=nnx.Rngs(params=0, sample=1, dropout=2))
-        >>> rp = denoiser.generate_random_params(
-        ...     jax.random.key(0), {"counts": (100, 2000)})
+        >>> rp = ...     jax.random.key(0)
         >>> data = {"counts": counts, "gene_ids": jnp.arange(2000)}
-        >>> result, state, meta = denoiser.apply(data, {}, None, random_params=rp)
+        >>> result, state, meta = denoiser.apply(data, {}, None, key=rp)
         >>> result["imputed_counts"].shape
         (100, 2000)
     """
@@ -388,7 +388,7 @@ class DifferentiableTransformerDenoiser(
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply transformer denoising to single-cell count data.
@@ -399,7 +399,7 @@ class DifferentiableTransformerDenoiser(
                 - ``"gene_ids"``: Integer gene IDs ``(n_genes,)``
             state: Element state (passed through unchanged).
             metadata: Element metadata (passed through unchanged).
-            random_params: JAX random key for mask generation.
+            key: The record's PRNG key; the gene mask is drawn from it.
             stats: Not used.
 
         Returns:
@@ -412,7 +412,7 @@ class DifferentiableTransformerDenoiser(
                 - state is passed through unchanged
                 - metadata is passed through unchanged
         """
-        counts, gene_ids_int, mask = self.prepare_masked_gene_batch(data, random_params)
+        counts, gene_ids_int, mask = self.prepare_masked_gene_batch(data, require_key(key, self))
 
         # Process each cell independently via vmap
         imputed = jax.vmap(

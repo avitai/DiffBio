@@ -161,7 +161,7 @@ class EnsembleUQOperator(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,  # noqa: ARG002
+        key: jax.Array | None = None,  # noqa: ARG002
         stats: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Run ensemble forward passes and aggregate with uncertainty.
@@ -170,7 +170,7 @@ class EnsembleUQOperator(OperatorModule):
             data: Input data dict for the base operator.
             state: Element state (passed through).
             metadata: Element metadata (passed through).
-            random_params: Unused.
+            key: Unused.
             stats: Unused.
 
         Returns:
@@ -241,7 +241,7 @@ class MCSamplingUQOperator(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,  # noqa: ARG002
+        key: jax.Array | None = None,  # noqa: ARG002
         stats: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Run Monte Carlo sampling to estimate empirical intervals.
@@ -250,7 +250,7 @@ class MCSamplingUQOperator(OperatorModule):
             data: Input data dict for the base operator.
             state: Element state (passed through).
             metadata: Element metadata (passed through).
-            random_params: Unused.
+            key: Unused.
             stats: Unused.
 
         Returns:

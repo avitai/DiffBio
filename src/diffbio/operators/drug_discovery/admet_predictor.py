@@ -16,6 +16,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
@@ -201,7 +202,7 @@ class ADMETPredictor(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict[str, Any] | None,
-        random_params: Any = None,  # noqa: ARG002
+        key: jax.Array | None = None,  # noqa: ARG002
         stats: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
         """Predict ADMET properties from molecular graph.
@@ -214,7 +215,7 @@ class ADMETPredictor(OperatorModule):
                 - node_mask: (num_nodes,) mask for valid nodes
             state: Per-element state (passed through).
             metadata: Optional metadata.
-            random_params: Unused random parameters.
+            key: Unused.
             stats: Optional statistics dictionary.
 
         Returns:
@@ -223,7 +224,7 @@ class ADMETPredictor(OperatorModule):
                 - unchanged state
                 - unchanged metadata
         """
-        del random_params, stats  # Unused
+        del key, stats  # Unused
 
         graph_repr = graph_sum_readout(data, self.encoder, dropout=self.dropout)
 

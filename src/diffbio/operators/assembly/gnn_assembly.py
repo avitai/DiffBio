@@ -20,6 +20,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
@@ -187,7 +188,7 @@ class GNNAssemblyNavigator(GraphOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply GNN assembly navigation.
@@ -199,7 +200,7 @@ class GNNAssemblyNavigator(GraphOperator):
                 - "edge_features": Edge features (n_edges, edge_features)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used
+            key: Unused.
             stats: Not used
 
         Returns:

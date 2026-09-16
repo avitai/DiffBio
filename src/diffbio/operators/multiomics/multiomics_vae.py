@@ -26,6 +26,7 @@ from artifex.generative_models.core.base import MLP
 from artifex.generative_models.core.losses.base import reduce_loss
 from artifex.generative_models.core.losses.divergence import gaussian_kl_divergence
 from datarax.core.config import OperatorConfig
+from datarax.core.operator import require_key
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
@@ -245,7 +246,7 @@ class DifferentiableMultiOmicsVAE(LossBalancingMixin, EncoderDecoderOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Run the multi-omics VAE forward pass.
@@ -262,7 +263,7 @@ class DifferentiableMultiOmicsVAE(LossBalancingMixin, EncoderDecoderOperator):
                 (n_cells, modality_dim).
             state: Operator state (passed through unchanged).
             metadata: Operator metadata (passed through unchanged).
-            random_params: Not used.
+            key: The record's PRNG key; the joint latent sample is drawn from it.
             stats: Not used.
 
         Returns:
@@ -288,7 +289,7 @@ class DifferentiableMultiOmicsVAE(LossBalancingMixin, EncoderDecoderOperator):
         mu_joint, logvar_joint = self.product_of_experts(mu_list, logvar_list)
 
         # 3. Sample z via reparameterisation (inherited) -----------------
-        z = self.reparameterize(mu_joint, logvar_joint)
+        z = self.reparameterize(mu_joint, logvar_joint, require_key(key, self))
 
         # 4. Decode each modality ----------------------------------------
         reconstructions: list[jax.Array] = []

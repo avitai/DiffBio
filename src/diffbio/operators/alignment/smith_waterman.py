@@ -39,7 +39,6 @@ class SmithWatermanConfig(TemperatureConfig):
         gap_extend: Penalty for extending a gap.
     """
 
-    cacheable: bool = True
     gap_open: float = DEFAULT_GAP_OPEN
     gap_extend: float = DEFAULT_GAP_EXTEND
 
@@ -216,7 +215,7 @@ class SmoothSmithWaterman(TemperatureOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply alignment to sequence pair data.
@@ -233,7 +232,7 @@ class SmoothSmithWaterman(TemperatureOperator):
                 - "seq2": Second sequence, one-hot encoded (len2, alphabet_size)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used (deterministic operator)
+            key: Unused.
             stats: Not used
 
         Returns:

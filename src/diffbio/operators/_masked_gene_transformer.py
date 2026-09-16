@@ -8,7 +8,6 @@ construction and one mask/input preparation flow.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 import jax
 import jax.numpy as jnp
@@ -63,28 +62,34 @@ def build_masked_gene_transformer_encoder(
 
 def build_masked_gene_mask(
     *,
-    random_params: Any,
+    key: jax.Array | None,
     mask_ratio: float,
     n_genes: int,
 ) -> Array:
-    """Build a per-gene binary mask for masked-gene transformer operators."""
-    if random_params is not None and mask_ratio > 0:
-        noise = jax.random.uniform(random_params, (n_genes,))
-        return (noise < mask_ratio).astype(jnp.float32)
-    return jnp.zeros(n_genes, dtype=jnp.float32)
+    """Build a per-gene binary mask for masked-gene transformer operators.
+
+    With ``mask_ratio == 0`` nothing is masked and no key is needed; otherwise the mask is
+    drawn from ``key``, which must be given.
+    """
+    if mask_ratio <= 0:
+        return jnp.zeros(n_genes, dtype=jnp.float32)
+    if key is None:
+        raise ValueError("masking genes needs the record's PRNG key")
+    noise = jax.random.uniform(key, (n_genes,))
+    return (noise < mask_ratio).astype(jnp.float32)
 
 
 def prepare_masked_gene_batch(
     data: PyTree,
     *,
-    random_params: Any,
+    key: jax.Array | None,
     mask_ratio: float,
 ) -> tuple[Array, Array, Array]:
     """Extract counts, int32 gene IDs, and the shared masking vector."""
     counts = data["counts"]
     gene_ids = jnp.asarray(data["gene_ids"], dtype=jnp.int32)
     mask = build_masked_gene_mask(
-        random_params=random_params,
+        key=key,
         mask_ratio=mask_ratio,
         n_genes=int(counts.shape[1]),
     )
@@ -96,23 +101,14 @@ class MaskedGeneTransformerOperatorMixin:
 
     config: MaskedGeneTransformerConfigBase
 
-    def generate_random_params(
-        self,
-        rng: jax.Array,
-        data_shapes: PyTree,
-    ) -> jax.Array:
-        """Return the RNG key used for reproducible masking inside apply."""
-        del data_shapes
-        return rng
-
     def prepare_masked_gene_batch(
         self,
         data: PyTree,
-        random_params: Any,
+        key: jax.Array | None,
     ) -> tuple[Array, Array, Array]:
         """Prepare shared masked-gene inputs for per-cell `vmap` execution."""
         return prepare_masked_gene_batch(
             data,
-            random_params=random_params,
+            key=key,
             mask_ratio=self.config.mask_ratio,
         )

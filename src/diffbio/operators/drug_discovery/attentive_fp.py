@@ -28,7 +28,6 @@ from flax import nnx
 
 from diffbio.operators.drug_discovery._graph_utils import (
     build_optional_dropout,
-    stabilize_operator_id,
 )
 
 logger = logging.getLogger(__name__)
@@ -232,8 +231,6 @@ class AttentiveFP(OperatorModule):
         """
         super().__init__(config, rngs=rngs)
 
-        stabilize_operator_id(self)
-
         if rngs is None:
             rngs = nnx.Rngs(0)
 
@@ -292,7 +289,7 @@ class AttentiveFP(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict[str, Any] | None,
-        random_params: Any = None,  # noqa: ARG002
+        key: jax.Array | None = None,  # noqa: ARG002
         stats: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
         """Compute AttentiveFP molecular fingerprint.
@@ -305,7 +302,7 @@ class AttentiveFP(OperatorModule):
                 - node_mask: (num_nodes,) optional mask for valid nodes
             state: Per-element state (passed through).
             metadata: Optional metadata.
-            random_params: Unused random parameters.
+            key: Unused.
             stats: Optional statistics dictionary.
 
         Returns:
@@ -314,7 +311,7 @@ class AttentiveFP(OperatorModule):
                 - unchanged state
                 - unchanged metadata
         """
-        del random_params, stats  # Unused
+        del key, stats  # Unused
 
         node_features = data["node_features"]
         adjacency = data["adjacency"]

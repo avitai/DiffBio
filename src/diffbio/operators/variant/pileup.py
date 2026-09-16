@@ -185,7 +185,7 @@ class DifferentiablePileup(TemperatureOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply pileup generation to read data.
@@ -204,7 +204,7 @@ class DifferentiablePileup(TemperatureOperator):
                 - "quality": Quality scores for each base (num_reads, read_length)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used (deterministic operator)
+            key: Unused.
             stats: Not used
 
         Returns:

@@ -123,7 +123,7 @@ class TestSingleCellPipeline:
 
     def test_apply_full_pipeline(self, pipeline, sample_data):
         """Test full pipeline apply method."""
-        result, state, metadata = pipeline.apply(sample_data, {}, None)
+        result, state, metadata = pipeline.apply(sample_data, {}, None, jax.random.key(0))
 
         # Check output keys
         assert "normalized" in result
@@ -153,7 +153,7 @@ class TestSingleCellPipeline:
         )
         pipeline = SingleCellPipeline(config, rngs=rngs)
 
-        result, _, _ = pipeline.apply(sample_data, {}, None)
+        result, _, _ = pipeline.apply(sample_data, {}, None, jax.random.key(0))
 
         # Should still produce outputs
         assert "normalized" in result
@@ -174,21 +174,21 @@ class TestSingleCellPipeline:
         )
         pipeline = SingleCellPipeline(config, rngs=rngs)
 
-        result, _, _ = pipeline.apply(sample_data, {}, None)
+        result, _, _ = pipeline.apply(sample_data, {}, None, jax.random.key(0))
 
         assert "normalized" in result
         assert "cluster_assignments" in result
 
     def test_output_finite(self, pipeline, sample_data):
         """Test that all outputs are finite."""
-        result, _, _ = pipeline.apply(sample_data, {}, None)
+        result, _, _ = pipeline.apply(sample_data, {}, None, jax.random.key(0))
 
         for key in ["normalized", "latent", "cluster_assignments", "embeddings_2d"]:
             assert jnp.all(jnp.isfinite(result[key])), f"{key} contains non-finite values"
 
     def test_cluster_assignments_valid(self, pipeline, sample_data):
         """Test that cluster assignments are valid probabilities."""
-        result, _, _ = pipeline.apply(sample_data, {}, None)
+        result, _, _ = pipeline.apply(sample_data, {}, None, jax.random.key(0))
 
         assignments = result["cluster_assignments"]
 
@@ -201,7 +201,7 @@ class TestSingleCellPipeline:
 
     def test_preserves_original_data(self, pipeline, sample_data):
         """Test that original data is preserved in output."""
-        result, _, _ = pipeline.apply(sample_data, {}, None)
+        result, _, _ = pipeline.apply(sample_data, {}, None, jax.random.key(0))
 
         assert "counts" in result
         assert jnp.allclose(result["counts"], sample_data["counts"])
@@ -233,7 +233,7 @@ class TestSingleCellPipelineDifferentiability:
                 "ambient_profile": ambient,
                 "batch_labels": batch,
             }
-            result, _, _ = pipe.apply(data, {}, None)
+            result, _, _ = pipe.apply(data, {}, None, jax.random.key(0))
             return result["cluster_assignments"].sum()
 
         n_cells = 20
@@ -261,7 +261,7 @@ class TestSingleCellPipelineDifferentiability:
                 "ambient_profile": ambient,
                 "batch_labels": batch,
             }
-            result, _, _ = pipeline.apply(data, {}, None)
+            result, _, _ = pipeline.apply(data, {}, None, jax.random.key(0))
             return result["normalized"].sum()
 
         n_cells = 20
@@ -305,7 +305,7 @@ class TestSingleCellPipelineJITCompatibility:
                 "ambient_profile": ambient,
                 "batch_labels": batch,
             }
-            result, _, _ = pipeline.apply(data, {}, None)
+            result, _, _ = pipeline.apply(data, {}, None, jax.random.key(0))
             return result["cluster_assignments"]
 
         n_cells = 20

@@ -19,6 +19,7 @@ import jax.numpy as jnp
 from flax import nnx
 
 from datarax.core.config import OperatorConfig
+from datarax.core.operator import require_key
 from datarax.core.operator import OperatorModule
 
 logger = logging.getLogger(__name__)
@@ -86,7 +87,7 @@ class ReadDownsampler(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: Any,
-        random_params: Any = None,  # noqa: ARG002
+        key: jax.Array | None = None,
         stats: Any = None,  # noqa: ARG002
     ) -> tuple[dict[str, Any], dict[str, Any], Any]:
         """Apply differentiable downsampling to count data.
@@ -95,7 +96,7 @@ class ReadDownsampler(OperatorModule):
             data: Dict with ``"counts"`` key containing expression matrix.
             state: Pipeline state (passed through).
             metadata: Pipeline metadata (passed through).
-            random_params: Unused (RNG handled internally).
+            key: The record's PRNG key; the stochastic rounding is drawn from it.
             stats: Unused.
 
         Returns:
@@ -118,7 +119,7 @@ class ReadDownsampler(OperatorModule):
             fraction = config.fraction
 
         # Straight-through differentiable downsampling
-        downsampled = _straight_through_downsample(counts, fraction, self.rngs)
+        downsampled = _straight_through_downsample(counts, fraction, require_key(key, self))
 
         # Ensure non-negative
         downsampled = jnp.maximum(downsampled, 0.0)
@@ -133,7 +134,7 @@ class ReadDownsampler(OperatorModule):
 def _straight_through_downsample(
     counts: jnp.ndarray,
     fraction: float | jnp.ndarray,
-    rngs: nnx.Rngs | None,
+    key: jax.Array,
 ) -> jnp.ndarray:
     """Downsample counts with straight-through gradient estimator.
 
@@ -143,7 +144,7 @@ def _straight_through_downsample(
     Args:
         counts: Count matrix.
         fraction: Downsampling fraction (scalar or per-cell array).
-        rngs: RNG state for Bernoulli sampling.
+        key: PRNG key the Bernoulli rounding is drawn from.
 
     Returns:
         Downsampled count matrix.
@@ -151,12 +152,6 @@ def _straight_through_downsample(
     expected = counts * fraction
     floored = jnp.floor(expected)
     remainder = expected - floored
-
-    # Stochastic rounding of remainder
-    if rngs is not None and "downsample" in rngs:
-        key = rngs.downsample()
-    else:
-        key = jax.random.key(0)
 
     uniform = jax.random.uniform(key, shape=remainder.shape)
     rounded = jnp.where(uniform < remainder, 1.0, 0.0)

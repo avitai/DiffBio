@@ -25,6 +25,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
@@ -217,7 +218,7 @@ class DifferentiableOTTrajectory(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply OT-based trajectory inference to two-timepoint expression data.
@@ -228,7 +229,7 @@ class DifferentiableOTTrajectory(OperatorModule):
                 - ``"counts_t2"``: Expression matrix at timepoint 2 ``(n2, g)``
             state: Element state (passed through unchanged).
             metadata: Element metadata (passed through unchanged).
-            random_params: Not used (non-stochastic operator).
+            key: Unused.
             stats: Not used.
 
         Returns:

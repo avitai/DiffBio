@@ -70,16 +70,20 @@ key = jax.random.key(42)
 k1, k2, k3, k4, k5 = jax.random.split(key, 5)
 
 # Cell type centers (shared biology)
-type_centers = jnp.array([
-    jnp.concatenate([jnp.ones(15) * 5.0, jnp.zeros(15)]),  # Type 0: high first half
-    jnp.concatenate([jnp.zeros(15), jnp.ones(15) * 5.0]),  # Type 1: high second half
-])
+type_centers = jnp.array(
+    [
+        jnp.concatenate([jnp.ones(15) * 5.0, jnp.zeros(15)]),  # Type 0: high first half
+        jnp.concatenate([jnp.zeros(15), jnp.ones(15) * 5.0]),  # Type 1: high second half
+    ]
+)
 
 # Batch effect: constant shift per batch
-batch_shift = jnp.array([
-    jnp.zeros(n_features),                    # Batch 0: no shift (reference)
-    jnp.ones(n_features) * 3.0,               # Batch 1: +3.0 shift
-])
+batch_shift = jnp.array(
+    [
+        jnp.zeros(n_features),  # Batch 0: no shift (reference)
+        jnp.ones(n_features) * 3.0,  # Batch 1: +3.0 shift
+    ]
+)
 
 # Generate cell profiles
 embeddings_list = []
@@ -112,6 +116,7 @@ print(f"Type distribution: {jnp.bincount(type_labels, length=n_types)}")
 # neighbors and compute the entropy of batch labels. Higher entropy means
 # better mixing (batches are interleaved rather than segregated).
 
+
 # %%
 def compute_batch_mixing_score(
     emb: jax.Array,
@@ -135,7 +140,7 @@ def compute_batch_mixing_score(
         Mean entropy (higher = better mixing).
     """
     # Pairwise squared distances
-    sq = jnp.sum(emb ** 2, axis=1, keepdims=True)
+    sq = jnp.sum(emb**2, axis=1, keepdims=True)
     dists = sq + sq.T - 2.0 * emb @ emb.T
     dists = dists + jnp.eye(emb.shape[0]) * 1e10  # mask self
 
@@ -298,12 +303,9 @@ print("=== Batch Correction Comparison ===\n")
 print(f"{'Method':<12} {'Mixing Score':>14} {'vs Baseline':>14}")
 print("-" * 42)
 print(f"{'Uncorrected':<12} {baseline_score:>14.4f} {'---':>14}")
-print(f"{'Harmony':<12} {score_harmony:>14.4f} "
-      f"{score_harmony - baseline_score:>+14.4f}")
-print(f"{'MMD':<12} {score_mmd:>14.4f} "
-      f"{score_mmd - baseline_score:>+14.4f}")
-print(f"{'WGAN':<12} {score_wgan:>14.4f} "
-      f"{score_wgan - baseline_score:>+14.4f}")
+print(f"{'Harmony':<12} {score_harmony:>14.4f} {score_harmony - baseline_score:>+14.4f}")
+print(f"{'MMD':<12} {score_mmd:>14.4f} {score_mmd - baseline_score:>+14.4f}")
+print(f"{'WGAN':<12} {score_wgan:>14.4f} {score_wgan - baseline_score:>+14.4f}")
 
 # Mean shift between batches (lower = better correction)
 print(f"\n{'Method':<12} {'Batch 0 Mean':>14} {'Batch 1 Mean':>14} {'Shift':>14}")
@@ -349,8 +351,12 @@ for ax, (title, emb) in zip(axes.flat, panels):
     for b in range(n_batches):
         mask = batch_labels == b
         ax.scatter(
-            pc[mask, 0], pc[mask, 1],
-            s=15, alpha=0.7, color=batch_colors[b], label=f"Batch {b}",
+            pc[mask, 0],
+            pc[mask, 1],
+            s=15,
+            alpha=0.7,
+            color=batch_colors[b],
+            label=f"Batch {b}",
         )
     ax.set_title(title)
     ax.set_xlabel("PC1")
@@ -363,7 +369,8 @@ fig.suptitle("PCA Projections Colored by Batch", fontsize=13)
 plt.tight_layout()
 plt.savefig(
     "docs/assets/examples/singlecell/batch_pca_comparison.png",
-    dpi=150, bbox_inches="tight",
+    dpi=150,
+    bbox_inches="tight",
 )
 plt.show()
 

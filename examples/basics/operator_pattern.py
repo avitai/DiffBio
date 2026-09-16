@@ -149,7 +149,8 @@ fig.colorbar(im, ax=ax, label="Assignment Probability")
 plt.tight_layout()
 plt.savefig(
     "docs/assets/examples/basic/operator_pattern_assignments.png",
-    dpi=150, bbox_inches="tight",
+    dpi=150,
+    bbox_inches="tight",
 )
 plt.show()
 
@@ -159,6 +160,7 @@ plt.show()
 # DiffBio's core value proposition: bioinformatics operators are end-to-end
 # differentiable. Gradients flow from a scalar loss back through the operator
 # into the input data.
+
 
 # %%
 def loss_fn(input_data):

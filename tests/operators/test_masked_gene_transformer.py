@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import jax
 import jax.numpy as jnp
+import pytest
 from flax import nnx
 
 from diffbio.operators._masked_gene_transformer import (
@@ -66,7 +67,7 @@ class TestPrepareMaskedGeneBatch:
 
         counts, gene_ids, mask = prepare_masked_gene_batch(
             data,
-            random_params=jax.random.key(0),
+            key=jax.random.key(0),
             mask_ratio=1.0,
         )
 
@@ -75,8 +76,8 @@ class TestPrepareMaskedGeneBatch:
         assert jnp.array_equal(gene_ids, jnp.arange(4, dtype=jnp.int32))
         assert jnp.array_equal(mask, jnp.ones((4,), dtype=jnp.float32))
 
-    def test_returns_zero_mask_without_random_params(self) -> None:
-        """Shared preparation should emit an all-zero mask when masking is disabled."""
+    def test_returns_zero_mask_when_masking_is_off(self) -> None:
+        """With ``mask_ratio == 0`` nothing is masked and no key is needed."""
         data = {
             "counts": jnp.ones((2, 5), dtype=jnp.float32),
             "gene_ids": jnp.arange(5, dtype=jnp.int32),
@@ -84,9 +85,19 @@ class TestPrepareMaskedGeneBatch:
 
         _, gene_ids, mask = prepare_masked_gene_batch(
             data,
-            random_params=None,
-            mask_ratio=0.15,
+            key=None,
+            mask_ratio=0.0,
         )
 
         assert gene_ids.dtype == jnp.int32
         assert jnp.array_equal(mask, jnp.zeros((5,), dtype=jnp.float32))
+
+    def test_masking_refuses_a_missing_key(self) -> None:
+        """A mask ratio above zero draws from the key, so no key is an error."""
+        data = {
+            "counts": jnp.ones((2, 5), dtype=jnp.float32),
+            "gene_ids": jnp.arange(5, dtype=jnp.int32),
+        }
+
+        with pytest.raises(ValueError, match="key"):
+            prepare_masked_gene_batch(data, key=None, mask_ratio=0.15)

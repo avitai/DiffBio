@@ -465,7 +465,7 @@ class DifferentiablePeakCaller(TemperatureOperator):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict | None,
-        random_params: dict | None = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[dict, dict, dict | None]:
         """Apply peak calling to coverage data.
@@ -478,7 +478,7 @@ class DifferentiablePeakCaller(TemperatureOperator):
                 - 'coverage': Coverage signal of shape (batch, length) or (length,)
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
-            random_params: Optional random parameters.
+            key: Unused.
             stats: Optional statistics dictionary.
 
         Returns:
@@ -493,7 +493,7 @@ class DifferentiablePeakCaller(TemperatureOperator):
                 - 'denoised_coverage': Denoised signal (only when VAE enabled)
                 - 'vae_kl_loss': KL divergence loss (only when VAE enabled)
         """
-        del random_params, stats  # Unused
+        del key, stats  # Unused
 
         coverage = data["coverage"]
 
@@ -538,9 +538,9 @@ class DifferentiablePeakCaller(TemperatureOperator):
             peak_starts = peak_starts[0]
             peak_ends = peak_ends[0]
             coverage = coverage[0]
-            for key in list(vae_extras.keys()):
-                if key == "denoised_coverage":
-                    vae_extras[key] = vae_extras[key][0]
+            for name in list(vae_extras.keys()):
+                if name == "denoised_coverage":
+                    vae_extras[name] = vae_extras[name][0]
 
         output_data = {
             **data,

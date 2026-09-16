@@ -350,7 +350,7 @@ class TransformerSequenceEncoder(FoundationEmbeddingMixin, SequenceOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply transformer encoding to sequence data.
@@ -371,7 +371,7 @@ class TransformerSequenceEncoder(FoundationEmbeddingMixin, SequenceOperator):
                 - "attention_mask": Optional mask (seq_len,) or (batch, seq_len)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used
+            key: Unused.
             stats: Not used
 
         Returns:
@@ -385,7 +385,7 @@ class TransformerSequenceEncoder(FoundationEmbeddingMixin, SequenceOperator):
                 - state is passed through unchanged
                 - metadata is passed through unchanged
         """
-        del random_params, stats  # Unused
+        del key, stats  # Unused
 
         sequence = data["sequence"]
         mask = data.get("attention_mask", None)

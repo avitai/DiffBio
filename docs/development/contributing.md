@@ -147,7 +147,7 @@ class MyOperator(OperatorModule):
         self.param = nnx.Param(jnp.array(config.my_param))
 
     def apply(
-        self, data, state, metadata, random_params=None, stats=None,
+        self, data, state, metadata, key=None, stats=None,
     ):
         result = self._process(data)
         return {**data, "output": result}, state, metadata

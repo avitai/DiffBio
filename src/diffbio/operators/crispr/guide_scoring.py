@@ -28,6 +28,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
@@ -195,7 +196,7 @@ class DifferentiableCRISPRScorer(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
         """Apply CRISPR scoring to guide sequences.
@@ -205,7 +206,7 @@ class DifferentiableCRISPRScorer(OperatorModule):
                 - "guides": One-hot encoded guides (n_guides, guide_length, 4).
             state: Per-element state (passed through).
             metadata: Optional metadata (passed through).
-            random_params: Random parameters for stochastic operations.
+            key: Unused.
             stats: Optional statistics dictionary.
 
         Returns:

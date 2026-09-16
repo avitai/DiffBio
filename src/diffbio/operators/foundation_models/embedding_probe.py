@@ -63,11 +63,11 @@ class LinearEmbeddingProbe(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Predict class probabilities from input embeddings."""
-        del random_params, stats
+        del key, stats
 
         embeddings = data["embeddings"]
         features = embeddings

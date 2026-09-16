@@ -67,8 +67,8 @@ class TestSingleCellPipeline:
             stream_name="sample",
         )
         simulator = DifferentiableSimulator(sim_config, rngs=rngs)
-        rp = simulator.generate_random_params(jax.random.key(0), {})
-        sim_data, sim_state, sim_meta = simulator.apply({}, {}, None, random_params=rp)
+        rp = jax.random.key(0)
+        sim_data, sim_state, sim_meta = simulator.apply({}, {}, None, key=rp)
 
         assert sim_data["counts"].shape == (N_CELLS, N_GENES)
         assert sim_data["group_labels"].shape == (N_CELLS,)
@@ -85,7 +85,7 @@ class TestSingleCellPipeline:
         )
         normalizer = VAENormalizer(vae_config, rngs=rngs)
         vae_data, _, _ = normalizer.apply(
-            {"counts": cell_counts, "library_size": library_size}, {}, None
+            {"counts": cell_counts, "library_size": library_size}, {}, None, jax.random.key(0)
         )
 
         assert vae_data["normalized"].shape == (N_GENES,)
@@ -116,7 +116,7 @@ class TestSingleCellPipeline:
         )
         normalizer = VAENormalizer(vae_config, rngs=rngs)
         vae_data, _, _ = normalizer.apply(
-            {"counts": cell_counts, "library_size": library_size}, {}, None
+            {"counts": cell_counts, "library_size": library_size}, {}, None, jax.random.key(0)
         )
 
         assert "latent_z" in vae_data
@@ -277,8 +277,8 @@ class TestSingleCellPipeline:
             sim_doublet_ratio=1.0,
         )
         scorer = DifferentiableDoubletScorer(scorer_config, rngs=rngs)
-        rp = scorer.generate_random_params(jax.random.key(10), {"counts": counts.shape})
-        result, _, _ = scorer.apply({"counts": counts}, {}, None, random_params=rp)
+        rp = jax.random.key(10)
+        result, _, _ = scorer.apply({"counts": counts}, {}, None, key=rp)
 
         assert result["doublet_scores"].shape == (N_CELLS,)
         assert result["predicted_doublets"].shape == (N_CELLS,)

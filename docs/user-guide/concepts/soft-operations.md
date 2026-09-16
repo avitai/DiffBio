@@ -573,7 +573,7 @@ class QualityFilter(TemperatureOperator):
         super().__init__(config, rngs=rngs, name=name)
         self.threshold = config.quality_threshold
 
-    def apply(self, data, state, metadata, random_params=None, stats=None):
+    def apply(self, data, state, metadata, key=None, stats=None):
         from diffbio.core import soft_ops
 
         quality = data["quality_scores"]

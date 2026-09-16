@@ -85,10 +85,12 @@ counts = jnp.concatenate([singlet_counts, doublet_counts], axis=0)
 n_total = counts.shape[0]
 
 # Ground truth labels: 0 = singlet, 1 = doublet
-true_labels = jnp.concatenate([
-    jnp.zeros(n_singlets),
-    jnp.ones(n_doublets),
-])
+true_labels = jnp.concatenate(
+    [
+        jnp.zeros(n_singlets),
+        jnp.ones(n_doublets),
+    ]
+)
 
 print(f"Total cells: {n_total} ({n_singlets} singlets + {n_doublets} doublets)")
 print(f"Counts shape: {counts.shape}")
@@ -125,13 +127,15 @@ scorer = DifferentiableDoubletScorer(config_scrub, rngs=nnx.Rngs(0))
 print(f"DoubletScorer created: {type(scorer).__name__}")
 
 # %%
-# Generate random params and run scorer
-rng_scrub = jax.random.key(10)
-random_params = scorer.generate_random_params(rng_scrub, {"counts": counts.shape})
+# Draw the record's key and run the scorer
+key_scrub = jax.random.key(10)
 
 data_scrub = {"counts": counts}
 result_scrub, state_scrub, meta_scrub = scorer.apply(
-    data_scrub, {}, None, random_params=random_params,
+    data_scrub,
+    {},
+    None,
+    key=key_scrub,
 )
 
 scores_scrub = result_scrub["doublet_scores"]
@@ -145,19 +149,30 @@ singlet_scores = scores_scrub[:n_singlets]
 doublet_scores_known = scores_scrub[n_singlets:]
 
 print("\nDoublet score statistics:")
-print(f"  Singlets - mean: {float(singlet_scores.mean()):.4f}, "
-      f"std: {float(singlet_scores.std()):.4f}")
-print(f"  Doublets - mean: {float(doublet_scores_known.mean()):.4f}, "
-      f"std: {float(doublet_scores_known.std()):.4f}")
+print(
+    f"  Singlets - mean: {float(singlet_scores.mean()):.4f}, std: {float(singlet_scores.std()):.4f}"
+)
+print(
+    f"  Doublets - mean: {float(doublet_scores_known.mean()):.4f}, "
+    f"std: {float(doublet_scores_known.std()):.4f}"
+)
 
 # %%
 # Figure 1: DoubletScorer score distributions
 fig, ax = plt.subplots(figsize=(6, 4))
 ax.hist(
-    singlet_scores.tolist(), bins=20, alpha=0.6, color="blue", label="Singlets",
+    singlet_scores.tolist(),
+    bins=20,
+    alpha=0.6,
+    color="blue",
+    label="Singlets",
 )
 ax.hist(
-    doublet_scores_known.tolist(), bins=20, alpha=0.6, color="red", label="Doublets",
+    doublet_scores_known.tolist(),
+    bins=20,
+    alpha=0.6,
+    color="red",
+    label="Doublets",
 )
 ax.set_xlabel("Doublet Score")
 ax.set_ylabel("Count")
@@ -166,7 +181,8 @@ ax.legend()
 plt.tight_layout()
 plt.savefig(
     "docs/assets/examples/singlecell/doublet_scorer_histogram.png",
-    dpi=150, bbox_inches="tight",
+    dpi=150,
+    bbox_inches="tight",
 )
 plt.show()
 
@@ -197,13 +213,15 @@ detector = DifferentiableSoloDetector(config_solo, rngs=nnx.Rngs(1))
 print(f"SoloDetector created: {type(detector).__name__}")
 
 # %%
-# Generate random params and run Solo detector
-rng_solo = jax.random.key(20)
-random_params_solo = detector.generate_random_params(rng_solo, {"counts": counts.shape})
+# Draw the record's key and run the Solo detector
+key_solo = jax.random.key(20)
 
 data_solo = {"counts": counts}
 result_solo, state_solo, meta_solo = detector.apply(
-    data_solo, {}, None, random_params=random_params_solo,
+    data_solo,
+    {},
+    None,
+    key=key_solo,
 )
 
 probs_solo = result_solo["doublet_probabilities"]
@@ -218,19 +236,30 @@ singlet_probs = probs_solo[:n_singlets]
 doublet_probs_known = probs_solo[n_singlets:]
 
 print("\nSolo doublet probability statistics:")
-print(f"  Singlets - mean: {float(singlet_probs.mean()):.4f}, "
-      f"std: {float(singlet_probs.std()):.4f}")
-print(f"  Doublets - mean: {float(doublet_probs_known.mean()):.4f}, "
-      f"std: {float(doublet_probs_known.std()):.4f}")
+print(
+    f"  Singlets - mean: {float(singlet_probs.mean()):.4f}, std: {float(singlet_probs.std()):.4f}"
+)
+print(
+    f"  Doublets - mean: {float(doublet_probs_known.mean()):.4f}, "
+    f"std: {float(doublet_probs_known.std()):.4f}"
+)
 
 # %%
 # Figure 2: SoloDetector score distributions
 fig, ax = plt.subplots(figsize=(6, 4))
 ax.hist(
-    singlet_probs.tolist(), bins=20, alpha=0.6, color="blue", label="Singlets",
+    singlet_probs.tolist(),
+    bins=20,
+    alpha=0.6,
+    color="blue",
+    label="Singlets",
 )
 ax.hist(
-    doublet_probs_known.tolist(), bins=20, alpha=0.6, color="red", label="Doublets",
+    doublet_probs_known.tolist(),
+    bins=20,
+    alpha=0.6,
+    color="red",
+    label="Doublets",
 )
 ax.set_xlabel("Doublet Probability")
 ax.set_ylabel("Count")
@@ -239,7 +268,8 @@ ax.legend()
 plt.tight_layout()
 plt.savefig(
     "docs/assets/examples/singlecell/doublet_solo_histogram.png",
-    dpi=150, bbox_inches="tight",
+    dpi=150,
+    bbox_inches="tight",
 )
 plt.show()
 
@@ -263,8 +293,7 @@ print(f"{'Scrublet':<15} {s_mean:>14.4f} {d_mean:>14.4f} {d_mean - s_mean:>8.4f}
 # Solo probabilities
 s_mean_solo = float(singlet_probs.mean())
 d_mean_solo = float(doublet_probs_known.mean())
-print(f"{'Solo':<15} {s_mean_solo:>14.4f} {d_mean_solo:>14.4f} "
-      f"{d_mean_solo - s_mean_solo:>8.4f}")
+print(f"{'Solo':<15} {s_mean_solo:>14.4f} {d_mean_solo:>14.4f} {d_mean_solo - s_mean_solo:>8.4f}")
 
 # %% [markdown]
 # ## 5. Verify Differentiability
@@ -279,7 +308,7 @@ print("=== Gradient Flow Verification ===\n")
 
 def loss_fn_scrub(input_data):
     """Scalar loss from Scrublet-style doublet scores."""
-    res, _, _ = scorer.apply(input_data, {}, None, random_params=random_params)
+    res, _, _ = scorer.apply(input_data, {}, None, key=key_scrub)
     return res["doublet_scores"].sum()
 
 
@@ -295,7 +324,7 @@ print(f"  Finite: {bool(jnp.all(jnp.isfinite(grad_scrub['counts'])))}")
 
 def loss_fn_solo(input_data):
     """Scalar loss from Solo-style doublet probabilities."""
-    res, _, _ = detector.apply(input_data, {}, None, random_params=random_params_solo)
+    res, _, _ = detector.apply(input_data, {}, None, key=key_solo)
     return res["doublet_probabilities"].sum()
 
 
@@ -314,7 +343,7 @@ print(f"  Finite: {bool(jnp.all(jnp.isfinite(grad_solo['counts'])))}")
 # JIT DoubletScorer
 print("=== JIT Compilation ===\n")
 
-jit_scrub = jax.jit(lambda d: scorer.apply(d, {}, None, random_params=random_params))
+jit_scrub = jax.jit(lambda d: scorer.apply(d, {}, None, key=key_scrub))
 result_jit_scrub, _, _ = jit_scrub(data_scrub)
 match_scrub = jnp.allclose(
     result_scrub["doublet_scores"],
@@ -325,7 +354,7 @@ print(f"DoubletScorer JIT matches eager: {bool(match_scrub)}")
 
 # %%
 # JIT SoloDetector
-jit_solo = jax.jit(lambda d: detector.apply(d, {}, None, random_params=random_params_solo))
+jit_solo = jax.jit(lambda d: detector.apply(d, {}, None, key=key_solo))
 result_jit_solo, _, _ = jit_solo(data_solo)
 match_solo = jnp.allclose(
     result_solo["doublet_probabilities"],
@@ -359,15 +388,17 @@ for ratio in ratio_values:
         stochastic=True,
     )
     sc = DifferentiableDoubletScorer(cfg, rngs=nnx.Rngs(0))
-    rp = sc.generate_random_params(jax.random.key(10), {"counts": counts.shape})
-    res, _, _ = sc.apply({"counts": counts}, {}, None, random_params=rp)
+    rp = jax.random.key(10)
+    res, _, _ = sc.apply({"counts": counts}, {}, None, key=rp)
     scores = res["doublet_scores"]
 
     s_mean = float(scores[:n_singlets].mean())
     d_mean = float(scores[n_singlets:].mean())
     score_gaps.append(d_mean - s_mean)
-    print(f"  ratio={ratio:.1f} -> singlet mean: {s_mean:.4f}, "
-          f"doublet mean: {d_mean:.4f}, gap: {d_mean - s_mean:.4f}")
+    print(
+        f"  ratio={ratio:.1f} -> singlet mean: {s_mean:.4f}, "
+        f"doublet mean: {d_mean:.4f}, gap: {d_mean - s_mean:.4f}"
+    )
 
 # %%
 # Figure 3: Score gap vs synthetic doublet ratio
@@ -398,14 +429,16 @@ for n_pca in [5, 10, 20, 30]:
         stochastic=True,
     )
     sc = DifferentiableDoubletScorer(cfg, rngs=nnx.Rngs(0))
-    rp = sc.generate_random_params(jax.random.key(10), {"counts": counts.shape})
-    res, _, _ = sc.apply({"counts": counts}, {}, None, random_params=rp)
+    rp = jax.random.key(10)
+    res, _, _ = sc.apply({"counts": counts}, {}, None, key=rp)
     scores = res["doublet_scores"]
 
     s_mean = float(scores[:n_singlets].mean())
     d_mean = float(scores[n_singlets:].mean())
-    print(f"  n_pca={n_pca:>2} -> singlet mean: {s_mean:.4f}, "
-          f"doublet mean: {d_mean:.4f}, gap: {d_mean - s_mean:.4f}")
+    print(
+        f"  n_pca={n_pca:>2} -> singlet mean: {s_mean:.4f}, "
+        f"doublet mean: {d_mean:.4f}, gap: {d_mean - s_mean:.4f}"
+    )
 
 # %% [markdown]
 # ## Summary

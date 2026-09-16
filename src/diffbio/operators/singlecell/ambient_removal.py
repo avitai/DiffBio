@@ -25,6 +25,7 @@ import jax
 import jax.numpy as jnp
 from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
+from datarax.core.operator import require_key
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
@@ -265,7 +266,7 @@ class DifferentiableAmbientRemoval(EncoderDecoderOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply ambient RNA removal.
@@ -276,7 +277,7 @@ class DifferentiableAmbientRemoval(EncoderDecoderOperator):
                 - "ambient_profile": Ambient expression profile (n_genes,)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Random key for stochastic sampling
+            key: The record's PRNG key; the latent sample is drawn from it.
             stats: Not used
 
         Returns:
@@ -300,8 +301,7 @@ class DifferentiableAmbientRemoval(EncoderDecoderOperator):
         # Encode
         mean, logvar, contamination = self.encoder(counts)
 
-        # Sample latent using inherited reparameterize (uses self.rngs)
-        z = self.reparameterize(mean, logvar)
+        z = self.reparameterize(mean, logvar, require_key(key, self))
 
         # Decode to cell-intrinsic expression rate
         log_rate = self.decoder(z)

@@ -105,17 +105,18 @@ obs_records = []
 for ct in cell_types:
     for pert in all_perts:
         for i in range(n_cells_per_group):
-            obs_records.append({
-                "perturbation": pert,
-                "cell_type": ct,
-                "batch": batches[i % len(batches)],
-            })
+            obs_records.append(
+                {
+                    "perturbation": pert,
+                    "cell_type": ct,
+                    "batch": batches[i % len(batches)],
+                }
+            )
 
 n_cells = len(obs_records)
 print(f"Total cells: {n_cells}")
 print(
-    f"  {len(cell_types)} cell types x {len(all_perts)}"
-    f" perturbations x {n_cells_per_group} cells"
+    f"  {len(cell_types)} cell types x {len(all_perts)} perturbations x {n_cells_per_group} cells"
 )
 
 # Count matrix with knockdown signal
@@ -214,9 +215,7 @@ from diffbio.sources.perturbation import (
 )
 
 # Random mapping
-random_mapper = RandomControlMapping(
-    ControlMappingConfig(n_basal_samples=1, seed=42)
-)
+random_mapper = RandomControlMapping(ControlMappingConfig(n_basal_samples=1, seed=42))
 random_mapping = random_mapper.build_mapping(source)
 print(f"Random mapping shape: {random_mapping.shape}")
 
@@ -264,9 +263,9 @@ print(f"Total cells sampled: {sum(len(b) for b in batches)}")
 group_codes = source.get_group_codes()
 batch0 = batches[0]
 for start in range(0, min(len(batch0), 100), 25):
-    sentence = batch0[start:start + 25]
+    sentence = batch0[start : start + 25]
     groups = {group_codes[i] for i in sentence}
-    print(f"  Sentence [{start}:{start+25}] groups: {groups} (homogeneous: {len(groups) == 1})")
+    print(f"  Sentence [{start}:{start + 25}] groups: {groups} (homogeneous: {len(groups) == 1})")
 
 # %% [markdown]
 # ## Step 4: Splitting Strategies
@@ -382,7 +381,8 @@ axes[2].set_title("Cells per (cell_type, pert) Group")
 plt.tight_layout()
 plt.savefig(
     "docs/assets/examples/perturbation/split_overview.png",
-    dpi=150, bbox_inches="tight",
+    dpi=150,
+    bbox_inches="tight",
 )
 plt.show()
 
@@ -481,7 +481,8 @@ ax.set_title("Knockdown QC Filter Result")
 plt.tight_layout()
 plt.savefig(
     "docs/assets/examples/perturbation/knockdown_qc.png",
-    dpi=150, bbox_inches="tight",
+    dpi=150,
+    bbox_inches="tight",
 )
 plt.show()
 
@@ -507,7 +508,7 @@ plt.show()
 # ```
 
 # %%
-from diffbio.sources.perturbation import ExperimentConfig, load_experiment_config
+from diffbio.sources.perturbation import load_experiment_config
 
 # Create a sample TOML config
 toml_path = tmp_dir / "experiment.toml"
@@ -531,8 +532,7 @@ print(f"Datasets: {[d.name for d in config.datasets]}")
 print(f"Training: {config.training_datasets}")
 print(f"Zeroshot: {[(z.cell_type, z.split) for z in config.zeroshot]}")
 print(
-    "Fewshot:"
-    f" {[(f.cell_type, f.val_perturbations, f.test_perturbations) for f in config.fewshot]}"
+    f"Fewshot: {[(f.cell_type, f.val_perturbations, f.test_perturbations) for f in config.fewshot]}"
 )
 
 # %% [markdown]
@@ -564,11 +564,13 @@ result_ds, _, _ = downsampler.apply(data_in, {}, None)
 print(f"Original total: {float(sample_counts.sum()):.0f}")
 print(f"Downsampled total: {float(result_ds['counts'].sum()):.0f}")
 
+
 # Verify differentiability
 def ds_loss(counts):
     """Compute sum of downsampled counts for gradient verification."""
     res, _, _ = downsampler.apply({"counts": counts}, {}, None)
     return res["counts"].sum()
+
 
 grad = jax.grad(ds_loss)(sample_counts)
 print(f"Gradient shape: {grad.shape}")
@@ -586,7 +588,10 @@ downsampled_totals = []
 for frac in fractions:
     ds = ReadDownsampler(
         DownsamplingConfig(
-            mode="fraction", fraction=frac, apply_log1p=False, is_log1p_input=False,
+            mode="fraction",
+            fraction=frac,
+            apply_log1p=False,
+            is_log1p_input=False,
         ),
         rngs=nnx.Rngs(0),
     )
@@ -603,7 +608,8 @@ ax.legend()
 plt.tight_layout()
 plt.savefig(
     "docs/assets/examples/perturbation/downsampling_sweep.png",
-    dpi=150, bbox_inches="tight",
+    dpi=150,
+    bbox_inches="tight",
 )
 plt.show()
 
@@ -612,6 +618,7 @@ plt.show()
 
 # %%
 import shutil
+
 shutil.rmtree(tmp_dir, ignore_errors=True)
 print("Temporary files cleaned up.")
 

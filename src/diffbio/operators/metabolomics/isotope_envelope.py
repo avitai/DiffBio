@@ -137,7 +137,7 @@ class SoftIsotopeEnvelope(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict | None,
-        random_params: dict | None = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[dict, dict, dict | None]:
         """Deisotope ``data["intensity"]`` and add charge scores, charge, and the signal.
@@ -146,7 +146,7 @@ class SoftIsotopeEnvelope(OperatorModule):
             data: Dictionary containing ``"intensity"`` ``(n_points,)`` for one spectrum.
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
-            random_params: Optional random parameters (unused).
+            key: Unused.
             stats: Optional statistics dictionary (unused).
 
         Returns:
@@ -154,7 +154,7 @@ class SoftIsotopeEnvelope(OperatorModule):
             ``"charge_scores"`` ``(n_charges, n_points)``, ``"charge"`` (expected charge per
             position), and ``"deisotoped"`` (the soft-max-over-charges monoisotopic signal).
         """
-        del random_params, stats
+        del key, stats
         config: SoftIsotopeEnvelopeConfig = self.config
         decay = jax.nn.sigmoid(self.raw_decay[...])
         if not config.trainable:

@@ -10,6 +10,7 @@ from typing import Any
 
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
+import jax
 from flax import nnx
 from jaxtyping import PyTree
 
@@ -85,7 +86,7 @@ class DifferentiableQualityFilter(OperatorModule):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply soft quality filtering to sequence data.
@@ -101,7 +102,7 @@ class DifferentiableQualityFilter(OperatorModule):
                 - "quality_scores": Phred quality scores (length,)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used (deterministic operator)
+            key: Unused.
             stats: Not used
 
         Returns:

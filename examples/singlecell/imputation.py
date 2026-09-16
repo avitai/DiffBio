@@ -75,11 +75,13 @@ rates_group1 = jnp.concatenate([jnp.full(25, 8.0), jnp.full(25, 2.0)])
 rates_group2 = jnp.concatenate([jnp.full(25, 2.0), jnp.full(25, 8.0)])
 rates_group3 = jnp.full(50, 5.0)
 
-rates = jnp.stack([
-    jnp.broadcast_to(rates_group1, (20, n_genes)),
-    jnp.broadcast_to(rates_group2, (20, n_genes)),
-    jnp.broadcast_to(rates_group3, (20, n_genes)),
-]).reshape(n_cells, n_genes)
+rates = jnp.stack(
+    [
+        jnp.broadcast_to(rates_group1, (20, n_genes)),
+        jnp.broadcast_to(rates_group2, (20, n_genes)),
+        jnp.broadcast_to(rates_group3, (20, n_genes)),
+    ]
+).reshape(n_cells, n_genes)
 
 ground_truth = jax.random.poisson(k1, rates).astype(jnp.float32)
 
@@ -218,7 +220,8 @@ ax.plot([lo, hi], [lo, hi], "k--", linewidth=0.8, alpha=0.5)
 plt.tight_layout()
 plt.savefig(
     "docs/assets/examples/singlecell/imputation_correlation.png",
-    dpi=150, bbox_inches="tight",
+    dpi=150,
+    bbox_inches="tight",
 )
 plt.show()
 
@@ -285,6 +288,7 @@ plt.show()
 # The diffusion imputer is fully differentiable: gradients flow from the
 # imputed counts back through the eigendecomposition and affinity
 # construction into the input counts.
+
 
 # %%
 def loss_fn(input_data):

@@ -113,7 +113,7 @@ class SoftComponentSelection(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict | None,
-        random_params: dict | None = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[dict, dict, dict | None]:
         """Gate ``data["projection"]`` by the learnable soft rank.
@@ -122,13 +122,13 @@ class SoftComponentSelection(OperatorModule):
             data: Dictionary containing ``"projection"`` ``(n_cells, n_components)``.
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
-            random_params: Optional random parameters (unused).
+            key: Unused.
             stats: Optional statistics dictionary (unused).
 
         Returns:
             Tuple of ``(output_data, state, metadata)`` with ``"projection"`` scaled by
             the soft keep-gate.
         """
-        del random_params, stats
+        del key, stats
         gated = jnp.asarray(data["projection"]) * self._keep_gate()[None, :]
         return {**data, "projection": gated}, state, metadata

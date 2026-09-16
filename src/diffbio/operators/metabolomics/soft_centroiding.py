@@ -150,7 +150,7 @@ class SoftCentroider(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict | None,
-        random_params: dict | None = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[dict, dict, dict | None]:
         """Soft-centroid ``data["intensity"]`` and add peak weights, profile, and centroid.
@@ -159,7 +159,7 @@ class SoftCentroider(OperatorModule):
             data: Dictionary containing ``"intensity"`` ``(n_points,)`` for one spectrum.
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
-            random_params: Optional random parameters (unused).
+            key: Unused.
             stats: Optional statistics dictionary (unused).
 
         Returns:
@@ -167,7 +167,7 @@ class SoftCentroider(OperatorModule):
             ``"peak_weights"`` (soft mask in ``[0, 1]``), ``"centroided"`` (the gated
             profile), and ``"centroid_mz"`` (the intensity-weighted peak position).
         """
-        del random_params, stats
+        del key, stats
         config: SoftCentroiderConfig = self.config
         snthresh = jax.nn.softplus(self.raw_snthresh[...])
         peak_width = jax.nn.softplus(self.raw_peak_width[...])

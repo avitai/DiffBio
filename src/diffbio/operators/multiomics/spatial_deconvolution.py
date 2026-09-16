@@ -246,7 +246,7 @@ class SpatialDeconvolution(TemperatureOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply spatial deconvolution.
@@ -258,7 +258,7 @@ class SpatialDeconvolution(TemperatureOperator):
                 - "coordinates": Spot coordinates (n_spots, 2)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used
+            key: Unused.
             stats: Not used
 
         Returns:

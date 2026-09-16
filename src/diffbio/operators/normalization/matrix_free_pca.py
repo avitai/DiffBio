@@ -163,7 +163,7 @@ class MatrixFreePCA(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict | None,
-        random_params: dict | None = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[dict, dict, dict | None]:
         """Project ``data["features"]`` onto its leading principal components.
@@ -172,14 +172,14 @@ class MatrixFreePCA(OperatorModule):
             data: Dictionary containing ``"features"`` ``(n_samples, n_features)``.
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
-            random_params: Optional random parameters (unused).
+            key: Unused.
             stats: Optional statistics dictionary (unused).
 
         Returns:
             Tuple of ``(output_data, state, metadata)`` where ``output_data`` adds ``"pca"``
             scores, ``"pca_components"`` loadings, and ``"explained_variance"``.
         """
-        del random_params, stats
+        del key, stats
         config: MatrixFreePCAConfig = self.config
         scores, components, explained_variance = matfree_pca(
             data["features"],

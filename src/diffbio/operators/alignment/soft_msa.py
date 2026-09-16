@@ -339,7 +339,7 @@ class SoftProgressiveMSA(TemperatureOperator):
         data: PyTree,
         state: PyTree,
         metadata: dict[str, Any] | None,
-        random_params: Any = None,
+        key: jax.Array | None = None,
         stats: dict[str, Any] | None = None,
     ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
         """Apply soft progressive MSA.
@@ -349,7 +349,7 @@ class SoftProgressiveMSA(TemperatureOperator):
                 - "sequences": Input sequences (n_seqs, seq_len, alphabet_size)
             state: Element state (passed through unchanged)
             metadata: Element metadata (passed through unchanged)
-            random_params: Not used
+            key: Unused.
             stats: Not used
 
         Returns:

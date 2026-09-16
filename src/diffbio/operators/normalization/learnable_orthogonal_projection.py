@@ -21,6 +21,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
@@ -106,7 +107,7 @@ class LearnableOrthogonalProjection(OperatorModule):
         data: dict[str, Any],
         state: dict[str, Any],
         metadata: dict | None,
-        random_params: dict | None = None,
+        key: jax.Array | None = None,
         stats: dict | None = None,
     ) -> tuple[dict, dict, dict | None]:
         """Project ``data["features"]`` onto the learnable orthonormal subspace.
@@ -115,13 +116,13 @@ class LearnableOrthogonalProjection(OperatorModule):
             data: Dictionary containing ``"features"`` ``(n_samples, n_features)``.
             state: Operator state dictionary.
             metadata: Optional metadata dictionary.
-            random_params: Optional random parameters (unused).
+            key: Unused.
             stats: Optional statistics dictionary (unused).
 
         Returns:
             Tuple of ``(output_data, state, metadata)`` where ``output_data`` adds
             ``"projection"`` ``(n_samples, n_components)``.
         """
-        del random_params, stats
+        del key, stats
         embedded = jnp.asarray(data["features"]) @ self.orthonormal_basis()
         return {**data, "projection": embedded + self.projection_bias[...]}, state, metadata

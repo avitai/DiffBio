@@ -102,9 +102,8 @@ class TestVAENormalizer:
         mean = jnp.zeros(10)
         logvar = jnp.zeros(10)
 
-        # Uses inherited reparameterize() from EncoderDecoderOperator
-        # (uses self.rngs internally, no key argument)
-        z = op.reparameterize(mean, logvar)
+        # Inherited from EncoderDecoderOperator; apply passes the record's key
+        z = op.reparameterize(mean, logvar, jax.random.key(0))
 
         assert z.shape == (10,)
         # z should be different from mean due to sampling
@@ -117,7 +116,7 @@ class TestVAENormalizer:
         config = VAENormalizerConfig(n_genes=100, latent_dim=10)
         op = VAENormalizer(config, rngs=rngs)
 
-        transformed_data, state, metadata = op.apply(sample_counts, {}, None, None)
+        transformed_data, state, metadata = op.apply(sample_counts, {}, None, jax.random.key(0))
 
         assert "normalized" in transformed_data
         assert transformed_data["normalized"].shape == sample_counts["counts"].shape
@@ -129,7 +128,7 @@ class TestVAENormalizer:
         config = VAENormalizerConfig(n_genes=100, latent_dim=10)
         op = VAENormalizer(config, rngs=rngs)
 
-        transformed_data, state, metadata = op.apply(sample_counts, {}, None, None)
+        transformed_data, state, metadata = op.apply(sample_counts, {}, None, jax.random.key(0))
 
         assert "latent_z" in transformed_data
         assert transformed_data["latent_z"].shape == (10,)
@@ -141,7 +140,7 @@ class TestVAENormalizer:
         config = VAENormalizerConfig(n_genes=100, latent_dim=10)
         op = VAENormalizer(config, rngs=rngs)
 
-        transformed_data, state, metadata = op.apply(sample_counts, {}, None, None)
+        transformed_data, state, metadata = op.apply(sample_counts, {}, None, jax.random.key(0))
 
         assert "log_rate" in transformed_data
         assert "latent_mean" in transformed_data
@@ -154,7 +153,7 @@ class TestVAENormalizer:
         config = VAENormalizerConfig(n_genes=100, latent_dim=10)
         op = VAENormalizer(config, rngs=rngs)
 
-        transformed_data, _, _ = op.apply(sample_counts, {}, None, None)
+        transformed_data, _, _ = op.apply(sample_counts, {}, None, jax.random.key(0))
 
         assert "counts" in transformed_data
         assert jnp.allclose(transformed_data["counts"], sample_counts["counts"])
@@ -209,7 +208,7 @@ class TestGradientFlow:
 
         def loss_fn(c: jax.Array) -> jax.Array:
             data = {"counts": c, "library_size": library_size}
-            transformed, _, _ = op.apply(data, state, None, None)
+            transformed, _, _ = op.apply(data, state, None, jax.random.key(0))
             return jnp.sum(transformed["normalized"])
 
         grad = jax.grad(loss_fn)(counts)
@@ -243,7 +242,7 @@ class TestGradientFlow:
 
         @nnx.value_and_grad
         def loss_fn(model: VAENormalizer) -> jax.Array:
-            transformed, _, _ = model.apply(data, state, None, None)
+            transformed, _, _ = model.apply(data, state, None, jax.random.key(0))
             return jnp.sum(transformed["normalized"])
 
         loss, grads = loss_fn(op)
@@ -262,7 +261,7 @@ class TestGradientFlow:
 
         @nnx.value_and_grad
         def loss_fn(model: VAENormalizer) -> jax.Array:
-            transformed, _, _ = model.apply(data, state, None, None)
+            transformed, _, _ = model.apply(data, state, None, jax.random.key(0))
             return jnp.sum(transformed["normalized"])
 
         loss, grads = loss_fn(op)
@@ -287,7 +286,7 @@ class TestJITCompatibility:
         def jit_apply(
             data: dict[str, jax.Array], state: dict
         ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
-            return op.apply(data, state, None, None)
+            return op.apply(data, state, None, jax.random.key(0))
 
         transformed, new_state, metadata = jit_apply(data, state)
         assert transformed["normalized"].shape == counts.shape
@@ -320,7 +319,7 @@ class TestEdgeCases:
         library_size = jnp.array(1.0)  # Avoid division by zero
         data = {"counts": counts, "library_size": library_size}
 
-        transformed, _, _ = op.apply(data, {}, None, None)
+        transformed, _, _ = op.apply(data, {}, None, jax.random.key(0))
         assert transformed["normalized"].shape == (100,)
         assert jnp.all(jnp.isfinite(transformed["normalized"]))
 
@@ -333,7 +332,7 @@ class TestEdgeCases:
         library_size = jnp.sum(counts)
         data = {"counts": counts, "library_size": library_size}
 
-        transformed, _, _ = op.apply(data, {}, None, None)
+        transformed, _, _ = op.apply(data, {}, None, jax.random.key(0))
         assert transformed["normalized"].shape == (100,)
         assert jnp.all(jnp.isfinite(transformed["normalized"]))
 
@@ -346,7 +345,7 @@ class TestEdgeCases:
         library_size = jnp.sum(counts)
         data = {"counts": counts, "library_size": library_size}
 
-        transformed, _, _ = op.apply(data, {}, None, None)
+        transformed, _, _ = op.apply(data, {}, None, jax.random.key(0))
         assert transformed["normalized"].shape == (100,)
         assert jnp.all(jnp.isfinite(transformed["normalized"]))
 
@@ -359,7 +358,7 @@ class TestEdgeCases:
         library_size = jnp.sum(counts)
         data = {"counts": counts, "library_size": library_size}
 
-        transformed, _, _ = op.apply(data, {}, None, None)
+        transformed, _, _ = op.apply(data, {}, None, jax.random.key(0))
         assert transformed["latent_z"].shape == (2,)
 
     def test_large_latent_dim(self, rngs: nnx.Rngs) -> None:
@@ -371,7 +370,7 @@ class TestEdgeCases:
         library_size = jnp.sum(counts)
         data = {"counts": counts, "library_size": library_size}
 
-        transformed, _, _ = op.apply(data, {}, None, None)
+        transformed, _, _ = op.apply(data, {}, None, jax.random.key(0))
         assert transformed["latent_z"].shape == (50,)
 
 
@@ -582,7 +581,7 @@ class TestZINBJIT:
         def jit_apply(
             data: dict[str, jax.Array], state: dict
         ) -> tuple[PyTree, PyTree, dict[str, Any] | None]:
-            return zinb_op.apply(data, state, None, None)
+            return zinb_op.apply(data, state, None, jax.random.key(0))
 
         transformed, _, _ = jit_apply(data, {})
         assert transformed["normalized"].shape == (N_GENES,)
@@ -657,7 +656,7 @@ class TestPoissonUnchanged:
         library_size = jnp.sum(counts)
         data = {"counts": counts, "library_size": library_size}
 
-        transformed, _, _ = op.apply(data, {}, None, None)
+        transformed, _, _ = op.apply(data, {}, None, jax.random.key(0))
 
         expected_keys = {
             "counts",
