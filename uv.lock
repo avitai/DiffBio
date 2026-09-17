@@ -1246,7 +1246,7 @@ requires-dist = [
     { name = "scipy", specifier = ">=1.10" },
     { name = "shellcheck-py", marker = "extra == 'dev'", specifier = ">=0.10.0.1" },
     { name = "squidpy", marker = "extra == 'benchmark'", specifier = ">=1.4" },
-    { name = "substrax", specifier = ">=0.1.5" },
+    { name = "substrax", specifier = ">=0.1.7" },
     { name = "tabulate", marker = "extra == 'benchmark'", specifier = ">=0.9" },
     { name = "torch", marker = "extra == 'torch-io'", specifier = ">=1.13.0" },
     { name = "wemake-python-styleguide", marker = "extra == 'dev'", specifier = ">=1.0" },

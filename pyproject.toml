@@ -44,8 +44,9 @@ dependencies = [
   "opifex>=0.2.2",
   # Calibrax - benchmarking, comparison, profiling, and regression control
   "calibrax>=0.1.5",
-  # Substrax - device identity, meshes and checkpoint store shared by the siblings
-  "substrax>=0.1.5",
+  # Substrax - device identity, meshes, runtime settings and checkpoint store shared by the
+  # siblings; 0.1.6 adds substrax.runtime, substrax.artifacts and substrax.testing.
+  "substrax>=0.1.7",
   # JAX ecosystem
   "beartype>=0.14.1",
   "chex>=0.1.7",

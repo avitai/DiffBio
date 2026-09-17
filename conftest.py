@@ -7,6 +7,7 @@ import warnings
 from pathlib import Path
 
 import pytest
+from substrax.runtime import merge_xla_flags
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,11 @@ def setup_jax_environment() -> None:
 
     # Disable CUDA plugin validation to bypass cuSPARSE check
     os.environ["JAX_CUDA_PLUGIN_VERIFY"] = "false"
-    os.environ["XLA_FLAGS"] = "--xla_gpu_strict_conv_algorithm_picker=false"
+    # Merged by flag name, so a caller's flags (an emulated device count, for one) survive
+    # and a different value for the same flag raises rather than being replaced.
+    os.environ["XLA_FLAGS"] = merge_xla_flags(
+        os.environ.get("XLA_FLAGS", ""), ["--xla_gpu_strict_conv_algorithm_picker=false"]
+    )
 
 
 def pytest_configure(config):
