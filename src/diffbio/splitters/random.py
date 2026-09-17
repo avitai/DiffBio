@@ -78,16 +78,7 @@ class RandomSplitter(SplitterModule):
         train_end = int(self.config.train_frac * n)
         valid_end = int((self.config.train_frac + self.config.valid_frac) * n)
 
-        # Use JAX RNG for reproducibility
-        if self.config.seed is not None:
-            key = jax.random.key(self.config.seed)
-        elif self.rngs is not None and "split" in self.rngs:
-            # Subscript, not attribute: ``Rngs.split`` is also a method that takes a count.
-            key = self.rngs["split"]()
-        else:
-            key = jax.random.key(0)
-
-        indices = jax.random.permutation(key, jnp.arange(n))
+        indices = jax.random.permutation(self._split_key(), jnp.arange(n))
 
         return SplitResult(
             train_indices=indices[:train_end],
@@ -109,12 +100,7 @@ class RandomSplitter(SplitterModule):
         """
         n = len(data_source)
 
-        if self.config.seed is not None:
-            key = jax.random.key(self.config.seed)
-        else:
-            key = jax.random.key(0)
-
-        indices = jax.random.permutation(key, jnp.arange(n))
+        indices = jax.random.permutation(self._split_key(), jnp.arange(n))
         fold_size = n // k
 
         folds = []
@@ -188,11 +174,7 @@ class StratifiedSplitter(SplitterModule):
         unique_labels = jnp.unique(labels)
         class_indices = {int(label): jnp.where(labels == label)[0] for label in unique_labels}
 
-        # Use JAX RNG
-        if self.config.seed is not None:
-            key = jax.random.key(self.config.seed)
-        else:
-            key = jax.random.key(0)
+        key = self._split_key()
 
         train_inds: list[jnp.ndarray] = []
         valid_inds: list[jnp.ndarray] = []

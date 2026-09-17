@@ -21,6 +21,7 @@ import scipy.sparse as sp
 import snapatac2 as snap
 from calibrax.metrics.functional.classification import f1_score
 from flax import nnx
+from substrax.optim import OptimizerConfig
 
 from benchmarks.singlecell._gate2_arms import (
     _embedding_probe,
@@ -152,7 +153,15 @@ def main() -> None:
     }
     for seed in SEEDS:
         cfg = MiniBatchConfig(
-            batch_size=2048, n_epochs=60, learning_rate=1e-2, weight_decay=5e-2, seed=seed
+            batch_size=2048,
+            n_epochs=60,
+            optimizer=OptimizerConfig(
+                optimizer_type="adamw",
+                learning_rate=1e-2,
+                weight_decay=5e-2,
+                gradient_clip_norm=1.0,
+            ),
+            seed=seed,
         )
         for k in K_VALUES:
             loadings_k = reduction.loadings[:, :k]

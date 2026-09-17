@@ -132,7 +132,7 @@ class TestSingleCellPipeline:
             hidden_dims=HIDDEN_DIMS,
         )
         annotator = DifferentiableCellAnnotator(ann_config, rngs=rngs)
-        ann_data, _, _ = annotator.apply({"counts": counts}, {}, None)
+        ann_data, _, _ = annotator.apply({"counts": counts}, {}, None, key=jax.random.key(0))
 
         assert ann_data["cell_type_probabilities"].shape == (N_CELLS, N_CELL_TYPES)
         assert ann_data["cell_type_labels"].shape == (N_CELLS,)
@@ -297,7 +297,7 @@ class TestSingleCellPipeline:
 
         def loss_fn(counts: jax.Array) -> jax.Array:
             """Loss on cell-type probabilities."""
-            data, _, _ = annotator.apply({"counts": counts}, {}, None)
+            data, _, _ = annotator.apply({"counts": counts}, {}, None, key=jax.random.key(0))
             return jnp.sum(data["cell_type_probabilities"])
 
         key = jax.random.key(6)

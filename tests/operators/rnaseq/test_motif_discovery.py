@@ -80,12 +80,12 @@ class TestDifferentiableMotifDiscovery:
             config.alphabet_size,
         )
 
-    def test_initialization_without_rngs(self, config):
-        """Test initialization without providing RNGs."""
+    def test_requires_rngs(self, config):
+        """The PWM logits draw from ``rngs``, so it is required."""
         from diffbio.operators.rnaseq.motif_discovery import DifferentiableMotifDiscovery
 
-        motif_op = DifferentiableMotifDiscovery(config, rngs=None)
-        assert motif_op is not None
+        with pytest.raises(TypeError, match="rngs"):
+            DifferentiableMotifDiscovery(config)  # type: ignore[call-arg]
 
     def test_apply_single_sequence(self, motif_op, config):
         """Test motif scanning on a single sequence."""

@@ -358,7 +358,7 @@ class TestEdgeCases:
             atol=1e-5,
         )
 
-    def test_initialization_without_rngs(self, small_config) -> None:
-        """Test that operator can be initialized without rngs."""
-        op = CellTypeAwareVariantClassifier(small_config, rngs=None)
-        assert op is not None
+    def test_requires_rngs(self, small_config) -> None:
+        """The per-type heads draw their parameters from ``rngs``, so it is required."""
+        with pytest.raises(TypeError, match="rngs"):
+            CellTypeAwareVariantClassifier(small_config)  # type: ignore[call-arg]

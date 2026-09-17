@@ -19,7 +19,8 @@ from jaxtyping import Array, Float, PyTree
 
 from diffbio.configs import ClassifierConfig
 from diffbio.constants import DEFAULT_PILEUP_WINDOW_SIZE, DNA_ALPHABET_SIZE
-from diffbio.utils.nn_utils import ARTIFEX_RELU_MLP_KWARGS, ensure_rngs
+from diffbio.utils.nn_utils import ARTIFEX_RELU_MLP_KWARGS
+
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +219,7 @@ class CellTypeAwareVariantClassifier(OperatorModule):
         self,
         config: CellTypeAwareVariantClassifierConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialize cell-type-aware variant classifier.
@@ -229,8 +230,6 @@ class CellTypeAwareVariantClassifier(OperatorModule):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        rngs = ensure_rngs(rngs)
 
         input_dim = config.pileup_channels * config.pileup_width
 

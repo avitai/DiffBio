@@ -6,21 +6,22 @@ optimization of DiffBio pipelines using Flax NNX patterns.
 
 import logging
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable
 
 import jax
 import jax.numpy as jnp
-import optax
-from artifex.generative_models.core.configuration.optimizer_config import (
-    OptimizerConfig,
-)
-from artifex.generative_models.training.optimizers.factory import create_optimizer
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float
+from substrax.optim import OptimizerConfig, create_optimizer
 
 logger = logging.getLogger(__name__)
+
+
+def default_training_optimizer() -> OptimizerConfig:
+    """The trainer's default optimizer: Adam at 1e-3 with a unit global-norm clip."""
+    return OptimizerConfig(optimizer_type="adam", learning_rate=1e-3, gradient_clip_norm=1.0)
 
 
 @dataclass(frozen=True)
@@ -28,16 +29,16 @@ class TrainingConfig:
     """Configuration for training loop.
 
     Attributes:
-        learning_rate: Learning rate for optimizer
+        optimizer: The optimizer the trainer builds, a ``substrax.optim.OptimizerConfig``
+            (type, learning rate or schedule, clipping, weight decay); substrax refuses
+            invalid values at construction.
         num_epochs: Number of training epochs
         log_every: Log metrics every N steps
-        grad_clip_norm: Maximum gradient norm (None to disable)
     """
 
-    learning_rate: float = 1e-3
+    optimizer: OptimizerConfig = field(default_factory=default_training_optimizer)
     num_epochs: int = 100
     log_every: int = 10
-    grad_clip_norm: float | None = 1.0
 
 
 @dataclass
@@ -59,31 +60,6 @@ class TrainingState:
     def __post_init__(self):
         if self.loss_history is None:
             self.loss_history = []
-
-
-def create_optax_optimizer(
-    config: TrainingConfig,
-) -> optax.GradientTransformation:
-    """Create an Adam optimizer with optional gradient clipping.
-
-    Delegates construction to the shared artifex optimizer factory so DiffBio
-    reuses one optimizer-building path across the ecosystem. Behaviourally
-    equivalent to
-    ``optax.chain(clip_by_global_norm(grad_clip_norm), adam(learning_rate))``.
-
-    Args:
-        config: Training configuration
-
-    Returns:
-        Optax optimizer
-    """
-    optimizer_config = OptimizerConfig(
-        name="diffbio_adam",
-        optimizer_type="adam",
-        learning_rate=config.learning_rate,
-        gradient_clip_norm=config.grad_clip_norm,
-    )
-    return create_optimizer(optimizer_config)
 
 
 def cross_entropy_loss(
@@ -144,9 +120,8 @@ class Trainer:
         self.pipeline = pipeline
         self.config = config
 
-        # Create NNX optimizer (holds mutable reference to model)
-        optax_opt = create_optax_optimizer(config)
-        self.optimizer = nnx.Optimizer(pipeline, optax_opt, wrt=nnx.Param)
+        # The optimizer is built by substrax from the configured spec
+        self.optimizer = create_optimizer(pipeline, config.optimizer)
 
         # Training state
         self.training_state = TrainingState()

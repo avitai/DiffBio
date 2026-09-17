@@ -23,11 +23,11 @@ from diffbio.core import soft_ops
 from diffbio.operators.drug_discovery._graph_utils import (
     attach_fingerprint,
     build_encoder,
-    ensure_rngs,
     graph_sum_readout,
     initialize_graph_encoder,
     unpack_graph_inputs,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ class DifferentiableMolecularFingerprint(OperatorModule):
         self,
         config: MolecularFingerprintConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize fingerprint operator.
@@ -234,7 +234,7 @@ class CircularFingerprintOperator(OperatorModule):
         self,
         config: CircularFingerprintConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
     ):
         """Initialize CircularFingerprintOperator.
 
@@ -243,8 +243,6 @@ class CircularFingerprintOperator(OperatorModule):
             rngs: Flax NNX random number generators.
         """
         super().__init__(config, rngs=rngs)
-
-        rngs = ensure_rngs(rngs)
 
         if config.differentiable:
             # Message passing layers for substructure aggregation
@@ -415,7 +413,8 @@ class CircularFingerprintOperator(OperatorModule):
 def create_ecfp4_operator(
     n_bits: int = 2048,
     differentiable: bool = True,
-    rngs: nnx.Rngs | None = None,
+    *,
+    rngs: nnx.Rngs,
 ) -> CircularFingerprintOperator:
     """Create ECFP4 (radius=2) fingerprint operator.
 
@@ -434,13 +433,14 @@ def create_ecfp4_operator(
         n_bits=n_bits,
         differentiable=differentiable,
     )
-    return CircularFingerprintOperator(config, rngs=rngs or nnx.Rngs(0))
+    return CircularFingerprintOperator(config, rngs=rngs)
 
 
 def create_ecfp6_operator(
     n_bits: int = 2048,
     differentiable: bool = True,
-    rngs: nnx.Rngs | None = None,
+    *,
+    rngs: nnx.Rngs,
 ) -> CircularFingerprintOperator:
     """Create ECFP6 (radius=3) fingerprint operator.
 
@@ -459,13 +459,14 @@ def create_ecfp6_operator(
         n_bits=n_bits,
         differentiable=differentiable,
     )
-    return CircularFingerprintOperator(config, rngs=rngs or nnx.Rngs(0))
+    return CircularFingerprintOperator(config, rngs=rngs)
 
 
 def create_fcfp4_operator(
     n_bits: int = 2048,
     differentiable: bool = True,
-    rngs: nnx.Rngs | None = None,
+    *,
+    rngs: nnx.Rngs,
 ) -> CircularFingerprintOperator:
     """Create FCFP4 (feature-based, radius=2) fingerprint operator.
 
@@ -486,4 +487,4 @@ def create_fcfp4_operator(
         use_features=True,
         differentiable=differentiable,
     )
-    return CircularFingerprintOperator(config, rngs=rngs or nnx.Rngs(0))
+    return CircularFingerprintOperator(config, rngs=rngs)

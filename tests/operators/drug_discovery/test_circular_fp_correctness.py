@@ -28,7 +28,7 @@ from pathlib import Path
 
 import jax.numpy as jnp
 import numpy as np
-
+from flax import nnx
 
 # DiffBio imports
 from diffbio.operators.drug_discovery import (
@@ -219,7 +219,7 @@ def run_diffbio_fingerprints(
         n_bits=n_bits,
         differentiable=False,  # Use RDKit for exact comparison
     )
-    fp_op = CircularFingerprintOperator(config)
+    fp_op = CircularFingerprintOperator(config, rngs=nnx.Rngs(0))
 
     fingerprints = []
     start_time = time.perf_counter()

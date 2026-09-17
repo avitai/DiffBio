@@ -19,6 +19,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import numpy as np
+from substrax.optim import OptimizerConfig
 
 from benchmarks._classification import stratified_label_split
 from benchmarks.singlecell._gate2_arms import (
@@ -27,6 +28,7 @@ from benchmarks.singlecell._gate2_arms import (
     run_learnable_projection_arm,
 )
 from diffbio.pipelines.minibatch_training import MiniBatchConfig
+
 
 logger = logging.getLogger(__name__)
 
@@ -172,8 +174,12 @@ def gate2_comparison(
         config = MiniBatchConfig(
             batch_size=batch_size,
             n_epochs=n_epochs,
-            learning_rate=learning_rate,
-            weight_decay=weight_decay,
+            optimizer=OptimizerConfig(
+                optimizer_type="adamw",
+                learning_rate=learning_rate,
+                weight_decay=weight_decay,
+                gradient_clip_norm=1.0,
+            ),
             seed=seed,
         )
         frozen, joint = _run_seed(
@@ -265,8 +271,12 @@ def sweep_frozen_dimensions(
             config = MiniBatchConfig(
                 batch_size=batch_size,
                 n_epochs=n_epochs,
-                learning_rate=learning_rate,
-                weight_decay=weight_decay,
+                optimizer=OptimizerConfig(
+                    optimizer_type="adamw",
+                    learning_rate=learning_rate,
+                    weight_decay=weight_decay,
+                    gradient_clip_norm=1.0,
+                ),
                 seed=seed,
             )
             train_indices, test_indices = stratified_label_split(

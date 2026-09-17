@@ -82,15 +82,12 @@ class FNOPeakCaller(OperatorModule):
         self,
         config: FNOPeakCallerConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialize FNO peak caller."""
         super().__init__(config, rngs=rngs, name=name)
         self.config: FNOPeakCallerConfig = config
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         # FNO: 1 input channel (coverage) -> 1 output channel (peak score)
         self.fno = FourierNeuralOperator(

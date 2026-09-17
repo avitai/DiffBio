@@ -28,6 +28,7 @@ import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
+from substrax.rng import key_from
 
 from diffbio.core.base_operators import TemperatureOperator
 
@@ -101,7 +102,7 @@ class ChromatinStateAnnotator(TemperatureOperator):
         ```
     """
 
-    def __init__(self, config: ChromatinStateConfig, *, rngs: nnx.Rngs | None = None):
+    def __init__(self, config: ChromatinStateConfig, *, rngs: nnx.Rngs):
         """Initialize the chromatin state annotator.
 
         Args:
@@ -111,15 +112,14 @@ class ChromatinStateAnnotator(TemperatureOperator):
         super().__init__(config, rngs=rngs)
         self.config = config
 
-        if rngs is None:
-            rngs = nnx.Rngs(0)
-
         num_states = config.num_states
         num_marks = config.num_marks
 
         # Initialize transition matrix (log-space)
         # Start with slight preference for self-transitions
-        key = rngs.params() if hasattr(rngs, "params") else jax.random.key(0)
+        key = key_from(
+            rngs, streams=("params", "default"), context="ChromatinStateAnnotator parameters"
+        )
         k1, k2, k3, k4, k5 = jax.random.split(key, 5)
 
         transition_init = jax.random.normal(k1, (num_states, num_states)) * 0.1

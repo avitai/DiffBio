@@ -73,12 +73,12 @@ class TestChromatinStateAnnotator:
         assert hasattr(annotator, "emission_logits")
         assert hasattr(annotator, "initial_logits")
 
-    def test_initialization_without_rngs(self, config):
-        """Test initialization without providing RNGs."""
+    def test_requires_rngs(self, config):
+        """The transition, emission and initial logits draw from ``rngs``, so it is required."""
         from diffbio.operators.epigenomics.chromatin_state import ChromatinStateAnnotator
 
-        annotator = ChromatinStateAnnotator(config, rngs=None)
-        assert annotator is not None
+        with pytest.raises(TypeError, match="rngs"):
+            ChromatinStateAnnotator(config)  # type: ignore[call-arg]
 
     def test_apply_single_sequence(self, annotator, config):
         """Test apply with single sequence input."""

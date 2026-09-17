@@ -93,7 +93,7 @@ class DifferentiableHarmony(TemperatureOperator):
         self,
         config: BatchCorrectionConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the batch correction operator.
@@ -105,7 +105,6 @@ class DifferentiableHarmony(TemperatureOperator):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        rngs = rngs or nnx.Rngs(0)
         # Temperature is now managed by TemperatureOperator via self._temperature
 
         # Initialize cluster centroids

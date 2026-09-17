@@ -16,9 +16,11 @@ import numpy as np
 from calibrax.metrics.functional.classification import f1_score
 from flax import nnx
 
+
 _DATA = os.environ.get("DIFFBIO_DATA_ROOT", "/mnt/ssd2/Data")
 os.environ.setdefault("HF_HOME", f"{_DATA}/huggingface")
 from datasets import load_dataset  # noqa: E402
+from substrax.optim import OptimizerConfig
 
 from benchmarks.singlecell._gate2_arms import (  # noqa: E402
     _embedding_probe,
@@ -34,6 +36,7 @@ from diffbio.operators.normalization.learnable_projection import (  # noqa: E402
 from diffbio.pipelines.minibatch_training import MiniBatchConfig, train_minibatch  # noqa: E402
 from diffbio.reductions import fit_pca_reduction  # noqa: E402
 from diffbio.sequences.kmer import kmer_featurize  # noqa: E402
+
 
 OUT = "benchmarks/results/crossmodality/audit_overfit.json"
 K = 5
@@ -58,7 +61,12 @@ def _frozen(reduction, splits, ys, n_classes, seed):
     }
     probe = _embedding_probe(K, n_classes, 128, seed)
     cfg = MiniBatchConfig(
-        batch_size=1024, n_epochs=60, learning_rate=1e-2, weight_decay=5e-2, seed=seed
+        batch_size=1024,
+        n_epochs=60,
+        optimizer=OptimizerConfig(
+            optimizer_type="adamw", learning_rate=1e-2, weight_decay=5e-2, gradient_clip_norm=1.0
+        ),
+        seed=seed,
     )
     train_minibatch(
         probe, _probe_forward, proj["train"], ys["train"], n_classes=n_classes, config=cfg
@@ -81,7 +89,12 @@ def _joint(reduction, splits, ys, n_classes, seed, n_features):
         _embedding_probe(K, n_classes, 128, seed),
     )
     cfg = MiniBatchConfig(
-        batch_size=1024, n_epochs=60, learning_rate=1e-2, weight_decay=5e-2, seed=seed
+        batch_size=1024,
+        n_epochs=60,
+        optimizer=OptimizerConfig(
+            optimizer_type="adamw", learning_rate=1e-2, weight_decay=5e-2, gradient_clip_norm=1.0
+        ),
+        seed=seed,
     )
     train_minibatch(
         model,

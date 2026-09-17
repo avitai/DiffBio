@@ -111,12 +111,12 @@ class TestDifferentiableUMAP:
         assert isinstance(umap.embedding_head.projection_backbone, MLP)
         assert hasattr(umap.embedding_head, "curve_params")
 
-    def test_initialization_without_rngs(self, config):
-        """Test initialization without providing RNGs."""
+    def test_requires_rngs(self, config):
+        """The embedding is initialised from ``rngs``, so it is required."""
         from diffbio.operators.normalization.umap import DifferentiableUMAP
 
-        umap = DifferentiableUMAP(config, rngs=None)
-        assert umap is not None
+        with pytest.raises(TypeError, match="rngs"):
+            DifferentiableUMAP(config)  # type: ignore[call-arg]
 
     def test_apply_reduces_dimensions(self, umap, config):
         """Test that apply reduces dimensions correctly."""

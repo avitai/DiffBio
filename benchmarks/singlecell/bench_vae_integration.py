@@ -36,6 +36,7 @@ from diffbio.sources.immune_human import (
     ImmuneHumanSource,
 )
 
+
 logger = logging.getLogger(__name__)
 
 _CONFIG = DiffBioBenchmarkConfig(
@@ -85,14 +86,7 @@ def _create_train_step(
         ) -> jax.Array:
             """Compute mean ELBO loss over batch."""
 
-            def per_cell_loss(
-                counts_i: jax.Array,
-                lib_i: jax.Array,
-            ) -> jax.Array:
-                return model_inner.compute_elbo_loss(counts_i, lib_i)
-
-            losses = jax.vmap(per_cell_loss)(counts_batch, library_size_batch)
-            return jnp.mean(losses)
+            return model_inner.batch_elbo_loss(counts_batch, library_size_batch)
 
         loss, grads = nnx.value_and_grad(loss_fn, argnums=nnx.DiffState(0, nnx.Param))(m)
         opt.update(m, grads)
@@ -214,7 +208,7 @@ class VAEIntegrationBenchmark(DiffBioBenchmark):
         logger.info("Training VAENormalizer (%d epochs)...", n_epochs)
         optimizer = nnx.Optimizer(
             model,
-            create_benchmark_optimizer(learning_rate=1e-3),
+            create_benchmark_optimizer(model, learning_rate=1e-3),
             wrt=nnx.Param,
         )
         train_step = _create_train_step(model, optimizer)
@@ -255,13 +249,7 @@ class VAEIntegrationBenchmark(DiffBioBenchmark):
         # Loss function for gradient check (dict-based)
         def loss_fn(m: VAENormalizer, d: dict[str, Any]) -> jnp.ndarray:
             """Scalar loss for gradient verification."""
-            c = d["counts"]
-            ls = d["library_size"]
-
-            def per_cell(ci: jax.Array, li: jax.Array) -> jax.Array:
-                return m.compute_elbo_loss(ci, li)
-
-            return jnp.mean(jax.vmap(per_cell)(c, ls))
+            return m.batch_elbo_loss(d["counts"], d["library_size"])
 
         grad_input = {
             "counts": counts,
@@ -276,9 +264,7 @@ class VAEIntegrationBenchmark(DiffBioBenchmark):
             "input_data": grad_input,
             "loss_fn": loss_fn,
             "n_items": n_cells,
-            "iterate_fn": lambda: jax.vmap(lambda ci, li: model.compute_elbo_loss(ci, li))(
-                counts, library_size
-            ),
+            "iterate_fn": lambda: model.batch_elbo_loss(counts, library_size),
             "baselines": baselines,
             "dataset_info": {
                 "name": "immune_human",

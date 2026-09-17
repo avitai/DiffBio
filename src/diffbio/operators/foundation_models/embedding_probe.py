@@ -29,13 +29,10 @@ class LinearEmbeddingProbe(OperatorModule):
         self,
         config: EmbeddingProbeConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         super().__init__(config, rngs=rngs, name=name)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         # Assign ``hidden`` on exactly one code path: a leading ``self.hidden = None``
         # would register the attribute as a static field, so the later Linear

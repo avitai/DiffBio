@@ -8,12 +8,14 @@ Configuration dataclass for training hyperparameters.
 
 ```python
 from diffbio.utils.training import TrainingConfig
+from substrax.optim import OptimizerConfig
 
 config = TrainingConfig(
-    learning_rate=1e-3,     # Adam learning rate
+    optimizer=OptimizerConfig(
+        optimizer_type="adam", learning_rate=1e-3, gradient_clip_norm=1.0
+    ),
     num_epochs=100,         # Number of training epochs
     log_every=10,           # Log every N steps
-    grad_clip_norm=1.0,     # Max gradient norm (None to disable)
 )
 ```
 
@@ -21,10 +23,9 @@ config = TrainingConfig(
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `learning_rate` | float | 1e-3 | Learning rate for Adam optimizer |
+| `optimizer` | `substrax.optim.OptimizerConfig` | Adam at 1e-3, global-norm clip 1.0 | The optimizer the trainer builds: type, learning rate or schedule, clipping, weight decay; substrax refuses invalid values |
 | `num_epochs` | int | 100 | Number of training epochs |
 | `log_every` | int | 10 | Log metrics every N steps |
-| `grad_clip_norm` | float \| None | 1.0 | Maximum gradient norm for clipping |
 
 ## TrainingState
 
@@ -65,7 +66,7 @@ pipeline = create_variant_calling_pipeline(reference_length=100)
 # Create trainer
 trainer = Trainer(
     pipeline=pipeline,
-    config=TrainingConfig(learning_rate=1e-3, num_epochs=50),
+    config=TrainingConfig(num_epochs=50),
 )
 ```
 
@@ -163,49 +164,51 @@ def weighted_cross_entropy(logits, labels, class_weights, num_classes=3):
 
 ## Optimizer Utilities
 
-### create_optax_optimizer
+### The optimizer spec
 
-Create an optax optimizer with optional gradient clipping.
+`TrainingConfig.optimizer` is a `substrax.optim.OptimizerConfig`, and the trainer
+builds its `nnx.Optimizer` from it with `substrax.optim.create_optimizer`; DiffBio keeps
+no optimizer-building code of its own. `default_training_optimizer()` returns the
+default spec (Adam at 1e-3 with a unit global-norm clip).
 
 ```python
-from diffbio.utils.training import create_optax_optimizer, TrainingConfig
+from diffbio.utils.training import TrainingConfig, default_training_optimizer
+from substrax.optim import OptimizerConfig
+
+assert TrainingConfig().optimizer == default_training_optimizer()
 
 config = TrainingConfig(
-    learning_rate=1e-3,
-    grad_clip_norm=1.0,
+    optimizer=OptimizerConfig(
+        optimizer_type="adam", learning_rate=1e-3, gradient_clip_norm=1.0
+    ),
 )
-
-optimizer = create_optax_optimizer(config)
 ```
-
-**Parameters:**
-
-- `config`: TrainingConfig with learning_rate and grad_clip_norm
-
-**Returns:** `optax.GradientTransformation`
 
 ### Custom Optimizers
 
+Every optax alias, schedule and clip the spec supports is described in the spec itself,
+so a custom optimizer is a different `OptimizerConfig`:
+
 ```python
 import optax
+from substrax.optim import OptimizerConfig
 
 # AdamW with weight decay
-optimizer = optax.adamw(learning_rate=1e-3, weight_decay=0.01)
+adamw = OptimizerConfig(optimizer_type="adamw", learning_rate=1e-3, weight_decay=0.01)
 
-# With warmup
+# A schedule is the learning rate; it reaches the update as optax's own step count
 schedule = optax.warmup_cosine_decay_schedule(
     init_value=0.0,
     peak_value=1e-3,
     warmup_steps=1000,
     decay_steps=10000,
 )
-optimizer = optax.adam(schedule)
+warmed = OptimizerConfig(optimizer_type="adam", learning_rate=schedule)
 
-# With gradient clipping
-optimizer = optax.chain(
-    optax.clip_by_global_norm(1.0),
-    optax.adam(1e-3),
-)
+# Clipping comes first in the chain substrax builds
+clipped = OptimizerConfig(optimizer_type="adam", learning_rate=1e-3, gradient_clip_norm=1.0)
+
+config = TrainingConfig(optimizer=warmed)
 ```
 
 ## Data Utilities
@@ -298,10 +301,11 @@ train_targets, val_targets = targets[:400], targets[400:]
 
 # 4. Configure training
 config = TrainingConfig(
-    learning_rate=1e-3,
+    optimizer=OptimizerConfig(
+        optimizer_type="adam", learning_rate=1e-3, gradient_clip_norm=1.0
+    ),
     num_epochs=50,
     log_every=10,
-    grad_clip_norm=1.0,
 )
 
 # 5. Create trainer
@@ -335,6 +339,7 @@ print(f"Best training loss: {trainer.training_state.best_loss:.4f}")
 # 9. Save model
 import pickle
 from flax import nnx
+from substrax.optim import OptimizerConfig
 
 state = nnx.state(trainer.pipeline, nnx.Param)
 with open("trained_model.pkl", "wb") as f:
@@ -356,8 +361,8 @@ from diffbio.utils.training import (
     # Loss functions
     cross_entropy_loss,
 
-    # Optimizer utilities
-    create_optax_optimizer,
+    # Optimizer spec
+    default_training_optimizer,
 
     # Data utilities
     create_synthetic_training_data,

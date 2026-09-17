@@ -23,10 +23,11 @@ import jax
 import jax.numpy as jnp
 from artifex.generative_models.core.losses.divergence import gaussian_kl_divergence
 from datarax.core.config import OperatorConfig
+from substrax.rng import key_from
 
 from diffbio.core import soft_ops
 from diffbio.core.base_operators import TemperatureOperator
-from diffbio.utils.nn_utils import ensure_rngs, get_rng_key
+
 
 logger = logging.getLogger(__name__)
 
@@ -300,7 +301,7 @@ class DifferentiablePeakCaller(TemperatureOperator):
         ```
     """
 
-    def __init__(self, config: PeakCallerConfig, *, rngs: nnx.Rngs | None = None):
+    def __init__(self, config: PeakCallerConfig, *, rngs: nnx.Rngs):
         """Initialize the differentiable peak caller.
 
         Args:
@@ -311,10 +312,8 @@ class DifferentiablePeakCaller(TemperatureOperator):
         self.config = config
 
         # Initialize RNGs if not provided
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
-        self._rngs = ensure_rngs(rngs)
+        self._rngs = rngs
 
         # Learnable threshold parameter
         self.threshold = nnx.Param(jnp.array(config.threshold))
@@ -382,7 +381,9 @@ class DifferentiablePeakCaller(TemperatureOperator):
         vae_input = jnp.log1p(jnp.abs(windows))
 
         # Get RNG key for sampling
-        rng_key = get_rng_key(self._rngs, "sample", fallback_seed=0)
+        rng_key = key_from(
+            self._rngs, streams=("sample", "default"), context="DifferentiablePeakCaller sampling"
+        )
 
         # Run VAE forward pass
         denoised_windows, mean, logvar, _ = self.vae_encoder(vae_input, rng_key)

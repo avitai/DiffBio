@@ -221,7 +221,7 @@ class AttentiveFP(OperatorModule):
         self,
         config: AttentiveFPConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
     ):
         """Initialize AttentiveFP.
 
@@ -230,9 +230,6 @@ class AttentiveFP(OperatorModule):
             rngs: Flax NNX random number generators.
         """
         super().__init__(config, rngs=rngs)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         # Initial linear projection
         self.input_proj = nnx.Linear(config.in_features, config.hidden_dim, rngs=rngs)

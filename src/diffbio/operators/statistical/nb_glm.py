@@ -69,7 +69,7 @@ class DifferentiableNBGLM(OperatorModule):
         self,
         config: NBGLMConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the NB GLM operator.
@@ -80,9 +80,6 @@ class DifferentiableNBGLM(OperatorModule):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         self.n_features = config.n_features
         self.n_covariates = config.n_covariates

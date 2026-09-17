@@ -15,9 +15,8 @@ Two additions matching the depth of the single-cell annotation result:
 Real CATLAS (GSE184462) cells; the frozen LSI is fit on the training split only.
 """
 
-import os
-
 import json
+import os
 
 import jax.numpy as jnp
 import numpy as np
@@ -26,6 +25,7 @@ from calibrax.metrics.functional.classification import f1_score
 from flax import nnx
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
+from substrax.optim import OptimizerConfig
 
 from benchmarks.singlecell._gate2_arms import (
     _embedding_probe,
@@ -75,7 +75,12 @@ def frozen_vs_joint(tr_counts, tr_y, te_scaled, te_y, n_types, seed):
     tr_scaled = reduction.scaled(tr_counts)
     loadings_k = reduction.loadings[:, :K]
     config = MiniBatchConfig(
-        batch_size=2048, n_epochs=60, learning_rate=1e-2, weight_decay=5e-2, seed=seed
+        batch_size=2048,
+        n_epochs=60,
+        optimizer=OptimizerConfig(
+            optimizer_type="adamw", learning_rate=1e-2, weight_decay=5e-2, gradient_clip_norm=1.0
+        ),
+        seed=seed,
     )
 
     xtr_f = jnp.asarray(np.asarray(tr_scaled @ loadings_k, np.float32))

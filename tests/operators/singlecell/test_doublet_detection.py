@@ -676,3 +676,50 @@ class TestSoloLoss:
         # Classifier must receive gradients
         assert jnp.any(grads.classifier_hidden.kernel[...] != 0.0)
         assert jnp.any(grads.classifier_output.kernel[...] != 0.0)
+
+
+class TestSoloRandomnessBelongsToTheRecord:
+    """``apply`` and ``compute_solo_loss`` draw everything from the key they are given.
+
+    A stochastic operator declares its ``sample`` stream to datarax, which draws the
+    per-record keys from it; given a record's key, the operator must not touch the stream.
+    """
+
+    @pytest.fixture()
+    def solo_config(self) -> SoloDetectorConfig:
+        return SoloDetectorConfig(
+            n_genes=N_GENES_SOLO,
+            latent_dim=LATENT_DIM_SOLO,
+            hidden_dims=HIDDEN_DIMS_SOLO,
+            classifier_hidden_dim=8,
+        )
+
+    def test_apply_follows_the_key_and_leaves_the_stream_alone(
+        self, solo_config: SoloDetectorConfig
+    ) -> None:
+        op = DifferentiableSoloDetector(solo_config, rngs=nnx.Rngs(params=0, sample=1))
+        counts = jnp.abs(jax.random.normal(jax.random.key(0), (N_CELLS_SOLO, N_GENES_SOLO))) + 0.1
+        count_before = int(op.rngs.sample.count[...])
+
+        first, _, _ = op.apply({"counts": counts}, {}, None, key=jax.random.key(7))
+        again, _, _ = op.apply({"counts": counts}, {}, None, key=jax.random.key(7))
+        other, _, _ = op.apply({"counts": counts}, {}, None, key=jax.random.key(8))
+
+        assert jnp.array_equal(first["doublet_probabilities"], again["doublet_probabilities"])
+        assert not jnp.array_equal(first["doublet_probabilities"], other["doublet_probabilities"])
+        assert int(op.rngs.sample.count[...]) == count_before
+
+    def test_solo_loss_follows_the_key_and_leaves_the_stream_alone(
+        self, solo_config: SoloDetectorConfig
+    ) -> None:
+        op = DifferentiableSoloDetector(solo_config, rngs=nnx.Rngs(params=0, sample=1))
+        counts = jnp.abs(jax.random.normal(jax.random.key(0), (N_CELLS_SOLO, N_GENES_SOLO))) + 0.1
+        count_before = int(op.rngs.sample.count[...])
+
+        first = op.compute_solo_loss(counts, jax.random.key(7))["total_loss"]
+        again = op.compute_solo_loss(counts, jax.random.key(7))["total_loss"]
+        other = op.compute_solo_loss(counts, jax.random.key(8))["total_loss"]
+
+        assert jnp.array_equal(first, again)
+        assert not jnp.array_equal(first, other)
+        assert int(op.rngs.sample.count[...]) == count_before

@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from artifex.generative_models.core.base import MLP
-from flax import nnx
 import jax
 import jax.numpy as jnp
+from artifex.generative_models.core.base import MLP
+from flax import nnx
 from jaxtyping import Array, Float
 
 from diffbio.losses.statistical_losses import zinb_negative_log_likelihood
-from diffbio.utils.nn_utils import ensure_rngs
 
 
 class CountVAEBackboneMixin:
@@ -32,10 +31,9 @@ class CountVAEBackboneMixin:
         latent_dim: int,
         hidden_dims: list[int],
         n_outputs: int,
-        rngs: nnx.Rngs | None,
+        rngs: nnx.Rngs,
     ) -> None:
         """Initialise the shared count-VAE encoder and decoder layers."""
-        safe_rngs = ensure_rngs(rngs)
 
         encoder_hidden_dims = list(hidden_dims)
         decoder_hidden_dims = list(reversed(hidden_dims))
@@ -47,7 +45,7 @@ class CountVAEBackboneMixin:
                 activation="relu",
                 output_activation="relu",
                 use_batch_norm=False,
-                rngs=safe_rngs,
+                rngs=rngs,
             )
             encoder_out_dim = encoder_hidden_dims[-1]
         else:
@@ -57,12 +55,12 @@ class CountVAEBackboneMixin:
         self.fc_mean = nnx.Linear(
             in_features=encoder_out_dim,
             out_features=latent_dim,
-            rngs=safe_rngs,
+            rngs=rngs,
         )
         self.fc_logvar = nnx.Linear(
             in_features=encoder_out_dim,
             out_features=latent_dim,
-            rngs=safe_rngs,
+            rngs=rngs,
         )
 
         if decoder_hidden_dims:
@@ -72,7 +70,7 @@ class CountVAEBackboneMixin:
                 activation="relu",
                 output_activation="relu",
                 use_batch_norm=False,
-                rngs=safe_rngs,
+                rngs=rngs,
             )
             decoder_out_dim = decoder_hidden_dims[-1]
         else:
@@ -82,17 +80,16 @@ class CountVAEBackboneMixin:
         self.fc_output = nnx.Linear(
             in_features=decoder_out_dim,
             out_features=n_outputs,
-            rngs=safe_rngs,
+            rngs=rngs,
         )
 
     def _init_count_vae_operator(
         self,
         *,
         config: Any,
-        rngs: nnx.Rngs | None,
+        rngs: nnx.Rngs,
     ) -> nnx.Rngs:
-        """Initialise shared count-VAE operator state and return safe RNGs."""
-        safe_rngs = ensure_rngs(rngs)
+        """Initialise shared count-VAE operator state and return the rngs it used."""
         self.n_genes = config.n_genes
         self.stream_name = nnx.static(config.stream_name)
         self._init_count_vae_backbone(
@@ -100,9 +97,9 @@ class CountVAEBackboneMixin:
             latent_dim=config.latent_dim,
             hidden_dims=config.hidden_dims,
             n_outputs=config.n_genes,
-            rngs=safe_rngs,
+            rngs=rngs,
         )
-        return safe_rngs
+        return rngs
 
     def encode(
         self,
@@ -145,7 +142,7 @@ class CountVAEBackbone(CountVAEBackboneMixin, nnx.Module):
         latent_dim: int,
         hidden_dims: list[int],
         n_outputs: int,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
     ) -> None:
         """Initialise a standalone shared count-VAE backbone."""
         super().__init__()

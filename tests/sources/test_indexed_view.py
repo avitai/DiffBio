@@ -187,6 +187,29 @@ class TestIndexedViewSourceShuffle:
 
         assert values_1 == values_2
 
+    def test_shuffle_without_seed_draws_from_the_shuffle_stream(self, mock_data_source):
+        """Without a seed, every shuffle advances the ``shuffle`` stream and draws anew."""
+        from diffbio.sources import IndexedViewSource, IndexedViewSourceConfig
+
+        config = IndexedViewSourceConfig(shuffle=True)
+        view = IndexedViewSource(config, mock_data_source, jnp.arange(10), rngs=nnx.Rngs(shuffle=0))
+
+        first = [int(elem.data["value"]) for elem in view]
+        view.reset()
+        second = [int(elem.data["value"]) for elem in view]
+
+        assert sorted(first) == list(range(10))
+        assert first != second
+
+    def test_shuffle_refuses_without_seed_or_shuffle_stream(self, mock_data_source):
+        """A shuffling view built with neither a seed nor streams has nothing to draw from."""
+        from diffbio.sources import IndexedViewSource, IndexedViewSourceConfig
+
+        config = IndexedViewSourceConfig(shuffle=True)
+
+        with pytest.raises(ValueError, match="no config.seed and no rngs"):
+            IndexedViewSource(config, mock_data_source, jnp.arange(10))
+
     def test_no_shuffle_preserves_order(self, mock_data_source):
         """Test that without shuffle, order matches indices."""
         from diffbio.sources import IndexedViewSource, IndexedViewSourceConfig

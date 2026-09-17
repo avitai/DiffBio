@@ -6,6 +6,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 from flax import nnx
+from substrax.optim import OptimizerConfig
 
 from diffbio.pipelines.minibatch_training import (
     MiniBatchConfig,
@@ -45,12 +46,35 @@ def test_config_rejects_bad_values() -> None:
         MiniBatchConfig(n_epochs=0)
     with pytest.raises(ValueError, match="batch_size"):
         MiniBatchConfig(batch_size=0)
+
+
+def test_the_optimizer_is_substrax_s_and_refuses_what_optax_would_misread() -> None:
+    """The optimizer fields live in substrax's specification, which validates them."""
+    assert MiniBatchConfig().optimizer == OptimizerConfig(
+        optimizer_type="adamw", learning_rate=1.0e-2, gradient_clip_norm=1.0
+    )
     with pytest.raises(ValueError, match="learning_rate"):
-        MiniBatchConfig(learning_rate=0.0)
+        OptimizerConfig(optimizer_type="adamw", learning_rate=0.0)
     with pytest.raises(ValueError, match="weight_decay"):
-        MiniBatchConfig(weight_decay=-0.1)
-    with pytest.raises(ValueError, match="grad_clip_norm"):
-        MiniBatchConfig(grad_clip_norm=0.0)
+        OptimizerConfig(optimizer_type="adamw", learning_rate=1e-2, weight_decay=-0.1)
+    with pytest.raises(ValueError, match="gradient_clip_norm"):
+        OptimizerConfig(optimizer_type="adamw", learning_rate=1e-2, gradient_clip_norm=0.0)
+
+
+def test_the_configured_rate_reaches_the_optimizer() -> None:
+    """A rate set in the configuration is the rate the trainer's optimizer applies."""
+    features, labels = _separable_task(64, 4, 2, seed=0)
+    model = _linear(4, 2, seed=0)
+    config = MiniBatchConfig(
+        batch_size=None,
+        n_epochs=1,
+        optimizer=OptimizerConfig(optimizer_type="adamw", learning_rate=3e-3),
+    )
+    before = jnp.copy(model.kernel[...])
+
+    train_minibatch(model, _forward, features, labels, n_classes=2, config=config)
+
+    assert not jnp.array_equal(before, model.kernel[...])
 
 
 # --- Core learning behavior -----------------------------------------------------
@@ -59,7 +83,14 @@ def test_config_rejects_bad_values() -> None:
 def test_loss_decreases_and_task_is_learned() -> None:
     features, labels = _separable_task(400, 8, 4, seed=0)
     model = _linear(8, 4, seed=1)
-    config = MiniBatchConfig(batch_size=64, n_epochs=40, learning_rate=5e-2, seed=0)
+    config = MiniBatchConfig(
+        batch_size=64,
+        n_epochs=40,
+        optimizer=OptimizerConfig(
+            optimizer_type="adamw", learning_rate=5e-2, gradient_clip_norm=1.0
+        ),
+        seed=0,
+    )
     result = train_minibatch(model, _forward, features, labels, n_classes=4, config=config)
     assert result.loss_history[-1] < result.loss_history[0]
     assert _accuracy(model, features, labels) > 0.9
@@ -119,7 +150,14 @@ def test_different_shuffle_seed_changes_trajectory() -> None:
 def test_full_batch_mode_trains() -> None:
     features, labels = _separable_task(200, 6, 3, seed=9)
     model = _linear(6, 3, seed=10)
-    config = MiniBatchConfig(batch_size=None, n_epochs=60, learning_rate=5e-2, seed=0)
+    config = MiniBatchConfig(
+        batch_size=None,
+        n_epochs=60,
+        optimizer=OptimizerConfig(
+            optimizer_type="adamw", learning_rate=5e-2, gradient_clip_norm=1.0
+        ),
+        seed=0,
+    )
     result = train_minibatch(model, _forward, features, labels, n_classes=3, config=config)
     assert len(result.loss_history) == 60
     assert _accuracy(model, features, labels) > 0.9
@@ -166,7 +204,14 @@ def test_pytree_features_train_and_preserve_int_dtype() -> None:
     # An all-ones integer gate must reach forward_fn as an int tensor, not cast to float.
     features = {"values": values, "gate": jnp.ones((240, 6), dtype=jnp.int32)}
     model = _GatedLinear(6, 3, seed=16)
-    config = MiniBatchConfig(batch_size=48, n_epochs=40, learning_rate=5e-2, seed=0)
+    config = MiniBatchConfig(
+        batch_size=48,
+        n_epochs=40,
+        optimizer=OptimizerConfig(
+            optimizer_type="adamw", learning_rate=5e-2, gradient_clip_norm=1.0
+        ),
+        seed=0,
+    )
     result = train_minibatch(model, _dict_forward, features, labels, n_classes=3, config=config)
 
     assert result.loss_history[-1] < result.loss_history[0]
@@ -181,7 +226,14 @@ def _weight_norm(model: nnx.Linear) -> float:
 def test_aux_loss_fn_regularizes_parameters() -> None:
     """A heavy model-only aux penalty shrinks the weights versus no aux penalty."""
     features, labels = _separable_task(300, 8, 4, seed=21)
-    config = MiniBatchConfig(batch_size=60, n_epochs=40, learning_rate=5e-2, seed=0)
+    config = MiniBatchConfig(
+        batch_size=60,
+        n_epochs=40,
+        optimizer=OptimizerConfig(
+            optimizer_type="adamw", learning_rate=5e-2, gradient_clip_norm=1.0
+        ),
+        seed=0,
+    )
 
     baseline = _linear(8, 4, seed=5)
     train_minibatch(baseline, _forward, features, labels, n_classes=4, config=config)

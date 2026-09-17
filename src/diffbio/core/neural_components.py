@@ -27,17 +27,10 @@ from typing import Literal
 import jax
 import jax.numpy as jnp
 from artifex.generative_models.core.base import MLP
-from flax import nnx
-from jaxtyping import Array, Float, Int
-
-from diffbio.constants import DEFAULT_TEMPERATURE
-from diffbio.core.graph_utils import scatter_aggregate
-from diffbio.utils.nn_utils import get_rng_key
 
 # =============================================================================
 # Re-export from artifex (import when available, provide stubs otherwise)
 # =============================================================================
-
 from artifex.generative_models.core.layers.positional import (
     PositionalEncoding,
     RotaryPositionalEncoding as RoPE,
@@ -47,6 +40,12 @@ from artifex.generative_models.core.layers.residual import (
     Conv1DResidualBlock as ResidualBlock1D,
     Conv2DResidualBlock as ResidualBlock2D,
 )
+from flax import nnx
+from jaxtyping import Array, Float, Int
+from substrax.rng import key_from
+
+from diffbio.constants import DEFAULT_TEMPERATURE
+from diffbio.core.graph_utils import scatter_aggregate
 
 
 __all__ = [
@@ -115,7 +114,9 @@ class GumbelSoftmaxModule(nnx.Module):
         Returns:
             Samples of same shape as logits.
         """
-        key = get_rng_key(self.rngs, "dropout", fallback_seed=0)
+        key = key_from(
+            self.rngs, streams=("dropout", "default"), context="GumbelSoftmaxModule sampling"
+        )
         gumbel_noise = jax.random.gumbel(key, logits.shape)
         perturbed = (logits + gumbel_noise) / self.temperature
         soft_sample = jax.nn.softmax(perturbed, axis=-1)

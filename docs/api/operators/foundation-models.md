@@ -72,7 +72,7 @@ import jax
 import jax.numpy as jnp
 
 # Create encoder
-encoder = create_dna_encoder(hidden_dim=256, num_layers=4)
+encoder = create_dna_encoder(hidden_dim=256, num_layers=4, rngs=nnx.Rngs(0))
 
 # Prepare one-hot encoded sequence
 sequence = jax.nn.one_hot(
@@ -131,7 +131,7 @@ embeddings = result["embeddings"]  # (8, 256)
 import jax
 from flax import nnx
 
-encoder = create_dna_encoder()
+encoder = create_dna_encoder(rngs=nnx.Rngs(0))
 
 def loss_fn(model, sequence):
     result, _, _ = model.apply({"sequence": sequence}, {}, None)

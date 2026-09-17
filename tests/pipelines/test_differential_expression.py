@@ -75,14 +75,14 @@ class TestDifferentialExpressionPipeline:
         assert pipeline.config == config
         assert hasattr(pipeline, "nb_glm")
 
-    def test_initialization_without_rngs(self, config):
-        """Test initialization without providing RNGs."""
+    def test_requires_rngs(self, config):
+        """The pipeline's NB GLM draws its parameters from ``rngs``, so it is required."""
         from diffbio.pipelines.differential_expression import (
             DifferentialExpressionPipeline,
         )
 
-        pipeline = DifferentialExpressionPipeline(config, rngs=None)
-        assert pipeline is not None
+        with pytest.raises(TypeError, match="rngs"):
+            DifferentialExpressionPipeline(config)  # type: ignore[call-arg]
 
     def test_apply_basic(self, pipeline, config):
         """Test basic apply with count matrix."""

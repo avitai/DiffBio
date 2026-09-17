@@ -28,16 +28,17 @@ from flax import nnx
 
 from benchmarks._optimizers import create_benchmark_optimizer
 from benchmarks.singlecell._gate2_arms import (
-    _ProjectionProbe,
     _embedding_probe,
     _probe_forward,
     _project_probe_forward,
+    _ProjectionProbe,
 )
 from diffbio.operators.normalization.learnable_projection import (
     LearnableProjection,
     LearnableProjectionConfig,
 )
 from diffbio.utils.training import cross_entropy_loss
+
 
 _HIDDEN = 128
 
@@ -96,7 +97,9 @@ def measure(
     # because OptimizerConfig defaults it to 0.0 -- this keeps the optimizer identical.
     optimizer = nnx.Optimizer(
         model,
-        create_benchmark_optimizer(learning_rate=1e-3, optimizer_type="adamw", weight_decay=1e-4),
+        create_benchmark_optimizer(
+            model, learning_rate=1e-3, optimizer_type="adamw", weight_decay=1e-4
+        ),
         wrt=nnx.Param,
     )
 

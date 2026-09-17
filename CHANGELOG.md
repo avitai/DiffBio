@@ -9,11 +9,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- No library code seeds its own randomness. The fifty-odd constructors and factories that
+  built an `nnx.Rngs(0)` (or a `params=0, sample=1, dropout=2` set) when handed no `rngs`
+  now require it, as do the fingerprint, similarity, sequence-encoder and RNA-fold factories;
+  every parameter key drawn by hand comes through `substrax.rng.key_from`, which reads the
+  named stream, then NNX's `default`, and raises `MissingRngStreamError` naming the operator
+  when the `nnx.Rngs` holds neither. The transformer and contextual-epigenomics operators no
+  longer fabricate a `dropout` stream from a fixed key when the caller's `Rngs` lacks one.
+  `tests/test_no_literal_seeds.py` reads every module and fails on a seed literal, so the
+  class cannot return.
+- A random or stratified split, a k-fold split and a shuffled `IndexedViewSource` draw from
+  `config.seed` when it is set and otherwise from the module's `split` or `shuffle` stream; a
+  splitter or view with neither raises instead of permuting from seed 0.
+- Randomness that belongs to the record follows the record's key. The Solo doublet scorer
+  drew its pair-sampling and reparameterisation noise from the operator's stream and the cell
+  annotator ignored the key it was handed; both now split the record's key and leave the
+  stream untouched, and a stochastic operator's `apply` handed no key raises. The Langevin
+  integrator is declared stochastic (stream `langevin`) and draws the thermostat's random
+  forces from the record's key instead of a fixed seed.
+- `VAENormalizer.batch_elbo_loss(counts, library_sizes, key=None)` computes the mean ELBO
+  over a batch of cells with one epsilon key per cell, split outside `jax.vmap` from `key`
+  or one draw of the `sample` stream, so a batched ELBO composes with `nnx.jit` and
+  `nnx.grad`; `compute_elbo_loss` keeps its single-cell contract and takes an optional key.
+- `combine_scalar_losses(losses, *, balancer)` takes the `GradNormBalancer` to combine
+  through, or `None` to sum, and `LossBalancingMixin.compute_balanced_loss` builds the
+  balancer from the operator's own `rngs` when `config.use_gradnorm` is set, instead of a
+  fresh balancer from seed 0 on every call.
+- `DifferentiableSecondaryStructure` builds its artifex bond-length and bond-angle
+  constraint extensions once, in `__init__` from its own `rngs`, instead of rebuilding them
+  from seed 0 inside every `apply`.
+- `TrainingConfig` and `JointTrainingConfig` carry their optimizer as `optimizer`, a
+  `substrax.optim.OptimizerConfig` (`default_training_optimizer()`: Adam at 1e-3 with a unit
+  global-norm clip; the joint default is Adam at 1e-2), and `Trainer` and `fit_jointly` build
+  through `substrax.optim.create_optimizer`; the `learning_rate` and `grad_clip_norm` fields
+  and `create_optax_optimizer` are gone, and substrax refuses invalid values.
+- `MiniBatchConfig` carries its optimizer as `optimizer`, a `substrax.optim.OptimizerConfig`
+  (default: AdamW at 1e-2 with a unit global-norm clip), and `train_minibatch` builds it with
+  `substrax.optim.create_optimizer`; the `learning_rate`, `weight_decay` and `grad_clip_norm`
+  fields are gone, and substrax refuses their invalid values. The benchmark helper
+  `create_benchmark_optimizer` takes the model first and builds through `substrax.optim`
+  instead of opifex's removed factory.
 - The test session merges its XLA flag into `XLA_FLAGS` by flag name through
   `substrax.runtime.merge_xla_flags`: a flag the caller exported, such as an emulated
   device count, survives, and a different value for the same flag raises instead of being
-  replaced. It used to overwrite the variable. Requires `substrax>=0.1.7`, the locked
-  release.
+  replaced. It used to overwrite the variable.
+- Requires `substrax>=0.1.9`, `datarax>=0.1.11`, `avitai-artifex>=0.1.9`, `opifex>=0.2.7`
+  and `calibrax>=0.1.6`, the latest release of each; the lock holds them.
+
+### Removed
+
+- `diffbio.utils.nn_utils.ensure_rngs` and `get_rng_key`; operators require `rngs`, and keys
+  come from `substrax.rng.key_from`.
+- `diffbio.utils.training.create_optax_optimizer`; the trainer builds through
+  `substrax.optim.create_optimizer` from `TrainingConfig.optimizer`.
 
 ## [0.1.5] - 2026-09-16
 

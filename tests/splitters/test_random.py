@@ -349,3 +349,45 @@ class TestStratifiedSplitter:
         result2 = splitter2.split(imbalanced_data_source)
 
         assert jnp.array_equal(result1.train_indices, result2.train_indices)
+
+
+# =============================================================================
+# Key ownership
+# =============================================================================
+
+
+class TestSplitKeyOwnership:
+    """A split is drawn from ``config.seed`` or the ``split`` stream, never a fixed seed."""
+
+    def test_split_without_seed_draws_from_the_split_stream(self, mock_data_source):
+        """Without a seed, each split advances the ``split`` stream and draws anew."""
+        from flax import nnx
+
+        from diffbio.splitters import RandomSplitter, RandomSplitterConfig
+
+        splitter = RandomSplitter(RandomSplitterConfig(), rngs=nnx.Rngs(split=0))
+        first = splitter.split(mock_data_source)
+        second = splitter.split(mock_data_source)
+
+        assert sorted(first.train_indices.tolist()) != first.train_indices.tolist()
+        assert not jnp.array_equal(first.train_indices, second.train_indices)
+
+    def test_split_refuses_without_seed_or_split_stream(self, mock_data_source):
+        """A splitter built with neither a seed nor streams has nothing to draw from."""
+        from diffbio.splitters import RandomSplitter, RandomSplitterConfig
+
+        splitter = RandomSplitter(RandomSplitterConfig())
+
+        with pytest.raises(ValueError, match="RandomSplitter has no config.seed"):
+            splitter.split(mock_data_source)
+        with pytest.raises(ValueError, match="RandomSplitter has no config.seed"):
+            splitter.k_fold_split(mock_data_source, k=5)
+
+    def test_stratified_split_refuses_without_seed_or_split_stream(self, imbalanced_data_source):
+        """The stratified splitter follows the same rule."""
+        from diffbio.splitters import StratifiedSplitter, StratifiedSplitterConfig
+
+        splitter = StratifiedSplitter(StratifiedSplitterConfig(label_key="y"))
+
+        with pytest.raises(ValueError, match="StratifiedSplitter has no config.seed"):
+            splitter.split(imbalanced_data_source)

@@ -37,7 +37,7 @@ from diffbio.core.graph_utils import (
     compute_pairwise_distances,
     symmetrize_graph,
 )
-from diffbio.utils.nn_utils import ensure_rngs
+
 
 logger = logging.getLogger(__name__)
 
@@ -555,7 +555,7 @@ class DifferentiableCellCommunication(GraphOperator):
         self,
         config: CellCommunicationConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialize the cell communication operator.
@@ -566,8 +566,6 @@ class DifferentiableCellCommunication(GraphOperator):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        rngs = ensure_rngs(rngs)
 
         # Node feature projection: n_genes -> hidden_dim
         self.node_proj = nnx.Linear(

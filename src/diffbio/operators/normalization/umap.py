@@ -118,7 +118,7 @@ class DifferentiableUMAP(OperatorModule):
         ```
     """
 
-    def __init__(self, config: UMAPConfig, *, rngs: nnx.Rngs | None = None):
+    def __init__(self, config: UMAPConfig, *, rngs: nnx.Rngs):
         """Initialize the differentiable UMAP.
 
         Args:
@@ -126,9 +126,6 @@ class DifferentiableUMAP(OperatorModule):
             rngs: Random number generators for initialization.
         """
         super().__init__(config, rngs=rngs)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         self.embedding_head = ParametricUMAPHead(config, rngs=rngs)
 

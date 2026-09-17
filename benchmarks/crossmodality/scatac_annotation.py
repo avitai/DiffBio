@@ -10,15 +10,15 @@ is a genuine compression bottleneck that discards accessibility signal at small 
 hypothesis predicts a joint gain concentrated at aggressive k (the gain-vs-k signature).
 """
 
-import os
-
 import json
+import os
 
 import jax.numpy as jnp
 import numpy as np
 import scipy.sparse as sp
 from calibrax.metrics.functional.classification import balanced_accuracy, f1_score
 from flax import nnx
+from substrax.optim import OptimizerConfig
 
 from benchmarks.singlecell._gate2_arms import (
     _embedding_probe,
@@ -91,7 +91,15 @@ def main() -> None:
     bal = {"frozen": [], "joint": []}
     for seed in SEEDS:
         config = MiniBatchConfig(
-            batch_size=2048, n_epochs=60, learning_rate=1e-2, weight_decay=5e-2, seed=seed
+            batch_size=2048,
+            n_epochs=60,
+            optimizer=OptimizerConfig(
+                optimizer_type="adamw",
+                learning_rate=1e-2,
+                weight_decay=5e-2,
+                gradient_clip_norm=1.0,
+            ),
+            seed=seed,
         )
         for k in K_VALUES:
             loadings_k = reduction.loadings[:, :k]

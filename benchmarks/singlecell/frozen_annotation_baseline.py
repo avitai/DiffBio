@@ -21,9 +21,10 @@ from benchmarks._classification import (
     stratified_label_split,
 )
 from benchmarks._optimizers import create_benchmark_optimizer
-from diffbio.reductions import fit_pca_reduction
 from diffbio.operators.foundation_models import LinearEmbeddingProbe
 from diffbio.operators.foundation_models.embedding_probe import EmbeddingProbeConfig
+from diffbio.reductions import fit_pca_reduction
+
 
 _TARGET_SUM = 1.0e4
 _SCALE_CLIP = 10.0
@@ -283,7 +284,7 @@ def train_annotation_probe(
     )
     optimizer = nnx.Optimizer(
         probe,
-        create_benchmark_optimizer(learning_rate=learning_rate),
+        create_benchmark_optimizer(probe, learning_rate=learning_rate),
         wrt=nnx.Param,
     )
     train_step = create_embedding_probe_train_step()

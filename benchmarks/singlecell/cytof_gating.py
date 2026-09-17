@@ -39,14 +39,16 @@ import numpy as np
 from calibrax.metrics.functional.classification import balanced_accuracy, f1_score
 from calibrax.statistics.significance import paired_significance_test
 from flax import nnx
+from substrax.optim import OptimizerConfig
 
 from benchmarks.singlecell._gate2_arms import _embedding_probe, _probe_forward
 from diffbio.operators.normalization.arcsinh_cofactor import (
+    arcsinh_transform,
     ArcsinhCofactor,
     ArcsinhCofactorConfig,
-    arcsinh_transform,
 )
 from diffbio.pipelines.minibatch_training import MiniBatchConfig, train_minibatch
+
 
 _DATA = os.environ.get("DIFFBIO_DATA_ROOT", "/mnt/ssd2/Data")
 _HD = f"{_DATA}/hdcytodata"
@@ -140,8 +142,9 @@ def _train_config(seed: int, n_epochs: int, batch_size: int) -> MiniBatchConfig:
     return MiniBatchConfig(
         batch_size=batch_size,
         n_epochs=n_epochs,
-        learning_rate=1.0e-2,
-        weight_decay=0.0,
+        optimizer=OptimizerConfig(
+            optimizer_type="adamw", learning_rate=1.0e-2, weight_decay=0.0, gradient_clip_norm=1.0
+        ),
         seed=seed,
     )
 

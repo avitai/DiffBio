@@ -652,7 +652,7 @@ class TestTechnicalVerification:
         velocities = jax.random.normal(jax.random.PRNGKey(1), (5, 3)) * 0.1
 
         data = {"positions": positions, "velocities": velocities}
-        result, _, _ = operator.apply(data, {}, None)
+        result, _, _ = operator.apply(data, {}, None, key=jax.random.key(0))
 
         # Should produce valid output
         assert jnp.all(jnp.isfinite(result["positions"]))
@@ -752,3 +752,46 @@ class TestTechnicalVerification:
         # Should produce identical results
         assert jnp.allclose(result_enum["energy"], result_str["energy"])
         assert jnp.allclose(result_enum["forces"], result_str["forces"])
+
+
+class TestLangevinRandomnessBelongsToTheRecord:
+    """The thermostat's random forces are drawn from the record's key, never a fixed seed."""
+
+    @staticmethod
+    def _langevin_case() -> tuple[MDIntegratorOperator, dict[str, jax.Array]]:
+        config = MDIntegratorConfig(
+            integrator_type="nvt_langevin", dt=0.001, n_steps=10, box_size=10.0, kT=1.0, gamma=1.0
+        )
+        operator = MDIntegratorOperator(config, rngs=nnx.Rngs(langevin=0))
+        positions = jax.random.uniform(jax.random.key(0), (5, 3), minval=2, maxval=8.0)
+        velocities = jax.random.normal(jax.random.key(1), (5, 3)) * 0.1
+        return operator, {"positions": positions, "velocities": velocities}
+
+    def test_forces_follow_the_record_key(self) -> None:
+        """The same key reproduces the trajectory and another key changes it."""
+        operator, data = self._langevin_case()
+
+        first, _, _ = operator.apply(data, {}, None, key=jax.random.key(7))
+        again, _, _ = operator.apply(data, {}, None, key=jax.random.key(7))
+        other, _, _ = operator.apply(data, {}, None, key=jax.random.key(8))
+
+        assert jnp.array_equal(first["positions"], again["positions"])
+        assert not jnp.array_equal(first["positions"], other["positions"])
+
+    def test_apply_without_a_key_is_refused(self) -> None:
+        """A Langevin step handed no key has nothing to draw its forces from."""
+        operator, data = self._langevin_case()
+
+        with pytest.raises(ValueError, match="per-record key"):
+            operator.apply(data, {}, None)
+
+    def test_velocity_verlet_needs_no_key(self) -> None:
+        """The deterministic integrator is not stochastic and runs without a key."""
+        config = MDIntegratorConfig(integrator_type="velocity_verlet", n_steps=5, box_size=10.0)
+        operator = MDIntegratorOperator(config, rngs=nnx.Rngs(0))
+        positions = jax.random.uniform(jax.random.key(0), (5, 3), minval=2, maxval=8.0)
+        velocities = jax.random.normal(jax.random.key(1), (5, 3)) * 0.1
+
+        assert not config.stochastic
+        result, _, _ = operator.apply({"positions": positions, "velocities": velocities}, {}, None)
+        assert jnp.all(jnp.isfinite(result["positions"]))

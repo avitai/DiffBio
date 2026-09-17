@@ -266,8 +266,8 @@ class TestClassifySingleMethod:
 class TestInitializationVariants:
     """Tests for different initialization scenarios."""
 
-    def test_initialization_without_rngs(self):
-        """Test that operator can be initialized without rngs when dropout_rate=0."""
+    def test_requires_rngs(self) -> None:
+        """The convolution and dense parameters draw from ``rngs`` even without dropout."""
         config = CNNVariantClassifierConfig(
             input_height=32,
             input_width=64,
@@ -275,10 +275,8 @@ class TestInitializationVariants:
             fc_dims=(16,),
             dropout_rate=0.0,
         )
-        # Initialize without rngs - no dropout means deterministic
-        op = CNNVariantClassifier(config, rngs=None)
-        assert op is not None
-        assert op.num_classes == config.num_classes
+        with pytest.raises(TypeError, match="rngs"):
+            CNNVariantClassifier(config)  # type: ignore[call-arg]
 
     def test_initialization_with_dropout(self, rngs):
         """Test initialization with dropout enabled."""

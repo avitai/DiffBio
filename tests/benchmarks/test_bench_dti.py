@@ -94,8 +94,8 @@ class TestDTITrainingSubstrate:
 
     def test_optimizer_contract_uses_opifex_training_substrate(self) -> None:
         assert bench_dti.DTI_TRAINING_SUBSTRATE == {
-            "optimizer_factory": "opifex.core.training.optimizers.create_optimizer",
-            "optimizer_config": "opifex.core.training.optimizers.OptimizerConfig",
+            "optimizer_factory": "substrax.optim.create_transformation",
+            "optimizer_config": "substrax.optim.OptimizerConfig",
             "optimizer_type": "adam",
         }
         assert "optax.adam" not in inspect.getsource(bench_dti)
@@ -270,8 +270,8 @@ def _assert_differentiable_dti_pipeline_metadata(result) -> None:
         },
     }
     assert result.metadata["training"] == {
-        "optimizer_factory": "opifex.core.training.optimizers.create_optimizer",
-        "optimizer_config": "opifex.core.training.optimizers.OptimizerConfig",
+        "optimizer_factory": "substrax.optim.create_transformation",
+        "optimizer_config": "substrax.optim.OptimizerConfig",
         "optimizer_type": "adam",
         "n_steps": 40,
         "learning_rate": 0.01,

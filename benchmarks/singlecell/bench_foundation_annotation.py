@@ -29,9 +29,9 @@ from benchmarks.singlecell._foundation import (
     build_singlecell_foundation_task_report,
     compute_annotation_metrics,
     run_singlecell_foundation_benchmark_suite,
-    SingleCellSource,
     SINGLECELL_FOUNDATION_DATASET_CONTRACT_KEYS,
     SINGLECELL_FOUNDATION_SUITE_SCENARIOS,
+    SingleCellSource,
     stratified_cell_annotation_split,
 )
 from diffbio.operators.foundation_models import (
@@ -40,6 +40,7 @@ from diffbio.operators.foundation_models import (
     SingleCellPrecomputedAdapter,
 )
 from diffbio.sources.immune_human import ImmuneHumanConfig, ImmuneHumanSource
+
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +123,7 @@ class SingleCellFoundationAnnotationBenchmark(DiffBioBenchmark):
         probe = LinearEmbeddingProbe(probe_config, rngs=nnx.Rngs(42))
         optimizer = nnx.Optimizer(
             probe,
-            create_benchmark_optimizer(learning_rate=_LEARNING_RATE),
+            create_benchmark_optimizer(probe, learning_rate=_LEARNING_RATE),
             wrt=nnx.Param,
         )
         train_step = create_embedding_probe_train_step()

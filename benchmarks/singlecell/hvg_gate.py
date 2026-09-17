@@ -40,6 +40,7 @@ import numpy as np
 from calibrax.metrics.functional.classification import balanced_accuracy, f1_score
 from calibrax.statistics.significance import paired_significance_test
 from flax import nnx
+from substrax.optim import OptimizerConfig
 
 from benchmarks._classification import stratified_label_split
 from benchmarks.singlecell._gate2_arms import _embedding_probe, _probe_forward
@@ -47,6 +48,7 @@ from diffbio.core import soft_ops
 from diffbio.operators.singlecell.soft_hvg import gene_dispersion
 from diffbio.pipelines.minibatch_training import MiniBatchConfig, train_minibatch
 from diffbio.reductions import fit_pca_reduction
+
 
 _DATA_PATH = os.environ.get("DIFFBIO_TS_CACHE", "/mnt/ssd2/Data/tabula_sapiens/ts_cached.npz")
 OUT = "benchmarks/results/singlecell/hvg_gate.json"
@@ -146,8 +148,12 @@ def run_k(
         config = MiniBatchConfig(
             batch_size=batch_size,
             n_epochs=n_epochs,
-            learning_rate=1.0e-2,
-            weight_decay=0.0,
+            optimizer=OptimizerConfig(
+                optimizer_type="adamw",
+                learning_rate=1.0e-2,
+                weight_decay=0.0,
+                gradient_clip_norm=1.0,
+            ),
             seed=seed,
         )
         probe_frozen = _embedding_probe(n_components, n_classes, _HIDDEN, seed)

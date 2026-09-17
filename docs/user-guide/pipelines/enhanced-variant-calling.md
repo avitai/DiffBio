@@ -236,6 +236,7 @@ Features used for recalibration:
 ```python
 from diffbio.pipelines import create_enhanced_variant_calling_pipeline
 from diffbio.utils.training import (
+from substrax.optim import OptimizerConfig
     Trainer, TrainingConfig, cross_entropy_loss,
     create_synthetic_training_data, data_iterator
 )
@@ -247,10 +248,11 @@ pipeline = create_enhanced_variant_calling_pipeline(reference_length=100)
 trainer = Trainer(
     pipeline,
     TrainingConfig(
-        learning_rate=1e-3,
+        optimizer=OptimizerConfig(
+            optimizer_type="adam", learning_rate=1e-3, gradient_clip_norm=1.0
+        ),
         num_epochs=50,
         log_every=10,
-        grad_clip_norm=1.0,
     )
 )
 

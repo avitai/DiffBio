@@ -40,6 +40,7 @@ from diffbio.sources.bengrn_ground_truth import (
     BenGRNSource,
 )
 
+
 logger = logging.getLogger(__name__)
 
 _DATA_DIR = "/mnt/ssd2/Works/benGRN/data/GroundTruth/stone_and_sroy"
@@ -120,7 +121,7 @@ class GRNBenchmark(DiffBioBenchmark):
         logger.info("Training GRN params (%d steps, unsupervised)...", n_steps)
         opt = nnx.Optimizer(
             operator,
-            create_benchmark_optimizer(learning_rate=1e-3),
+            create_benchmark_optimizer(operator, learning_rate=1e-3),
             wrt=nnx.Param,
         )
 

@@ -6,14 +6,14 @@ Reuses the single-cell frozen transform (VCC is scRNA-seq counts) and the learna
 projection, sweeping the reduction dimension k.
 """
 
-import os
-
 import json
+import os
 
 import jax.numpy as jnp
 import numpy as np
 from calibrax.metrics.functional.classification import balanced_accuracy, f1_score
 from flax import nnx
+from substrax.optim import OptimizerConfig
 
 from benchmarks.singlecell._gate2_arms import (
     _embedding_probe,
@@ -60,7 +60,12 @@ for seed in SEEDS:
     te_c = transform.scaled(te_counts) - transform.pca_mean
     n_features = transform.loadings.shape[0]
     cfg = MiniBatchConfig(
-        batch_size=4096, n_epochs=100, learning_rate=1e-2, weight_decay=5e-2, seed=seed
+        batch_size=4096,
+        n_epochs=100,
+        optimizer=OptimizerConfig(
+            optimizer_type="adamw", learning_rate=1e-2, weight_decay=5e-2, gradient_clip_norm=1.0
+        ),
+        seed=seed,
     )
     for k in K_VALUES:
         loadings_k = transform.loadings[:, :k]

@@ -829,7 +829,7 @@ class TestFactoryFunctions:
         """Test similarity operator factory function."""
         from diffbio.operators.drug_discovery import create_similarity_operator
 
-        sim_op = create_similarity_operator(similarity_type="cosine")
+        sim_op = create_similarity_operator(similarity_type="cosine", rngs=nnx.Rngs(0))
 
         assert sim_op is not None
 
@@ -1222,7 +1222,7 @@ class TestCircularFingerprintFactoryFunctions:
         """Test ECFP4 factory function."""
         from diffbio.operators.drug_discovery import create_ecfp4_operator
 
-        op = create_ecfp4_operator(n_bits=512)
+        op = create_ecfp4_operator(n_bits=512, rngs=nnx.Rngs(0))
         assert op.config.radius == 2  # ECFP4 = radius 2
         assert op.config.n_bits == 512
 
@@ -1230,7 +1230,7 @@ class TestCircularFingerprintFactoryFunctions:
         """Test ECFP6 factory function."""
         from diffbio.operators.drug_discovery import create_ecfp6_operator
 
-        op = create_ecfp6_operator(n_bits=1024)
+        op = create_ecfp6_operator(n_bits=1024, rngs=nnx.Rngs(0))
         assert op.config.radius == 3  # ECFP6 = radius 3
         assert op.config.n_bits == 1024
 
@@ -1238,7 +1238,7 @@ class TestCircularFingerprintFactoryFunctions:
         """Test FCFP4 (feature-based) factory function."""
         from diffbio.operators.drug_discovery import create_fcfp4_operator
 
-        op = create_fcfp4_operator(n_bits=2048)
+        op = create_fcfp4_operator(n_bits=2048, rngs=nnx.Rngs(0))
         assert op.config.radius == 2
         assert op.config.n_bits == 2048
         assert op.config.use_features is True  # FCFP uses pharmacophoric features
@@ -1248,9 +1248,9 @@ class TestCircularFingerprintFactoryFunctions:
         from diffbio.operators.drug_discovery import create_ecfp4_operator
 
         # Differentiable (default)
-        op_diff = create_ecfp4_operator(n_bits=256, differentiable=True)
+        op_diff = create_ecfp4_operator(n_bits=256, differentiable=True, rngs=nnx.Rngs(0))
         assert op_diff.config.differentiable is True
 
         # Non-differentiable (RDKit)
-        op_rdkit = create_ecfp4_operator(n_bits=256, differentiable=False)
+        op_rdkit = create_ecfp4_operator(n_bits=256, differentiable=False, rngs=nnx.Rngs(0))
         assert op_rdkit.config.differentiable is False

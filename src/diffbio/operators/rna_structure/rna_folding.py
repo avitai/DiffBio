@@ -471,7 +471,7 @@ def create_rna_fold_predictor(
     bp_energy_gc: float = BP_ENERGY_GC,
     bp_energy_gu: float = BP_ENERGY_GU,
     *,
-    rngs: nnx.Rngs | None = None,
+    rngs: nnx.Rngs,
 ) -> DifferentiableRNAFold:
     """Create an RNA fold predictor with given parameters.
 
@@ -490,12 +490,10 @@ def create_rna_fold_predictor(
 
     Example:
         ```python
-        predictor = create_rna_fold_predictor(temperature=0.5)
+        predictor = create_rna_fold_predictor(temperature=0.5, rngs=nnx.Rngs(0))
         result, _, _ = predictor.apply({"sequence": seq}, {}, None)
         ```
     """
-    if rngs is None:
-        rngs = nnx.Rngs(0)
 
     config = RNAFoldConfig(
         temperature=temperature,

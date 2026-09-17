@@ -158,13 +158,12 @@ class TestDifferentiablePeakCaller:
         assert hasattr(peak_caller, "temperature")  # Learnable Param
         assert hasattr(peak_caller, "peak_cnn")
 
-    def test_initialization_without_rngs(self, config):
-        """Test initialization without providing RNGs."""
+    def test_requires_rngs(self, config):
+        """The peak caller's parameters draw from ``rngs``, so it is required."""
         from diffbio.operators.epigenomics.peak_calling import DifferentiablePeakCaller
 
-        # Should not raise, uses default RNGs
-        peak_caller = DifferentiablePeakCaller(config, rngs=None)
-        assert peak_caller is not None
+        with pytest.raises(TypeError, match="rngs"):
+            DifferentiablePeakCaller(config)  # type: ignore[call-arg]
 
     def test_apply_single_sequence(self, peak_caller):
         """Test apply with single sequence input."""
@@ -569,14 +568,16 @@ class TestVAEDenoisingMode:
 
         peak_caller = DifferentiablePeakCaller(vae_config, rngs=rngs)
 
-        @jax.jit
-        def jit_apply(coverage):
+        # The VAE denoising draws from the caller's sample stream, so the transform is
+        # NNX's, which lifts that state.
+        @nnx.jit
+        def jit_apply(peak_caller, coverage):
             data = {"coverage": coverage}
             result, _, _ = peak_caller.apply(data, {}, None)
             return result["peak_probabilities"]
 
         coverage = jnp.abs(jax.random.normal(jax.random.key(0), (2, 100)))
-        result = jit_apply(coverage)
+        result = jit_apply(peak_caller, coverage)
         assert result.shape == (2, 100)
         assert jnp.all(jnp.isfinite(result))
 

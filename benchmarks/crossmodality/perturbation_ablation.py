@@ -11,14 +11,14 @@ as in single cells: the projection carries essentially the entire gain.
 Real Virtual Cell Challenge Perturb-seq (target-gene-masked, split by experimental batch).
 """
 
-import os
-
 import json
+import os
 
 import jax.numpy as jnp
 import numpy as np
 from calibrax.metrics.functional.classification import f1_score
 from flax import nnx
+from substrax.optim import OptimizerConfig
 
 from benchmarks.singlecell._gate2_arms import _embedding_probe, _probe_forward
 from benchmarks.singlecell.frozen_annotation_baseline import fit_frozen_preprocess
@@ -94,7 +94,15 @@ def main() -> None:
         n_features = transform.loadings.shape[0]
         loadings_k = transform.loadings[:, :K]
         config = MiniBatchConfig(
-            batch_size=4096, n_epochs=100, learning_rate=1e-2, weight_decay=5e-2, seed=seed
+            batch_size=4096,
+            n_epochs=100,
+            optimizer=OptimizerConfig(
+                optimizer_type="adamw",
+                learning_rate=1e-2,
+                weight_decay=5e-2,
+                gradient_clip_norm=1.0,
+            ),
+            seed=seed,
         )
         learn_sets = {
             "frozen": set(),

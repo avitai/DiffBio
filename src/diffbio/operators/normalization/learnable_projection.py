@@ -23,6 +23,7 @@ import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
+from substrax.rng import key_from
 from jax.typing import ArrayLike
 
 
@@ -93,7 +94,9 @@ class LearnableProjection(OperatorModule):
             self.basis = nnx.Variable(anchor)
             self.delta = nnx.Param(jnp.zeros(shape, dtype=jnp.float32))
         else:
-            key = rngs.params() if "params" in rngs else jax.random.key(0)
+            key = key_from(
+                rngs, streams=("params", "default"), context="LearnableProjection parameters"
+            )
             self.basis = nnx.Variable(jnp.zeros(shape, dtype=jnp.float32))
             self.delta = nnx.Param(jax.random.normal(key, shape) / math.sqrt(config.n_genes))
         self.projection_bias = nnx.Param(jnp.zeros(config.n_components, dtype=jnp.float32))

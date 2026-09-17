@@ -79,7 +79,7 @@ class SoftVariantQualityFilter(TemperatureOperator):
         self,
         config: VariantQualityFilterConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the quality filter.
@@ -90,9 +90,6 @@ class SoftVariantQualityFilter(TemperatureOperator):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         self.n_components = config.n_components
         self.n_features = config.n_features

@@ -12,6 +12,7 @@ from typing import Iterator
 import jax
 import jax.numpy as jnp
 from flax import nnx
+from substrax.rng import key_from
 
 from datarax.core.config import StructuralConfig
 from datarax.core.data_source import DataSourceModule
@@ -93,13 +94,22 @@ class IndexedViewSource(DataSourceModule):
             self._shuffle_view()
 
     def _shuffle_view(self) -> None:
-        """Shuffle the view indices (not the underlying data)."""
-        if self.rngs is not None and "shuffle" in self.rngs:
-            key = self.rngs.shuffle()
-        elif self.config.seed is not None:
+        """Shuffle the view indices (not the underlying data).
+
+        The permutation is drawn from ``config.seed`` when one is set, otherwise from the
+        source's ``shuffle`` stream; a view with neither cannot shuffle and says so.
+        """
+        if self.config.seed is not None:
             key = jax.random.key(self.config.seed)
+        elif self.rngs is None:
+            raise ValueError(
+                "IndexedViewSource has no config.seed and no rngs to shuffle from; "
+                "set a seed or build it with rngs=nnx.Rngs(shuffle=...)"
+            )
         else:
-            key = jax.random.key(0)
+            key = key_from(
+                self.rngs, streams=("shuffle", "default"), context="IndexedViewSource shuffling"
+            )
 
         self._view_indices = jax.random.permutation(key, self._view_indices)
 

@@ -188,7 +188,7 @@ class SpatialDeconvolution(TemperatureOperator):
         self,
         config: SpatialDeconvolutionConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the spatial deconvolution operator.
@@ -199,9 +199,6 @@ class SpatialDeconvolution(TemperatureOperator):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         self.hidden_dim = config.hidden_dim
         # Temperature is now managed by TemperatureOperator via self._temperature

@@ -261,7 +261,7 @@ class HMMLikelihoodLoss(nnx.Module):
         n_states: int,
         n_emissions: int,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
     ):
         """Initialize the HMM loss.
 
@@ -271,9 +271,6 @@ class HMMLikelihoodLoss(nnx.Module):
             rngs: Random number generators.
         """
         super().__init__()
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         self.n_states = n_states
         self.n_emissions = n_emissions

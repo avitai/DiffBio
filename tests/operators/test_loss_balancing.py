@@ -21,6 +21,7 @@ class _DummyOperator(loss_balancing.LossBalancingMixin):
 
     def __init__(self, *, use_gradnorm: bool) -> None:
         self.config = _DummyConfig(use_gradnorm=use_gradnorm)
+        self.rngs = nnx.Rngs(123)
 
 
 class TestCombineScalarLosses:
@@ -34,7 +35,7 @@ class TestCombineScalarLosses:
                 "kl": jnp.array(0.25),
                 "auxiliary": jnp.array(2.25),
             },
-            use_gradnorm=False,
+            balancer=None,
         )
 
         assert combined.shape == ()
@@ -43,35 +44,26 @@ class TestCombineScalarLosses:
     def test_rejects_empty_loss_mapping(self) -> None:
         """Empty loss mappings fail fast with a clear error."""
         with pytest.raises(ValueError, match="at least one"):
-            loss_balancing.combine_scalar_losses({}, use_gradnorm=False)
+            loss_balancing.combine_scalar_losses({}, balancer=None)
 
-    def test_uses_gradnorm_when_enabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """GradNorm path delegates to the balancer via its real ``compute_weighted_loss``."""
+    def test_uses_the_balancer_when_given(self) -> None:
+        """A balancer combines the losses through its ``compute_weighted_loss``."""
         calls: dict[str, Any] = {}
 
         class _DummyBalancer:
-            def __init__(self, *, num_losses: int, rngs: nnx.Rngs) -> None:
-                calls["num_losses"] = num_losses
-                calls["rngs_type"] = type(rngs)
-
             def compute_weighted_loss(self, loss_values: jnp.ndarray) -> jnp.ndarray:
                 calls["loss_values"] = loss_values
                 return jnp.array(7.0)
-
-        monkeypatch.setattr(loss_balancing, "GradNormBalancer", _DummyBalancer)
 
         combined = loss_balancing.combine_scalar_losses(
             {
                 "reconstruction": jnp.array(1.0),
                 "regularizer": jnp.array(2.0),
             },
-            use_gradnorm=True,
-            rngs=nnx.Rngs(123),
+            balancer=_DummyBalancer(),  # type: ignore[arg-type]
         )
 
         assert jnp.allclose(combined, 7.0)
-        assert calls["num_losses"] == 2
-        assert calls["rngs_type"] is nnx.Rngs
         assert calls["loss_values"].shape == (2,)
 
     def test_real_gradnorm_balancer_combines_without_error(self) -> None:
@@ -80,8 +72,7 @@ class TestCombineScalarLosses:
         weights, so the result is the equal-weighted sum."""
         combined = loss_balancing.combine_scalar_losses(
             {"a": jnp.array(1.0), "b": jnp.array(2.0)},
-            use_gradnorm=True,
-            rngs=nnx.Rngs(0),
+            balancer=loss_balancing.GradNormBalancer(num_losses=2, rngs=nnx.Rngs(0)),
         )
         assert combined.shape == ()
         assert jnp.allclose(combined, 3.0)
@@ -109,3 +100,26 @@ class TestLossBalancingMixin:
 
         with pytest.raises(ValueError, match="at least one"):
             operator.compute_balanced_loss({})
+
+    def test_mixin_builds_the_balancer_from_the_operator_rngs(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """With the flag on, the mixin builds the balancer from the operator's own ``rngs``."""
+        calls: dict[str, Any] = {}
+
+        class _DummyBalancer:
+            def __init__(self, *, num_losses: int, rngs: nnx.Rngs) -> None:
+                calls["num_losses"] = num_losses
+                calls["rngs"] = rngs
+
+            def compute_weighted_loss(self, loss_values: jnp.ndarray) -> jnp.ndarray:
+                return jnp.sum(loss_values)
+
+        monkeypatch.setattr(loss_balancing, "GradNormBalancer", _DummyBalancer)
+        operator = _DummyOperator(use_gradnorm=True)
+
+        combined = operator.compute_balanced_loss({"a": jnp.array(1.0), "b": jnp.array(2.0)})
+
+        assert jnp.allclose(combined, 3.0)
+        assert calls["num_losses"] == 2
+        assert calls["rngs"] is operator.rngs

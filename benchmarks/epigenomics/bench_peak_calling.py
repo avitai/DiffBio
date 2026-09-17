@@ -45,6 +45,7 @@ from diffbio.sources.encode_peaks import (
     ENCODEPeakSource,
 )
 
+
 logger = logging.getLogger(__name__)
 
 _CONFIG = DiffBioBenchmarkConfig(
@@ -277,7 +278,7 @@ class PeakCallingBenchmark(DiffBioBenchmark):
         logger.info("Training peak caller (%d steps)...", n_steps)
         opt = nnx.Optimizer(
             operator,
-            create_benchmark_optimizer(learning_rate=1e-3),
+            create_benchmark_optimizer(operator, learning_rate=1e-3),
             wrt=nnx.Param,
         )
         cov_norm = coverage_jax / (jnp.max(coverage_jax) + 1e-8)

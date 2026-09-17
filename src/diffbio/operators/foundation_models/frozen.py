@@ -26,7 +26,7 @@ class FrozenSequenceEncoderAdapter(FoundationBenchmarkAdapterBase):
         self,
         *,
         config: TransformerSequenceEncoderConfig,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         source_name: str = "diffbio_frozen_encoder",
     ) -> None:
         if config.adapter_mode is not AdapterMode.FROZEN_ENCODER:

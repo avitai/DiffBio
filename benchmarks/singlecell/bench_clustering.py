@@ -38,6 +38,7 @@ from diffbio.sources.immune_human import (
     ImmuneHumanSource,
 )
 
+
 logger = logging.getLogger(__name__)
 
 _CONFIG = DiffBioBenchmarkConfig(
@@ -80,7 +81,7 @@ def _train_centroids(
     )
     opt = nnx.Optimizer(
         operator,
-        create_benchmark_optimizer(learning_rate=_LEARNING_RATE),
+        create_benchmark_optimizer(operator, learning_rate=_LEARNING_RATE),
         wrt=nnx.Param,
     )
 

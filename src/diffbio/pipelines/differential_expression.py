@@ -68,7 +68,7 @@ class DifferentialExpressionPipeline(OperatorModule):
         ```
     """
 
-    def __init__(self, config: DEPipelineConfig, *, rngs: nnx.Rngs | None = None):
+    def __init__(self, config: DEPipelineConfig, *, rngs: nnx.Rngs):
         """Initialize the differential expression pipeline.
 
         Args:
@@ -77,9 +77,6 @@ class DifferentialExpressionPipeline(OperatorModule):
         """
         super().__init__(config, rngs=rngs)
         self.config = config
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         # Initialize the NB GLM
         nb_config = NBGLMConfig(

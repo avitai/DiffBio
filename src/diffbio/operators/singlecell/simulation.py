@@ -145,7 +145,7 @@ class DifferentiableSimulator(OperatorModule):
         self,
         config: SimulationConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialize the differentiable simulator.
@@ -157,15 +157,13 @@ class DifferentiableSimulator(OperatorModule):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        safe_rngs = rngs or nnx.Rngs(0)
-
         # Learnable gene-mean logits: softplus maps these to positive means
-        key = safe_rngs.params()
+        key = rngs.params()
         init_logits = jax.random.normal(key, (config.n_genes,)) * 0.5
         self.gene_means_logits = nnx.Param(init_logits)
 
         # Learnable group logits for soft cell-group assignment
-        key = safe_rngs.params()
+        key = rngs.params()
         init_group_logits = jax.random.normal(key, (config.n_groups,)) * 0.1
         self.group_logits = nnx.Param(init_group_logits)
 

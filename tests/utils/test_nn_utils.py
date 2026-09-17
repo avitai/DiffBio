@@ -6,9 +6,7 @@ import pytest
 from flax import nnx
 
 from diffbio.utils.nn_utils import (
-    ensure_rngs,
     extract_windows_1d,
-    get_rng_key,
     init_learnable_param,
 )
 
@@ -35,54 +33,6 @@ class TestInitLearnableParam:
         """Should handle zero value."""
         param = init_learnable_param(0.0)
         assert float(param[...]) == pytest.approx(0.0)
-
-
-class TestEnsureRngs:
-    """Tests for ensure_rngs function."""
-
-    def test_returns_provided_rngs(self):
-        """Should return the same rngs if provided."""
-        rngs = nnx.Rngs(42)
-        result = ensure_rngs(rngs)
-        assert result is rngs
-
-    def test_creates_rngs_if_none(self):
-        """Should create new rngs if None provided."""
-        result = ensure_rngs(None)
-        assert isinstance(result, nnx.Rngs)
-
-    def test_uses_provided_seed(self):
-        """Should use the provided seed for new rngs."""
-        result1 = ensure_rngs(None, seed=42)
-        result2 = ensure_rngs(None, seed=42)
-        # Both should produce the same key
-        key1 = result1.params()
-        key2 = result2.params()
-        assert jnp.array_equal(key1, key2)
-
-
-class TestGetRngKey:
-    """Tests for get_rng_key function."""
-
-    def test_returns_key_from_rngs(self):
-        """Should return key from rngs when available."""
-        rngs = nnx.Rngs(42)
-        key = get_rng_key(rngs, "params")
-        assert key.shape == ()  # JAX key has shape ()
-
-    def test_fallback_when_none(self):
-        """Should return fallback key when rngs is None."""
-        key = get_rng_key(None, "params", fallback_seed=123)
-        expected = jax.random.key(123)
-        assert jnp.array_equal(key, expected)
-
-    def test_fallback_when_stream_missing(self):
-        """Should return fallback when stream name not in rngs."""
-        rngs = nnx.Rngs(42)
-        # Request a stream name that doesn't exist
-        key = get_rng_key(rngs, "nonexistent_stream", fallback_seed=99)
-        expected = jax.random.key(99)
-        assert jnp.array_equal(key, expected)
 
 
 class TestExtractWindows1d:
@@ -166,12 +116,3 @@ class TestEdgeCases:
         """Test init learnable param with large value."""
         param = init_learnable_param(1e10)
         assert float(param[...]) == pytest.approx(1e10)
-
-    def test_ensure_rngs_different_seeds(self):
-        """Test ensure rngs produces different values for different seeds."""
-        rngs1 = ensure_rngs(None, seed=1)
-        rngs2 = ensure_rngs(None, seed=2)
-        key1 = rngs1.params()
-        key2 = rngs2.params()
-        # Keys should be different
-        assert not jnp.array_equal(key1, key2)

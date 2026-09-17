@@ -88,7 +88,7 @@ class ProfileHMMSearch(TemperatureOperator):
         self,
         config: ProfileHMMConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the profile HMM operator.
@@ -99,9 +99,6 @@ class ProfileHMMSearch(TemperatureOperator):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         self.profile_length = config.profile_length
         self.alphabet_size = config.alphabet_size

@@ -70,14 +70,14 @@ class TestContextualPeakCallingBenchmark:
         assert result.metadata["ablation"]["use_tf_context"] is True
         assert result.metadata["ablation"]["use_chromatin_guidance"] is True
         assert result.metadata["training"]["optimizer_factory"] == (
-            "opifex.core.training.optimizers.create_optimizer"
+            "substrax.optim.create_transformation"
         )
         assert result.metadata["training"]["optimizer_type"] == "adam"
 
-    def test_optimizer_contract_uses_opifex_training_substrate(self) -> None:
+    def test_optimizer_contract_uses_substrax_optim(self) -> None:
         assert CONTEXTUAL_TRAINING_SUBSTRATE == {
-            "optimizer_factory": "opifex.core.training.optimizers.create_optimizer",
-            "optimizer_config": "opifex.core.training.optimizers.OptimizerConfig",
+            "optimizer_factory": "substrax.optim.create_transformation",
+            "optimizer_config": "substrax.optim.OptimizerConfig",
             "optimizer_type": "adam",
         }
 

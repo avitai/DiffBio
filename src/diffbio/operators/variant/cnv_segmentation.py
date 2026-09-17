@@ -105,7 +105,7 @@ class DifferentiableCNVSegmentation(TemperatureOperator):
         self,
         config: CNVSegmentationConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialize the CNV segmentation operator.
@@ -116,9 +116,6 @@ class DifferentiableCNVSegmentation(TemperatureOperator):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         # Input projection: coverage value -> hidden
         self.input_proj = nnx.Linear(1, config.hidden_dim, rngs=rngs)
@@ -435,7 +432,7 @@ class EnhancedCNVSegmentation(DifferentiableCNVSegmentation):
         self,
         config: EnhancedCNVSegmentationConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialize the enhanced CNV segmentation operator.
@@ -446,9 +443,6 @@ class EnhancedCNVSegmentation(DifferentiableCNVSegmentation):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         # --- Signal fusion ---
         # Number of input channels: coverage is always present.

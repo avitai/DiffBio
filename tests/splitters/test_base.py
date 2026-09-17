@@ -226,7 +226,7 @@ class TestSplitterCreateSplitSources:
                     test_indices=jnp.arange(int(n * 0.9), n),
                 )
 
-        config = SplitterConfig()
+        config = SplitterConfig(seed=0)
         splitter = SimpleSplitter(config)
 
         train_src, valid_src, test_src = splitter.create_split_sources(mock_data_source, lazy=True)
@@ -279,14 +279,14 @@ class TestSplitterCreateSplitSources:
                     test_indices=jnp.array([5]),
                 )
 
-        config = SplitterConfig(train_frac=0.5, valid_frac=0.33, test_frac=0.17)
+        config = SplitterConfig(train_frac=0.5, valid_frac=0.33, test_frac=0.17, seed=0)
         splitter = SimpleSplitter(config)
 
         train_src, valid_src, test_src = splitter.create_split_sources(mock_data_source, lazy=True)
 
-        # Check train has correct values
+        # Check train has correct values (the training view is shuffled, so compare as a set)
         train_values = [int(elem.data["value"]) for elem in train_src]
-        assert train_values == [0, 1, 2]
+        assert sorted(train_values) == [0, 1, 2]
 
         # Check valid has correct values
         valid_values = [int(elem.data["value"]) for elem in valid_src]
@@ -295,6 +295,23 @@ class TestSplitterCreateSplitSources:
         # Check test has correct values
         test_values = [int(elem.data["value"]) for elem in test_src]
         assert test_values == [5]
+
+    def test_lazy_split_sources_refuse_a_seedless_streamless_splitter(self, mock_data_source):
+        """The training view shuffles, so a splitter with no seed and no rngs cannot build it."""
+        from diffbio.splitters import SplitResult, SplitterConfig, SplitterModule
+
+        class SimpleSplitter(SplitterModule):
+            def split(self, data_source):
+                return SplitResult(
+                    train_indices=jnp.array([0, 1, 2]),
+                    valid_indices=jnp.array([3, 4]),
+                    test_indices=jnp.array([5]),
+                )
+
+        splitter = SimpleSplitter(SplitterConfig(train_frac=0.5, valid_frac=0.33, test_frac=0.17))
+
+        with pytest.raises(ValueError, match="no config.seed and no rngs"):
+            splitter.create_split_sources(mock_data_source, lazy=True)
 
     def test_train_shuffle_valid_test_no_shuffle(self, mock_data_source):
         """Test that train is shuffled but valid/test are not."""

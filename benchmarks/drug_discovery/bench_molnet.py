@@ -40,13 +40,14 @@ from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.molnet import MOLNET_BASELINES
 from benchmarks._optimizers import create_benchmark_optimizer
 from diffbio.operators.drug_discovery import (
-    DEFAULT_ATOM_FEATURES,
     CircularFingerprintConfig,
     CircularFingerprintOperator,
+    DEFAULT_ATOM_FEATURES,
     smiles_to_graph,
 )
 from diffbio.sources.molnet import MolNetSource, MolNetSourceConfig
 from diffbio.splitters.random import RandomSplitter, RandomSplitterConfig
+
 
 logger = logging.getLogger(__name__)
 
@@ -205,7 +206,7 @@ def _train_and_evaluate(
     model = _MLPClassifier(n_bits, hidden_dim=128, rngs=rngs)
     optimizer = nnx.Optimizer(
         model,
-        create_benchmark_optimizer(learning_rate=learning_rate),
+        create_benchmark_optimizer(model, learning_rate=learning_rate),
         wrt=nnx.Param,
     )
 

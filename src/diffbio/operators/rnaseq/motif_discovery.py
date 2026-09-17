@@ -18,6 +18,7 @@ import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
+from substrax.rng import key_from
 
 from diffbio.core import soft_ops
 from diffbio.core.base_operators import TemperatureOperator
@@ -74,7 +75,7 @@ class DifferentiableMotifDiscovery(TemperatureOperator):
         ```
     """
 
-    def __init__(self, config: MotifDiscoveryConfig, *, rngs: nnx.Rngs | None = None):
+    def __init__(self, config: MotifDiscoveryConfig, *, rngs: nnx.Rngs):
         """Initialize the motif discovery operator.
 
         Args:
@@ -84,10 +85,9 @@ class DifferentiableMotifDiscovery(TemperatureOperator):
         super().__init__(config, rngs=rngs)
         self.config = config
 
-        if rngs is None:
-            rngs = nnx.Rngs(0)
-
-        key = rngs.params() if hasattr(rngs, "params") else jax.random.key(0)
+        key = key_from(
+            rngs, streams=("params", "default"), context="DifferentiableMotifDiscovery parameters"
+        )
 
         # Initialize PWM logits (before softmax normalization)
         # Shape: (num_motifs, motif_width, alphabet_size)

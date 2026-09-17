@@ -23,6 +23,11 @@ from typing import Any
 
 import jax
 import jax.numpy as jnp
+from artifex.generative_models.core.configuration import ProteinExtensionConfig
+from artifex.generative_models.extensions.protein.backbone import (
+    BondAngleExtension,
+    BondLengthExtension,
+)
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
@@ -178,6 +183,18 @@ class DifferentiableSecondaryStructure(OperatorModule):
         """
         super().__init__(config, rngs=rngs, name=name)
         self.config: SecondaryStructureConfig = config
+        # The artifex backbone constraints are modules; they are built once, from the
+        # operator's own streams, and reused by every apply.
+        self.bond_length_constraint = (
+            BondLengthExtension(ProteinExtensionConfig(), rngs=rngs)
+            if config.use_bond_length_constraint
+            else None
+        )
+        self.bond_angle_constraint = (
+            BondAngleExtension(ProteinExtensionConfig(), rngs=rngs)
+            if config.use_bond_angle_constraint
+            else None
+        )
 
     def compute_hbond_energy(
         self,
@@ -428,57 +445,42 @@ class DifferentiableSecondaryStructure(OperatorModule):
         }
 
         # Optionally compute artifex backbone constraint losses
-        constraint_loss = _compute_backbone_constraints(coords, self.config)
+        constraint_loss = self._backbone_constraint_loss(coords)
         if constraint_loss is not None:
             output_data["backbone_constraint_loss"] = constraint_loss
 
         return output_data, state, metadata
 
+    def _backbone_constraint_loss(
+        self,
+        coords: Float[Array, "batch length 4 3"],
+    ) -> Array | None:
+        """Compute the artifex backbone constraint losses that the config enables.
 
-def _compute_backbone_constraints(
-    coords: Float[Array, "batch length 4 3"],
-    config: SecondaryStructureConfig,
-) -> Array | None:
-    """Compute artifex backbone constraint losses if enabled.
+        The bond-length and bond-angle extensions penalise deviation from ideal
+        protein backbone geometry.
 
-    Uses artifex BondLengthExtension and BondAngleExtension to compute
-    regularisation losses that penalise deviation from ideal protein
-    backbone geometry.
+        Args:
+            coords: Backbone coordinates (batch, length, 4, 3).
 
-    Args:
-        coords: Backbone coordinates (batch, length, 4, 3).
-        config: Config with constraint flags and weights.
+        Returns:
+            Scalar constraint loss, or None if no constraint is enabled.
+        """
+        if self.bond_length_constraint is None and self.bond_angle_constraint is None:
+            return None
 
-    Returns:
-        Scalar constraint loss, or None if constraints are disabled.
-    """
-    if not config.use_bond_length_constraint and not config.use_bond_angle_constraint:
-        return None
+        batch_data = {"coordinates": coords}
+        total_loss = jnp.float32(0.0)
 
-    from artifex.generative_models.extensions.protein.backbone import (  # noqa: PLC0415
-        BondAngleExtension,
-        BondLengthExtension,
-    )
-    from artifex.generative_models.core.configuration import (  # noqa: PLC0415
-        ProteinExtensionConfig,
-    )
+        if self.bond_length_constraint is not None:
+            bl_loss = self.bond_length_constraint.loss_fn(batch_data, None)
+            total_loss = total_loss + self.config.bond_length_weight * bl_loss
 
-    batch_data = {"coordinates": coords}
-    total_loss = jnp.float32(0.0)
+        if self.bond_angle_constraint is not None:
+            ba_loss = self.bond_angle_constraint.loss_fn(batch_data, None)
+            total_loss = total_loss + self.config.bond_angle_weight * ba_loss
 
-    if config.use_bond_length_constraint:
-        ext_config = ProteinExtensionConfig()
-        ext = BondLengthExtension(ext_config, rngs=nnx.Rngs(0))
-        bl_loss = ext.loss_fn(batch_data, None)
-        total_loss = total_loss + config.bond_length_weight * bl_loss
-
-    if config.use_bond_angle_constraint:
-        ext_config = ProteinExtensionConfig()
-        ext = BondAngleExtension(ext_config, rngs=nnx.Rngs(0))
-        ba_loss = ext.loss_fn(batch_data, None)
-        total_loss = total_loss + config.bond_angle_weight * ba_loss
-
-    return total_loss
+        return total_loss
 
 
 def create_secondary_structure_predictor(
