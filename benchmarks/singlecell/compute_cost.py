@@ -21,7 +21,7 @@ import argparse
 import json
 
 import jax
-from calibrax.profiling.timing import time_calls
+from benchmarks._calibrax import time_calls
 import jax.numpy as jnp
 import numpy as np
 from flax import nnx
