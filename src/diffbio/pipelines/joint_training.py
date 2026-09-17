@@ -36,7 +36,7 @@ from substrax.optim import OptimizerConfig, create_optimizer
 
 from diffbio.losses.singlecell_losses import gene_weight_sparsity_loss
 from diffbio.pipelines.joint_preprocessing import JointPreprocessingPipeline
-from diffbio.utils.training import cross_entropy_loss
+from calibrax.metrics.functional import softmax_cross_entropy
 
 _NUM_LOSSES = 2
 
@@ -94,7 +94,7 @@ def _classification_loss(
 ) -> jnp.ndarray:
     """Cross-entropy of the pipeline's predicted logits against the labels."""
     output, _, _ = pipeline.apply({"counts": counts}, {}, None)
-    return cross_entropy_loss(output["logits"], labels, num_classes=n_classes)
+    return softmax_cross_entropy(output["logits"], labels)
 
 
 def _global_norm(grads: nnx.State) -> jnp.ndarray:

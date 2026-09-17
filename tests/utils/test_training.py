@@ -7,6 +7,7 @@ from flax import nnx
 from substrax.optim import OptimizerConfig, current_learning_rate
 
 from diffbio.pipelines import create_variant_calling_pipeline
+from calibrax.metrics.functional import softmax_cross_entropy
 from diffbio.utils.training import (
     Trainer,
     TrainingConfig,
@@ -14,7 +15,6 @@ from diffbio.utils.training import (
     default_training_optimizer,
     create_realistic_training_data,
     create_synthetic_training_data,
-    cross_entropy_loss,
     data_iterator,
 )
 
@@ -81,39 +81,6 @@ class TestTrainerOptimizer:
 
         assert isinstance(trainer.optimizer, nnx.Optimizer)
         assert current_learning_rate(trainer.optimizer) == pytest.approx(5e-4)
-
-
-class TestCrossEntropyLoss:
-    """Tests for cross-entropy loss function."""
-
-    def test_perfect_prediction(self):
-        """Test loss with perfect predictions."""
-        logits = jnp.array([[10.0, -10.0, -10.0], [-10.0, 10.0, -10.0]])
-        labels = jnp.array([0, 1])
-        loss = cross_entropy_loss(logits, labels, num_classes=3)
-        # Perfect predictions should have very low loss
-        assert loss < 0.01
-
-    def test_random_prediction(self):
-        """Test loss with random predictions."""
-        logits = jnp.zeros((4, 3))  # Equal logits
-        labels = jnp.array([0, 1, 2, 0])
-        loss = cross_entropy_loss(logits, labels, num_classes=3)
-        # Random predictions should have loss around log(3) ~ 1.1
-        assert 1.0 < loss < 1.2
-
-    def test_loss_is_differentiable(self):
-        """Test that loss is differentiable."""
-        logits = jnp.array([[1.0, 2.0, 3.0]])
-        labels = jnp.array([2])
-
-        def loss_fn(log):
-            return cross_entropy_loss(log, labels, num_classes=3)
-
-        grad = jax.grad(loss_fn)(logits)
-        assert grad is not None
-        assert grad.shape == logits.shape
-        assert jnp.all(jnp.isfinite(grad))
 
 
 class TestSyntheticData:
@@ -428,10 +395,9 @@ class TestTrainerIntegration:
         targets = {"labels": jnp.zeros(15, dtype=jnp.int32)}
 
         def loss_fn(predictions, tgts):
-            return cross_entropy_loss(
+            return softmax_cross_entropy(
                 predictions["logits"],
                 tgts["labels"],
-                num_classes=3,
             )
 
         # Create data iterator
@@ -466,10 +432,9 @@ class TestTrainerIntegration:
         )
 
         def loss_fn(predictions, tgts):
-            return cross_entropy_loss(
+            return softmax_cross_entropy(
                 predictions["logits"],
                 tgts["labels"],
-                num_classes=3,
             )
 
         # Train for a few epochs

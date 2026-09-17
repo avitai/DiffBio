@@ -17,7 +17,7 @@ from diffbio.pipelines.joint_training import (
     JointTrainingResult,
     fit_jointly,
 )
-from diffbio.utils.training import cross_entropy_loss
+from calibrax.metrics.functional import softmax_cross_entropy
 
 
 def _structured(
@@ -49,7 +49,7 @@ def test_gradient_reaches_each_preprocessing_parameter() -> None:
 
     def classification(model: JointPreprocessingPipeline) -> jnp.ndarray:
         output, _, _ = model.apply({"counts": counts}, {}, None)
-        return cross_entropy_loss(output["logits"], labels, num_classes=3)
+        return softmax_cross_entropy(output["logits"], labels)
 
     grads = nnx.grad(classification)(pipeline)
     norm_grads = grads["composite"]["operators"][0]

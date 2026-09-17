@@ -9,6 +9,7 @@ import jax
 import jax.numpy as jnp
 import optax
 from artifex.generative_models.core.layers import TransformerEncoder
+from calibrax.metrics.functional import mse
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
@@ -250,8 +251,7 @@ def compute_chromatin_guidance_loss(
     )
     predicted_contacts = jax.nn.sigmoid(similarity)
     pair_mask = sequence_mask[:, :, None] * sequence_mask[:, None, :]
-    squared_error = jnp.square(predicted_contacts - chromatin_contacts) * pair_mask
-    return squared_error.sum() / jnp.maximum(pair_mask.sum(), 1.0)
+    return mse(predicted_contacts, chromatin_contacts, mask=pair_mask)
 
 
 def compute_contextual_epigenomics_loss(

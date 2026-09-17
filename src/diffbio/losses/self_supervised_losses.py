@@ -11,10 +11,11 @@ term, which the ``core.losses`` ledger flags as the one genuinely new B6 piece.
 from __future__ import annotations
 
 import jax
+from calibrax.metrics.functional import mae, mse
 from flax import nnx
 
-_EPSILON = 1.0e-8
-_VALID_LOSS_TYPES = ("mse", "mae")
+_LOSSES = {"mse": mse, "mae": mae}
+_VALID_LOSS_TYPES = tuple(_LOSSES)
 
 
 def masked_value_loss(
@@ -23,28 +24,28 @@ def masked_value_loss(
     mask: jax.Array,
     *,
     loss_type: str = "mse",
-    epsilon: float = _EPSILON,
 ) -> jax.Array:
     """Reconstruction loss averaged over masked positions only.
+
+    The reduction is calibrax's masked mean: positions where ``mask`` is nonzero are
+    averaged, the rest contribute nothing, and an all-zero mask gives ``0`` rather than
+    ``0 / 0``.
 
     Args:
         predictions: Predicted values, any shape broadcastable with ``mask``.
         targets: Ground-truth values, same shape as ``predictions``.
         mask: ``1`` at positions to reconstruct (the masked-out values), ``0`` elsewhere.
         loss_type: ``"mse"`` (squared error) or ``"mae"`` (absolute error).
-        epsilon: Stabilizer so an all-zero mask returns ``0`` rather than ``0 / 0``.
 
     Returns:
-        The mask-weighted mean reconstruction error at the masked positions.
+        The mean reconstruction error at the masked positions.
 
     Raises:
         ValueError: If ``loss_type`` is not one of ``("mse", "mae")``.
     """
-    if loss_type not in _VALID_LOSS_TYPES:
+    if loss_type not in _LOSSES:
         raise ValueError(f"loss_type must be one of {_VALID_LOSS_TYPES}, got {loss_type!r}")
-    residual = predictions - targets
-    error = residual**2 if loss_type == "mse" else abs(residual)
-    return (mask * error).sum() / (mask.sum() + epsilon)
+    return _LOSSES[loss_type](predictions, targets, mask=mask)
 
 
 class MaskedValueLoss(nnx.Module):

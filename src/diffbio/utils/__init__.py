@@ -20,7 +20,6 @@ from diffbio.utils.quality import apply_quality_filter
 from diffbio.utils.training import (
     default_training_optimizer,
     create_synthetic_training_data,
-    cross_entropy_loss,
     data_iterator,
     Trainer,
     TrainingConfig,
@@ -42,7 +41,6 @@ __all__ = [
     "TrainingState",
     "default_training_optimizer",
     "create_synthetic_training_data",
-    "cross_entropy_loss",
     "data_iterator",
     # Quality utilities
     "apply_quality_filter",

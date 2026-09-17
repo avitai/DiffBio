@@ -235,9 +235,10 @@ Features used for recalibration:
 
 ```python
 from diffbio.pipelines import create_enhanced_variant_calling_pipeline
-from diffbio.utils.training import (
+from calibrax.metrics.functional import softmax_cross_entropy
 from substrax.optim import OptimizerConfig
-    Trainer, TrainingConfig, cross_entropy_loss,
+from diffbio.utils.training import (
+    Trainer, TrainingConfig,
     create_synthetic_training_data, data_iterator
 )
 
@@ -264,10 +265,9 @@ inputs, targets = create_synthetic_training_data(
 
 # Define loss function
 def loss_fn(predictions, targets):
-    return cross_entropy_loss(
+    return softmax_cross_entropy(
         predictions["logits"],
         targets["labels"],
-        num_classes=3,
     )
 
 # Train

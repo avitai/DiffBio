@@ -27,7 +27,7 @@ import numpy as np
 from flax import nnx
 from substrax.optim import create_optimizer, OptimizerConfig
 
-from diffbio.utils.training import cross_entropy_loss
+from calibrax.metrics.functional import softmax_cross_entropy
 
 
 # ``features`` may be a single array or an arbitrary pytree of per-sample arrays (each
@@ -140,9 +140,7 @@ def train_minibatch(
     optimizer = create_optimizer(model, config.optimizer)
 
     def loss_fn(module: nnx.Module, batch_features: Any, batch_labels: jnp.ndarray) -> jnp.ndarray:
-        loss = cross_entropy_loss(
-            forward_fn(module, batch_features), batch_labels, num_classes=n_classes
-        )
+        loss = softmax_cross_entropy(forward_fn(module, batch_features), batch_labels)
         if aux_loss_fn is not None:
             loss = loss + aux_loss_fn(module)
         return loss

@@ -31,11 +31,9 @@ Training utilities for differentiable bioinformatics pipelines.
 
 ## Loss Functions
 
-### cross_entropy_loss
-
-::: diffbio.utils.training.cross_entropy_loss
-    options:
-      show_root_heading: true
+Classification losses come from calibrax: `calibrax.metrics.functional.softmax_cross_entropy`
+takes `(logits, labels)` with the class count read from the logits' last axis, and accepts the
+`mask`, `weights` and `reduction` keywords shared by every calibrax loss.
 
 ## Optimizer Utilities
 
@@ -65,11 +63,11 @@ Training utilities for differentiable bioinformatics pipelines.
 
 ```python
 from diffbio.pipelines import create_variant_calling_pipeline
-from diffbio.utils.training import (
+from calibrax.metrics.functional import softmax_cross_entropy
 from substrax.optim import OptimizerConfig
+from diffbio.utils.training import (
     Trainer,
     TrainingConfig,
-    cross_entropy_loss,
     create_synthetic_training_data,
     data_iterator,
 )
@@ -95,7 +93,7 @@ inputs, targets = create_synthetic_training_data(
 
 # Define loss
 def loss_fn(predictions, targets):
-    return cross_entropy_loss(
+    return softmax_cross_entropy(
         predictions["logits"],
         targets["labels"],
     )
@@ -124,7 +122,7 @@ opt_state = optimizer.init(nnx.state(pipeline, nnx.Param))
 def train_step(pipeline, opt_state, batch, targets):
     def loss_fn(model):
         result, _, _ = model.apply(batch, {}, None)
-        return cross_entropy_loss(result["logits"], targets["labels"])
+        return softmax_cross_entropy(result["logits"], targets["labels"])
 
     loss, grads = jax.value_and_grad(loss_fn)(pipeline)
     params = nnx.state(pipeline, nnx.Param)
@@ -136,6 +134,7 @@ def train_step(pipeline, opt_state, batch, targets):
 ## Module Exports
 
 ```python
+from calibrax.metrics.functional import softmax_cross_entropy
 from diffbio.utils.training import (
     # Core
     Trainer,
@@ -143,7 +142,6 @@ from diffbio.utils.training import (
     TrainingState,
 
     # Loss
-    cross_entropy_loss,
 
     # Optimizer spec
     default_training_optimizer,

@@ -21,10 +21,10 @@ from __future__ import annotations
 
 import logging
 import math
-import time
 from typing import Any
 
 import jax
+from calibrax.profiling.timing import time_calls
 import jax.numpy as jnp
 import numpy as np
 from flax import nnx
@@ -168,16 +168,18 @@ def _run_jaxmd_baseline(
 
     jit_step = jax.jit(step_fn)
 
-    # Warmup
+    # One warm-up step compiles; the timed steps then advance the state one at a time and
+    # each waits for its result, so the per-step median is what calibrax reports.
     sim_state = jit_step(sim_state)
-    sim_state.position.block_until_ready()
+    jax.block_until_ready(sim_state)
 
-    # Timed run
-    start = time.perf_counter()
-    for _ in range(n_steps - 1):
+    def advance() -> Any:
+        nonlocal sim_state
         sim_state = jit_step(sim_state)
-    sim_state.position.block_until_ready()
-    elapsed = time.perf_counter() - start
+        return sim_state
+
+    timing = time_calls(advance, warmup=0, iterations=n_steps - 1)
+    elapsed = float(sum(timing.samples_sec))
 
     pe_final = float(energy_fn(sim_state.position))
     ke_final = float(quantity.kinetic_energy(momentum=sim_state.momentum))
