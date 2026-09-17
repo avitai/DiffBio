@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-09-17
+
 ### Changed
 
 - Requires `avitai-artifex>=0.1.10`, which removed its `reduce_loss` helper: the multi-omics VAE
