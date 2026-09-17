@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- CI: the build-verification, documentation and security workflows cancel the run a newer
+  push supersedes, as the test workflow already did; a contract test holds every
+  push-triggered workflow to it.
 - Requires `datarax>=0.1.13`; the lock moves it from 0.1.11. DiffBio builds no datarax
   pipeline of its own; its `MemorySource` subclasses inherit datarax's per-epoch order
   cache, and a pipeline a caller builds over a DiffBio source now serves batches with a
