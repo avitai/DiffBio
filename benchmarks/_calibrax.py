@@ -10,8 +10,21 @@ from calibrax.ci.guard import CIGuard, GuardResult
 from calibrax.core.models import Metric, MetricDef, Point, Run
 from calibrax.core.result import BenchmarkResult
 from calibrax.profiling.hardware import detect_hardware_specs
-from calibrax.profiling.timing import TimingCollector
+from calibrax.profiling.timing import TimingCollector, time_calls
 from calibrax.storage.store import Store
+
+__all__ = [
+    "CalibraxRunBuilder",
+    "build_calibrax_benchmark_run",
+    "build_calibrax_metric_defs",
+    "build_calibrax_point",
+    "check_calibrax_suite_regressions",
+    "measure_calibrax_throughput",
+    "resolve_calibrax_threshold",
+    "save_calibrax_run",
+    "save_calibrax_suite_run",
+    "time_calls",
+]
 
 
 class CalibraxRunBuilder(Protocol):
