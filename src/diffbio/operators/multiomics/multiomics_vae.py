@@ -23,7 +23,6 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from artifex.generative_models.core.base import MLP
-from artifex.generative_models.core.losses.base import reduce_loss
 from artifex.generative_models.core.losses.divergence import gaussian_kl_divergence
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import require_key
@@ -304,8 +303,7 @@ class DifferentiableMultiOmicsVAE(LossBalancingMixin, EncoderDecoderOperator):
         for i in range(n_modalities):
             counts = data[self._input_key(i)]
             per_sample = jnp.sum((counts - reconstructions[i]) ** 2, axis=-1)
-            mean_recon = reduce_loss(per_sample, reduction="mean")
-            total_recon = total_recon + weights[i] * mean_recon
+            total_recon = total_recon + weights[i] * jnp.mean(per_sample)
 
         # KL divergence (batch_sum: sum over latent, mean over batch)
         kl = gaussian_kl_divergence(mu_joint, logvar_joint, reduction="batch_sum")
