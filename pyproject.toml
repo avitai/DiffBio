@@ -46,7 +46,7 @@ dependencies = [
   "calibrax>=0.1.8",
   # Substrax - device identity, meshes, runtime settings and checkpoint store shared by the
   # siblings; 0.1.6 adds substrax.runtime, substrax.artifacts and substrax.testing.
-  "substrax>=0.1.9",
+  "substrax>=0.1.10",
   # JAX ecosystem
   "beartype>=0.14.1",
   "chex>=0.1.7",
