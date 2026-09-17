@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Requires `datarax>=0.1.12`; the lock moves it from 0.1.11. DiffBio builds no datarax
+- Requires `datarax>=0.1.13`; the lock moves it from 0.1.11. DiffBio builds no datarax
   pipeline of its own; its `MemorySource` subclasses inherit datarax's per-epoch order
   cache, and a pipeline a caller builds over a DiffBio source now serves batches with a
   `valid_mask` leaf and settles the epoch's final batch through `drop_last`.
