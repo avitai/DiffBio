@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The test session merges its XLA flag into `XLA_FLAGS` by flag name through
+  `substrax.runtime.merge_xla_flags`: a flag the caller exported, such as an emulated
+  device count, survives, and a different value for the same flag raises instead of being
+  replaced. It used to overwrite the variable. Requires `substrax>=0.1.7`, the locked
+  release.
+
 ## [0.1.5] - 2026-09-16
 
 ### Changed
