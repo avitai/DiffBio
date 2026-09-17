@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-09-17
+
 ### Changed
 
 - The classification loss is calibrax's `softmax_cross_entropy(logits, labels)`; the joint and
