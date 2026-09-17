@@ -39,7 +39,7 @@ dependencies = [
   # Datarax - operator, source, and pipeline contracts
   "datarax>=0.1.11",
   # Artifex - modeling, modality, and transformer substrate
-  "avitai-artifex>=0.1.9",
+  "avitai-artifex>=0.1.10",
   # Opifex - scientific ML, operator learning, and advanced optimization
   "opifex>=0.2.7",
   # Calibrax - benchmarking, comparison, profiling, and regression control

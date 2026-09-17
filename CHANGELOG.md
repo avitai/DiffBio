@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Requires `avitai-artifex>=0.1.10`, which removed its `reduce_loss` helper: the multi-omics VAE
+  takes the batch mean of its per-sample reconstruction error directly, and the two batch-correction
+  operators' reconstruction losses are calibrax's `mse`.
+
 ## [0.1.7] - 2026-09-17
 
 ### Changed

@@ -277,7 +277,7 @@ wheels = [
 
 [[package]]
 name = "avitai-artifex"
-version = "0.1.9"
+version = "0.1.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "blackjax" },
@@ -304,9 +304,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/aa/ca/3acb1861f2dceff320c89d3919bedce6611031b7990f06b3d79078d61a87/avitai_artifex-0.1.9.tar.gz", hash = "sha256:d50242adaff0b08b146c83e69458dc7c978f0874b952a6b06081bd5143d7843f", size = 635848, upload-time = "2026-09-17T07:18:10.926Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f6/fe/3797a0866f459f9ae99c88d0476995909c046f3316d2f3281ed67497f695/avitai_artifex-0.1.10.tar.gz", hash = "sha256:16148c7d58aafd62876d127c960ad1fc62a3f0fd782947671ac1f1db5a7429de", size = 635302, upload-time = "2026-09-17T14:04:31.908Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/32/9c/6f6b4b3fd68acff20b13737824c1d25b1beb33caea8b5655f758fd6654fd/avitai_artifex-0.1.9-py3-none-any.whl", hash = "sha256:836935b9b7fadcfa0e9e4b0b25ef85df5f5fa1c26abf0d831cf88ac382d2a227", size = 851304, upload-time = "2026-09-17T07:18:08.051Z" },
+    { url = "https://files.pythonhosted.org/packages/71/fd/902a0a3af2027e1f27a5eaea40ddbc8a32322cb3db100c073d8c34eda1a3/avitai_artifex-0.1.10-py3-none-any.whl", hash = "sha256:49e4f4f2a1f383d739f93c2d49208594432b5257311396611dd3bd5fdbefdbe9", size = 850100, upload-time = "2026-09-17T14:04:29.433Z" },
 ]
 
 [[package]]
@@ -1172,7 +1172,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anndata", specifier = ">=0.9.1" },
-    { name = "avitai-artifex", specifier = ">=0.1.9" },
+    { name = "avitai-artifex", specifier = ">=0.1.10" },
     { name = "bandit", extras = ["toml"], marker = "extra == 'dev'", specifier = ">=1.8.6" },
     { name = "beartype", specifier = ">=0.14.1" },
     { name = "beartype", marker = "extra == 'test'", specifier = ">=0.14.1" },

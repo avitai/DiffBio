@@ -29,8 +29,8 @@ from artifex.generative_models.core.losses.adversarial import (
     wasserstein_discriminator_loss,
     wasserstein_generator_loss,
 )
-from artifex.generative_models.core.losses.base import reduce_loss
 from artifex.generative_models.core.losses.divergence import maximum_mean_discrepancy
+from calibrax.metrics.functional import mse
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
@@ -294,10 +294,7 @@ class DifferentiableMMDBatchCorrection(LossBalancingMixin, OperatorModule):
         reconstructed = self._decode(latent)
 
         # Losses
-        reconstruction_loss = reduce_loss(
-            (reconstructed - expression) ** 2,
-            reduction="mean",
-        )
+        reconstruction_loss = mse(reconstructed, expression)
         mmd_loss = self._compute_pairwise_mmd(latent, batch_labels)
 
         result = {
@@ -474,10 +471,7 @@ class DifferentiableWGANBatchCorrection(LossBalancingMixin, OperatorModule):
         disc_scores = self._discriminate(latent_reversed)
 
         # Reconstruction loss
-        reconstruction_loss = reduce_loss(
-            (reconstructed - expression) ** 2,
-            reduction="mean",
-        )
+        reconstruction_loss = mse(reconstructed, expression)
 
         # Identify "real" (batch 0) and "fake" (batch != 0) for WGAN framing.
         # The discriminator tries to distinguish batch 0 from the rest.
