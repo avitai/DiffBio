@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-09-17
+
 ### Changed
 
 - No library code seeds its own randomness. The fifty-odd constructors and factories that
