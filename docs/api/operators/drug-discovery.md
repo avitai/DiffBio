@@ -332,7 +332,7 @@ from diffbio.operators.drug_discovery import (
 from flax import nnx
 
 # Using factory function for ECFP4-like fingerprints
-ecfp4_op = create_ecfp4_operator(n_bits=2048)
+ecfp4_op = create_ecfp4_operator(n_bits=2048, rngs=nnx.Rngs(0))
 
 # Or with full configuration
 config = CircularFingerprintConfig(
@@ -362,7 +362,7 @@ config_rdkit = CircularFingerprintConfig(
     n_bits=2048,
     differentiable=False,  # Use RDKit exact fingerprint
 )
-fp_op_rdkit = CircularFingerprintOperator(config_rdkit)
+fp_op_rdkit = CircularFingerprintOperator(config_rdkit, rngs=nnx.Rngs(0))
 data = {"smiles": "c1ccccc1"}
 result, _, _ = fp_op_rdkit.apply(data, {}, None)
 ```

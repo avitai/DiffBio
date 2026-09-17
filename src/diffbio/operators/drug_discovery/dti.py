@@ -105,12 +105,10 @@ class DifferentiableDTIPipeline(nnx.Module):
         self,
         config: DTIPipelineConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
     ) -> None:
         """Initialize protein encoder, drug encoder, and pair scorer."""
         super().__init__()
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         self.config = nnx.static(config)
         self.protein_encoder = TransformerSequenceEncoder(

@@ -14,9 +14,9 @@ from calibrax.core.models import Metric, Point
 from flax import nnx
 
 from benchmarks._base import (
+    build_benchmark_comparison_key,
     DiffBioBenchmark,
     DiffBioBenchmarkConfig,
-    build_benchmark_comparison_key,
 )
 from benchmarks._baselines.dti import DTI_BASELINE_FAMILIES
 from benchmarks._optimizers import (
@@ -24,17 +24,18 @@ from benchmarks._optimizers import (
     create_benchmark_optimizer,
 )
 from diffbio.operators.drug_discovery import (
-    DTIPipelineConfig,
-    DifferentiableDTIPipeline,
     build_dti_pipeline_inputs,
+    DifferentiableDTIPipeline,
+    DTIPipelineConfig,
 )
 from diffbio.sources import (
-    DTI_DATASET_CONTRACT_KEYS,
     BioSNAPDTISource,
-    DTISourceConfig,
     DavisDTISource,
+    DTI_DATASET_CONTRACT_KEYS,
+    DTISourceConfig,
     validate_dti_dataset,
 )
+
 
 _DAVIS_CONFIG = DiffBioBenchmarkConfig(
     name="drug_discovery/dti_davis",
@@ -409,6 +410,7 @@ def _train_dti_pipeline(
     optimizer = nnx.Optimizer(
         pipeline,
         create_benchmark_optimizer(
+            pipeline,
             optimizer_type=_OPTIMIZER_TYPE,
             learning_rate=_LEARNING_RATE,
         ),

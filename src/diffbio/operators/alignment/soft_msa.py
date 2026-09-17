@@ -32,8 +32,8 @@ from diffbio.core.base_operators import TemperatureOperator
 from diffbio.utils.nn_utils import (
     ARTIFEX_GELU_MLP_KWARGS,
     ARTIFEX_GELU_NO_OUTPUT_MLP_KWARGS,
-    ensure_rngs,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -220,7 +220,7 @@ class SoftProgressiveMSA(TemperatureOperator):
         self,
         config: SoftProgressiveMSAConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the soft progressive MSA operator.
@@ -231,8 +231,6 @@ class SoftProgressiveMSA(TemperatureOperator):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        rngs = ensure_rngs(rngs)
 
         self.hidden_dim = config.hidden_dim
         # Temperature is now managed by TemperatureOperator via self._temperature

@@ -184,7 +184,7 @@ class DifferentiableFoundationModel(
         self,
         config: FoundationModelConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialize the foundation model.
@@ -195,9 +195,6 @@ class DifferentiableFoundationModel(
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        if rngs is None:
-            rngs = nnx.Rngs(params=0, sample=1, dropout=2)
 
         # Gene tokenizer for rank-value encoding
         self.tokenizer = GeneTokenizer(config.n_genes, rngs=rngs)

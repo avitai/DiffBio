@@ -39,9 +39,9 @@ Training utilities for differentiable bioinformatics pipelines.
 
 ## Optimizer Utilities
 
-### create_optax_optimizer
+### default_training_optimizer
 
-::: diffbio.utils.training.create_optax_optimizer
+::: diffbio.utils.training.default_training_optimizer
     options:
       show_root_heading: true
 
@@ -66,6 +66,7 @@ Training utilities for differentiable bioinformatics pipelines.
 ```python
 from diffbio.pipelines import create_variant_calling_pipeline
 from diffbio.utils.training import (
+from substrax.optim import OptimizerConfig
     Trainer,
     TrainingConfig,
     cross_entropy_loss,
@@ -78,7 +79,9 @@ pipeline = create_variant_calling_pipeline(reference_length=100)
 
 # Create trainer
 config = TrainingConfig(
-    learning_rate=1e-3,
+    optimizer=OptimizerConfig(
+        optimizer_type="adam", learning_rate=1e-3, gradient_clip_norm=1.0
+    ),
     num_epochs=50,
     log_every=10,
 )
@@ -142,8 +145,8 @@ from diffbio.utils.training import (
     # Loss
     cross_entropy_loss,
 
-    # Optimizer
-    create_optax_optimizer,
+    # Optimizer spec
+    default_training_optimizer,
 
     # Data
     create_synthetic_training_data,

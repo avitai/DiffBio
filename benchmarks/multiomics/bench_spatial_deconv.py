@@ -51,6 +51,7 @@ from diffbio.operators.multiomics import (
 from diffbio.sources import build_multiomics_artifact_metadata
 from diffbio.sources.seqfish import SeqFISHConfig, SeqFISHSource
 
+
 logger = logging.getLogger(__name__)
 
 _CONFIG = DiffBioBenchmarkConfig(
@@ -352,7 +353,7 @@ class SpatialDeconvBenchmark(DiffBioBenchmark):
         logger.info("Training deconvolution (%d steps, unsupervised)...", n_steps)
         opt = nnx.Optimizer(
             operator,
-            create_benchmark_optimizer(learning_rate=1e-3),
+            create_benchmark_optimizer(operator, learning_rate=1e-3),
             wrt=nnx.Param,
         )
 

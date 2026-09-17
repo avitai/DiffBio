@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import numpy as np
-
 from benchmarks.singlecell._gate2_arms import (
     ArmResult,
-    SoftDimensionResult,
     per_class_f1,
     run_frozen_pca_arm,
     run_learnable_projection_arm,
     run_soft_dimension_arm,
+    SoftDimensionResult,
 )
+from substrax.optim import OptimizerConfig
+
 from diffbio.pipelines.minibatch_training import MiniBatchConfig
 
 
@@ -30,7 +31,14 @@ def _structured_counts(
 
 
 def _config() -> MiniBatchConfig:
-    return MiniBatchConfig(batch_size=64, n_epochs=25, learning_rate=5e-2, seed=0)
+    return MiniBatchConfig(
+        batch_size=64,
+        n_epochs=25,
+        seed=0,
+        optimizer=OptimizerConfig(
+            optimizer_type="adamw", learning_rate=5e-2, gradient_clip_norm=1.0
+        ),
+    )
 
 
 # --- per-class F1 helper --------------------------------------------------------
@@ -98,9 +106,9 @@ def test_learnable_projection_untrained_matches_frozen_pca_features() -> None:
     # projection whose delta starts at zero, so its untrained embedding must equal the
     # frozen PCA embedding exactly -- the arm starts at the PCA baseline.
     import jax.numpy as jnp
+    from benchmarks.singlecell.frozen_annotation_baseline import fit_frozen_preprocess
     from flax import nnx
 
-    from benchmarks.singlecell.frozen_annotation_baseline import fit_frozen_preprocess
     from diffbio.operators.normalization.learnable_projection import (
         LearnableProjection,
         LearnableProjectionConfig,

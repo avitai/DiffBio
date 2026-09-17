@@ -86,7 +86,7 @@ class DifferentiableEMQuantifier(TemperatureOperator):
         self,
         config: EMQuantifierConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the EM quantifier operator.
@@ -97,9 +97,6 @@ class DifferentiableEMQuantifier(TemperatureOperator):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         self.n_transcripts = config.n_transcripts
         self.n_iterations = config.n_iterations

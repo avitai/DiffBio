@@ -399,14 +399,16 @@ plt.show()
 ### Using the Trainer Class (Alternative)
 
 ```python
+from substrax.optim import OptimizerConfig
 # Create trainer with standard loss
 trainer = Trainer(
     pipeline,
     TrainingConfig(
-        learning_rate=1e-3,
+        optimizer=OptimizerConfig(
+            optimizer_type="adam", learning_rate=1e-3, gradient_clip_norm=1.0
+        ),
         num_epochs=30,
         log_every=50,
-        grad_clip_norm=1.0,
     ),
 )
 

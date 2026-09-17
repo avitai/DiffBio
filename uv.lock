@@ -277,7 +277,7 @@ wheels = [
 
 [[package]]
 name = "avitai-artifex"
-version = "0.1.5"
+version = "0.1.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "blackjax" },
@@ -304,9 +304,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/04/51/871f755d76d09e5623ddf812a8cbe99ec52ea7772999ebd138eda47a4428/avitai_artifex-0.1.5.tar.gz", hash = "sha256:a7c8e0ea0ba3632d6ba8a9c3890a2f088e1f0a60d6637253ae1abd5ca8b3a3ee", size = 637769, upload-time = "2026-09-09T16:21:36.774Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/aa/ca/3acb1861f2dceff320c89d3919bedce6611031b7990f06b3d79078d61a87/avitai_artifex-0.1.9.tar.gz", hash = "sha256:d50242adaff0b08b146c83e69458dc7c978f0874b952a6b06081bd5143d7843f", size = 635848, upload-time = "2026-09-17T07:18:10.926Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b2/42/4644a77873b1979ec48cb4121aeef2f583366e0421d7ec5f0b5a076a93b8/avitai_artifex-0.1.5-py3-none-any.whl", hash = "sha256:aea7944aadca031dc6145b9dcc328b9645abda57129c845bc14e56325a70a365", size = 854302, upload-time = "2026-09-09T16:21:34.219Z" },
+    { url = "https://files.pythonhosted.org/packages/32/9c/6f6b4b3fd68acff20b13737824c1d25b1beb33caea8b5655f758fd6654fd/avitai_artifex-0.1.9-py3-none-any.whl", hash = "sha256:836935b9b7fadcfa0e9e4b0b25ef85df5f5fa1c26abf0d831cf88ac382d2a227", size = 851304, upload-time = "2026-09-17T07:18:08.051Z" },
 ]
 
 [[package]]
@@ -431,7 +431,7 @@ wheels = [
 
 [[package]]
 name = "calibrax"
-version = "0.1.5"
+version = "0.1.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -444,9 +444,9 @@ dependencies = [
     { name = "substrax" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7d/0e/d7858273fc6745e4e8fdc08287d91e4f628327404a981b731398cd6a6129/calibrax-0.1.5.tar.gz", hash = "sha256:72519696fb6d7afb4b414a208770937d400090462d267fb625fea907a633bf74", size = 161844, upload-time = "2026-09-09T05:17:48.74Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/41/0a/4a3d6c7552d6148dadfc3b68d0a7b1a40af83a8c30501a1147359aba7e15/calibrax-0.1.6.tar.gz", hash = "sha256:c62fd67463a60d3bdf61fa1fd62cacc8ab41804d10abba08371786994035ee31", size = 162284, upload-time = "2026-09-11T23:02:48.048Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/86/f2/7ab96dba3df68418b0fc558f9bdf177f34200e23c0b461bebb5d19bbc243/calibrax-0.1.5-py3-none-any.whl", hash = "sha256:912830f73a804421f55df898e629054bc6edfece42d544e2bda96bdc05ab65c4", size = 201937, upload-time = "2026-09-09T05:17:47.011Z" },
+    { url = "https://files.pythonhosted.org/packages/08/cd/522770f9281ce4f6d5ead8d81b3df5d7dc14bec4603b1390fa8213df462b/calibrax-0.1.6-py3-none-any.whl", hash = "sha256:a6c303b4e8470bb3b72a71fa2e88229a89ee072cf2fb67e30f46e99f628f3ff7", size = 202451, upload-time = "2026-09-11T23:02:45.86Z" },
 ]
 
 [[package]]
@@ -839,7 +839,7 @@ wheels = [
 
 [[package]]
 name = "datarax"
-version = "0.1.10"
+version = "0.1.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "array-record" },
@@ -857,9 +857,9 @@ dependencies = [
     { name = "substrax" },
     { name = "tomli-w" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ec/6f/d99e77264f446eb0baf7cc54c06951f7648991fc9fb6cf660611ba87eafc/datarax-0.1.10.tar.gz", hash = "sha256:99384cd8e1de81ccc0733bb0b6d520ecea9662d3a5f3a50450477844e9d646c8", size = 231851, upload-time = "2026-09-16T20:37:20.377Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f6/fe/def6fe5e87da0e1b1d9fc47027177ad5d02577ab0265357f8aa57f82f1cb/datarax-0.1.11.tar.gz", hash = "sha256:ffe1bc9dc2cdbd7149ab5273ecb50bc610bf7ffec3446c1f331b4f4d974d658d", size = 231554, upload-time = "2026-09-17T06:01:09.155Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e4/2e/62577e8b144307fb38415f6cbaa2e3b0506ce9e3de8347b0bd0af2efbf1d/datarax-0.1.10-py3-none-any.whl", hash = "sha256:4e54f3503b508df72c4adc2f7355954780b9a97e1b3da2a2f0d46e84f1726b08", size = 279936, upload-time = "2026-09-16T20:37:17.903Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/cd/416598319153b16737b6a60476506c51ae20e7fb6db55c9129e1b6b2119b/datarax-0.1.11-py3-none-any.whl", hash = "sha256:bcb6faa6eb7cc2c10a541b703b128a2c73ae5d2f78b8247cab7ac08f22375b61", size = 279273, upload-time = "2026-09-17T06:01:06.672Z" },
 ]
 
 [[package]]
@@ -1172,17 +1172,17 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anndata", specifier = ">=0.9.1" },
-    { name = "avitai-artifex", specifier = ">=0.1.5" },
+    { name = "avitai-artifex", specifier = ">=0.1.9" },
     { name = "bandit", extras = ["toml"], marker = "extra == 'dev'", specifier = ">=1.8.6" },
     { name = "beartype", specifier = ">=0.14.1" },
     { name = "beartype", marker = "extra == 'test'", specifier = ">=0.14.1" },
     { name = "biopython", specifier = ">=1.81" },
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.0.3" },
-    { name = "calibrax", specifier = ">=0.1.5" },
+    { name = "calibrax", specifier = ">=0.1.6" },
     { name = "chex", specifier = ">=0.1.7" },
     { name = "coverage", marker = "extra == 'dev'", specifier = ">=7" },
     { name = "coverage", marker = "extra == 'test'", specifier = ">=7" },
-    { name = "datarax", specifier = ">=0.1.10" },
+    { name = "datarax", specifier = ">=0.1.11" },
     { name = "datasets", marker = "extra == 'benchmark'", specifier = ">=2.14" },
     { name = "deepchem", marker = "extra == 'benchmark'", specifier = ">=2.8.0" },
     { name = "diffbio", extras = ["benchmark", "chem", "cuda12", "dev", "docs", "genomics", "metal", "soft-ops-advanced", "soft-ops-ot", "test", "torch-io"], marker = "extra == 'all'" },
@@ -1209,7 +1209,7 @@ requires-dist = [
     { name = "mkdocstrings", marker = "extra == 'docs'", specifier = ">=0.28.3" },
     { name = "mkdocstrings-python", marker = "extra == 'docs'", specifier = ">=1.1.2" },
     { name = "numpy", specifier = ">=1.24" },
-    { name = "opifex", specifier = ">=0.2.2" },
+    { name = "opifex", specifier = ">=0.2.7" },
     { name = "optax", specifier = ">=0.2.8" },
     { name = "optimistix", marker = "extra == 'soft-ops-advanced'", specifier = ">=0.0.9" },
     { name = "ott-jax", marker = "extra == 'soft-ops-ot'", specifier = ">=0.5.0" },
@@ -1246,7 +1246,7 @@ requires-dist = [
     { name = "scipy", specifier = ">=1.10" },
     { name = "shellcheck-py", marker = "extra == 'dev'", specifier = ">=0.10.0.1" },
     { name = "squidpy", marker = "extra == 'benchmark'", specifier = ">=1.4" },
-    { name = "substrax", specifier = ">=0.1.7" },
+    { name = "substrax", specifier = ">=0.1.9" },
     { name = "tabulate", marker = "extra == 'benchmark'", specifier = ">=0.9" },
     { name = "torch", marker = "extra == 'torch-io'", specifier = ">=1.13.0" },
     { name = "wemake-python-styleguide", marker = "extra == 'dev'", specifier = ">=1.0" },
@@ -3527,7 +3527,7 @@ wheels = [
 
 [[package]]
 name = "opifex"
-version = "0.2.2"
+version = "0.2.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "avitai-artifex" },
@@ -3548,12 +3548,13 @@ dependencies = [
     { name = "scipy" },
     { name = "substrax" },
     { name = "tensorly" },
+    { name = "tfp-nightly" },
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/28/17/07e85c3865fe593f2a6286fa38a09fa168a6b3d4d5f495c4acc835be2eae/opifex-0.2.2.tar.gz", hash = "sha256:d070e911d9c0497c13fb186e73f81168905bc01e06360557e261c51cbab2bd5a", size = 1304714, upload-time = "2026-09-09T19:06:22.536Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/48/d3/63841011d2d74d63767902858e7d34d9983fefd8482b8797ec9f3c68822c/opifex-0.2.7.tar.gz", hash = "sha256:6005b5aff0c6609fbbdeec9c960b01f666d4614dd400a9b51c52a870d73ff687", size = 1295462, upload-time = "2026-09-17T07:43:51.619Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/45/48/12ea518e4308fc537adee88bd11281a88c709969fb96fe3acbfc0cc81f69/opifex-0.2.2-py3-none-any.whl", hash = "sha256:b071c03ec57e95fdb653a77c295686c73443d19980219f48cc7e00314cefccba", size = 1677125, upload-time = "2026-09-09T19:06:19.874Z" },
+    { url = "https://files.pythonhosted.org/packages/11/8f/7be8a63a1166c305ebd65a4d05a71a133abe6e2fd81292670bfc33da66cf/opifex-0.2.7-py3-none-any.whl", hash = "sha256:7de434e0b064952813fadfa21a9851d0c749c9ff2fb916f0c063c5e6a38321af", size = 1665191, upload-time = "2026-09-17T07:43:49.269Z" },
 ]
 
 [[package]]
@@ -5326,18 +5327,19 @@ wheels = [
 
 [[package]]
 name = "substrax"
-version = "0.1.7"
+version = "0.1.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "flax" },
     { name = "jax" },
     { name = "jaxlib" },
     { name = "numpy" },
+    { name = "optax" },
     { name = "orbax-checkpoint" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6e/2a/ec123f78e47f1d56d155b429988077c4053e4b60713ba6b81960e6903654/substrax-0.1.7.tar.gz", hash = "sha256:ab6de9d35413b3f94e2820d3ce497d482d1a8087256355600d077fb7190fd085", size = 64728, upload-time = "2026-09-15T00:53:06.559Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/25/63/35bd881e604b00d8d7be067b001de821b05cb8a7d7cabd6ced2709d2557e/substrax-0.1.9.tar.gz", hash = "sha256:3a9bea6c822cde9a05a41f3a1a4d89ba83e1bb28dbabfff41d211f19767dfa0b", size = 71666, upload-time = "2026-09-17T06:21:27.981Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3f/d7/896e86cf92a64205ce4ff8b97ead6cb5c1e0c85c18d93acb6b5ef89c7d6c/substrax-0.1.7-py3-none-any.whl", hash = "sha256:d57331a55b7ebb08e2b3a8b042265c04e9965410ca4e15e38daedce7e88efe5b", size = 75159, upload-time = "2026-09-15T00:53:05.022Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/3d/361d8640ea900f1be273dc3b956c0fbff96e996f24fcefe497f3dd14e5de/substrax-0.1.9-py3-none-any.whl", hash = "sha256:725df3ae30fc6944ac5d97a4479a79fd43b6ed1aead476d6e69cc201ff6ecc72", size = 85092, upload-time = "2026-09-17T06:21:26.2Z" },
 ]
 
 [[package]]

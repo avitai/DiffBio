@@ -35,7 +35,7 @@ from jaxtyping import Array, Float, PyTree
 from diffbio.constants import EPSILON
 from diffbio.core.graph_utils import compute_cross_squared_distances
 from diffbio.core.optimal_transport import SinkhornLayer
-from diffbio.utils.nn_utils import ensure_rngs
+
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +115,7 @@ class DifferentiableOTTrajectory(OperatorModule):
         self,
         config: OTTrajectoryConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialize the OT trajectory operator.
@@ -126,8 +126,6 @@ class DifferentiableOTTrajectory(OperatorModule):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        rngs = ensure_rngs(rngs)
 
         self.sinkhorn = SinkhornLayer(
             epsilon=config.sinkhorn_epsilon,

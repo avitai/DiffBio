@@ -283,7 +283,7 @@ class TestFactoryFunction:
 
     def test_create_rna_fold_predictor_default(self):
         """Test default factory function."""
-        predictor = create_rna_fold_predictor()
+        predictor = create_rna_fold_predictor(rngs=nnx.Rngs(0))
         assert isinstance(predictor, DifferentiableRNAFold)
 
     def test_create_rna_fold_predictor_custom(self):
@@ -291,6 +291,7 @@ class TestFactoryFunction:
         predictor = create_rna_fold_predictor(
             temperature=0.5,
             min_hairpin_loop=4,
+            rngs=nnx.Rngs(0),
         )
         assert predictor.config.temperature == 0.5
         assert predictor.config.min_hairpin_loop == 4

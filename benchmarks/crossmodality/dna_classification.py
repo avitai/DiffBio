@@ -14,11 +14,12 @@ import numpy as np
 from calibrax.metrics.functional.classification import f1_score
 from flax import nnx
 
+
 _DATA = os.environ.get("DIFFBIO_DATA_ROOT", "/mnt/ssd2/Data")
 os.environ.setdefault("HF_HOME", f"{_DATA}/huggingface")
 from datasets import load_dataset  # noqa: E402
+from substrax.optim import OptimizerConfig
 
-from diffbio.reductions import fit_pca_reduction  # noqa: E402
 from benchmarks.singlecell._gate2_arms import (  # noqa: E402
     _embedding_probe,
     _probe_forward,
@@ -30,6 +31,7 @@ from diffbio.operators.normalization.learnable_projection import (  # noqa: E402
     LearnableProjectionConfig,
 )
 from diffbio.pipelines.minibatch_training import MiniBatchConfig, train_minibatch  # noqa: E402
+from diffbio.reductions import fit_pca_reduction  # noqa: E402
 from diffbio.sequences.kmer import kmer_featurize  # noqa: E402
 
 
@@ -64,7 +66,12 @@ for seed in SEEDS:
     te_c = reduction.scaled(x_test) - reduction.pca_mean
     n_features = reduction.loadings.shape[0]
     cfg = MiniBatchConfig(
-        batch_size=1024, n_epochs=60, learning_rate=1e-2, weight_decay=5e-2, seed=seed
+        batch_size=1024,
+        n_epochs=60,
+        optimizer=OptimizerConfig(
+            optimizer_type="adamw", learning_rate=1e-2, weight_decay=5e-2, gradient_clip_norm=1.0
+        ),
+        seed=seed,
     )
     for k in K_VALUES:
         loadings_k = reduction.loadings[:, :k]

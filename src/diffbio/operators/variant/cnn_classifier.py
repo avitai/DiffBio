@@ -22,7 +22,7 @@ from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.constants import DEFAULT_DROPOUT_RATE, DEFAULT_NUM_CLASSES
-from diffbio.utils.nn_utils import ensure_rngs
+
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ class CNNVariantClassifier(OperatorModule):
         self,
         config: CNNVariantClassifierConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the CNN variant classifier.
@@ -99,8 +99,6 @@ class CNNVariantClassifier(OperatorModule):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        rngs = ensure_rngs(rngs)
 
         self.num_classes = config.num_classes
         self.dropout_rate = config.dropout_rate

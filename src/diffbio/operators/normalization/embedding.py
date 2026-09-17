@@ -69,7 +69,7 @@ class SequenceEmbedding(OperatorModule):
         self,
         config: SequenceEmbeddingConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the sequence embedding operator.
@@ -80,9 +80,6 @@ class SequenceEmbedding(OperatorModule):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         self.embedding_dim = config.embedding_dim
         self.kernel_size = config.kernel_size

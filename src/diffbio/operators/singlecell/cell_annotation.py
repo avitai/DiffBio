@@ -23,14 +23,15 @@ import jax
 import jax.numpy as jnp
 from artifex.generative_models.core.losses.divergence import gaussian_kl_divergence
 from datarax.core.config import OperatorConfig
+from datarax.core.operator import require_key
 from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
+from substrax.rng import key_from
 
 from diffbio.constants import EPSILON
-
 from diffbio.core.base_operators import EncoderDecoderOperator
 from diffbio.operators._count_vae import CountReconstructionMixin, CountVAEBackboneMixin
-from diffbio.utils.nn_utils import get_rng_key
+
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +154,7 @@ class DifferentiableCellAnnotator(
         self,
         config: CellAnnotatorConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialise the cell type annotator.
@@ -178,7 +179,11 @@ class DifferentiableCellAnnotator(
         if config.annotation_mode == "scanvi":
             # Type-conditioned prior parameters: each cell type y has its own
             # Gaussian prior N(mu_y, diag(exp(logvar_y))) in latent space.
-            params_key = get_rng_key(rngs, "params", fallback_seed=7)
+            params_key = key_from(
+                rngs,
+                streams=("params", "default"),
+                context="DifferentiableCellAnnotator prior parameters",
+            )
             self.prior_means = nnx.Param(
                 jax.random.normal(params_key, (config.n_cell_types, config.latent_dim)) * 0.01
             )
@@ -477,7 +482,7 @@ class DifferentiableCellAnnotator(
                 - (scanvi) ``"label_indices"``: Batch indices ``(n_labeled,)``
             state: Element state (passed through unchanged).
             metadata: Element metadata (passed through unchanged).
-            key: Unused.
+            key: The record's PRNG key; the latent sample's epsilon is drawn from it.
             stats: Not used.
 
         Returns:
@@ -489,9 +494,9 @@ class DifferentiableCellAnnotator(
         """
         counts = data["counts"]
 
-        # Shared VAE encoding
+        # Shared VAE encoding; epsilon is drawn from the record's key
         mean, logvar = self.encode(counts)
-        z = self.reparameterize(mean, logvar)
+        z = self.reparameterize(mean, logvar, key=require_key(key, self))
 
         # Mode dispatch
         mode = self.config.annotation_mode

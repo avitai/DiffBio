@@ -11,14 +11,14 @@ linear reductions of the other case studies, but with the same lossy k-bottlenec
 hypothesis predicts the gain-vs-k signature. Real GIAB HG002 chr20 windows (no synthetic).
 """
 
-import os
-
 import json
+import os
 
 import jax.numpy as jnp
 import numpy as np
 from calibrax.metrics.functional.classification import balanced_accuracy, f1_score
 from flax import nnx
+from substrax.optim import OptimizerConfig
 
 from benchmarks.singlecell._gate2_arms import _embedding_probe, _probe_forward
 from diffbio.operators.normalization.learnable_projection import (
@@ -131,7 +131,15 @@ def main() -> None:
     frozen, joint, bal = {k: [] for k in K_VALUES}, {k: [] for k in K_VALUES}, {"f": [], "j": []}
     for seed in SEEDS:
         config = MiniBatchConfig(
-            batch_size=256, n_epochs=60, learning_rate=1e-2, weight_decay=5e-2, seed=seed
+            batch_size=256,
+            n_epochs=60,
+            optimizer=OptimizerConfig(
+                optimizer_type="adamw",
+                learning_rate=1e-2,
+                weight_decay=5e-2,
+                gradient_clip_norm=1.0,
+            ),
+            seed=seed,
         )
         for k in K_VALUES:
             loadings_k = reduction.loadings[:, :k]

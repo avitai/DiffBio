@@ -60,53 +60,6 @@ def init_learnable_param(value: float) -> nnx.Param:
     return nnx.Param(jnp.array(value))
 
 
-def ensure_rngs(rngs: nnx.Rngs | None, seed: int = 0) -> nnx.Rngs:
-    """Ensure rngs is initialized, creating a default if None.
-
-    Args:
-        rngs: Optional Flax NNX random number generators.
-        seed: Seed to use if creating new rngs (default: 0).
-
-    Returns:
-        The provided rngs if not None, otherwise a new nnx.Rngs instance.
-
-    Example:
-        ```python
-        rngs = ensure_rngs(rngs)  # Use passed rngs or create default
-        layer = nnx.Linear(10, 20, rngs=rngs)
-        ```
-    """
-    if rngs is not None:
-        return rngs
-    return nnx.Rngs(seed)
-
-
-def get_rng_key(
-    rngs: nnx.Rngs | None,
-    stream_name: str = "params",
-    fallback_seed: int = 0,
-) -> jax.Array:
-    """Get an RNG key from rngs with fallback.
-
-    Args:
-        rngs: Optional Flax NNX random number generators.
-        stream_name: Name of the RNG stream to use.
-        fallback_seed: Seed to use if rngs is None.
-
-    Returns:
-        A JAX PRNG key.
-
-    Example:
-        ```python
-        key = get_rng_key(rngs, "sample")
-        noise = jax.random.normal(key, shape)
-        ```
-    """
-    if rngs is not None and stream_name in rngs:
-        return getattr(rngs, stream_name)()
-    return jax.random.key(fallback_seed)
-
-
 def extract_windows_1d(
     signal: Array,
     window_size: int,

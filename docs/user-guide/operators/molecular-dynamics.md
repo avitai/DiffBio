@@ -222,6 +222,10 @@ nvt_integrator = create_integrator(
     kT=1.0,       # Temperature
     gamma=1.0,    # Friction
 )
+
+# The thermostat's random forces are drawn from the record's key, so a
+# Langevin step takes one; a pipeline passes it, a direct call names it.
+result, _, _ = nvt_integrator.apply(data, {}, None, key=jax.random.key(0))
 ```
 
 ### Input/Output Formats

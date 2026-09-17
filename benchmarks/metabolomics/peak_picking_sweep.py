@@ -16,15 +16,16 @@ import os
 import jax.numpy as jnp
 import numpy as np
 from flax import nnx
+from substrax.optim import OptimizerConfig
 
 from benchmarks._classification import stratified_label_split
 from benchmarks.metabolomics.peak_picking import (
+    _accuracy,
     _MAX_MZ,
     _MIN_MZ,
+    _MSPipeline,
     _N_POINTS,
     _PEAK_WIDTH_INIT,
-    _MSPipeline,
-    _accuracy,
     _pipeline_forward,
     synthesize,
 )
@@ -35,6 +36,7 @@ from diffbio.operators.metabolomics.isotope_envelope import (
 )
 from diffbio.operators.metabolomics.soft_centroiding import SoftCentroider, SoftCentroiderConfig
 from diffbio.pipelines.minibatch_training import MiniBatchConfig, train_minibatch
+
 
 OUT = "benchmarks/results/metabolomics/peak_picking_sweep.json"
 SEEDS = (0, 1, 2, 3, 4)
@@ -91,8 +93,12 @@ def run_snthresh(
         config = MiniBatchConfig(
             batch_size=batch_size,
             n_epochs=n_epochs,
-            learning_rate=1.0e-2,
-            weight_decay=0.0,
+            optimizer=OptimizerConfig(
+                optimizer_type="adamw",
+                learning_rate=1.0e-2,
+                weight_decay=0.0,
+                gradient_clip_norm=1.0,
+            ),
             seed=seed,
         )
         frozen = _build(n_compounds, snthresh=snthresh, trainable=False, seed=seed)

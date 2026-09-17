@@ -244,7 +244,7 @@ class HiCContactAnalysis(TemperatureOperator):
         self,
         config: HiCContactAnalysisConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the Hi-C contact analyzer.
@@ -255,9 +255,6 @@ class HiCContactAnalysis(TemperatureOperator):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         self.hidden_dim = config.hidden_dim
         # Temperature is managed by TemperatureOperator via self._temperature

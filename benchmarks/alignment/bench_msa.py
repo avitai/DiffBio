@@ -28,14 +28,15 @@ from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._baselines.alignment import MSA_BASELINES
 from benchmarks._metrics.alignment import sp_score, tc_score
 from benchmarks._optimizers import create_benchmark_optimizer
-from diffbio.losses.alignment_losses import AlignmentScoreLoss
 from benchmarks.alignment._encoding import onehot_encode_sequence
+from diffbio.losses.alignment_losses import AlignmentScoreLoss
 from diffbio.operators.alignment import PROTEIN_ALPHABET
 from diffbio.operators.alignment.soft_msa import (
     SoftProgressiveMSA,
     SoftProgressiveMSAConfig,
 )
 from diffbio.sources.balifam import BalifamConfig, BalifamSource
+
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +176,7 @@ class MSABenchmark(DiffBioBenchmark):
             AlignmentScoreLoss(rngs=rngs)
             opt = nnx.Optimizer(
                 operator,
-                create_benchmark_optimizer(learning_rate=1e-3),
+                create_benchmark_optimizer(operator, learning_rate=1e-3),
                 wrt=nnx.Param,
             )
 

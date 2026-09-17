@@ -38,7 +38,7 @@ from jaxtyping import Array, Float, Int, PyTree
 from diffbio.constants import EPSILON
 from diffbio.core import soft_ops
 from diffbio.core.gnn_components import GATv2Layer
-from diffbio.utils.nn_utils import ensure_rngs
+
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +99,7 @@ class DifferentiableGRN(OperatorModule):
         self,
         config: GRNInferenceConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialize the GRN inference operator.
@@ -110,8 +110,6 @@ class DifferentiableGRN(OperatorModule):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        rngs = ensure_rngs(rngs)
 
         self.n_tfs = config.n_tfs
         self.n_genes = config.n_genes

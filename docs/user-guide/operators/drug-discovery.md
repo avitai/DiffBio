@@ -367,7 +367,7 @@ result, _, _ = maccs.apply(data, {}, None)
 
 ```python
 config = MACCSKeysConfig(differentiable=False)
-maccs = MACCSKeysOperator(config)
+maccs = MACCSKeysOperator(config, rngs=nnx.Rngs(0))
 
 # Input: SMILES string
 data = {"smiles": "CCO"}
@@ -576,7 +576,7 @@ from diffbio.operators.drug_discovery import (
 from flax import nnx
 
 # Using factory function (recommended)
-ecfp4_op = create_ecfp4_operator(n_bits=2048)
+ecfp4_op = create_ecfp4_operator(n_bits=2048, rngs=nnx.Rngs(0))
 
 # Convert SMILES to graph
 node_features, adjacency, _ = smiles_to_graph("CCO")  # Ethanol
@@ -606,13 +606,13 @@ from diffbio.operators.drug_discovery import (
 )
 
 # ECFP4: Standard choice for most applications
-ecfp4 = create_ecfp4_operator(n_bits=2048)
+ecfp4 = create_ecfp4_operator(n_bits=2048, rngs=nnx.Rngs(0))
 
 # ECFP6: More specific substructures
-ecfp6 = create_ecfp6_operator(n_bits=2048)
+ecfp6 = create_ecfp6_operator(n_bits=2048, rngs=nnx.Rngs(0))
 
 # FCFP4: Pharmacophore-aware features
-fcfp4 = create_fcfp4_operator(n_bits=2048)
+fcfp4 = create_fcfp4_operator(n_bits=2048, rngs=nnx.Rngs(0))
 ```
 
 ### Differentiable vs RDKit Mode
@@ -646,7 +646,7 @@ config = CircularFingerprintConfig(
     n_bits=2048,
     differentiable=False,  # Use RDKit
 )
-fp_op = CircularFingerprintOperator(config)
+fp_op = CircularFingerprintOperator(config, rngs=nnx.Rngs(0))
 
 # Input: SMILES string
 data = {"smiles": "CCO"}
@@ -675,7 +675,7 @@ import jax
 from flax import nnx
 
 # Create differentiable fingerprint operator
-ecfp4_op = create_ecfp4_operator(n_bits=256)
+ecfp4_op = create_ecfp4_operator(n_bits=256, rngs=nnx.Rngs(0))
 
 def similarity_loss(fp_op, query_data, target_data):
     """Optimize fingerprint similarity."""
@@ -721,7 +721,7 @@ from diffbio.operators.drug_discovery import (
 )
 
 # Create similarity operator
-sim_op = create_similarity_operator(similarity_type="tanimoto")
+sim_op = create_similarity_operator(similarity_type="tanimoto", rngs=nnx.Rngs(0))
 
 # Or with configuration
 config = MolecularSimilarityConfig(similarity_type="tanimoto")
@@ -746,7 +746,7 @@ Standard metric for molecular fingerprints:
 $$T(a, b) = \frac{a \cdot b}{|a|^2 + |b|^2 - a \cdot b}$$
 
 ```python
-sim_op = create_similarity_operator(similarity_type="tanimoto")
+sim_op = create_similarity_operator(similarity_type="tanimoto", rngs=nnx.Rngs(0))
 ```
 
 #### Cosine Similarity
@@ -756,7 +756,7 @@ Angle-based similarity:
 $$\cos(a, b) = \frac{a \cdot b}{|a| \cdot |b|}$$
 
 ```python
-sim_op = create_similarity_operator(similarity_type="cosine")
+sim_op = create_similarity_operator(similarity_type="cosine", rngs=nnx.Rngs(0))
 ```
 
 #### Dice Similarity
@@ -766,7 +766,7 @@ Alternative overlap metric:
 $$D(a, b) = \frac{2 \cdot a \cdot b}{|a|^2 + |b|^2}$$
 
 ```python
-sim_op = create_similarity_operator(similarity_type="dice")
+sim_op = create_similarity_operator(similarity_type="dice", rngs=nnx.Rngs(0))
 ```
 
 ### Using Standalone Functions

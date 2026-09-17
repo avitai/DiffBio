@@ -191,7 +191,7 @@ class DifferentiableVelocity(OperatorModule):
         self,
         config: VelocityConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the velocity operator.
@@ -202,9 +202,6 @@ class DifferentiableVelocity(OperatorModule):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         self.n_genes = config.n_genes
         self.dt = config.dt

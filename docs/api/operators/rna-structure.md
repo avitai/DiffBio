@@ -51,7 +51,7 @@ import jax
 import jax.numpy as jnp
 
 # Create predictor
-predictor = create_rna_fold_predictor(temperature=1.0)
+predictor = create_rna_fold_predictor(temperature=1.0, rngs=nnx.Rngs(0))
 
 # Prepare one-hot encoded RNA sequence
 sequence = jax.nn.one_hot(
@@ -107,7 +107,7 @@ bp_probs = result["bp_probs"]  # (8, 50, 50)
 import jax
 from flax import nnx
 
-predictor = create_rna_fold_predictor()
+predictor = create_rna_fold_predictor(rngs=nnx.Rngs(0))
 
 def loss_fn(model, sequence):
     result, _, _ = model.apply({"sequence": sequence}, {}, None)

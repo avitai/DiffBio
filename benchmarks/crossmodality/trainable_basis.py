@@ -27,9 +27,11 @@ import numpy as np
 from calibrax.metrics.functional.classification import f1_score
 from flax import nnx
 
+
 _DATA = os.environ.get("DIFFBIO_DATA_ROOT", "/mnt/ssd2/Data")
 os.environ.setdefault("HF_HOME", f"{_DATA}/huggingface")
 from datasets import load_dataset  # noqa: E402
+from substrax.optim import OptimizerConfig
 
 from benchmarks.singlecell._gate2_arms import _embedding_probe, _probe_forward  # noqa: E402
 from diffbio.operators.normalization.learnable_orthogonal_projection import (  # noqa: E402
@@ -117,7 +119,15 @@ def main() -> None:
         te_c = reduction.scaled(x_te) - reduction.pca_mean
         loadings_k = reduction.loadings[:, :K]  # orthonormal (PCA components)
         cfg = MiniBatchConfig(
-            batch_size=1024, n_epochs=60, learning_rate=1e-2, weight_decay=5e-2, seed=seed
+            batch_size=1024,
+            n_epochs=60,
+            optimizer=OptimizerConfig(
+                optimizer_type="adamw",
+                learning_rate=1e-2,
+                weight_decay=5e-2,
+                gradient_clip_norm=1.0,
+            ),
+            seed=seed,
         )
 
         # --- Section 1: mini-batch projection arms ---
@@ -158,7 +168,15 @@ def main() -> None:
         xte_sc = jnp.asarray(np.asarray(reduction.scaled(x_te), np.float32))
         y_sub = y_tr[sub]
         full_cfg = MiniBatchConfig(
-            batch_size=None, n_epochs=200, learning_rate=5e-2, weight_decay=1e-3, seed=seed
+            batch_size=None,
+            n_epochs=200,
+            optimizer=OptimizerConfig(
+                optimizer_type="adamw",
+                learning_rate=5e-2,
+                weight_decay=1e-3,
+                gradient_clip_norm=1.0,
+            ),
+            seed=seed,
         )
         for name, learnable in (("frozen_mf", False), ("diff_pca", True)):
             dmodel = _DiffPCAProbe(n_features, learnable, _embedding_probe(K, n_classes, 128, seed))

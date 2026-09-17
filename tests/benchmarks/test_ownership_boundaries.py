@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 ROOT = Path(__file__).resolve().parents[2]
 BENCHMARKS_ROOT = ROOT / "benchmarks"
-OPTIFEX_OPTIMIZER_IMPORT = "from opifex.core.training.optimizers import"
+SUBSTRAX_OPTIMIZER_IMPORT = "from substrax.optim import"
+SUBSTRAX_OPTIMIZER_FACTORIES = ("create_transformation", "create_optimizer")
 DIRECT_OPTAX_OPTIMIZER_CALLS = (
     "optax.adam(",
     "optax.adamw(",
@@ -21,15 +23,29 @@ def _benchmark_python_files() -> tuple[Path, ...]:
     return tuple(sorted(BENCHMARKS_ROOT.rglob("*.py")))
 
 
-def test_benchmark_training_uses_one_opifex_optimizer_boundary() -> None:
-    """Benchmarks should not construct optimizers outside the shared helper."""
+def _imports_a_substrax_factory(source: str) -> bool:
+    """Whether ``source`` imports one of substrax's optimizer factories by name."""
+    return any(
+        SUBSTRAX_OPTIMIZER_IMPORT in line
+        and any(name in line for name in SUBSTRAX_OPTIMIZER_FACTORIES)
+        for line in source.splitlines()
+    )
+
+
+def test_benchmark_training_uses_one_substrax_optimizer_boundary() -> None:
+    """Benchmarks build optimizers only through the shared helper, which builds with substrax.
+
+    A benchmark may describe its optimizer with ``substrax.optim.OptimizerConfig``; only the
+    helper calls a substrax factory.
+    """
     optimizer_helper = BENCHMARKS_ROOT / "_optimizers.py"
+    assert _imports_a_substrax_factory(optimizer_helper.read_text(encoding="utf-8"))
 
     for path in _benchmark_python_files():
         source = path.read_text(encoding="utf-8")
         relative_path = path.relative_to(ROOT)
         if path != optimizer_helper:
-            assert OPTIFEX_OPTIMIZER_IMPORT not in source, relative_path
+            assert not _imports_a_substrax_factory(source), relative_path
         for direct_call in DIRECT_OPTAX_OPTIMIZER_CALLS:
             assert direct_call not in source, f"{relative_path} contains {direct_call}"
 

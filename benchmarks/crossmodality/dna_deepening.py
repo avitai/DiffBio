@@ -19,9 +19,11 @@ from flax import nnx
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
 
+
 _DATA = os.environ.get("DIFFBIO_DATA_ROOT", "/mnt/ssd2/Data")
 os.environ.setdefault("HF_HOME", f"{_DATA}/huggingface")
 from datasets import load_dataset  # noqa: E402
+from substrax.optim import OptimizerConfig
 
 from benchmarks.singlecell._gate2_arms import (  # noqa: E402
     _embedding_probe,
@@ -60,7 +62,12 @@ def frozen_vs_joint(x_tr, y_tr, x_te, y_te, n_classes, seed):
     te_c = reduction.scaled(x_te) - reduction.pca_mean
     loadings_k = reduction.loadings[:, :K]
     config = MiniBatchConfig(
-        batch_size=1024, n_epochs=60, learning_rate=1e-2, weight_decay=5e-2, seed=seed
+        batch_size=1024,
+        n_epochs=60,
+        optimizer=OptimizerConfig(
+            optimizer_type="adamw", learning_rate=1e-2, weight_decay=5e-2, gradient_clip_norm=1.0
+        ),
+        seed=seed,
     )
 
     xtr_f = jnp.asarray(tr_c @ loadings_k)

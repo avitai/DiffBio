@@ -36,6 +36,7 @@ from diffbio.operators.singlecell.velocity import (
 )
 from diffbio.sources.pancreas import PancreasConfig, PancreasSource
 
+
 logger = logging.getLogger(__name__)
 
 _CONFIG = DiffBioBenchmarkConfig(
@@ -120,7 +121,7 @@ class TrajectoryBenchmark(DiffBioBenchmark):
         vel_loss = VelocityConsistencyLoss(rngs=rngs)
         vel_opt = nnx.Optimizer(
             vel_op,
-            create_benchmark_optimizer(learning_rate=1e-3),
+            create_benchmark_optimizer(vel_op, learning_rate=1e-3),
             wrt=nnx.Param,
         )
 

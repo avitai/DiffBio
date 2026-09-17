@@ -173,12 +173,15 @@ class MolecularSimilarityOperator(OperatorModule):
 def create_similarity_operator(
     similarity_type: str = "tanimoto",
     temperature: float = 1.0,
+    *,
+    rngs: nnx.Rngs,
 ) -> MolecularSimilarityOperator:
     """Create a molecular similarity operator.
 
     Args:
         similarity_type: Type of similarity ("tanimoto", "cosine", "dice").
         temperature: Temperature parameter.
+        rngs: Random number generators for the operator.
 
     Returns:
         Configured MolecularSimilarityOperator.
@@ -187,4 +190,4 @@ def create_similarity_operator(
         similarity_type=similarity_type,
         temperature=temperature,
     )
-    return MolecularSimilarityOperator(config, rngs=nnx.Rngs(42))
+    return MolecularSimilarityOperator(config, rngs=rngs)

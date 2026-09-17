@@ -50,6 +50,7 @@ from diffbio.operators.rna_structure import (
 predictor = create_rna_fold_predictor(
     temperature=1.0,      # Boltzmann temperature
     min_hairpin_loop=3,   # Minimum unpaired bases in hairpin
+    rngs=nnx.Rngs(0),
 )
 
 # Prepare one-hot encoded RNA sequence
@@ -119,10 +120,10 @@ The temperature parameter controls the sharpness of base pair probabilities:
 
 ```python
 # Low temperature = sharper predictions
-predictor_low = create_rna_fold_predictor(temperature=0.1)
+predictor_low = create_rna_fold_predictor(temperature=0.1, rngs=nnx.Rngs(0))
 
 # High temperature = more uniform predictions
-predictor_high = create_rna_fold_predictor(temperature=5.0)
+predictor_high = create_rna_fold_predictor(temperature=5.0, rngs=nnx.Rngs(0))
 ```
 
 - **Low temperature (< 1)**: Probabilities concentrated on most stable pairs
@@ -135,7 +136,7 @@ predictor_high = create_rna_fold_predictor(temperature=5.0)
 import optax
 from flax import nnx
 
-predictor = create_rna_fold_predictor(temperature=1.0)
+predictor = create_rna_fold_predictor(temperature=1.0, rngs=nnx.Rngs(0))
 optimizer = optax.adam(1e-3)
 opt_state = optimizer.init(nnx.state(predictor, nnx.Param))
 

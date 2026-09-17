@@ -37,7 +37,7 @@ from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
 
 from diffbio.operators._loss_balancing import LossBalancingMixin
-from diffbio.utils.nn_utils import ensure_rngs
+
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +150,7 @@ class DifferentiableMMDBatchCorrection(LossBalancingMixin, OperatorModule):
         self,
         config: MMDBatchCorrectionConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialise encoder and decoder MLPs.
@@ -161,8 +161,6 @@ class DifferentiableMMDBatchCorrection(LossBalancingMixin, OperatorModule):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        rngs = ensure_rngs(rngs)
 
         self.encoder = MLP(
             hidden_dims=[config.hidden_dim, config.hidden_dim, config.latent_dim],
@@ -347,7 +345,7 @@ class DifferentiableWGANBatchCorrection(LossBalancingMixin, OperatorModule):
         self,
         config: WGANBatchCorrectionConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialise encoder, decoder, and discriminator MLPs.
@@ -358,8 +356,6 @@ class DifferentiableWGANBatchCorrection(LossBalancingMixin, OperatorModule):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        rngs = ensure_rngs(rngs)
 
         self.encoder = MLP(
             hidden_dims=[config.hidden_dim, config.hidden_dim, config.latent_dim],

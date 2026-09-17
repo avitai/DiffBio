@@ -204,7 +204,7 @@ DiffBio unrolls EM iterations for end-to-end gradient flow.
 ```python
 from diffbio.losses.statistical_losses import HMMLikelihoodLoss
 
-hmm_loss = HMMLikelihoodLoss()
+hmm_loss = HMMLikelihoodLoss(rngs=nnx.Rngs(0))
 
 def train_hmm(hmm, observations):
     data = {"observations": observations}

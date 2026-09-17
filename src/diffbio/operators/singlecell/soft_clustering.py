@@ -84,7 +84,7 @@ class SoftKMeansClustering(TemperatureOperator):
         self,
         config: SoftClusteringConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the soft k-means clustering operator.
@@ -96,7 +96,6 @@ class SoftKMeansClustering(TemperatureOperator):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        rngs = rngs or nnx.Rngs(0)
         self.cluster_shape = nnx.static((config.n_clusters, config.n_features))
         self.n_clusters, self.n_features = self.cluster_shape
         # Temperature is now managed by TemperatureOperator via self._temperature

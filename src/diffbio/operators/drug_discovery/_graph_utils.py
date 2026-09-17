@@ -7,7 +7,7 @@ import jax.numpy as jnp
 from flax import nnx
 
 from diffbio.operators.drug_discovery.message_passing import StackedMessagePassing
-from diffbio.utils.nn_utils import ensure_rngs
+
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ def _require_config_attr(config: Any, attr: str) -> Any:
 def initialize_graph_encoder(
     module: Any,
     *,
-    rngs: nnx.Rngs | None,
+    rngs: nnx.Rngs,
     hidden_dim: int,
     num_layers: int,
     in_features: int,
@@ -52,7 +52,6 @@ def initialize_graph_encoder(
     attr: str = "encoder",
 ) -> nnx.Rngs:
     """Ensure RNGs and attach a message-passing encoder."""
-    resolved_rngs = ensure_rngs(rngs)
     setattr(
         module,
         attr,
@@ -60,18 +59,18 @@ def initialize_graph_encoder(
             hidden_dim=hidden_dim,
             num_layers=num_layers,
             in_features=in_features,
-            rngs=resolved_rngs,
+            rngs=rngs,
             num_edge_features=num_edge_features,
         ),
     )
-    return resolved_rngs
+    return rngs
 
 
 def initialize_graph_encoder_from_config(
     module: Any,
     config: Any,
     *,
-    rngs: nnx.Rngs | None,
+    rngs: nnx.Rngs,
     num_layers_attr: str = "num_message_passing_steps",
     hidden_dim_attr: str = "hidden_dim",
     in_features_attr: str = "in_features",

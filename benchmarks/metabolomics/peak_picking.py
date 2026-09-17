@@ -29,6 +29,7 @@ import numpy as np
 from calibrax.metrics.functional.classification import balanced_accuracy
 from calibrax.statistics.significance import paired_significance_test
 from flax import nnx
+from substrax.optim import OptimizerConfig
 
 from benchmarks._classification import stratified_label_split
 from benchmarks.singlecell._gate2_arms import _embedding_probe
@@ -37,11 +38,12 @@ from diffbio.operators.metabolomics.isotope_envelope import (
     SoftIsotopeEnvelopeConfig,
 )
 from diffbio.operators.metabolomics.soft_centroiding import (
+    mz_grid,
     SoftCentroider,
     SoftCentroiderConfig,
-    mz_grid,
 )
 from diffbio.pipelines.minibatch_training import MiniBatchConfig, train_minibatch
+
 
 OUT = "benchmarks/results/metabolomics/peak_picking.json"
 SEEDS = (0, 1, 2, 3, 4, 5, 6, 7)
@@ -159,8 +161,12 @@ def run_study(
         config = MiniBatchConfig(
             batch_size=batch_size,
             n_epochs=n_epochs,
-            learning_rate=1.0e-2,
-            weight_decay=0.0,
+            optimizer=OptimizerConfig(
+                optimizer_type="adamw",
+                learning_rate=1.0e-2,
+                weight_decay=0.0,
+                gradient_clip_norm=1.0,
+            ),
             seed=seed,
         )
         frozen = _build_pipeline(n_compounds, trainable=False, seed=seed)

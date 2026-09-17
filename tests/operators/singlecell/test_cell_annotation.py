@@ -195,7 +195,7 @@ class TestCelltypistMode:
     def test_output_keys(self, rngs, celltypist_config, counts_data) -> None:
         """Output must contain cell_type_probabilities, cell_type_labels, latent."""
         op = DifferentiableCellAnnotator(celltypist_config, rngs=rngs)
-        result, _, _ = op.apply(counts_data, {}, None)
+        result, _, _ = op.apply(counts_data, {}, None, key=jax.random.key(0))
         assert "cell_type_probabilities" in result
         assert "cell_type_labels" in result
         assert "latent" in result
@@ -203,7 +203,7 @@ class TestCelltypistMode:
     def test_output_shapes(self, rngs, celltypist_config, counts_data) -> None:
         """Shapes: probabilities (n, n_types), labels (n,), latent (n, latent_dim)."""
         op = DifferentiableCellAnnotator(celltypist_config, rngs=rngs)
-        result, _, _ = op.apply(counts_data, {}, None)
+        result, _, _ = op.apply(counts_data, {}, None, key=jax.random.key(0))
         assert result["cell_type_probabilities"].shape == (N_CELLS, N_TYPES)
         assert result["cell_type_labels"].shape == (N_CELLS,)
         assert result["latent"].shape == (N_CELLS, LATENT_DIM)
@@ -211,14 +211,14 @@ class TestCelltypistMode:
     def test_probabilities_sum_to_one(self, rngs, celltypist_config, counts_data) -> None:
         """Each row of cell_type_probabilities must sum to 1."""
         op = DifferentiableCellAnnotator(celltypist_config, rngs=rngs)
-        result, _, _ = op.apply(counts_data, {}, None)
+        result, _, _ = op.apply(counts_data, {}, None, key=jax.random.key(0))
         row_sums = jnp.sum(result["cell_type_probabilities"], axis=-1)
         assert jnp.allclose(row_sums, 1.0, atol=1e-5)
 
     def test_labels_in_range(self, rngs, celltypist_config, counts_data) -> None:
         """All labels must be in [0, n_types)."""
         op = DifferentiableCellAnnotator(celltypist_config, rngs=rngs)
-        result, _, _ = op.apply(counts_data, {}, None)
+        result, _, _ = op.apply(counts_data, {}, None, key=jax.random.key(0))
         labels = result["cell_type_labels"]
         assert jnp.all(labels >= 0)
         assert jnp.all(labels < N_TYPES)
@@ -236,7 +236,7 @@ class TestCellassignMode:
         """Output must contain required keys."""
         op = DifferentiableCellAnnotator(cellassign_config, rngs=rngs)
         data = {**counts_data, "marker_matrix": marker_matrix}
-        result, _, _ = op.apply(data, {}, None)
+        result, _, _ = op.apply(data, {}, None, key=jax.random.key(0))
         assert "cell_type_probabilities" in result
         assert "cell_type_labels" in result
         assert "latent" in result
@@ -245,7 +245,7 @@ class TestCellassignMode:
         """Output shapes must match spec."""
         op = DifferentiableCellAnnotator(cellassign_config, rngs=rngs)
         data = {**counts_data, "marker_matrix": marker_matrix}
-        result, _, _ = op.apply(data, {}, None)
+        result, _, _ = op.apply(data, {}, None, key=jax.random.key(0))
         assert result["cell_type_probabilities"].shape == (N_CELLS, N_TYPES)
         assert result["cell_type_labels"].shape == (N_CELLS,)
         assert result["latent"].shape == (N_CELLS, LATENT_DIM)
@@ -265,7 +265,7 @@ class TestCellassignMode:
 
         counts = jnp.concatenate([counts_type0, counts_type1], axis=0)
         data = {"counts": counts, "marker_matrix": marker_matrix}
-        result, _, _ = op.apply(data, {}, None)
+        result, _, _ = op.apply(data, {}, None, key=jax.random.key(0))
 
         probs = result["cell_type_probabilities"]
         # Type-0 cells should have higher probability for type 0 than type 1
@@ -285,7 +285,7 @@ class TestScanviMode:
     def test_output_keys(self, rngs, scanvi_config, counts_data) -> None:
         """Output must contain required keys."""
         op = DifferentiableCellAnnotator(scanvi_config, rngs=rngs)
-        result, _, _ = op.apply(counts_data, {}, None)
+        result, _, _ = op.apply(counts_data, {}, None, key=jax.random.key(0))
         assert "cell_type_probabilities" in result
         assert "cell_type_labels" in result
         assert "latent" in result
@@ -293,7 +293,7 @@ class TestScanviMode:
     def test_output_shapes(self, rngs, scanvi_config, counts_data) -> None:
         """Output shapes must match spec."""
         op = DifferentiableCellAnnotator(scanvi_config, rngs=rngs)
-        result, _, _ = op.apply(counts_data, {}, None)
+        result, _, _ = op.apply(counts_data, {}, None, key=jax.random.key(0))
         assert result["cell_type_probabilities"].shape == (N_CELLS, N_TYPES)
         assert result["cell_type_labels"].shape == (N_CELLS,)
         assert result["latent"].shape == (N_CELLS, LATENT_DIM)
@@ -314,7 +314,7 @@ class TestScanviMode:
             "known_labels": known_labels,
             "label_indices": label_indices,
         }
-        result, _, _ = op.apply(data, {}, None)
+        result, _, _ = op.apply(data, {}, None, key=jax.random.key(0))
 
         probs = result["cell_type_probabilities"]
         # Labeled cells should have elevated probability for type 2
@@ -410,7 +410,7 @@ class TestGradientFlow:
 
         @nnx.value_and_grad
         def loss_fn(model: DifferentiableCellAnnotator) -> jax.Array:
-            result, _, _ = model.apply(counts_data, {}, None)
+            result, _, _ = model.apply(counts_data, {}, None, key=jax.random.key(0))
             return jnp.sum(result["cell_type_probabilities"])
 
         loss, grads = loss_fn(op)
@@ -427,7 +427,7 @@ class TestGradientFlow:
 
         @nnx.value_and_grad
         def loss_fn(model: DifferentiableCellAnnotator) -> jax.Array:
-            result, _, _ = model.apply(data, {}, None)
+            result, _, _ = model.apply(data, {}, None, key=jax.random.key(0))
             return jnp.sum(result["cell_type_probabilities"])
 
         loss, grads = loss_fn(op)
@@ -442,7 +442,7 @@ class TestGradientFlow:
 
         @nnx.value_and_grad
         def loss_fn(model: DifferentiableCellAnnotator) -> jax.Array:
-            result, _, _ = model.apply(counts_data, {}, None)
+            result, _, _ = model.apply(counts_data, {}, None, key=jax.random.key(0))
             return jnp.sum(result["cell_type_probabilities"])
 
         loss, grads = loss_fn(op)
@@ -505,12 +505,14 @@ class TestJITCompatibility:
         """Celltypist mode must be JIT-compilable."""
         op = DifferentiableCellAnnotator(celltypist_config, rngs=rngs)
 
-        @jax.jit
-        def run(data: dict[str, jax.Array]) -> dict[str, jax.Array]:
-            result, _, _ = op.apply(data, {}, None)
+        @nnx.jit
+        def run(
+            model: DifferentiableCellAnnotator, data: dict[str, jax.Array], key: jax.Array
+        ) -> dict[str, jax.Array]:
+            result, _, _ = model.apply(data, {}, None, key=key)
             return result
 
-        result = run(counts_data)
+        result = run(op, counts_data, jax.random.key(0))
         assert jnp.isfinite(result["cell_type_probabilities"]).all()
 
     def test_jit_cellassign(self, rngs, cellassign_config, counts_data, marker_matrix) -> None:
@@ -518,24 +520,28 @@ class TestJITCompatibility:
         op = DifferentiableCellAnnotator(cellassign_config, rngs=rngs)
         data = {**counts_data, "marker_matrix": marker_matrix}
 
-        @jax.jit
-        def run(data: dict[str, jax.Array]) -> dict[str, jax.Array]:
-            result, _, _ = op.apply(data, {}, None)
+        @nnx.jit
+        def run(
+            model: DifferentiableCellAnnotator, data: dict[str, jax.Array], key: jax.Array
+        ) -> dict[str, jax.Array]:
+            result, _, _ = model.apply(data, {}, None, key=key)
             return result
 
-        result = run(data)
+        result = run(op, data, jax.random.key(0))
         assert jnp.isfinite(result["cell_type_probabilities"]).all()
 
     def test_jit_scanvi(self, rngs, scanvi_config, counts_data) -> None:
         """Scanvi mode must be JIT-compilable."""
         op = DifferentiableCellAnnotator(scanvi_config, rngs=rngs)
 
-        @jax.jit
-        def run(data: dict[str, jax.Array]) -> dict[str, jax.Array]:
-            result, _, _ = op.apply(data, {}, None)
+        @nnx.jit
+        def run(
+            model: DifferentiableCellAnnotator, data: dict[str, jax.Array], key: jax.Array
+        ) -> dict[str, jax.Array]:
+            result, _, _ = model.apply(data, {}, None, key=key)
             return result
 
-        result = run(counts_data)
+        result = run(op, counts_data, jax.random.key(0))
         assert jnp.isfinite(result["cell_type_probabilities"]).all()
 
     def test_jit_scanvi_elbo(self, rngs, scanvi_config) -> None:
@@ -545,11 +551,11 @@ class TestJITCompatibility:
         key = jax.random.key(16)
         counts = jax.random.poisson(key, lam=5.0, shape=(N_CELLS, N_GENES)).astype(jnp.float32)
 
-        @jax.jit
-        def run_elbo(c: jax.Array) -> jax.Array:
-            return op.compute_elbo_loss(c)
+        @nnx.jit
+        def run_elbo(model: DifferentiableCellAnnotator, c: jax.Array) -> jax.Array:
+            return model.compute_elbo_loss(c)
 
-        loss = run_elbo(counts)
+        loss = run_elbo(op, counts)
         assert jnp.isfinite(loss)
 
 
@@ -576,7 +582,7 @@ class TestEdgeCases:
         key = jax.random.key(99)
         counts = jax.random.poisson(key, lam=5.0, shape=(4, N_GENES)).astype(jnp.float32)
         data = {"counts": counts}
-        result, _, _ = op.apply(data, {}, None)
+        result, _, _ = op.apply(data, {}, None, key=jax.random.key(0))
         assert result["cell_type_probabilities"].shape == (4, 1)
         assert jnp.allclose(result["cell_type_probabilities"], 1.0, atol=1e-5)
 
@@ -586,7 +592,7 @@ class TestEdgeCases:
         key = jax.random.key(10)
         counts = jax.random.poisson(key, lam=3.0, shape=(2, N_GENES)).astype(jnp.float32)
         data = {"counts": counts}
-        result, _, _ = op.apply(data, {}, None)
+        result, _, _ = op.apply(data, {}, None, key=jax.random.key(0))
         assert result["cell_type_probabilities"].shape == (2, N_TYPES)
         row_sums = jnp.sum(result["cell_type_probabilities"], axis=-1)
         assert jnp.allclose(row_sums, 1.0, atol=1e-5)
@@ -655,3 +661,29 @@ class TestScanviZINBLikelihood:
         op = DifferentiableCellAnnotator(scanvi_config, rngs=rngs)
         assert not hasattr(op, "fc_log_theta")
         assert not hasattr(op, "fc_pi_logit")
+
+
+class TestAnnotationRandomnessBelongsToTheRecord:
+    """``apply`` draws epsilon from the record's key when given, leaving the stream alone."""
+
+    def test_apply_follows_the_key_and_leaves_the_stream_alone(
+        self, celltypist_config: CellAnnotatorConfig
+    ) -> None:
+        op = DifferentiableCellAnnotator(celltypist_config, rngs=nnx.Rngs(params=0, sample=1))
+        counts = jnp.abs(jax.random.normal(jax.random.key(0), (12, N_GENES))) + 0.1
+        count_before = int(op.rngs.sample.count[...])
+
+        first, _, _ = op.apply({"counts": counts}, {}, None, key=jax.random.key(7))
+        again, _, _ = op.apply({"counts": counts}, {}, None, key=jax.random.key(7))
+        other, _, _ = op.apply({"counts": counts}, {}, None, key=jax.random.key(8))
+
+        assert jnp.array_equal(first["latent"], again["latent"])
+        assert not jnp.array_equal(first["latent"], other["latent"])
+        assert int(op.rngs.sample.count[...]) == count_before
+
+    def test_apply_without_a_key_is_refused(self, celltypist_config: CellAnnotatorConfig) -> None:
+        op = DifferentiableCellAnnotator(celltypist_config, rngs=nnx.Rngs(params=0, sample=1))
+        counts = jnp.abs(jax.random.normal(jax.random.key(0), (12, N_GENES))) + 0.1
+
+        with pytest.raises(ValueError, match="per-record key"):
+            op.apply({"counts": counts}, {}, None)

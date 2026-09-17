@@ -12,25 +12,26 @@ from datarax.core.config import OperatorConfig
 from flax import nnx
 
 from benchmarks._base import (
+    build_benchmark_comparison_key,
     DiffBioBenchmark,
     DiffBioBenchmarkConfig,
-    build_benchmark_comparison_key,
 )
 from benchmarks._optimizers import (
     BENCHMARK_OPTIMIZER_SUBSTRATE,
     create_benchmark_optimizer,
 )
 from diffbio.operators.epigenomics.contextual import (
-    ContextualEpigenomicsConfig,
-    ContextualEpigenomicsOperator,
     compute_chromatin_guidance_loss,
     compute_contextual_epigenomics_loss,
+    ContextualEpigenomicsConfig,
+    ContextualEpigenomicsOperator,
 )
 from diffbio.sources import (
-    CONTEXTUAL_EPIGENOMICS_DATASET_CONTRACT_KEYS,
     build_synthetic_contextual_epigenomics_dataset as build_contextual_dataset,
+    CONTEXTUAL_EPIGENOMICS_DATASET_CONTRACT_KEYS,
     validate_contextual_epigenomics_dataset,
 )
+
 
 _DATASET_NAME = "synthetic_contextual_epigenomics"
 _DEFAULT_CONTEXTUAL_VARIANT = "tf_plus_chromatin"
@@ -229,6 +230,7 @@ class ContextualEpigenomicsBenchmark(DiffBioBenchmark):
         optimizer = nnx.Optimizer(
             operator,
             create_benchmark_optimizer(
+                operator,
                 optimizer_type=_OPTIMIZER_TYPE,
                 learning_rate=_LEARNING_RATE,
             ),

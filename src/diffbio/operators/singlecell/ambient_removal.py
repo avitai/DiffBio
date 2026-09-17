@@ -223,7 +223,7 @@ class DifferentiableAmbientRemoval(EncoderDecoderOperator):
         self,
         config: AmbientRemovalConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the ambient removal operator.
@@ -234,9 +234,6 @@ class DifferentiableAmbientRemoval(EncoderDecoderOperator):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         self.ambient_prior = config.ambient_prior
         self.stochastic = nnx.static(config.stochastic)

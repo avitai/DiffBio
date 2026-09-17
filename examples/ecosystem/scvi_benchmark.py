@@ -187,11 +187,7 @@ def train_step(
     """JIT-compiled ELBO training step, vmapped over cells."""
 
     def loss_fn(model_inner: VAENormalizer) -> jax.Array:
-        def per_cell_loss(counts_i: jax.Array, lib_i: jax.Array) -> jax.Array:
-            return model_inner.compute_elbo_loss(counts_i, lib_i)
-
-        losses = jax.vmap(per_cell_loss)(counts_batch, library_size_batch)
-        return jnp.mean(losses)
+        return model_inner.batch_elbo_loss(counts_batch, library_size_batch)
 
     loss, grads = nnx.value_and_grad(loss_fn, argnums=nnx.DiffState(0, nnx.Param))(m)
     opt.update(m, grads)

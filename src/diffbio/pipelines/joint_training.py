@@ -3,8 +3,8 @@
 :func:`fit_jointly` unfreezes the whole :class:`JointPreprocessingPipeline` and
 co-optimizes the preprocessing parameters (normalization pseudocount and depth,
 the highly-variable-gene weights) together with the annotation probe against the
-label loss -- the joint-optimization moat. The optimizer is built with the shared
-artifex factory and the classification loss is balanced against a gene-weight
+label loss -- the joint-optimization moat. The optimizer is built by substrax from
+``JointTrainingConfig.optimizer`` and the classification loss is balanced against a gene-weight
 sparsity penalty with an opifex ``GradNormBalancer`` (via the DiffBio loss-
 balancing seam), so the two objectives are weighted by their training rates rather
 than a hand-tuned coefficient.
@@ -24,16 +24,15 @@ through this function and leaves the pipeline's ``apply`` behavior unchanged.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import jax
 import jax.numpy as jnp
 import numpy as np
-from artifex.generative_models.core.configuration.optimizer_config import OptimizerConfig
-from artifex.generative_models.training.optimizers.factory import create_optimizer
 from flax import nnx
 from jax.typing import ArrayLike
 from opifex.core.physics.gradnorm import GradNormBalancer, GradNormConfig
+from substrax.optim import OptimizerConfig, create_optimizer
 
 from diffbio.losses.singlecell_losses import gene_weight_sparsity_loss
 from diffbio.pipelines.joint_preprocessing import JointPreprocessingPipeline
@@ -42,36 +41,36 @@ from diffbio.utils.training import cross_entropy_loss
 _NUM_LOSSES = 2
 
 
+def default_joint_optimizer() -> OptimizerConfig:
+    """The joint optimizer: Adam at 1e-2 with a unit global-norm clip."""
+    return OptimizerConfig(optimizer_type="adam", learning_rate=1.0e-2, gradient_clip_norm=1.0)
+
+
 @dataclass(frozen=True, kw_only=True, slots=True)
 class JointTrainingConfig:
     """Configuration for :func:`fit_jointly`.
 
     Attributes:
         n_steps: Number of full-batch joint-optimization steps.
-        learning_rate: Learning rate for the pipeline optimizer.
-        grad_clip_norm: Global-norm gradient clip for the pipeline optimizer.
+        optimizer: The pipeline optimizer, a ``substrax.optim.OptimizerConfig`` (Adam at
+            1e-2 with a unit global-norm clip by default); substrax refuses invalid values.
         gradnorm_alpha: GradNorm asymmetry parameter balancing the two losses.
         seed: Seed for the GradNorm balancer initialization.
     """
 
     n_steps: int = 200
-    learning_rate: float = 1.0e-2
-    grad_clip_norm: float = 1.0
+    optimizer: OptimizerConfig = field(default_factory=default_joint_optimizer)
     gradnorm_alpha: float = 1.5
     seed: int = 0
 
     def __post_init__(self) -> None:
-        """Validate the configuration, failing fast on non-positive sizes.
+        """Validate the configuration, failing fast on a non-positive step count.
 
         Raises:
-            ValueError: If ``n_steps`` or ``learning_rate`` is not positive.
+            ValueError: If ``n_steps`` is not positive.
         """
         if self.n_steps <= 0:
             raise ValueError(f"n_steps must be positive, got {self.n_steps}")
-        if self.learning_rate <= 0.0:
-            raise ValueError(f"learning_rate must be positive, got {self.learning_rate}")
-        if self.grad_clip_norm <= 0.0:
-            raise ValueError(f"grad_clip_norm must be positive, got {self.grad_clip_norm}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,7 +115,8 @@ def fit_jointly(
     and depth, SoftHVG gene weights, probe head) and trains them as one
     differentiable graph. The classification loss is balanced against a gene-weight
     sparsity penalty by an opifex ``GradNormBalancer``, and updates are applied with
-    the artifex optimizer factory. The pipeline is trained in place.
+    the optimizer ``config.optimizer`` describes, built by substrax. The pipeline is
+    trained in place.
 
     Args:
         pipeline: The pipeline to optimize (mutated in place).
@@ -133,18 +133,7 @@ def fit_jointly(
     labels = jnp.asarray(labels)
     n_classes = int(pipeline.config.n_classes)
 
-    optimizer = nnx.Optimizer(
-        pipeline,
-        create_optimizer(
-            OptimizerConfig(
-                name="diffbio_joint",
-                optimizer_type="adam",
-                learning_rate=config.learning_rate,
-                gradient_clip_norm=config.grad_clip_norm,
-            )
-        ),
-        wrt=nnx.Param,
-    )
+    optimizer = create_optimizer(pipeline, config.optimizer)
     balancer = GradNormBalancer(
         num_losses=_NUM_LOSSES,
         config=GradNormConfig(alpha=config.gradnorm_alpha),

@@ -27,7 +27,8 @@ from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.base_operators import TemperatureOperator
-from diffbio.utils.nn_utils import ensure_rngs, init_learnable_param
+from diffbio.utils.nn_utils import init_learnable_param
+
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +84,7 @@ class SoftErrorCorrection(TemperatureOperator):
         self,
         config: ErrorCorrectionConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the error correction operator.
@@ -94,8 +95,6 @@ class SoftErrorCorrection(TemperatureOperator):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        rngs = ensure_rngs(rngs)
 
         self.window_size = config.window_size
         self.use_quality = config.use_quality

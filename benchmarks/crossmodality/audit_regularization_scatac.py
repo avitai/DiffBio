@@ -9,14 +9,14 @@ freedom. Data prep (fragment re-import + donor split + train-only bins + LSI) is
 the sweep is cheap to iterate.
 """
 
-import os
-
 import json
+import os
 
 import jax.numpy as jnp
 import numpy as np
 from calibrax.metrics.functional.classification import f1_score
 from flax import nnx
+from substrax.optim import OptimizerConfig
 
 import benchmarks.crossmodality.audit_leakfree_scatac as base
 from benchmarks.singlecell._gate2_arms import (
@@ -35,6 +35,7 @@ from diffbio.operators.normalization.learnable_projection import (
 )
 from diffbio.pipelines.minibatch_training import MiniBatchConfig, train_minibatch
 from diffbio.reductions import fit_tfidf_reduction
+
 
 _DATA = os.environ.get("DIFFBIO_DATA_ROOT", "/mnt/ssd2/Data")
 CACHE = f"{_DATA}/catlas/atac_leakfree_prep.npz"
@@ -122,8 +123,12 @@ def main() -> None:
             mbc = MiniBatchConfig(
                 batch_size=2048,
                 n_epochs=cfg["ep"],
-                learning_rate=1e-2,
-                weight_decay=cfg["wd"],
+                optimizer=OptimizerConfig(
+                    optimizer_type="adamw",
+                    learning_rate=1e-2,
+                    weight_decay=cfg["wd"],
+                    gradient_clip_norm=1.0,
+                ),
                 seed=seed,
             )
             if cfg["kind"] == "frozen":

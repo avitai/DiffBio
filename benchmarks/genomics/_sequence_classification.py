@@ -16,9 +16,9 @@ from benchmarks._base import DiffBioBenchmark, DiffBioBenchmarkConfig
 from benchmarks._classification import create_embedding_probe_train_step
 from benchmarks._optimizers import create_benchmark_optimizer
 from benchmarks.genomics._foundation import (
+    compute_sequence_classification_metrics,
     GENOMICS_FOUNDATION_DATASET_CONTRACT_KEYS,
     GENOMICS_FOUNDATION_SUITE_SCENARIOS,
-    compute_sequence_classification_metrics,
     resolve_genomics_dataset_provenance,
     stratified_sequence_classification_split,
 )
@@ -30,6 +30,7 @@ from diffbio.operators.foundation_models import (
     TransformerSequenceEncoderConfig,
 )
 from diffbio.sequences.dna import encode_dna_string
+
 
 logger = logging.getLogger(__name__)
 
@@ -266,7 +267,7 @@ class SequenceClassificationBenchmark(DiffBioBenchmark):
         )
         optimizer = nnx.Optimizer(
             probe,
-            create_benchmark_optimizer(learning_rate=_LEARNING_RATE),
+            create_benchmark_optimizer(probe, learning_rate=_LEARNING_RATE),
             wrt=nnx.Param,
         )
         train_step = create_embedding_probe_train_step()

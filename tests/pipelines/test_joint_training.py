@@ -6,6 +6,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 from flax import nnx
+from substrax.optim import OptimizerConfig
 
 from diffbio.pipelines.joint_preprocessing import (
     JointPreprocessingPipeline,
@@ -73,7 +74,15 @@ def test_fit_jointly_converges_to_low_loss_and_high_accuracy() -> None:
     counts, labels = _structured(200, 50, 3, seed=1)
     pipeline = _pipeline()
     result = fit_jointly(
-        pipeline, counts, labels, config=JointTrainingConfig(n_steps=200, learning_rate=5e-2)
+        pipeline,
+        counts,
+        labels,
+        config=JointTrainingConfig(
+            n_steps=200,
+            optimizer=OptimizerConfig(
+                optimizer_type="adam", learning_rate=5e-2, gradient_clip_norm=1.0
+            ),
+        ),
     )
     assert isinstance(result, JointTrainingResult)
     assert result.loss_history[-1] < 0.1
@@ -165,14 +174,16 @@ def test_config_rejects_non_positive_steps() -> None:
         JointTrainingConfig(n_steps=0)
 
 
-def test_config_rejects_non_positive_learning_rate() -> None:
+def test_optimizer_spec_is_validated_by_substrax() -> None:
+    """A non-positive rate or clip is refused where the spec is built."""
     with pytest.raises(ValueError, match="learning_rate"):
-        JointTrainingConfig(learning_rate=0.0)
-
-
-def test_config_rejects_non_positive_grad_clip_norm() -> None:
-    with pytest.raises(ValueError, match="grad_clip_norm"):
-        JointTrainingConfig(grad_clip_norm=0.0)
+        JointTrainingConfig(optimizer=OptimizerConfig(optimizer_type="adam", learning_rate=0.0))
+    with pytest.raises(ValueError, match="gradient_clip_norm"):
+        JointTrainingConfig(
+            optimizer=OptimizerConfig(
+                optimizer_type="adam", learning_rate=1e-2, gradient_clip_norm=0.0
+            )
+        )
 
 
 def test_pipeline_exposes_trainable_stage_accessors() -> None:

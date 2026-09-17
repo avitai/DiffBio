@@ -416,6 +416,8 @@ Waddington-OT-style trajectory inference using entropy-regularised optimal trans
 ### Quick Start
 
 ```python
+from flax import nnx
+
 from diffbio.operators.singlecell import DifferentiableOTTrajectory, OTTrajectoryConfig
 
 config = OTTrajectoryConfig(
@@ -425,7 +427,7 @@ config = OTTrajectoryConfig(
     interpolation_time=0.5,
 )
 
-ot_op = DifferentiableOTTrajectory(config)
+ot_op = DifferentiableOTTrajectory(config, rngs=nnx.Rngs(0))
 data = {
     "counts_t1": counts_day0,  # (n1, n_genes)
     "counts_t2": counts_day2,  # (n2, n_genes)

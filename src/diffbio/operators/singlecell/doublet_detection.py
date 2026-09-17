@@ -405,7 +405,7 @@ class DifferentiableSoloDetector(CountVAEBackboneMixin, EncoderDecoderOperator):
         self,
         config: SoloDetectorConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialize the Solo VAE doublet detector.
@@ -417,18 +417,18 @@ class DifferentiableSoloDetector(CountVAEBackboneMixin, EncoderDecoderOperator):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        safe_rngs = self._init_count_vae_operator(config=config, rngs=rngs)
+        rngs = self._init_count_vae_operator(config=config, rngs=rngs)
 
         # --- Classifier (operates on latent z) ---
         self.classifier_hidden = nnx.Linear(
             in_features=config.latent_dim,
             out_features=config.classifier_hidden_dim,
-            rngs=safe_rngs,
+            rngs=rngs,
         )
         self.classifier_output = nnx.Linear(
             in_features=config.classifier_hidden_dim,
             out_features=1,
-            rngs=safe_rngs,
+            rngs=rngs,
         )
 
     def decode(
@@ -513,17 +513,18 @@ class DifferentiableSoloDetector(CountVAEBackboneMixin, EncoderDecoderOperator):
             ``"classifier_loss"`` scalar entries.
         """
         n_real = counts.shape[0]
+        pairs_key, epsilon_key = jax.random.split(key)
 
         # 1. Generate synthetic doublets
-        synthetic = generate_synthetic_doublets(counts, key, self.config.sim_doublet_ratio)
+        synthetic = generate_synthetic_doublets(counts, pairs_key, self.config.sim_doublet_ratio)
         n_synthetic = synthetic.shape[0]
 
         # 2. Combine real + synthetic
         combined = jnp.concatenate([counts, synthetic], axis=0)
 
-        # 3. Encode all to latent space
+        # 3. Encode all to latent space; epsilon follows the record's key too
         mean, logvar = self.encode(combined)
-        z = self.reparameterize(mean, logvar)
+        z = self.reparameterize(mean, logvar, key=epsilon_key)
 
         # 4. VAE ELBO on all cells
         log_rate = self.decode(z)
@@ -587,10 +588,10 @@ class DifferentiableSoloDetector(CountVAEBackboneMixin, EncoderDecoderOperator):
         n_cells = counts.shape[0]
         config = self.config
 
-        rng = require_key(key, self)
+        pairs_key, epsilon_key = jax.random.split(require_key(key, self))
 
         # Step 1: Generate synthetic doublets
-        synthetic = generate_synthetic_doublets(counts, rng, config.sim_doublet_ratio)
+        synthetic = generate_synthetic_doublets(counts, pairs_key, config.sim_doublet_ratio)
 
         # Step 2: Combine real + synthetic counts
         combined = jnp.concatenate([counts, synthetic], axis=0)
@@ -598,8 +599,8 @@ class DifferentiableSoloDetector(CountVAEBackboneMixin, EncoderDecoderOperator):
         # Step 3: Encode all to latent space
         mean, logvar = self.encode(combined)
 
-        # Step 4: Sample z via reparameterization trick
-        z = self.reparameterize(mean, logvar)
+        # Step 4: Sample z via the reparameterization trick, from the record's key
+        z = self.reparameterize(mean, logvar, key=epsilon_key)
 
         # Step 5: Extract real-cell latents and classify
         z_real = z[:n_cells]

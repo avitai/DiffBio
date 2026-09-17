@@ -223,10 +223,12 @@ class TestGradientFlow:
         counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
         library_size = jnp.sum(counts)
 
-        def loss_fn(c: jax.Array) -> jax.Array:
+        # The ELBO draws epsilon from the operator's sample stream, so the transform is
+        # NNX's, which lifts that state.
+        def loss_fn(op: VAENormalizer, c: jax.Array) -> jax.Array:
             return op.compute_elbo_loss(c, library_size)
 
-        grad = jax.grad(loss_fn)(counts)
+        grad = nnx.grad(loss_fn, argnums=1)(op, counts)
         assert grad is not None
         assert grad.shape == counts.shape
 
@@ -594,11 +596,11 @@ class TestZINBJIT:
         )
         library_size = jnp.sum(counts)
 
-        @jax.jit
-        def jit_elbo(counts: jax.Array, library_size: jax.Array) -> jax.Array:
-            return zinb_op.compute_elbo_loss(counts, library_size)
+        @nnx.jit
+        def jit_elbo(op: VAENormalizer, counts: jax.Array, library_size: jax.Array) -> jax.Array:
+            return op.compute_elbo_loss(counts, library_size)
 
-        loss = jit_elbo(counts, library_size)
+        loss = jit_elbo(zinb_op, counts, library_size)
         assert loss.shape == ()
         assert jnp.isfinite(loss)
 
@@ -668,3 +670,86 @@ class TestPoissonUnchanged:
             "log_rate",
         }
         assert set(transformed.keys()) == expected_keys
+
+
+class TestElboKeyOwnership:
+    """``compute_elbo_loss`` draws epsilon from the key it is given, else from its stream."""
+
+    def test_a_given_key_is_used_and_the_stream_is_left_alone(self) -> None:
+        op = VAENormalizer(
+            VAENormalizerConfig(n_genes=100, latent_dim=10), rngs=nnx.Rngs(params=0, sample=1)
+        )
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
+        library_size = jnp.sum(counts)
+        count_before = int(op.rngs.sample.count[...])
+
+        first = op.compute_elbo_loss(counts, library_size, key=jax.random.key(7))
+        again = op.compute_elbo_loss(counts, library_size, key=jax.random.key(7))
+        other = op.compute_elbo_loss(counts, library_size, key=jax.random.key(8))
+
+        assert jnp.array_equal(first, again)
+        assert not jnp.array_equal(first, other)
+        assert int(op.rngs.sample.count[...]) == count_before
+
+    def test_without_a_key_the_stream_advances(self) -> None:
+        op = VAENormalizer(
+            VAENormalizerConfig(n_genes=100, latent_dim=10), rngs=nnx.Rngs(params=0, sample=1)
+        )
+        counts = jax.random.poisson(jax.random.key(0), lam=10.0, shape=(100,)).astype(jnp.float32)
+        library_size = jnp.sum(counts)
+        count_before = int(op.rngs.sample.count[...])
+
+        first = op.compute_elbo_loss(counts, library_size)
+        second = op.compute_elbo_loss(counts, library_size)
+
+        assert not jnp.array_equal(first, second)
+        assert int(op.rngs.sample.count[...]) == count_before + 2
+
+
+class TestBatchElboLoss:
+    """``batch_elbo_loss`` owns the per-cell keys, so it composes with NNX transforms."""
+
+    def _op_and_batch(self) -> tuple[VAENormalizer, jax.Array, jax.Array]:
+        op = VAENormalizer(
+            VAENormalizerConfig(n_genes=20, latent_dim=4), rngs=nnx.Rngs(params=0, sample=1)
+        )
+        counts = jax.random.poisson(jax.random.key(0), lam=5.0, shape=(6, 20)).astype(jnp.float32)
+        return op, counts, jnp.sum(counts, axis=-1)
+
+    def test_equals_the_mean_of_per_cell_losses_under_split_keys(self) -> None:
+        op, counts, library_sizes = self._op_and_batch()
+        key = jax.random.key(3)
+
+        batched = op.batch_elbo_loss(counts, library_sizes, key=key)
+
+        cell_keys = jax.random.split(key, counts.shape[0])
+        per_cell = jnp.stack(
+            [
+                op.compute_elbo_loss(c, l, key=k)
+                for c, l, k in zip(counts, library_sizes, cell_keys, strict=True)
+            ]
+        )
+        assert jnp.allclose(batched, jnp.mean(per_cell), rtol=1e-6)
+
+    def test_without_a_key_it_draws_one_from_the_stream(self) -> None:
+        op, counts, library_sizes = self._op_and_batch()
+        count_before = int(op.rngs.sample.count[...])
+
+        first = op.batch_elbo_loss(counts, library_sizes)
+        second = op.batch_elbo_loss(counts, library_sizes)
+
+        assert not jnp.array_equal(first, second)
+        assert int(op.rngs.sample.count[...]) == count_before + 2
+
+    def test_composes_with_nnx_jit_and_grad(self) -> None:
+        op, counts, library_sizes = self._op_and_batch()
+
+        @nnx.jit
+        def step(op: VAENormalizer, counts: jax.Array, library_sizes: jax.Array) -> jax.Array:
+            def loss_fn(m: VAENormalizer) -> jax.Array:
+                return m.batch_elbo_loss(counts, library_sizes)
+
+            loss, grads = nnx.value_and_grad(loss_fn, argnums=nnx.DiffState(0, nnx.Param))(op)
+            return loss
+
+        assert jnp.isfinite(step(op, counts, library_sizes))

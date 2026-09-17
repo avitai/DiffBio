@@ -332,7 +332,7 @@ class NeuralReadMapper(TemperatureOperator):
         self,
         config: NeuralReadMapperConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the neural read mapper.
@@ -343,9 +343,6 @@ class NeuralReadMapper(TemperatureOperator):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
 
         # Read encoder
         self.read_encoder = SequenceEncoder(

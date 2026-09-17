@@ -22,6 +22,7 @@ import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
 from flax import nnx
+from substrax.rng import key_from
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.core import soft_ops
@@ -81,7 +82,7 @@ class DifferentiableDuplicateWeighting(TemperatureOperator):
         self,
         config: DuplicateWeightingConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the duplicate weighting operator.
@@ -100,10 +101,11 @@ class DifferentiableDuplicateWeighting(TemperatureOperator):
         # Simple embedding: learned projection from one-hot to embedding
         # This will be applied via convolution for position-invariant features
         embedding_dim = config.embedding_dim
-        if rngs is not None:
-            key = rngs.params()
-        else:
-            key = jax.random.key(0)
+        key = key_from(
+            rngs,
+            streams=("params", "default"),
+            context="DifferentiableDuplicateWeighting parameters",
+        )
 
         # Convolution kernel for sequence embedding (kernel_size=7)
         kernel_shape = (7, 4, embedding_dim)  # (kernel_size, in_channels, out_channels)

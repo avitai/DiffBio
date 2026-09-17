@@ -41,7 +41,7 @@ DiffBio provides training utilities in `diffbio.utils.training`:
 | `TrainingConfig` | Training hyperparameters |
 | `TrainingState` | Training progress tracking |
 | `cross_entropy_loss` | Classification loss function |
-| `create_optax_optimizer` | Optimizer factory |
+| `default_training_optimizer` | Default optimizer spec (`substrax.optim.OptimizerConfig`) |
 | `create_synthetic_training_data` | Synthetic data generation |
 
 ## Quick Start
@@ -49,6 +49,7 @@ DiffBio provides training utilities in `diffbio.utils.training`:
 ```python
 from diffbio.pipelines import create_variant_calling_pipeline
 from diffbio.utils.training import (
+from substrax.optim import OptimizerConfig
     Trainer,
     TrainingConfig,
     cross_entropy_loss,
@@ -64,10 +65,11 @@ pipeline = create_variant_calling_pipeline(
 
 # 2. Create trainer
 config = TrainingConfig(
-    learning_rate=1e-3,
+    optimizer=OptimizerConfig(
+        optimizer_type="adam", learning_rate=1e-3, gradient_clip_norm=1.0
+    ),
     num_epochs=50,
     log_every=10,
-    grad_clip_norm=1.0,
 )
 trainer = Trainer(pipeline, config)
 
@@ -151,12 +153,14 @@ pipeline = VariantCallingPipeline(config, rngs=nnx.Rngs(42))
 
 ```python
 from diffbio.utils.training import TrainingConfig
+from substrax.optim import OptimizerConfig
 
 training_config = TrainingConfig(
-    learning_rate=1e-3,   # Adam learning rate
+    optimizer=OptimizerConfig(
+        optimizer_type="adam", learning_rate=1e-3, gradient_clip_norm=1.0
+    ),
     num_epochs=100,       # Training epochs
     log_every=10,         # Logging frequency
-    grad_clip_norm=1.0,   # Gradient clipping (None to disable)
 )
 ```
 
@@ -206,13 +210,13 @@ For more control, implement your own training loop:
 
 ```python
 import jax
-import optax
 from flax import nnx
+from substrax.optim import OptimizerConfig, create_transformation
 
-# Create optimizer
-optimizer = optax.chain(
-    optax.clip_by_global_norm(1.0),
-    optax.adam(1e-3),
+# The same spec the trainer uses, as a bare optax transformation
+optimizer = create_transformation(
+    pipeline,
+    OptimizerConfig(optimizer_type="adam", learning_rate=1e-3, gradient_clip_norm=1.0),
 )
 
 # Initialize optimizer state
@@ -247,7 +251,12 @@ pipeline.eval_mode()
 
 ### Learning Rate Scheduling
 
+A schedule is the spec's learning rate; substrax evaluates it at optax's own step count.
+
 ```python
+import optax
+from substrax.optim import OptimizerConfig
+
 # Warmup + cosine decay
 schedule = optax.warmup_cosine_decay_schedule(
     init_value=0.0,
@@ -257,9 +266,10 @@ schedule = optax.warmup_cosine_decay_schedule(
     end_value=1e-5,
 )
 
-optimizer = optax.chain(
-    optax.clip_by_global_norm(1.0),
-    optax.adam(schedule),
+config = TrainingConfig(
+    optimizer=OptimizerConfig(
+        optimizer_type="adam", learning_rate=schedule, gradient_clip_norm=1.0
+    ),
 )
 ```
 

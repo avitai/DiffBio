@@ -18,6 +18,7 @@ import jax.numpy as jnp
 import numpy as np
 from calibrax.statistics.significance import paired_significance_test
 from flax import nnx
+from substrax.optim import OptimizerConfig
 
 from benchmarks._classification import stratified_label_split
 from benchmarks.singlecell._gate2_arms import _embedding_probe, _probe_forward
@@ -30,10 +31,10 @@ from benchmarks.singlecell.hvg_gate import (
 )
 from benchmarks.singlecell.hvg_gate_stg import (
     _SIGMA,
-    _STGGateProbe,
     _stg_eval_forward,
     _stg_l0_aux,
     _stg_train_forward,
+    _STGGateProbe,
 )
 from diffbio.core import soft_ops
 from diffbio.operators.singlecell.soft_hvg import gene_dispersion
@@ -43,6 +44,7 @@ from diffbio.operators.singlecell.stochastic_gate_selector import (
 )
 from diffbio.pipelines.minibatch_training import MiniBatchConfig, train_minibatch
 from diffbio.reductions import fit_pca_reduction
+
 
 _DATA_PATH = os.environ.get("DIFFBIO_TS_CACHE", "/mnt/ssd2/Data/tabula_sapiens/ts_cached.npz")
 OUT = "benchmarks/results/singlecell/hvg_gate_stg_matched.json"
@@ -91,8 +93,12 @@ def run_matched(
         config = MiniBatchConfig(
             batch_size=batch_size,
             n_epochs=n_epochs,
-            learning_rate=1.0e-2,
-            weight_decay=0.0,
+            optimizer=OptimizerConfig(
+                optimizer_type="adamw",
+                learning_rate=1.0e-2,
+                weight_decay=0.0,
+                gradient_clip_norm=1.0,
+            ),
             seed=seed,
         )
         selector = StochasticGateSelector(

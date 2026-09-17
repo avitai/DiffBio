@@ -24,9 +24,8 @@ from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.constants import EPSILON
-
 from diffbio.core.base_operators import TemperatureOperator
-from diffbio.utils.nn_utils import ensure_rngs
+
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +92,7 @@ class DifferentiableDifferentialDistribution(TemperatureOperator):
         self,
         config: DifferentialDistributionConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialize the differentiable differential distribution operator.
@@ -108,13 +107,11 @@ class DifferentiableDifferentialDistribution(TemperatureOperator):
         self.n_genes = config.n_genes
         self.n_pattern_classes = config.n_pattern_classes
 
-        rngs_safe = ensure_rngs(rngs)
-
         # Learned linear head: pattern features -> pattern logits
         self.pattern_head = nnx.Linear(
             in_features=self._N_PATTERN_FEATURES,
             out_features=self.n_pattern_classes,
-            rngs=rngs_safe,
+            rngs=rngs,
         )
 
     def _process_single_gene(

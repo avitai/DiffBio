@@ -66,14 +66,9 @@ class ContextualEpigenomicsOperator(OperatorModule):
         self,
         config: ContextualEpigenomicsConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
     ) -> None:
         super().__init__(config, rngs=rngs)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
-        if config.dropout_rate > 0 and "dropout" not in rngs:
-            rngs = nnx.Rngs(params=rngs.params(), dropout=jax.random.key(1))
 
         self.config = config
         self.sequence_projection = nnx.Linear(4, config.hidden_dim, rngs=rngs)

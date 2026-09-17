@@ -21,6 +21,7 @@ from artifex.generative_models.core.losses.divergence import gaussian_kl_diverge
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import require_key
 from flax import nnx
+from substrax.rng import key_from
 from jaxtyping import Array, Float, PyTree
 
 from diffbio.core.base_operators import EncoderDecoderOperator
@@ -98,7 +99,7 @@ class VAENormalizer(CountReconstructionMixin, CountVAEBackboneMixin, EncoderDeco
         self,
         config: VAENormalizerConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialize the VAE normalizer.
@@ -109,17 +110,17 @@ class VAENormalizer(CountReconstructionMixin, CountVAEBackboneMixin, EncoderDeco
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-        safe_rngs = self._init_count_vae_operator(config=config, rngs=rngs)
+        rngs = self._init_count_vae_operator(config=config, rngs=rngs)
 
         decoder_out_dim = config.hidden_dims[0] if config.hidden_dims else config.latent_dim
 
         # ZINB-specific decoder heads
         if config.likelihood == "zinb":
             self.fc_log_theta = nnx.Linear(
-                in_features=decoder_out_dim, out_features=config.n_genes, rngs=safe_rngs
+                in_features=decoder_out_dim, out_features=config.n_genes, rngs=rngs
             )
             self.fc_pi_logit = nnx.Linear(
-                in_features=decoder_out_dim, out_features=config.n_genes, rngs=safe_rngs
+                in_features=decoder_out_dim, out_features=config.n_genes, rngs=rngs
             )
 
     def decode(
@@ -163,6 +164,7 @@ class VAENormalizer(CountReconstructionMixin, CountVAEBackboneMixin, EncoderDeco
         self,
         counts: Float[Array, "n_genes"],
         library_size: Float[Array, ""],
+        key: jax.Array | None = None,
     ) -> Float[Array, ""]:
         """Compute negative ELBO loss.
 
@@ -171,6 +173,9 @@ class VAENormalizer(CountReconstructionMixin, CountVAEBackboneMixin, EncoderDeco
         Args:
             counts: Gene expression counts.
             library_size: Total counts.
+            key: The key epsilon is drawn from; a caller that owns the randomness (a
+                per-cell loss under ``jax.vmap``, a record's ``apply``) passes one, and
+                ``None`` draws from the operator's ``sample`` stream, which advances.
 
         Returns:
             Negative ELBO (reconstruction loss + KL divergence).
@@ -178,8 +183,8 @@ class VAENormalizer(CountReconstructionMixin, CountVAEBackboneMixin, EncoderDeco
         # Encode
         mean, logvar = self.encode(counts)
 
-        # Sample latent using inherited reparameterize (uses self.rngs)
-        z = self.reparameterize(mean, logvar)
+        # Sample latent using inherited reparameterize
+        z = self.reparameterize(mean, logvar, key=key)
 
         # Decode (returns dict)
         decode_output = self.decode(z, library_size)
@@ -191,6 +196,38 @@ class VAENormalizer(CountReconstructionMixin, CountVAEBackboneMixin, EncoderDeco
         kl = gaussian_kl_divergence(mean, logvar, reduction="sum")
 
         return recon_loss + kl
+
+    def batch_elbo_loss(
+        self,
+        counts: Float[Array, "n_cells n_genes"],
+        library_sizes: Float[Array, "n_cells"],
+        key: jax.Array | None = None,
+    ) -> Float[Array, ""]:
+        """Mean negative ELBO over a batch of cells, each with its own epsilon key.
+
+        One key, ``key`` or a draw from the operator's ``sample`` stream, is split into one
+        key per cell before the per-cell losses are vectorised, so the stream is read once,
+        outside ``jax.vmap``, and the method composes with ``nnx.jit`` and ``nnx.grad``.
+
+        Args:
+            counts: Gene expression counts, one row per cell.
+            library_sizes: Total counts per cell.
+            key: The key the per-cell keys are split from; ``None`` draws one from the
+                operator's ``sample`` stream, which advances once.
+
+        Returns:
+            The mean negative ELBO over the cells.
+        """
+        batch_key = (
+            key_from(
+                self.rngs, streams=("sample", "default"), context=f"{type(self).__name__} sampling"
+            )
+            if key is None
+            else key
+        )
+        cell_keys = jax.random.split(batch_key, counts.shape[0])
+        per_cell = jax.vmap(lambda c, size, k: self.compute_elbo_loss(c, size, key=k))
+        return jnp.mean(per_cell(counts, library_sizes, cell_keys))
 
     def apply(
         self,

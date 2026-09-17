@@ -11,9 +11,11 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import NamedTuple
 
+import jax
 import jax.numpy as jnp
 import numpy as np
 from flax import nnx
+from substrax.rng import key_from
 
 from datarax.core.config import StructuralConfig
 from datarax.core.data_source import DataSourceModule
@@ -111,6 +113,27 @@ class SplitterModule(StructuralModule):
             name: Optional module name
         """
         super().__init__(config, rngs=rngs, name=name)
+
+    def _split_key(self) -> jax.Array:
+        """The key a split is drawn from.
+
+        ``config.seed`` wins when it is set; otherwise the key comes from the splitter's
+        ``split`` stream (or its ``default`` stream). A splitter built with neither has
+        nothing to draw from and says so, instead of splitting from a fixed seed.
+
+        Returns:
+            A JAX key.
+        """
+        if self.config.seed is not None:
+            return jax.random.key(self.config.seed)
+        if self.rngs is None:
+            raise ValueError(
+                f"{type(self).__name__} has no config.seed and no rngs to draw a split from; "
+                "set a seed or build it with rngs=nnx.Rngs(split=...)"
+            )
+        return key_from(
+            self.rngs, streams=("split", "default"), context=f"{type(self).__name__} splitting"
+        )
 
     def split(self, data_source: DataSourceModule) -> SplitResult:
         """Split a data source into train/valid/test indices.

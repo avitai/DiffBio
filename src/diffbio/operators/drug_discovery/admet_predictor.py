@@ -161,7 +161,7 @@ class ADMETPredictor(OperatorModule):
         self,
         config: ADMETConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize ADMET predictor.

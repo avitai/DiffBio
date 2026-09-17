@@ -314,7 +314,7 @@ class DifferentiableTransformerDenoiser(
         self,
         config: TransformerDenoiserConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialize the transformer denoiser.
@@ -325,9 +325,6 @@ class DifferentiableTransformerDenoiser(
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        if rngs is None:
-            rngs = nnx.Rngs(params=0, sample=1, dropout=2)
 
         # Reuse the shared masked-gene token encoder contract.
         self.encoder = build_masked_gene_transformer_encoder(config, rngs=rngs)

@@ -165,14 +165,7 @@ def create_jit_train_step(
         ) -> jax.Array:
             """Compute mean ELBO loss over batch."""
 
-            def per_cell_loss(
-                counts_i: jax.Array,
-                lib_i: jax.Array,
-            ) -> jax.Array:
-                return model_inner.compute_elbo_loss(counts_i, lib_i)
-
-            losses = jax.vmap(per_cell_loss)(counts_batch, library_size_batch)
-            return jnp.mean(losses)
+            return model_inner.batch_elbo_loss(counts_batch, library_size_batch)
 
         loss, grads = nnx.value_and_grad(loss_fn, argnums=nnx.DiffState(0, nnx.Param))(m)
         opt.update(m, grads)
@@ -322,10 +315,7 @@ def _run_scvi_benchmark_inner(
     ) -> jax.Array:
         """Scalar loss for gradient flow verification."""
 
-        def per_cell(ci: jax.Array, li: jax.Array) -> jax.Array:
-            return m.compute_elbo_loss(ci, li)
-
-        return jnp.mean(jax.vmap(per_cell)(c, ls))
+        return m.batch_elbo_loss(c, ls)
 
     grad_result = check_gradient_flow(grad_loss_fn, trained_model, counts, library_size)
 

@@ -8,11 +8,13 @@ lineage trajectories between two timepoints (Waddington-OT style).
 import jax
 import jax.numpy as jnp
 import pytest
+from flax import nnx
 
 from diffbio.operators.singlecell.ot_trajectory import (
     DifferentiableOTTrajectory,
     OTTrajectoryConfig,
 )
+
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -60,7 +62,7 @@ def sample_data() -> dict[str, jax.Array]:
 @pytest.fixture()
 def operator(small_config: OTTrajectoryConfig) -> DifferentiableOTTrajectory:
     """Create an OT trajectory operator with test config."""
-    return DifferentiableOTTrajectory(small_config)
+    return DifferentiableOTTrajectory(small_config, rngs=nnx.Rngs(0))
 
 
 # ===========================================================================
@@ -351,7 +353,7 @@ class TestEdgeCases:
         """Operator should work when t1 and t2 have the same number of cells."""
         n = 15
         config = OTTrajectoryConfig(n_genes=N_GENES, sinkhorn_iters=50)
-        op = DifferentiableOTTrajectory(config)
+        op = DifferentiableOTTrajectory(config, rngs=nnx.Rngs(0))
 
         key = jax.random.key(99)
         k1, k2 = jax.random.split(key)
@@ -369,7 +371,7 @@ class TestEdgeCases:
     def test_single_cell_at_t1(self) -> None:
         """Operator should handle a single cell at timepoint 1."""
         config = OTTrajectoryConfig(n_genes=N_GENES, sinkhorn_iters=50)
-        op = DifferentiableOTTrajectory(config)
+        op = DifferentiableOTTrajectory(config, rngs=nnx.Rngs(0))
 
         key = jax.random.key(77)
         k1, k2 = jax.random.split(key)
@@ -391,8 +393,8 @@ class TestEdgeCases:
             n_genes=N_GENES, sinkhorn_iters=50, interpolation_time=0.1
         )
         config_late = OTTrajectoryConfig(n_genes=N_GENES, sinkhorn_iters=50, interpolation_time=0.9)
-        op_early = DifferentiableOTTrajectory(config_early)
-        op_late = DifferentiableOTTrajectory(config_late)
+        op_early = DifferentiableOTTrajectory(config_early, rngs=nnx.Rngs(0))
+        op_late = DifferentiableOTTrajectory(config_late, rngs=nnx.Rngs(1))
 
         key = jax.random.key(55)
         k1, k2 = jax.random.split(key)

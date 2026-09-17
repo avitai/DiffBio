@@ -90,7 +90,7 @@ class DifferentiableHMM(HMMOperator):
         self,
         config: HMMConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the HMM operator.

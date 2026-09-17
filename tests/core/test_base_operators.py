@@ -268,13 +268,15 @@ class TestEncoderDecoderOperator:
 
         op = EncoderDecoderOperator(MockEncoderDecoderConfig(), rngs=rngs)
 
-        def loss_fn(mean, log_var):
+        # Drawing epsilon advances the operator's sample stream, so the transform is
+        # NNX's, which lifts that state.
+        def loss_fn(op, mean, log_var):
             z = op.reparameterize(mean, log_var)
             return jnp.sum(z)
 
         mean = jnp.ones((3, DEFAULT_LATENT_DIM))
         log_var = jnp.zeros((3, DEFAULT_LATENT_DIM))
-        grad_mean = jax.grad(loss_fn, argnums=0)(mean, log_var)
+        grad_mean = nnx.grad(loss_fn, argnums=1)(op, mean, log_var)
         assert grad_mean is not None
         assert grad_mean.shape == mean.shape
         assert jnp.all(jnp.isfinite(grad_mean))
@@ -911,3 +913,17 @@ class TestScalability:
 
         assert jnp.isfinite(elbo)
         assert elbo.shape == ()  # Scalar output
+
+
+def test_sampling_without_a_sample_stream_is_refused(rngs) -> None:
+    """An ``nnx.Rngs`` without a ``sample`` stream cannot draw epsilon; no seed is assumed."""
+    from substrax.rng import MissingRngStreamError
+
+    from diffbio.core.base_operators import EncoderDecoderOperator
+
+    del rngs
+    op = EncoderDecoderOperator(MockEncoderDecoderConfig(), rngs=nnx.Rngs(params=0))
+    mean = jnp.zeros((2, DEFAULT_LATENT_DIM))
+
+    with pytest.raises(MissingRngStreamError, match="EncoderDecoderOperator sampling"):
+        op.reparameterize(mean, jnp.zeros_like(mean))

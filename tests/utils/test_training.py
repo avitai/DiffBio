@@ -2,15 +2,16 @@
 
 import jax
 import jax.numpy as jnp
-import optax
 import pytest
+from flax import nnx
+from substrax.optim import OptimizerConfig, current_learning_rate
 
 from diffbio.pipelines import create_variant_calling_pipeline
 from diffbio.utils.training import (
     Trainer,
     TrainingConfig,
     TrainingState,
-    create_optax_optimizer,
+    default_training_optimizer,
     create_realistic_training_data,
     create_synthetic_training_data,
     cross_entropy_loss,
@@ -24,21 +25,24 @@ class TestTrainingConfig:
     def test_default_config(self):
         """Test default configuration values."""
         config = TrainingConfig()
-        assert config.learning_rate == 1e-3
+        assert config.optimizer == default_training_optimizer()
+        assert config.optimizer.optimizer_type == "adam"
+        assert config.optimizer.learning_rate == 1e-3
+        assert config.optimizer.gradient_clip_norm == 1.0
         assert config.num_epochs == 100
         assert config.log_every == 10
-        assert config.grad_clip_norm == 1.0
 
     def test_custom_config(self):
         """Test custom configuration values."""
         config = TrainingConfig(
-            learning_rate=5e-4,
+            optimizer=OptimizerConfig(
+                optimizer_type="adam", learning_rate=5e-4, gradient_clip_norm=0.5
+            ),
             num_epochs=50,
-            grad_clip_norm=0.5,
         )
-        assert config.learning_rate == 5e-4
+        assert config.optimizer.learning_rate == 5e-4
+        assert config.optimizer.gradient_clip_norm == 0.5
         assert config.num_epochs == 50
-        assert config.grad_clip_norm == 0.5
 
 
 class TestTrainingState:
@@ -60,56 +64,23 @@ class TestTrainingState:
         assert state.best_loss == 0.5
 
 
-class TestOptimizer:
-    """Tests for optimizer creation."""
+class TestTrainerOptimizer:
+    """The trainer builds the optimizer its config describes, through substrax."""
 
-    def test_create_optimizer_with_clipping(self):
-        """Test optimizer with gradient clipping."""
-        config = TrainingConfig(learning_rate=1e-3, grad_clip_norm=1.0)
-        optimizer = create_optax_optimizer(config)
-        assert optimizer is not None
+    def test_trainer_applies_the_configured_rate(self):
+        """The optimizer's learning rate is the one the config names."""
+        pipeline = create_variant_calling_pipeline(
+            reference_length=15, num_classes=3, hidden_dim=8, seed=42
+        )
+        config = TrainingConfig(
+            optimizer=OptimizerConfig(
+                optimizer_type="adam", learning_rate=5e-4, gradient_clip_norm=1.0
+            )
+        )
+        trainer = Trainer(pipeline, config)
 
-    def test_create_optimizer_without_clipping(self):
-        """Test optimizer without gradient clipping."""
-        config = TrainingConfig(learning_rate=1e-3, grad_clip_norm=None)
-        optimizer = create_optax_optimizer(config)
-        assert optimizer is not None
-
-    @staticmethod
-    def _apply_one_step(
-        optimizer: optax.GradientTransformation,
-        params: optax.Params,
-        grads: optax.Params,
-    ) -> optax.Params:
-        """Run a single optimizer update and return the new parameters."""
-        state = optimizer.init(params)
-        updates, _ = optimizer.update(grads, state, params)
-        return optax.apply_updates(params, updates)
-
-    def test_create_optimizer_matches_clip_then_adam(self):
-        """With clipping, one update step matches clip_by_global_norm + adam."""
-        config = TrainingConfig(learning_rate=1e-3, grad_clip_norm=1.0)
-        params = {"w": jnp.array([1.0, -2.0, 3.0]), "b": jnp.array([0.5])}
-        grads = {"w": jnp.array([10.0, -20.0, 5.0]), "b": jnp.array([2.0])}
-
-        new_params = self._apply_one_step(create_optax_optimizer(config), params, grads)
-        reference = optax.chain(optax.clip_by_global_norm(1.0), optax.adam(1e-3))
-        ref_params = self._apply_one_step(reference, params, grads)
-
-        matches = jax.tree.map(lambda a, b: bool(jnp.allclose(a, b)), new_params, ref_params)
-        assert all(jax.tree.leaves(matches))
-
-    def test_create_optimizer_matches_plain_adam_without_clipping(self):
-        """Without clipping, one update step matches plain adam."""
-        config = TrainingConfig(learning_rate=1e-3, grad_clip_norm=None)
-        params = {"w": jnp.array([1.0, -2.0, 3.0]), "b": jnp.array([0.5])}
-        grads = {"w": jnp.array([10.0, -20.0, 5.0]), "b": jnp.array([2.0])}
-
-        new_params = self._apply_one_step(create_optax_optimizer(config), params, grads)
-        ref_params = self._apply_one_step(optax.adam(1e-3), params, grads)
-
-        matches = jax.tree.map(lambda a, b: bool(jnp.allclose(a, b)), new_params, ref_params)
-        assert all(jax.tree.leaves(matches))
+        assert isinstance(trainer.optimizer, nnx.Optimizer)
+        assert current_learning_rate(trainer.optimizer) == pytest.approx(5e-4)
 
 
 class TestCrossEntropyLoss:
@@ -431,7 +402,7 @@ class TestTrainerIntegration:
 
     def test_trainer_initialization(self, small_pipeline):
         """Test trainer initialization."""
-        config = TrainingConfig(learning_rate=1e-3)
+        config = TrainingConfig()
         trainer = Trainer(small_pipeline, config)
 
         assert trainer.pipeline is not None
@@ -441,7 +412,7 @@ class TestTrainerIntegration:
 
     def test_single_training_step(self, small_pipeline):
         """Test a single training step runs without error."""
-        config = TrainingConfig(learning_rate=1e-3)
+        config = TrainingConfig()
         trainer = Trainer(small_pipeline, config)
 
         # Create single sample
@@ -477,7 +448,12 @@ class TestTrainerIntegration:
 
     def test_loss_decreases_over_training(self, small_pipeline):
         """Test that training runs for multiple epochs."""
-        config = TrainingConfig(learning_rate=1e-2, log_every=100)
+        config = TrainingConfig(
+            optimizer=OptimizerConfig(
+                optimizer_type="adam", learning_rate=1e-2, gradient_clip_norm=1.0
+            ),
+            log_every=100,
+        )
         trainer = Trainer(small_pipeline, config)
 
         # Create training data

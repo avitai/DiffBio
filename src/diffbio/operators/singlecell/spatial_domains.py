@@ -38,11 +38,14 @@ from jaxtyping import Array, Float, Int, PyTree
 
 from diffbio.constants import DISTANCE_MASK_SENTINEL, EPSILON
 from diffbio.core.base_operators import GraphOperator
-from diffbio.core.graph_utils import compute_cross_squared_distances
 from diffbio.core.gnn_components import GATv2Layer
-from diffbio.core.graph_utils import compute_knn_graph, compute_pairwise_distances
+from diffbio.core.graph_utils import (
+    compute_cross_squared_distances,
+    compute_knn_graph,
+    compute_pairwise_distances,
+)
 from diffbio.core.optimal_transport import SinkhornLayer
-from diffbio.utils.nn_utils import ensure_rngs
+
 
 logger = logging.getLogger(__name__)
 
@@ -253,7 +256,7 @@ class DifferentiableSpatialDomain(GraphOperator):
         self,
         config: SpatialDomainConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialize the spatial domain identification operator.
@@ -264,8 +267,6 @@ class DifferentiableSpatialDomain(GraphOperator):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        rngs = ensure_rngs(rngs)
 
         self.alpha = config.alpha
         self.n_neighbors = config.n_neighbors
@@ -488,7 +489,7 @@ class DifferentiablePASTEAlignment(GraphOperator):
         self,
         config: PASTEAlignmentConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialize the PASTE alignment operator.
@@ -499,8 +500,6 @@ class DifferentiablePASTEAlignment(GraphOperator):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        rngs = ensure_rngs(rngs)
 
         self.alpha_cost = config.alpha
         self.sinkhorn = SinkhornLayer(

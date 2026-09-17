@@ -25,11 +25,13 @@ from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, Int, PyTree
+from substrax.rng import key_from
 
 from diffbio.constants import DEFAULT_TEMPERATURE
 from diffbio.core.graph_utils import scatter_aggregate as scatter_aggregate_fn
 from diffbio.core.soft_ops import sorting as soft_sorting
-from diffbio.utils.nn_utils import ensure_rngs, get_rng_key, init_learnable_param
+from diffbio.utils.nn_utils import init_learnable_param
+
 
 __all__ = [
     "TemperatureOperator",
@@ -258,7 +260,7 @@ class EncoderDecoderOperator(OperatorModule):
         self,
         config: OperatorConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize EncoderDecoderOperator.
@@ -272,7 +274,7 @@ class EncoderDecoderOperator(OperatorModule):
 
         self.latent_dim = getattr(config, "latent_dim", 10)
         self.hidden_dim = getattr(config, "hidden_dim", 64)
-        self.rngs = ensure_rngs(rngs)
+        self.rngs = rngs
 
     def reparameterize(
         self,
@@ -298,7 +300,9 @@ class EncoderDecoderOperator(OperatorModule):
             Sampled latent representation.
         """
         if key is None:
-            key = get_rng_key(self.rngs, "sample", fallback_seed=0)
+            key = key_from(
+                self.rngs, streams=("sample", "default"), context=f"{type(self).__name__} sampling"
+            )
         std = jnp.exp(0.5 * log_var)
         epsilon = jax.random.normal(key, mean.shape)
         return mean + std * epsilon
@@ -473,7 +477,7 @@ class HMMOperator(OperatorModule):
         self,
         config: OperatorConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize HMMOperator.
@@ -490,20 +494,20 @@ class HMMOperator(OperatorModule):
         self.temperature = getattr(config, "temperature", DEFAULT_TEMPERATURE)
 
         # Initialize HMM parameters
-        rngs = ensure_rngs(rngs)
 
+        context = f"{type(self).__name__} parameters"
         # Transition logits (will be normalized via log_softmax)
-        key = get_rng_key(rngs, "params", fallback_seed=0)
+        key = key_from(rngs, streams=("params", "default"), context=context)
         init_trans = jax.random.normal(key, (self.num_states, self.num_states)) * 0.1
         self.log_transition_params = nnx.Param(init_trans)
 
         # Emission logits
-        key = get_rng_key(rngs, "params", fallback_seed=1)
+        key = key_from(rngs, streams=("params", "default"), context=context)
         init_emit = jax.random.normal(key, (self.num_states, self.num_emissions)) * 0.1
         self.log_emission_params = nnx.Param(init_emit)
 
         # Initial state logits
-        key = get_rng_key(rngs, "params", fallback_seed=2)
+        key = key_from(rngs, streams=("params", "default"), context=context)
         init_initial = jax.random.normal(key, (self.num_states,)) * 0.1
         self.log_initial_params = nnx.Param(init_initial)
 

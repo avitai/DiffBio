@@ -11,6 +11,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 from artifex.generative_models.core.base import MLP
+from flax import nnx
 
 from diffbio.constants import DEFAULT_HIDDEN_DIM, DEFAULT_TEMPERATURE
 
@@ -67,11 +68,13 @@ class TestGumbelSoftmaxModule:
 
         module = GumbelSoftmaxModule(temperature=DEFAULT_TEMPERATURE, rngs=rngs)
 
-        def loss_fn(logits):
+        # The module advances its stream on every call, so the transform is NNX's, which
+        # lifts that state; a plain jax.grad over a closure cannot mutate it.
+        def loss_fn(module, logits):
             return jnp.sum(module(logits))
 
         logits = jnp.array([[1.0, 2.0, 3.0]])
-        grads = jax.grad(loss_fn)(logits)
+        grads = nnx.grad(loss_fn, argnums=1)(module, logits)
 
         assert grads is not None
         assert jnp.all(jnp.isfinite(grads))
@@ -82,13 +85,15 @@ class TestGumbelSoftmaxModule:
 
         module = GumbelSoftmaxModule(temperature=DEFAULT_TEMPERATURE, rngs=rngs)
 
-        @jax.jit
-        def forward(logits):
+        @nnx.jit
+        def forward(module, logits):
             return module(logits)
 
         logits = jnp.array([[1.0, 2.0, 3.0]])
-        output = forward(logits)
+        output = forward(module, logits)
         assert output.shape == logits.shape
+        # Two calls draw different noise: the stream advances under the transform
+        assert not jnp.array_equal(output, forward(module, logits))
 
 
 class TestGraphMessagePassing:

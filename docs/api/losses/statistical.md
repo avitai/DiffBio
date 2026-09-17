@@ -68,9 +68,11 @@ loss = vae_loss(
 ### HMM Likelihood Loss
 
 ```python
+from flax import nnx
+
 from diffbio.losses import HMMLikelihoodLoss
 
-hmm_loss = HMMLikelihoodLoss()
+hmm_loss = HMMLikelihoodLoss(rngs=nnx.Rngs(0))
 
 # Negative log-likelihood for HMM training
 loss = hmm_loss(

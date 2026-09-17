@@ -177,6 +177,8 @@ int_config = MDIntegratorConfig(
     gamma=0.5,
 )
 integrator = MDIntegratorOperator(int_config, rngs=nnx.Rngs(42))
+# A Langevin step draws its random forces from the record's key
+result, _, _ = integrator.apply(data, {}, None, key=jax.random.key(0))
 ```
 
 ### Batched Processing

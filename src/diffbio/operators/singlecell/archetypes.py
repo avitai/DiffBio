@@ -22,9 +22,10 @@ from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
+from substrax.rng import key_from
 
 from diffbio.core.base_operators import TemperatureOperator
-from diffbio.utils.nn_utils import ensure_rngs, get_rng_key
+
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +86,7 @@ class DifferentiableArchetypalAnalysis(TemperatureOperator):
         self,
         config: ArchetypalAnalysisConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialize the archetypal analysis operator.
@@ -96,8 +97,6 @@ class DifferentiableArchetypalAnalysis(TemperatureOperator):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        rngs = ensure_rngs(rngs)
 
         self.encoder_layers = MLP(
             hidden_dims=[config.hidden_dim],
@@ -114,7 +113,11 @@ class DifferentiableArchetypalAnalysis(TemperatureOperator):
         )
 
         # Learnable archetype prototypes (n_archetypes, n_genes)
-        key = get_rng_key(rngs, "params", fallback_seed=1)
+        key = key_from(
+            rngs,
+            streams=("params", "default"),
+            context="DifferentiableArchetypalAnalysis parameters",
+        )
         init_archetypes = jax.random.normal(key, (config.n_archetypes, config.n_genes)) * 0.1
         self.archetypes = nnx.Param(init_archetypes)
 

@@ -26,10 +26,10 @@ from flax import nnx
 from diffbio.core import soft_ops
 from diffbio.operators.drug_discovery._graph_utils import (
     attach_fingerprint,
-    ensure_rngs,
     initialize_graph_encoder,
     unpack_graph_inputs,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,7 @@ class MACCSKeysOperator(OperatorModule):
         self,
         config: MACCSKeysConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
     ):
         """Initialize MACCS keys operator.
 
@@ -103,8 +103,6 @@ class MACCSKeysOperator(OperatorModule):
             rngs: Flax NNX random number generators.
         """
         super().__init__(config, rngs=rngs)
-
-        rngs = ensure_rngs(rngs)
 
         if config.differentiable:
             # Message passing for local structure aggregation

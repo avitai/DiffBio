@@ -318,6 +318,7 @@ encoder = create_dna_encoder(
     hidden_dim=256,
     num_layers=4,
     num_heads=4,
+    rngs=nnx.Rngs(0),
 )
 
 # Prepare one-hot encoded DNA sequence
@@ -380,6 +381,7 @@ dna_encoder = create_dna_encoder(
     num_layers=4,
     num_heads=4,
     pooling="mean",
+    rngs=nnx.Rngs(0),
 )
 
 # RNA encoder (A, C, G, U)
@@ -388,6 +390,7 @@ rna_encoder = create_rna_encoder(
     num_layers=8,
     num_heads=8,
     pooling="cls",
+    rngs=nnx.Rngs(0),
 )
 ```
 
@@ -433,7 +436,7 @@ result, _, _ = encoder.apply(data, {}, None)
 import optax
 from flax import nnx
 
-encoder = create_dna_encoder(hidden_dim=128, num_layers=2)
+encoder = create_dna_encoder(hidden_dim=128, num_layers=2, rngs=nnx.Rngs(0))
 optimizer = optax.adam(1e-4)
 opt_state = optimizer.init(nnx.state(encoder, nnx.Param))
 

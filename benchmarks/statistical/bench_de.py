@@ -42,6 +42,7 @@ from diffbio.sources.immune_human import (
     ImmuneHumanSource,
 )
 
+
 logger = logging.getLogger(__name__)
 
 _CONFIG = DiffBioBenchmarkConfig(
@@ -208,7 +209,7 @@ class DEBenchmark(DiffBioBenchmark):
         logger.info("Fitting NB GLM (%d steps)...", n_steps)
         opt = nnx.Optimizer(
             operator,
-            create_benchmark_optimizer(learning_rate=1e-2),
+            create_benchmark_optimizer(operator, learning_rate=1e-2),
             wrt=nnx.Param,
         )
 

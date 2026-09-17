@@ -11,7 +11,7 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 from datarax.core.config import OperatorConfig
-from datarax.core.operator import OperatorModule
+from datarax.core.operator import OperatorModule, require_key
 from flax import nnx
 from jax_md import quantity, simulate
 
@@ -52,6 +52,14 @@ class MDIntegratorConfig(OperatorConfig):
     mass: float = 1.0
     kT: float = 1.0
     gamma: float = 1.0
+
+    def __post_init__(self) -> None:
+        """Declare the Langevin thermostat stochastic: its random forces need a key."""
+        if self.integrator_type == "nvt_langevin":
+            object.__setattr__(self, "stochastic", True)
+            if self.stream_name is None:
+                object.__setattr__(self, "stream_name", "langevin")
+        super().__post_init__()
 
 
 @dataclass(frozen=True)
@@ -151,7 +159,8 @@ class MDIntegratorOperator(OperatorModule):
                 - velocities: Initial particle velocities (n_particles, dim)
             state: Per-element state (passed through).
             metadata: Optional metadata.
-            key: Unused.
+            key: The record's PRNG key; the Langevin thermostat draws its random
+                forces from it and the velocity Verlet integrator needs none.
             stats: Optional statistics dictionary.
 
         Returns:
@@ -181,14 +190,13 @@ class MDIntegratorOperator(OperatorModule):
                 mass=mass,  # pyright: ignore[reportCallIssue]
             )
         elif config.integrator_type == "nvt_langevin":
-            # Langevin dynamics requires rng for stochastic forces
-            rng_key = jax.random.PRNGKey(42)  # Deterministic for reproducibility
+            # The thermostat's random forces follow the record's key
             sim_state = simulate.NVTLangevinState(
                 position=positions,  # pyright: ignore[reportCallIssue]
                 momentum=momentum,  # pyright: ignore[reportCallIssue]
                 force=initial_force,  # pyright: ignore[reportCallIssue]
                 mass=mass,  # pyright: ignore[reportCallIssue]
-                rng=rng_key,  # pyright: ignore[reportCallIssue]
+                rng=require_key(key, self),  # pyright: ignore[reportCallIssue]
             )
         else:
             raise ValueError(f"Unknown integrator type: {config.integrator_type}")

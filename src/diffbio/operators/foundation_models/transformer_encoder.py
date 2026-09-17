@@ -148,7 +148,7 @@ class TransformerSequenceEncoder(FoundationEmbeddingMixin, SequenceOperator):
         self,
         config: TransformerSequenceEncoderConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ):
         """Initialize the transformer encoder.
@@ -159,13 +159,6 @@ class TransformerSequenceEncoder(FoundationEmbeddingMixin, SequenceOperator):
             name: Optional operator name.
         """
         super().__init__(config, rngs=rngs, name=name)
-
-        if rngs is None:
-            rngs = nnx.Rngs(0)
-
-        # Ensure dropout stream exists for artifex transformer
-        if config.dropout_rate > 0 and "dropout" not in rngs:
-            rngs = nnx.Rngs(params=rngs.params(), dropout=jax.random.key(1))
 
         # Input projection: alphabet_size -> hidden_dim (or token embedding)
         if config.input_embedding_type == "token_embedding":
@@ -421,7 +414,7 @@ def _create_sequence_encoder(
     dropout_rate: float = 0.1,
     pooling: Literal["mean", "cls"] = "mean",
     *,
-    rngs: nnx.Rngs | None = None,
+    rngs: nnx.Rngs,
 ) -> TransformerSequenceEncoder:
     """Create a transformer sequence encoder with given alphabet size.
 
@@ -441,9 +434,6 @@ def _create_sequence_encoder(
     """
     if intermediate_dim is None:
         intermediate_dim = 4 * hidden_dim
-
-    if rngs is None:
-        rngs = nnx.Rngs(0)
 
     config = TransformerSequenceEncoderConfig(
         hidden_dim=hidden_dim,
@@ -468,7 +458,7 @@ def create_dna_encoder(
     dropout_rate: float = 0.1,
     pooling: Literal["mean", "cls"] = "mean",
     *,
-    rngs: nnx.Rngs | None = None,
+    rngs: nnx.Rngs,
 ) -> TransformerSequenceEncoder:
     """Create a transformer encoder for DNA sequences.
 
@@ -490,7 +480,7 @@ def create_dna_encoder(
 
     Example:
         ```python
-        encoder = create_dna_encoder(hidden_dim=256, num_layers=6)
+        encoder = create_dna_encoder(hidden_dim=256, num_layers=6, rngs=nnx.Rngs(0))
         data = {"sequence": dna_one_hot}
         result, _, _ = encoder.apply(data, {}, None)
         embeddings = result["embeddings"]
@@ -524,7 +514,7 @@ def create_rna_encoder(
     dropout_rate: float = 0.1,
     pooling: Literal["mean", "cls"] = "mean",
     *,
-    rngs: nnx.Rngs | None = None,
+    rngs: nnx.Rngs,
 ) -> TransformerSequenceEncoder:
     """Create a transformer encoder for RNA sequences.
 
@@ -546,7 +536,7 @@ def create_rna_encoder(
 
     Example:
         ```python
-        encoder = create_rna_encoder(hidden_dim=640, num_layers=12)
+        encoder = create_rna_encoder(hidden_dim=640, num_layers=12, rngs=nnx.Rngs(0))
         data = {"sequence": rna_one_hot}
         result, _, _ = encoder.apply(data, {}, None)
         ```

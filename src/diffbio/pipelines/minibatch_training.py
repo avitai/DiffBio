@@ -18,17 +18,17 @@ explicit JAX key folded per epoch, so a fixed seed reproduces training exactly.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import jax
 import jax.numpy as jnp
 import numpy as np
-from artifex.generative_models.core.configuration.optimizer_config import OptimizerConfig
-from artifex.generative_models.training.optimizers.factory import create_optimizer
 from flax import nnx
+from substrax.optim import create_optimizer, OptimizerConfig
 
 from diffbio.utils.training import cross_entropy_loss
+
 
 # ``features`` may be a single array or an arbitrary pytree of per-sample arrays (each
 # with a leading sample axis), so ``forward_fn`` receives whatever pytree was passed in.
@@ -43,6 +43,11 @@ def _as_batched_leaf(array: Any) -> jnp.ndarray:
     return materialized
 
 
+def default_minibatch_optimizer() -> OptimizerConfig:
+    """The trainer's default optimizer: AdamW at 1e-2 with a unit global-norm clip."""
+    return OptimizerConfig(optimizer_type="adamw", learning_rate=1.0e-2, gradient_clip_norm=1.0)
+
+
 @dataclass(frozen=True, kw_only=True, slots=True)
 class MiniBatchConfig:
     """Configuration for :func:`train_minibatch`.
@@ -51,35 +56,26 @@ class MiniBatchConfig:
         batch_size: Cells per SGD step; ``None`` trains full-batch (one step per
             epoch). A ragged final batch is dropped (``drop_last``).
         n_epochs: Number of passes over the training set.
-        learning_rate: AdamW learning rate.
-        weight_decay: AdamW decoupled weight decay.
-        grad_clip_norm: Global-norm gradient clip.
+        optimizer: The optimizer, in substrax's terms; ``substrax.optim`` refuses a
+            non-positive rate or clip and a negative decay when it is constructed.
         seed: Seed for the per-epoch shuffle key.
     """
 
     batch_size: int | None = 4096
     n_epochs: int = 50
-    learning_rate: float = 1.0e-2
-    weight_decay: float = 0.0
-    grad_clip_norm: float = 1.0
+    optimizer: OptimizerConfig = field(default_factory=default_minibatch_optimizer)
     seed: int = 0
 
     def __post_init__(self) -> None:
         """Validate the configuration, failing fast on non-positive values.
 
         Raises:
-            ValueError: If any size/rate field is out of range.
+            ValueError: If a size field is out of range.
         """
         if self.batch_size is not None and self.batch_size <= 0:
             raise ValueError(f"batch_size must be positive or None, got {self.batch_size}")
         if self.n_epochs <= 0:
             raise ValueError(f"n_epochs must be positive, got {self.n_epochs}")
-        if self.learning_rate <= 0.0:
-            raise ValueError(f"learning_rate must be positive, got {self.learning_rate}")
-        if self.weight_decay < 0.0:
-            raise ValueError(f"weight_decay must be non-negative, got {self.weight_decay}")
-        if self.grad_clip_norm <= 0.0:
-            raise ValueError(f"grad_clip_norm must be positive, got {self.grad_clip_norm}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,9 +112,9 @@ def train_minibatch(
     """Train ``model`` by deterministic mini-batch SGD against the label loss.
 
     Optimizes ``model``'s :class:`flax.nnx.Param` leaves (fixed
-    :class:`flax.nnx.Variable` anchors are left untouched) in place using AdamW from
-    the shared artifex factory. Each epoch shuffles the training set with a key folded
-    from ``config.seed`` and iterates drop-last mini-batches.
+    :class:`flax.nnx.Variable` anchors are left untouched) in place with the optimizer
+    ``config.optimizer`` names, built by substrax. Each epoch shuffles the training set with
+    a key folded from ``config.seed`` and iterates drop-last mini-batches.
 
     Args:
         model: The module to optimize (mutated in place).
@@ -141,19 +137,7 @@ def train_minibatch(
     label_array = jnp.asarray(labels, dtype=jnp.int32)
     n_samples = jax.tree.leaves(feature_tree)[0].shape[0]
 
-    optimizer = nnx.Optimizer(
-        model,
-        create_optimizer(
-            OptimizerConfig(
-                name="diffbio_minibatch",
-                optimizer_type="adamw",
-                learning_rate=config.learning_rate,
-                weight_decay=config.weight_decay,
-                gradient_clip_norm=config.grad_clip_norm,
-            )
-        ),
-        wrt=nnx.Param,
-    )
+    optimizer = create_optimizer(model, config.optimizer)
 
     def loss_fn(module: nnx.Module, batch_features: Any, batch_labels: jnp.ndarray) -> jnp.ndarray:
         loss = cross_entropy_loss(

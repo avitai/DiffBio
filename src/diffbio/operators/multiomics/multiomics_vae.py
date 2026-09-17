@@ -33,7 +33,7 @@ from jaxtyping import Array, Float, PyTree
 from diffbio.constants import EPSILON
 from diffbio.core.base_operators import EncoderDecoderOperator
 from diffbio.operators._loss_balancing import LossBalancingMixin
-from diffbio.utils.nn_utils import ensure_rngs
+
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,7 @@ class DifferentiableMultiOmicsVAE(LossBalancingMixin, EncoderDecoderOperator):
         self,
         config: MultiOmicsVAEConfig,
         *,
-        rngs: nnx.Rngs | None = None,
+        rngs: nnx.Rngs,
         name: str | None = None,
     ) -> None:
         """Initialise the multi-omics VAE.
@@ -108,7 +108,6 @@ class DifferentiableMultiOmicsVAE(LossBalancingMixin, EncoderDecoderOperator):
         """
         super().__init__(config, rngs=rngs, name=name)
 
-        rngs = ensure_rngs(rngs)
         n_modalities = len(config.modality_dims)
 
         # Per-modality encoders ------------------------------------------

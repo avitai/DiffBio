@@ -321,7 +321,7 @@ class TestFactoryFunctions:
 
     def test_create_dna_encoder(self):
         """Test DNA encoder factory function."""
-        encoder = create_dna_encoder()
+        encoder = create_dna_encoder(rngs=nnx.Rngs(0))
 
         # Check it creates a valid encoder
         assert isinstance(encoder, TransformerSequenceEncoder)
@@ -333,6 +333,7 @@ class TestFactoryFunctions:
             hidden_dim=128,
             num_layers=3,
             num_heads=4,
+            rngs=nnx.Rngs(0),
         )
 
         assert encoder.config.hidden_dim == 128
@@ -341,7 +342,7 @@ class TestFactoryFunctions:
 
     def test_create_rna_encoder(self):
         """Test RNA encoder factory function."""
-        encoder = create_rna_encoder()
+        encoder = create_rna_encoder(rngs=nnx.Rngs(0))
 
         assert isinstance(encoder, TransformerSequenceEncoder)
         assert encoder.config.alphabet_size == 4  # A, C, G, U
@@ -352,6 +353,7 @@ class TestFactoryFunctions:
             hidden_dim=640,
             num_layers=12,
             num_heads=20,
+            rngs=nnx.Rngs(0),
         )
 
         assert encoder.config.hidden_dim == 640

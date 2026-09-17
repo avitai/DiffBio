@@ -70,7 +70,7 @@ class MolecularPropertyPredictor(OperatorModule):
         ```
     """
 
-    def __init__(self, config: MolecularPropertyConfig, *, rngs: nnx.Rngs | None = None):
+    def __init__(self, config: MolecularPropertyConfig, *, rngs: nnx.Rngs):
         """Initialize molecular property predictor.
 
         Args:
