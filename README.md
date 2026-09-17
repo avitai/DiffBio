@@ -138,11 +138,11 @@ result, _, _ = pipeline.apply(batch_data, {}, None)
 ### Training a Pipeline
 
 ```python
-from diffbio.utils import (
+from calibrax.metrics.functional import softmax_cross_entropy
 from substrax.optim import OptimizerConfig
+from diffbio.utils import (
     Trainer,
     TrainingConfig,
-    cross_entropy_loss,
     create_synthetic_training_data,
     data_iterator,
 )
@@ -170,10 +170,9 @@ trainer = Trainer(pipeline, config)
 
 # Define loss function
 def loss_fn(predictions, targets):
-    return cross_entropy_loss(
+    return softmax_cross_entropy(
         predictions["logits"],
         targets["labels"],
-        num_classes=3,
     )
 
 # Train

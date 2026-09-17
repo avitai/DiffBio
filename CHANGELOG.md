@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The classification loss is calibrax's `softmax_cross_entropy(logits, labels)`; the joint and
+  minibatch training pipelines, the single-cell compute-cost benchmark and the docs call it
+  directly, and `diffbio.utils.training.cross_entropy_loss` is gone. The class count is the
+  logits' last axis, and the calibrax loss takes `mask`, `weights` and `reduction`.
+- Benchmark classification metrics come from calibrax: `accuracy` and per-class macro
+  `f1_score` with `num_classes` set to one past the largest label seen, which keeps the
+  previous macro-F1 semantics (a class absent from both label sets contributes an F1 of 0).
+- The Lennard-Jones and single-cell compute-cost benchmarks time their steps through
+  `calibrax.profiling.time_calls`, one synchronised sample per step: the compute-cost benchmark
+  reports the median step time and the molecular-dynamics benchmark divides the timed step
+  count by the sum of its samples.
+- `masked_value_loss` and the chromatin-guidance loss reduce through calibrax's masked `mse` and
+  `mae` (an all-zero mask gives `0`); `masked_value_loss` no longer takes `epsilon`.
+- Requires calibrax 0.1.8.
+
+### Fixed
+
+- Five documentation examples had a `from substrax.optim import OptimizerConfig` line inserted
+  inside the `from diffbio.utils.training import (...)` block; the blocks are valid Python again.
+
 ## [0.1.6] - 2026-09-17
 
 ### Changed

@@ -7,6 +7,7 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 import numpy as np
+from calibrax.metrics.functional.classification import accuracy, f1_score
 from flax import nnx
 
 from diffbio.operators.foundation_models import LinearEmbeddingProbe
@@ -54,28 +55,22 @@ def compute_multiclass_classification_metrics(
     true_labels: np.ndarray,
     predicted_labels: np.ndarray,
 ) -> dict[str, float]:
-    """Compute accuracy and macro-F1 for multiclass classification."""
+    """Accuracy and macro-F1 through calibrax.
+
+    Macro-F1 is the mean of the per-class F1 over every class either array names, as
+    scikit-learn defines it with ``labels`` set to that union; a class predicted but absent
+    from the truth counts with an F1 of 0.
+
+    Raises:
+        ValueError: If the two label arrays differ in shape.
+    """
     if true_labels.shape != predicted_labels.shape:
         raise ValueError("True and predicted label arrays must have identical shapes.")
-
-    accuracy = float(np.mean(true_labels == predicted_labels))
-
-    f1_scores: list[float] = []
-    for label in np.unique(true_labels):
-        true_positive = np.sum((true_labels == label) & (predicted_labels == label))
-        false_positive = np.sum((true_labels != label) & (predicted_labels == label))
-        false_negative = np.sum((true_labels == label) & (predicted_labels != label))
-
-        precision = true_positive / max(true_positive + false_positive, 1)
-        recall = true_positive / max(true_positive + false_negative, 1)
-        if precision + recall == 0:
-            f1_scores.append(0.0)
-        else:
-            f1_scores.append(float(2 * precision * recall / (precision + recall)))
-
+    num_classes = int(max(np.max(true_labels), np.max(predicted_labels))) + 1
+    truth, predicted = jnp.asarray(true_labels), jnp.asarray(predicted_labels)
     return {
-        "accuracy": accuracy,
-        "macro_f1": float(np.mean(f1_scores)) if f1_scores else 0.0,
+        "accuracy": float(accuracy(predicted, truth)),
+        "macro_f1": float(f1_score(predicted, truth, average="macro", num_classes=num_classes)),
     }
 
 

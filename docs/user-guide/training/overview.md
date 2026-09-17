@@ -26,7 +26,7 @@ def pipeline_loss(pipeline, data, targets):
     # - Pileup weighting
     # - Classifier weights
     result, _, _ = pipeline.apply(data, {}, None)
-    return cross_entropy_loss(result["logits"], targets)
+    return softmax_cross_entropy(result["logits"], targets)
 
 grads = jax.grad(pipeline_loss)(pipeline, data, targets)
 ```
@@ -40,7 +40,6 @@ DiffBio provides training utilities in `diffbio.utils.training`:
 | `Trainer` | High-level training loop |
 | `TrainingConfig` | Training hyperparameters |
 | `TrainingState` | Training progress tracking |
-| `cross_entropy_loss` | Classification loss function |
 | `default_training_optimizer` | Default optimizer spec (`substrax.optim.OptimizerConfig`) |
 | `create_synthetic_training_data` | Synthetic data generation |
 
@@ -48,11 +47,11 @@ DiffBio provides training utilities in `diffbio.utils.training`:
 
 ```python
 from diffbio.pipelines import create_variant_calling_pipeline
-from diffbio.utils.training import (
+from calibrax.metrics.functional import softmax_cross_entropy
 from substrax.optim import OptimizerConfig
+from diffbio.utils.training import (
     Trainer,
     TrainingConfig,
-    cross_entropy_loss,
     create_synthetic_training_data,
     data_iterator,
 )
@@ -81,10 +80,9 @@ inputs, targets = create_synthetic_training_data(
 
 # 4. Define loss function
 def loss_fn(predictions, targets):
-    return cross_entropy_loss(
+    return softmax_cross_entropy(
         predictions["logits"],
         targets["labels"],
-        num_classes=3,
     )
 
 # 5. Train
@@ -167,7 +165,7 @@ training_config = TrainingConfig(
 ### 4. Loss Function Definition
 
 ```python
-from diffbio.utils.training import cross_entropy_loss
+from calibrax.metrics.functional import softmax_cross_entropy
 
 def variant_loss(predictions, targets):
     """Custom loss with class weighting."""
@@ -227,7 +225,7 @@ opt_state = optimizer.init(params)
 def train_step(pipeline, opt_state, batch, targets):
     def loss_fn(model):
         result, _, _ = model.apply(batch, {}, None)
-        return cross_entropy_loss(result["logits"], targets["labels"])
+        return softmax_cross_entropy(result["logits"], targets["labels"])
 
     loss, grads = jax.value_and_grad(loss_fn)(pipeline)
 
@@ -384,7 +382,7 @@ pipeline_replicated = jax.device_put_replicated(pipeline, devices)
 def parallel_train_step(pipeline, batch, targets):
     def loss_fn(model):
         result, _, _ = model.apply(batch, {}, None)
-        return cross_entropy_loss(result["logits"], targets["labels"])
+        return softmax_cross_entropy(result["logits"], targets["labels"])
 
     loss, grads = jax.value_and_grad(loss_fn)(pipeline)
 

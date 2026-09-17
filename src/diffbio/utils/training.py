@@ -12,6 +12,7 @@ from typing import Any, Callable
 import jax
 import jax.numpy as jnp
 from datarax.core.operator import OperatorModule
+from calibrax.metrics.functional import softmax_cross_entropy  # noqa: F401 - the docstring example
 from flax import nnx
 from jaxtyping import Array, Float
 from substrax.optim import OptimizerConfig, create_optimizer
@@ -62,26 +63,6 @@ class TrainingState:
             self.loss_history = []
 
 
-def cross_entropy_loss(
-    logits: Float[Array, "... num_classes"],
-    labels: Float[Array, "..."],
-    num_classes: int = 3,
-) -> Float[Array, ""]:
-    """Compute cross-entropy loss for variant classification.
-
-    Args:
-        logits: Raw model predictions
-        labels: Integer class labels
-        num_classes: Number of classes
-
-    Returns:
-        Scalar loss value
-    """
-    one_hot_labels = jax.nn.one_hot(labels.astype(jnp.int32), num_classes)
-    log_probs = jax.nn.log_softmax(logits, axis=-1)
-    return -jnp.mean(jnp.sum(one_hot_labels * log_probs, axis=-1))
-
-
 class Trainer:
     """Training loop for DiffBio pipelines using Flax NNX patterns.
 
@@ -96,10 +77,7 @@ class Trainer:
         trainer = Trainer(pipeline, TrainingConfig(learning_rate=1e-3))
         # Define loss function
         def loss_fn(predictions, targets):
-            return cross_entropy_loss(
-                predictions["logits"],
-                targets["labels"],
-            )
+            return softmax_cross_entropy(predictions["logits"], targets["labels"])
         # Train
         trainer.train(data_iterator_fn, loss_fn)
         trained_pipeline = trainer.pipeline

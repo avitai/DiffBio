@@ -19,9 +19,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import time
 
 import jax
+from calibrax.profiling.timing import time_calls
 import jax.numpy as jnp
 import numpy as np
 from flax import nnx
@@ -37,7 +37,7 @@ from diffbio.operators.normalization.learnable_projection import (
     LearnableProjection,
     LearnableProjectionConfig,
 )
-from diffbio.utils.training import cross_entropy_loss
+from calibrax.metrics.functional import softmax_cross_entropy
 
 
 _HIDDEN = 128
@@ -109,7 +109,7 @@ def measure(
     @nnx.jit(donate_argnames=("model", "opt"))
     def train_step(model: nnx.Module, opt: nnx.Optimizer, x: jnp.ndarray, y: jnp.ndarray):
         def loss_fn(m: nnx.Module) -> jax.Array:
-            return cross_entropy_loss(forward(m, x), y, num_classes=n_classes)
+            return softmax_cross_entropy(forward(m, x), y)
 
         loss, grads = nnx.value_and_grad(loss_fn)(model)
         opt.update(model, grads)
@@ -119,12 +119,19 @@ def measure(
     # Warm up (compilation is the slow first call) and block before timing.
     jax.block_until_ready(train_step(model, optimizer, xb, yb))
 
-    start = time.perf_counter()
-    for _ in range(steps):
-        loss = train_step(model, optimizer, xb, yb)
-    # Block on both the loss and the in-place-updated model state (async dispatch).
-    jax.block_until_ready((loss, nnx.state(model)))
-    ms_per_step = 1000.0 * (time.perf_counter() - start) / steps
+    # Each timed step waits for its loss and the in-place-updated model state (async
+    # dispatch), and calibrax reports the per-step median.
+    timing = time_calls(
+        train_step,
+        model,
+        optimizer,
+        xb,
+        yb,
+        warmup=0,
+        iterations=steps,
+        sync=lambda loss: jax.block_until_ready((loss, nnx.state(model))),
+    )
+    ms_per_step = 1000.0 * timing.median_sec
 
     return {
         "arm": arm,

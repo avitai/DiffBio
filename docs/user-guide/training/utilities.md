@@ -114,17 +114,17 @@ best_loss = trainer.training_state.best_loss
 
 ## Loss Functions
 
-### cross_entropy_loss
+### softmax_cross_entropy
 
-Standard cross-entropy loss for classification.
+The classification loss is calibrax's `softmax_cross_entropy`; the class count is the logits'
+last axis.
 
 ```python
-from diffbio.utils.training import cross_entropy_loss
+from calibrax.metrics.functional import softmax_cross_entropy
 
-loss = cross_entropy_loss(
+loss = softmax_cross_entropy(
     logits,       # (batch, ..., num_classes)
     labels,       # (batch, ...) integer labels
-    num_classes=3,
 )
 ```
 
@@ -134,9 +134,11 @@ loss = cross_entropy_loss(
 |-----------|------|-------------|
 | `logits` | Array | Raw model predictions |
 | `labels` | Array | Integer class labels |
-| `num_classes` | int | Number of classes (default: 3) |
+| `mask` | Array, optional | Boolean mask selecting the positions that count |
+| `weights` | Array, optional | Per-position weights for a weighted mean |
+| `reduction` | str | `"mean"` (default), `"sum"` or `"none"` |
 
-**Returns:** Scalar loss value
+**Returns:** Scalar loss value (or per-position losses with `reduction="none"`)
 
 ### Custom Loss Functions
 
@@ -273,11 +275,11 @@ for batch_data, batch_targets in iterator:
 
 ```python
 from diffbio.pipelines import create_variant_calling_pipeline
+from calibrax.metrics.functional import softmax_cross_entropy
 from diffbio.utils.training import (
     Trainer,
     TrainingConfig,
     TrainingState,
-    cross_entropy_loss,
     create_synthetic_training_data,
     data_iterator,
 )
@@ -313,10 +315,9 @@ trainer = Trainer(pipeline, config)
 
 # 6. Define loss
 def loss_fn(predictions, targets):
-    return cross_entropy_loss(
+    return softmax_cross_entropy(
         predictions["logits"],
         targets["labels"],
-        num_classes=3,
     )
 
 # 7. Train
@@ -350,6 +351,7 @@ with open("trained_model.pkl", "wb") as f:
 
 ```python
 # All exports from diffbio.utils.training
+from calibrax.metrics.functional import softmax_cross_entropy
 from diffbio.utils.training import (
     # Configuration
     TrainingConfig,
@@ -359,7 +361,6 @@ from diffbio.utils.training import (
     Trainer,
 
     # Loss functions
-    cross_entropy_loss,
 
     # Optimizer spec
     default_training_optimizer,

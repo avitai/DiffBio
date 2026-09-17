@@ -41,10 +41,10 @@ from diffbio.pipelines import (
     VariantCallingPipeline,
     VariantCallingPipelineConfig,
 )
+from calibrax.metrics.functional import softmax_cross_entropy
 from diffbio.utils.training import (
     Trainer,
     TrainingConfig,
-    cross_entropy_loss,
     create_realistic_training_data,  # New! Realistic synthetic data
     data_iterator,
 )
@@ -413,10 +413,9 @@ trainer = Trainer(
 )
 
 def loss_fn(predictions, targets):
-    return cross_entropy_loss(
+    return softmax_cross_entropy(
         predictions["logits"],
         targets["labels"],
-        num_classes=3,
     )
 
 trainer.train(
