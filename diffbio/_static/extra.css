@@ -1,0 +1,666 @@
+/* DiffBio Documentation Custom Styles */
+/* Scientific/Bioinformatics documentation enhancements for differentiable pipelines */
+
+/* Scientific equation styling */
+.arithmatex {
+  margin: 1em 0;
+}
+
+/* Code block enhancements for scientific computing */
+.highlight .hll {
+  background-color: #ffffcc
+}
+
+.highlight .c {
+  color: #408080;
+  font-style: italic
+}
+
+/* Comment */
+.highlight .k {
+  color: #008000;
+  font-weight: bold
+}
+
+/* Keyword */
+.highlight .o {
+  color: #666666
+}
+
+/* Operator */
+.highlight .cm {
+  color: #408080;
+  font-style: italic
+}
+
+/* Comment.Multiline */
+.highlight .cp {
+  color: #BC7A00
+}
+
+/* Comment.Preproc */
+.highlight .c1 {
+  color: #408080;
+  font-style: italic
+}
+
+/* Comment.Single */
+.highlight .cs {
+  color: #408080;
+  font-style: italic
+}
+
+/* Comment.Special */
+
+/* Scientific/ML array styling */
+.highlight .nd {
+  color: #AA22FF
+}
+
+/* Name.Decorator */
+.highlight .nf {
+  color: #0000FF
+}
+
+/* Name.Function */
+.highlight .nn {
+  color: #0000FF;
+  font-weight: bold
+}
+
+/* Name.Namespace */
+
+/* Mathematical symbols and bioinformatics notation */
+.math {
+  font-family: 'Computer Modern', 'Latin Modern Math', serif;
+}
+
+/* Enhanced admonition styling for bioinformatics content */
+.md-typeset .admonition.note {
+  border-left: 4px solid #448aff;
+}
+
+.md-typeset .admonition.tip {
+  border-left: 4px solid #00c853;
+}
+
+.md-typeset .admonition.warning {
+  border-left: 4px solid #ff9100;
+}
+
+.md-typeset .admonition.danger {
+  border-left: 4px solid #ff5252;
+}
+
+/* Bioinformatics-specific styling */
+.pipeline-info {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: white;
+  padding: 1em;
+  border-radius: 4px;
+  margin: 1em 0;
+}
+
+.performance-warning {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  color: white;
+  padding: 1em;
+  border-radius: 4px;
+  margin: 1em 0;
+}
+
+.differentiability-note {
+  background: linear-gradient(135deg, #4f46e5, #818cf8);
+  color: white;
+  padding: 1em;
+  border-radius: 4px;
+  margin: 1em 0;
+}
+
+/* Differentiability rating badges */
+.diff-high {
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: white;
+  padding: 0.5em 1em;
+  border-radius: 4px;
+  font-weight: bold;
+  display: inline-block;
+  margin: 0.25em;
+}
+
+.diff-medium {
+  background: linear-gradient(135deg, #d97706, #f59e0b);
+  color: white;
+  padding: 0.5em 1em;
+  border-radius: 4px;
+  font-weight: bold;
+  display: inline-block;
+  margin: 0.25em;
+}
+
+.diff-low {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  color: white;
+  padding: 0.5em 1em;
+  border-radius: 4px;
+  font-weight: bold;
+  display: inline-block;
+  margin: 0.25em;
+}
+
+/* Operator type badges */
+.operator-alignment {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: white;
+  padding: 0.5em 1em;
+  border-radius: 4px;
+  font-weight: bold;
+  display: inline-block;
+  margin: 0.25em;
+}
+
+.operator-pileup {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  padding: 0.5em 1em;
+  border-radius: 4px;
+  font-weight: bold;
+  display: inline-block;
+  margin: 0.25em;
+}
+
+.operator-variant {
+  background: linear-gradient(135deg, #0891b2, #06b6d4);
+  color: white;
+  padding: 0.5em 1em;
+  border-radius: 4px;
+  font-weight: bold;
+  display: inline-block;
+  margin: 0.25em;
+}
+
+.operator-filter {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: white;
+  padding: 0.5em 1em;
+  border-radius: 4px;
+  font-weight: bold;
+  display: inline-block;
+  margin: 0.25em;
+}
+
+/* Pipeline/architecture diagrams */
+.pipeline-diagram {
+  text-align: center;
+  margin: 2em 0;
+}
+
+.pipeline-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Stat cards (display-only, non-interactive) ── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1em;
+  margin: 1em 0;
+}
+
+.stat-card {
+  background: color-mix(in srgb, var(--md-primary-fg-color) 8%, var(--md-default-bg-color));
+  border-radius: 8px;
+  padding: 1.2em 1em;
+  text-align: center;
+}
+
+.stat-card .stat-value {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: var(--md-primary-fg-color);
+  line-height: 1.2;
+}
+
+.stat-card .stat-label {
+  font-size: 0.85em;
+  color: var(--md-default-fg-color--light);
+  margin-top: 0.3em;
+}
+
+/* ── Nav cards (clickable, link to other pages) ── */
+.nav-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1em;
+  margin: 1em 0;
+}
+
+.nav-card {
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-left: 4px solid var(--md-primary-fg-color);
+  border-radius: 8px;
+  padding: 1.5em 2.5em 1.5em 1.5em;
+  text-align: left;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+  position: relative;
+}
+
+.nav-card:hover {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
+  border-left-color: var(--md-accent-fg-color);
+}
+
+.nav-card::after {
+  content: "\2192";
+  position: absolute;
+  right: 1em;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.3em;
+  color: var(--md-default-fg-color--lighter);
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.nav-card:hover::after {
+  color: var(--md-accent-fg-color);
+  transform: translateY(-50%) translateX(3px);
+}
+
+.nav-card a {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.nav-card .nav-title {
+  font-size: 1.4em;
+  font-weight: 700;
+  color: var(--md-primary-fg-color);
+  line-height: 1.2;
+}
+
+.nav-card:hover .nav-title {
+  color: var(--md-accent-fg-color);
+}
+
+.nav-card .nav-description {
+  font-size: 0.85em;
+  color: var(--md-default-fg-color--light);
+  margin-top: 0.3em;
+}
+
+/* ── Legacy metric-card fallback ── */
+.performance-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1em;
+  margin: 1em 0;
+}
+
+.metric-card {
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  padding: 1.5em 1em;
+  text-align: center;
+}
+
+.metric-value {
+  font-size: 2em;
+  font-weight: bold;
+  color: var(--md-primary-fg-color);
+}
+
+.metric-label {
+  font-size: 0.9em;
+  color: var(--md-default-fg-color--light);
+  margin-top: 0.5em;
+}
+
+/* Alignment quality indicators */
+.quality-high {
+  color: #059669;
+  font-weight: bold;
+}
+
+.quality-medium {
+  color: #d97706;
+  font-weight: bold;
+}
+
+.quality-low {
+  color: #dc2626;
+  font-weight: bold;
+}
+
+/* Results table styling */
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+
+.results-table th,
+.results-table td {
+  padding: 0.75em;
+  text-align: left;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.results-table th {
+  background: var(--md-default-bg-color--light);
+  font-weight: bold;
+}
+
+.results-table .metric-name {
+  font-family: 'Roboto Mono', monospace;
+  font-weight: bold;
+  color: var(--md-primary-fg-color);
+}
+
+.results-table .value {
+  font-family: 'Roboto Mono', monospace;
+}
+
+/* Operator architecture styling */
+.architecture-block {
+  background: var(--md-code-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 4px;
+  padding: 1em;
+  margin: 0.5em 0;
+}
+
+.architecture-block .block-title {
+  font-weight: bold;
+  color: var(--md-primary-fg-color);
+  margin-bottom: 0.5em;
+}
+
+.architecture-block .block-description {
+  font-size: 0.9em;
+  color: var(--md-default-fg-color--light);
+}
+
+/* Framework badges */
+.framework-jax {
+  background: #d97706;
+  color: white;
+  padding: 0.25em 0.5em;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+.framework-flax {
+  background: #6366f1;
+  color: white;
+  padding: 0.25em 0.5em;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+.framework-datarax {
+  background: #4f46e5;
+  color: white;
+  padding: 0.25em 0.5em;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+/* Code annotation enhancements */
+.md-typeset .md-annotation {
+  font-size: 0.8em;
+  line-height: 1.4;
+}
+
+/* Bioinformatics badge styling */
+.bio-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0.125rem;
+}
+
+/* Configuration YAML highlighting */
+.config-structure {
+  background: var(--md-code-bg-color);
+  border-left: 4px solid var(--md-primary-fg-color);
+  padding: 1em;
+  margin: 1em 0;
+  font-family: 'Roboto Mono', monospace;
+}
+
+/* Improve code block readability */
+.md-typeset code {
+  font-size: 0.85em;
+}
+
+/* Better spacing for API documentation */
+.md-typeset .doc-contents {
+  padding-left: 1rem;
+}
+
+/* Improve table of contents */
+.md-nav__link {
+  font-size: 0.9em;
+}
+
+/* Better heading hierarchy */
+.md-typeset h1 {
+  color: var(--md-primary-fg-color);
+}
+
+.md-typeset h2 {
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  padding-bottom: 0.3rem;
+}
+
+/* Sequence type badges */
+.seq-dna {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: white;
+  padding: 0.25em 0.5em;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+.seq-rna {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  padding: 0.25em 0.5em;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+.seq-protein {
+  background: linear-gradient(135deg, #0891b2, #06b6d4);
+  color: white;
+  padding: 0.25em 0.5em;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+/* Algorithm category badges */
+.algo-alignment {
+  background: #4f46e5;
+  color: white;
+  padding: 0.25em 0.5em;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+.algo-variant {
+  background: #dc2626;
+  color: white;
+  padding: 0.25em 0.5em;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+.algo-assembly {
+  background: #7c3aed;
+  color: white;
+  padding: 0.25em 0.5em;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+.algo-quantification {
+  background: #0891b2;
+  color: white;
+  padding: 0.25em 0.5em;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+
+/* Responsive design for mobile */
+@media screen and (max-width: 768px) {
+  .performance-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .pipeline-diagram {
+    overflow-x: auto;
+  }
+
+  .results-table {
+    font-size: 0.9em;
+  }
+
+  .bio-badge {
+    font-size: 0.7em;
+    padding: 0.2rem 0.4rem;
+  }
+}
+
+/* Dark mode specific adjustments */
+[data-md-color-scheme="slate"] {
+  .pipeline-info {
+    background: linear-gradient(135deg, #4338ca, #4f46e5);
+  }
+
+  .performance-warning {
+    background: linear-gradient(135deg, #b91c1c, #dc2626);
+  }
+
+  .differentiability-note {
+    background: linear-gradient(135deg, #4338ca, #6366f1);
+  }
+
+  .stat-card {
+    background: color-mix(in srgb, var(--md-primary-fg-color) 12%, var(--md-default-bg-color));
+  }
+
+  .nav-card {
+    background: var(--md-code-bg-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .nav-card:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  }
+
+  .metric-card {
+    background: var(--md-code-bg-color);
+  }
+
+  .architecture-block {
+    background: var(--md-code-bg-color);
+  }
+}
+
+/* Print styles for documentation */
+@media print {
+
+  .md-header,
+  .md-tabs,
+  .md-footer {
+    display: none;
+  }
+
+  .md-content {
+    margin: 0;
+  }
+
+  .pipeline-diagram {
+    page-break-inside: avoid;
+  }
+
+  .results-table {
+    page-break-inside: avoid;
+  }
+
+  .architecture-block {
+    page-break-inside: avoid;
+  }
+}
+
+/* Benchmark result styling */
+.benchmark-results {
+  margin: 1em 0;
+  padding: 1em;
+  background: var(--md-code-bg-color);
+  border-radius: 4px;
+  border-left: 4px solid var(--md-primary-fg-color);
+}
+
+.benchmark-title {
+  font-weight: bold;
+  color: var(--md-primary-fg-color);
+  margin-bottom: 0.5em;
+}
+
+/* Gradient flow visualization */
+.gradient-flow {
+  background: linear-gradient(90deg, #dc2626 0%, #d97706 25%, #059669 50%, #0891b2 75%, #6366f1 100%);
+  height: 4px;
+  border-radius: 2px;
+  margin: 1em 0;
+}
+
+/* Differentiability technique cards */
+.technique-card {
+  background: var(--md-code-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  padding: 1.5em;
+  margin: 1em 0;
+}
+
+.technique-card .technique-name {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: var(--md-primary-fg-color);
+  margin-bottom: 0.5em;
+}
+
+.technique-card .technique-description {
+  color: var(--md-default-fg-color--light);
+  margin-bottom: 1em;
+}
+
+.technique-card .technique-use-cases {
+  font-size: 0.9em;
+  background: var(--md-default-bg-color);
+  padding: 0.5em 1em;
+  border-radius: 4px;
+}
