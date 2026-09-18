@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Requires `datarax>=0.1.14`, `avitai-artifex>=0.1.12`, `opifex>=0.2.8` and `calibrax>=0.1.9`,
+  the latest releases; the lock moves exactly those four, from 0.1.13, 0.1.10, 0.2.7 and
+  0.1.8. artifex 0.1.11 and 0.1.12 change its trainer, data pipeline and checkpointing, and
+  opifex 0.2.8 its trainer, checkpoints, loaders and `core.timing.block_until_ready`; DiffBio
+  imports none of those, and the layers, losses, physics and operator modules it does import
+  are unchanged. datarax 0.1.14 and calibrax 0.1.9 only raise their substrax floor to 0.1.11,
+  which DiffBio already requires.
+
 ## [0.1.9] - 2026-09-18
 
 ### Changed
