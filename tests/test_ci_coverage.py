@@ -14,6 +14,9 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOWS = REPO_ROOT / ".github" / "workflows"
+# The one condition the coverage job may carry: it stands down only on a merge whose pull request
+# already ran this job, and every other check, successfully over the same tree.
+ALREADY_TESTED = "needs.already_tested.outputs.skip != 'true'"
 
 
 def coverage_cap_violations(workflow: dict, pyproject: dict) -> list[str]:
@@ -28,7 +31,7 @@ def coverage_cap_violations(workflow: dict, pyproject: dict) -> list[str]:
         problems.append(f"[tool.coverage.report] fail_under is {floor}, not at least 80")
     if not {"push", "pull_request"} <= set(triggers):
         problems.append(f"CI runs on {sorted(triggers)}, not on both push and pull_request")
-    if "if" in job:
+    if job.get("if", ALREADY_TESTED) != ALREADY_TESTED:
         problems.append(f"the combined coverage job only runs when {job['if']}")
     if "coverage report" not in commands or "--fail-under=0" in commands:
         problems.append("the combined coverage job does not run coverage report against fail_under")
