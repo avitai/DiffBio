@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   imports none of those, and the layers, losses, physics and operator modules it does import
   are unchanged. datarax 0.1.14 and calibrax 0.1.9 only raise their substrax floor to 0.1.11,
   which DiffBio already requires.
+- The Security job audits the lockfile through substrax's `audit-lock` action, pinned by commit.
+  The previous step, `uv run --with pip-audit pip-audit --local`, audited the environment
+  pip-audit ran in rather than DiffBio's lock. The action exports every extra the lock resolves
+  and audits each export with a pinned pip-audit and a fresh advisory cache; bandit runs in its
+  own step, after a failed audit too, and either failure fails the job.
+- The lock moves mkdocs-material from 9.7.6 to 9.7.7 (PYSEC-2026-3864) and pymdown-extensions
+  from 10.21.2 to 12.1 (PYSEC-2026-2999, PYSEC-2026-3609, PYSEC-2026-3654), both in the `docs`
+  extra. The strict documentation build renders the same pages as before.
 
 ## [0.1.9] - 2026-09-18
 
