@@ -29,11 +29,11 @@ jobs:
           linux-editable-target: ".[dev]"
 
       # Every extra the lock resolves, in groups that respect [tool.uv] conflicts, each audited
-      # by a pinned pip-audit with a fresh advisory cache. Ignored advisories and their reasons
-      # live in [tool.substrax.audit-lock.ignore] in pyproject.toml; the action also fails on an
-      # ignore that no advisory matches any more.
+      # by a pinned pip-audit against both its PyPI and OSV services with a fresh advisory cache.
+      # Ignored advisories and their reasons live in [tool.substrax.audit-lock.ignore] in
+      # pyproject.toml; the action also fails on an ignore that no advisory matches any more.
       - name: Audit the locked dependencies
-        uses: avitai/substrax/.github/actions/audit-lock@13e98b78127606be04437bd7c5de894fb765a28e
+        uses: avitai/substrax/.github/actions/audit-lock@e889be4e9fb55fe9c272e219277524630bf9d39e
 
       # Runs after a failed audit too, so one run reports both scans; either failure fails the job.
       - name: Bandit
