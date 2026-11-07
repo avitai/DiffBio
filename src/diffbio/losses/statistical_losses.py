@@ -15,8 +15,6 @@ import jax.numpy as jnp
 from flax import nnx
 from jaxtyping import Array, Float, Int
 
-from diffbio.constants import EPSILON
-from diffbio.core import soft_ops
 from diffbio.losses._negative_binomial import nb_log_prob
 
 
@@ -52,24 +50,26 @@ def zinb_negative_log_likelihood(
     """
     mu = jnp.exp(log_rate)
     theta = jnp.exp(jnp.clip(log_theta, -10.0, 10.0))
-    eps = EPSILON
 
     # Log-space sigmoid computations (numerically stable)
     softplus_pi = jax.nn.softplus(-pi_logit)  # = -log(sigmoid(pi_logit))
-    log_theta_mu = jnp.log(theta + mu + eps)
 
-    # NB(0) in log-space combined with dropout logit
-    pi_theta_log = -pi_logit + theta * (jnp.log(theta + eps) - log_theta_mu)
+    # log NB(x); at a zero count it is log NB(0) = -theta log1p(mu / theta), which stays
+    # accurate when theta >> mu, where log(theta) - log(theta + mu) cancels.
+    log_nb = nb_log_prob(counts, mu, theta)
 
-    # Case x == 0: log[sigmoid(pi) + (1 - sigmoid(pi)) * NB(0)]
-    case_zero = jax.nn.softplus(pi_theta_log) - softplus_pi
+    # Case x == 0: log[pi + (1 - pi) NB(0)] = log(1 - y) with y = (1 - pi)(1 - NB(0)). Both
+    # 1 - NB(0) and 1 - y go through Machler's log1mexp ("Accurately Computing log(1 - exp(-|a|))",
+    # 2012; jax.nn.log1mexp), since log(pi + (1 - pi) NB(0)) as softplus(-pi + log NB(0)) -
+    # softplus(-pi) subtracts two nearly equal terms once NB(0) is close to one.
+    log_y = -jax.nn.softplus(pi_logit) + jax.nn.log1mexp(-log_nb)
+    case_zero = jax.nn.log1mexp(-log_y)
+    # Case x > 0: log[(1 - pi) NB(x)]
+    case_nonzero = -pi_logit + log_nb - softplus_pi
 
-    # Case x > 0: log[(1 - sigmoid(pi)) * NB(x)]. The bracketed term equals
-    # ``-pi_logit + log NB(x)`` once ``pi_theta_log`` is expanded.
-    case_nonzero = -softplus_pi - pi_logit + nb_log_prob(counts, mu, theta)
-
-    is_zero = soft_ops.less(counts, jnp.array(eps), softness=0.01)
-    log_prob = is_zero * case_zero + (1.0 - is_zero) * case_nonzero
+    # The counts are observed data, so the branch is chosen exactly, as scvi-tools'
+    # log_zinb_positive does; nothing differentiates the selection.
+    log_prob = jnp.where(counts == 0, case_zero, case_nonzero)
 
     return -jnp.sum(log_prob)
 

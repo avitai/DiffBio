@@ -30,6 +30,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the last two limited by jax 0.11.1's float32 digamma. The bounds per sample set and platform
   are recorded in `tests/losses/test_count_likelihood_precision.py`, which measures them as jax's
   numerics tests do. `mpmath` joins the `test` extra for those references.
+- `zinb_negative_log_likelihood` gives a zero count its zero-inflated likelihood
+  `log(pi + (1 - pi) NB(0))`. Since `d2ce8643` the branch was chosen by
+  `soft_ops.less(counts, eps, softness=0.01)`, a sigmoid centred on `eps` that weighs a count of
+  exactly 0 at 0.50000024, so every zero count took the mean of the zero-inflated and the plain
+  negative binomial terms. The counts are data, so the branch is now chosen exactly, as
+  scvi-tools' `log_zinb_positive` does. The zero branch is computed as `log(1 - y)` with `y = (1 -
+  pi)(1 - NB(0))` through Machler's `log1mexp` (`jax.nn.log1mexp`) twice, where `softplus(-pi +
+  log NB(0)) - softplus(-pi)` cancelled once `NB(0)` neared one. Over 437 zero-count samples the
+  worst float32 errors on CPU are 11.5 ULP in the value, 68.5 in `d/d log_rate` and 80.5 in
+  `d/d log_theta`, with inputs whose `NB(0)` is subnormal in float32 left out.
 
 ### Changed
 

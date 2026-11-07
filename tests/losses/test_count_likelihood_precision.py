@@ -27,7 +27,7 @@ import numpy as np
 import pytest
 
 from diffbio.losses._negative_binomial import stirling_remainder
-from diffbio.losses.statistical_losses import NegativeBinomialLoss
+from diffbio.losses.statistical_losses import NegativeBinomialLoss, zinb_negative_log_likelihood
 
 
 CONDITION_LIMIT = 2.0**12
@@ -79,6 +79,9 @@ ULP_BOUNDS: dict[str, dict[str, float]] = {
         "nb_grad_counts/tiny theta": 8.5,
         "nb_grad_counts/tiny mean": 1.5,
         "nb_grad_counts/non-integer counts": 46.5,
+        "zero_value/draws": 11.5,
+        "zero_grad_log_rate/draws": 68.5,
+        "zero_grad_log_theta/draws": 80.5,
     },
     "gpu": {
         "nb_value/draws": 12.5,
@@ -117,6 +120,9 @@ ULP_BOUNDS: dict[str, dict[str, float]] = {
         "nb_grad_counts/tiny theta": 14.5,
         "nb_grad_counts/tiny mean": 1.5,
         "nb_grad_counts/non-integer counts": 174.5,
+        "zero_value/draws": 11.5,
+        "zero_grad_log_rate/draws": 58.5,
+        "zero_grad_log_theta/draws": 70.0,
     },
 }
 
@@ -220,6 +226,42 @@ def nb_d_counts(x: mpmath.mpf, mu: mpmath.mpf, theta: mpmath.mpf) -> mpmath.mpf:
     return mpmath.digamma(x + theta) - mpmath.digamma(x + 1) + mpmath.log(mu / (theta + mu))
 
 
+def zero_log_prob(log_rate: mpmath.mpf, log_theta: mpmath.mpf, pi_logit: mpmath.mpf) -> mpmath.mpf:
+    """log ZINB(0) = log(pi + (1 - pi) NB(0)), pi = sigmoid(pi_logit)."""
+    mu, theta = mpmath.exp(log_rate), mpmath.exp(log_theta)
+    pi = 1 / (1 + mpmath.exp(-pi_logit))
+    return mpmath.log(pi + (1 - pi) * mpmath.exp(theta * mpmath.log(theta / (theta + mu))))
+
+
+def _zero_parts(
+    log_rate: mpmath.mpf, log_theta: mpmath.mpf, pi_logit: mpmath.mpf
+) -> tuple[mpmath.mpf, mpmath.mpf, mpmath.mpf, mpmath.mpf]:
+    """(mu, theta, (1 - pi) NB(0), pi + (1 - pi) NB(0))."""
+    mu, theta = mpmath.exp(log_rate), mpmath.exp(log_theta)
+    pi = 1 / (1 + mpmath.exp(-pi_logit))
+    weighted = (1 - pi) * mpmath.exp(theta * mpmath.log(theta / (theta + mu)))
+    return mu, theta, weighted, pi + weighted
+
+
+def zero_d_log_rate(
+    log_rate: mpmath.mpf, log_theta: mpmath.mpf, pi_logit: mpmath.mpf
+) -> mpmath.mpf:
+    """d log ZINB(0) / d log_rate = (1 - pi) NB(0) (-theta mu / (theta + mu)) / ZINB(0)."""
+    mu, theta, weighted, total = _zero_parts(log_rate, log_theta, pi_logit)
+    return weighted * (-theta * mu / (theta + mu)) / total
+
+
+def zero_d_log_theta(
+    log_rate: mpmath.mpf, log_theta: mpmath.mpf, pi_logit: mpmath.mpf
+) -> mpmath.mpf:
+    """d log ZINB(0) / d log_theta.
+
+    It is ``(1 - pi) NB(0) theta (log(theta / (theta + mu)) + mu / (theta + mu)) / ZINB(0)``.
+    """
+    mu, theta, weighted, total = _zero_parts(log_rate, log_theta, pi_logit)
+    return weighted * theta * (mpmath.log(theta / (theta + mu)) + mu / (theta + mu)) / total
+
+
 # Samples: interesting points, then random draws from a fixed seed. Every coordinate is a
 # float32 value, so the float32 call and the reference see the same inputs.
 
@@ -288,11 +330,54 @@ NB_SAMPLE_SETS: dict[str, Callable[[], list[tuple[float, float, float]]]] = {
 }
 
 
+def _nb_zero_is_normal(point: tuple[float, float, float]) -> bool:
+    """Whether NB(0) at the point is at least float32's smallest normal number, 2**-126.
+
+    Below it, every float32 evaluation passes through a subnormal NB(0) that flushes to zero, so
+    the gradients, though representable, read 0; such inputs are left out as jax's numerics
+    tests leave out ill-conditioned regions (``ignore_inputs``).
+    """
+    log_rate, log_theta, _ = point
+    with mpmath.workdps(REFERENCE_DIGITS):
+        mu, theta = mpmath.exp(log_rate), mpmath.exp(log_theta)
+        log_nb_zero = -theta * mpmath.log1p(mu / theta)
+        return bool(log_nb_zero >= FLOAT32_MIN_EXPONENT * mpmath.log(2))
+
+
+def zero_samples() -> list[tuple[float, float, float]]:
+    """(log_rate, log_theta, pi_logit) of a zero count, log_theta inside the clip at +-10.
+
+    Inputs where NB(0) is subnormal in float32 are left out (``_nb_zero_is_normal``).
+    """
+    points = [
+        (_f32(log_rate), _f32(log_theta), _f32(pi_logit))
+        for log_rate in (-8.0, -3.0, 0.0, 3.0, 8.0)
+        for log_theta in (-5.0, 0.0, 6.0, 9.0)
+        for pi_logit in (-4.0, 0.0, 4.0)
+    ]
+    rng = np.random.default_rng(37)
+    draws = zip(
+        rng.uniform(-8.0, 8.0, RANDOM_SAMPLES),
+        rng.uniform(-9.0, 9.0, RANDOM_SAMPLES),
+        rng.uniform(-6.0, 6.0, RANDOM_SAMPLES),
+        strict=True,
+    )
+    points += [(_f32(a), _f32(b), _f32(c)) for a, b, c in draws]
+    return [point for point in points if _nb_zero_is_normal(point)]
+
+
 # The float32 quantities under test, each a function of one sample's three float32 inputs.
 
 
 def _nb_loss(x: jax.Array, mu: jax.Array, theta: jax.Array) -> jax.Array:
     return NegativeBinomialLoss()(x[None, None], mu[None, None], theta[None])
+
+
+def _zero_loss(log_rate: jax.Array, log_theta: jax.Array, pi_logit: jax.Array) -> jax.Array:
+    zero = jnp.zeros((1, 1), dtype=jnp.float32)
+    return zinb_negative_log_likelihood(
+        zero, log_rate[None, None], log_theta[None, None], pi_logit[None, None]
+    )
 
 
 QUANTITIES: dict[str, tuple[Callable[..., jax.Array], Callable[..., mpmath.mpf]]] = {
@@ -301,10 +386,14 @@ QUANTITIES: dict[str, tuple[Callable[..., jax.Array], Callable[..., mpmath.mpf]]
     "nb_grad_mu": (jax.grad(_nb_loss, argnums=1), nb_d_mu),
     "nb_grad_theta": (jax.grad(_nb_loss, argnums=2), nb_d_theta),
     "nb_grad_counts": (jax.grad(_nb_loss, argnums=0), nb_d_counts),
+    "zero_value": (_zero_loss, zero_log_prob),
+    "zero_grad_log_rate": (jax.grad(_zero_loss, argnums=0), zero_d_log_rate),
+    "zero_grad_log_theta": (jax.grad(_zero_loss, argnums=1), zero_d_log_theta),
 }
 
 SAMPLE_SETS: dict[str, dict[str, Callable[[], list[tuple[float, float, float]]]]] = {
     **{name: NB_SAMPLE_SETS for name in QUANTITIES if name.startswith("nb_")},
+    **{name: {"draws": zero_samples} for name in QUANTITIES if name.startswith("zero_")},
 }
 
 # (quantity, sample set): each is held to its own recorded bound.
