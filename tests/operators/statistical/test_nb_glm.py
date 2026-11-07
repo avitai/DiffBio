@@ -10,6 +10,7 @@ import jax.numpy as jnp
 import pytest
 from flax import nnx
 
+from diffbio.losses._negative_binomial import nb_log_prob
 from diffbio.operators.statistical.nb_glm import (
     DifferentiableNBGLM,
     NBGLMConfig,
@@ -133,6 +134,17 @@ class TestDifferentiableNBGLM:
 
         assert log_prob.shape == ()
         assert jnp.isfinite(log_prob)
+
+    def test_log_prob_is_the_shared_negative_binomial(self, rngs, sample_data):
+        """The GLM sums diffbio's one NB log-probability, bit for bit (issue #36)."""
+        op = DifferentiableNBGLM(NBGLMConfig(n_features=100, n_covariates=2), rngs=rngs)
+        design, size_factor = sample_data["design"], sample_data["size_factor"]
+
+        log_prob = op.negative_binomial_log_prob(sample_data["counts"], design, size_factor)
+
+        mu = op.predict_mean(design, size_factor)
+        expected = jnp.sum(nb_log_prob(sample_data["counts"], mu, op.get_dispersion()))
+        assert jnp.array_equal(log_prob, expected)
 
     def test_apply_returns_log_likelihood(self, rngs, sample_data):
         """Test that apply returns log likelihood."""

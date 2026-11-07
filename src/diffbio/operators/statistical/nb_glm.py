@@ -19,6 +19,9 @@ from datarax.core.operator import OperatorModule
 from flax import nnx
 from jaxtyping import Array, Float, PyTree
 
+from diffbio.losses._negative_binomial import nb_log_prob
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -160,30 +163,8 @@ class DifferentiableNBGLM(OperatorModule):
             Total log probability (scalar).
         """
         mu = self.predict_mean(design, size_factor)
-        dispersion = self.get_dispersion()
-
-        # Negative binomial log probability
-        # NB(k; mu, r) where r = dispersion
-        # log P(k) = log(Gamma(k + r)) - log(Gamma(k + 1)) - log(Gamma(r))
-        #          + r * log(r / (r + mu)) + k * log(mu / (r + mu))
-
-        r = dispersion
-        k = counts
-
-        # Compute log probability using the NB PMF
-        # Use jax.scipy.special functions for numerical stability
-        log_prob = (
-            jax.scipy.special.gammaln(k + r)
-            - jax.scipy.special.gammaln(k + 1)
-            - jax.scipy.special.gammaln(r)
-            + r * jnp.log(r / (r + mu + 1e-8))
-            + k * jnp.log(mu / (r + mu + 1e-8) + 1e-8)
-        )
-
-        # Sum over features
-        total_log_prob = jnp.sum(log_prob)
-
-        return total_log_prob
+        # NB(k; mu, r) with r = dispersion, the inverse dispersion: variance mu + mu**2 / r.
+        return jnp.sum(nb_log_prob(counts, mu, self.get_dispersion()))
 
     def batch_log_likelihood(
         self,
