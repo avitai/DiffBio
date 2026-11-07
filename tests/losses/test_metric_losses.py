@@ -193,6 +193,27 @@ class TestExactAUROC:
         result = exact(predictions, labels)
         assert float(result) == pytest.approx(0.75)
 
+    @pytest.mark.parametrize("tied_order", [(1.0, 0.0), (0.0, 1.0)])
+    def test_a_tied_pair_counts_half_whatever_its_order(
+        self, tied_order: tuple[float, float]
+    ) -> None:
+        """A positive and a negative with one score count as half a correct pair (midranks).
+
+        Pairs: (0.5 = 0.5) = 1/2, (0.5 > 0.2) = 1, (0.8 > 0.5) = 1, (0.8 > 0.2) = 1, so 3.5 / 4,
+        exactly representable, in either order of the tied records.
+        """
+        exact = ExactAUROC()
+        predictions = jnp.array([0.5, 0.5, 0.2, 0.8])
+        labels = jnp.array([*tied_order, 0.0, 1.0])
+        assert float(exact(predictions, labels)) == 0.875
+
+    def test_every_score_tied_is_one_half(self) -> None:
+        """Every pair tied: each counts half, so the AUROC is exactly 0.5."""
+        exact = ExactAUROC()
+        predictions = jnp.full((4,), 0.5)
+        labels = jnp.array([1.0, 1.0, 0.0, 0.0])
+        assert float(exact(predictions, labels)) == 0.5
+
     def test_gradient_flow(self) -> None:
         """JAX can trace through ExactAUROC without raising errors.
 

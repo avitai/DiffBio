@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Requires `calibrax>=0.1.17` and `substrax>=0.1.25`, the latest releases; calibrax 0.1.17
+  requires that substrax, and the lock moves the two from 0.1.9 and 0.1.11. Four kinds of
+  value DiffBio reports change with calibrax's fixes since 0.1.9:
+  - `ExactAUROC` counts a tied positive-negative pair as half, the Mann-Whitney midrank
+    convention (calibrax 0.1.17). For scores `0.5, 0.5, 0.2, 0.8` it read 1.0 or 0.75
+    depending on the order of the tied records, and 1.0 when every score is tied; it reads
+    0.875 and 0.5.
+  - The clustering evaluation's `silhouette_score` and `calinski_harabasz_score` read labels as
+    names (0.1.10): a clustering labelled with gaps, such as `{0, 2}`, no longer counts one
+    cluster twice, and both match scikit-learn.
+  - The batch-correction evaluation's `mmd` is Gretton et al.'s (2012) `MMD_b` (0.1.10), not
+    the root of the clamped unbiased `MMD^2` estimate, so its value changes for every input.
+  - `masked_value_loss`, `MaskedValueLoss` and `compute_chromatin_guidance_loss` pass a mask to
+    `mse` or `mae`, which ignore a non-finite value at a masked-out position (0.1.15); they
+    returned `NaN`, or for `mae` a wrong finite value.
+
+  The softmax cross-entropy, `entropy` and the unmasked `mse` call sites are unchanged.
 - The macOS jobs that pushes to `main` add to the package build run on `macos-15`.
   GitHub retires the `macos-14` image on 2026-11-02 (actions/runner-images#13518), and its
   scheduled brownouts already cancel jobs that ask for it.

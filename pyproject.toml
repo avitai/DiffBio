@@ -43,10 +43,10 @@ dependencies = [
   # Opifex - scientific ML, operator learning, and advanced optimization
   "opifex>=0.2.8",
   # Calibrax - benchmarking, comparison, profiling, and regression control
-  "calibrax>=0.1.9",
+  "calibrax>=0.1.17",
   # Substrax - device identity, meshes, runtime settings and checkpoint store shared by the
-  # siblings; 0.1.6 adds substrax.runtime, substrax.artifacts and substrax.testing.
-  "substrax>=0.1.11",
+  # siblings; calibrax 0.1.17 requires 0.1.25.
+  "substrax>=0.1.25",
   # JAX ecosystem
   "beartype>=0.14.1",
   "chex>=0.1.7",
