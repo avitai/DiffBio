@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `NegativeBinomialLoss`, `DifferentiableNBGLM` and the nonzero counts of
+  `zinb_negative_log_likelihood` keep float32 accuracy in their value and gradients (#36). They
+  computed `gammaln(x + theta) - gammaln(theta) - gammaln(x + 1)` and differenced logarithms,
+  terms of size ~7e7 at 5e6 counts where float32 resolves 4: 5.6 nats wrong at `(x, mu, theta) =
+  (5e6, 5500001, 4)`, and a gradient in `mu` with no correct digit. The log-probability now
+  follows Loader's saddle-point method ("Fast and Accurate Computation of Binomial
+  Probabilities", 2002) through the identity `NB(x; theta, mu) = theta / (x + theta) * b(theta;
+  x + theta, theta / (theta + mu))`, in `diffbio.losses._negative_binomial`: `n P` and `n Q` are
+  each one product as R's `dnbinom_mu` forms them, the deviance is Welinder's `-x log1pmx((m -
+  x) / x)` (R bug PR#15628), the Stirling remainder takes exact values at 1 and 2, and a zero
+  count is `theta log(theta / (theta + mu))` through `log1p` of the small ratio. Its partials in
+  `mu`, `theta` and the counts are closed forms in a `jax.custom_jvp`, each without a cancelling
+  difference (derived in the module's docstring; at small integer counts and `theta` the
+  `theta` partial is DLMF 5.5.2's harmonic sum), so a gradient evaluates none of the value's
+  branches. Over nine sample sets of 868 points (counts 0 to 1e7 and non-integer counts, `mu`
+  from 1e-6 to 1e9, `theta` from 1e-4 to 1e8; inputs whose condition number exceeds 2**12 left
+  out), against mpmath, the worst float32 errors on CPU go from 1.9e8 to within 14.5 ULP in the
+  value, 5.7e7 to 2.5 in `d/d mu`, 1.4e14 to 797.5 in `d/d theta` and 2.8e8 to 267 in `d/d x`,
+  the last two limited by jax 0.11.1's float32 digamma. The bounds per sample set and platform
+  are recorded in `tests/losses/test_count_likelihood_precision.py`, which measures them as jax's
+  numerics tests do. `mpmath` joins the `test` extra for those references.
+
 ### Changed
 
 - Requires `calibrax>=0.1.17` and `substrax>=0.1.25`, the latest releases; calibrax 0.1.17

@@ -1016,6 +1016,7 @@ all = [
     { name = "mkdocs-material" },
     { name = "mkdocstrings" },
     { name = "mkdocstrings-python" },
+    { name = "mpmath" },
     { name = "optimistix" },
     { name = "ott-jax" },
     { name = "pandas" },
@@ -1143,6 +1144,7 @@ soft-ops-ot = [
 test = [
     { name = "beartype" },
     { name = "coverage" },
+    { name = "mpmath" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-benchmark" },
@@ -1211,6 +1213,7 @@ requires-dist = [
     { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.6.7" },
     { name = "mkdocstrings", marker = "extra == 'docs'", specifier = ">=0.28.3" },
     { name = "mkdocstrings-python", marker = "extra == 'docs'", specifier = ">=1.1.2" },
+    { name = "mpmath", marker = "extra == 'test'", specifier = ">=1.3" },
     { name = "numpy", specifier = ">=1.24" },
     { name = "opifex", specifier = ">=0.2.8" },
     { name = "optax", specifier = ">=0.2.8" },

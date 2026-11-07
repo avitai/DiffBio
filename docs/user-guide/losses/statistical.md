@@ -42,6 +42,17 @@ Where:
 - $\mu$ = predicted mean
 - $\alpha$ = dispersion (overdispersion parameter)
 
+Evaluated as written, the log-gamma terms reach about $7 \times 10^7$ at $5 \times 10^6$ counts,
+where float32 resolves 4, so their difference carries no correct digit. DiffBio evaluates the
+log-likelihood with Loader's saddle-point method (C. Loader, *Fast and Accurate Computation of
+Binomial Probabilities*, 2002) through
+$NB(y; \theta, \mu) = \frac{\theta}{y + \theta}\, b(\theta; y + \theta, \frac{\theta}{\theta + \mu})$
+with $\theta = 1 / \alpha$. That form keeps its float32 error within a few tens of ULP in the
+value and a few ULP in the mean gradient across counts to $10^7$. The gradients in $\mu$,
+$\theta$ and the counts are closed-form partials (a `jax.custom_jvp`), each written without a
+cancelling difference, so training never differentiates through the saddle-point branches.
+`DifferentiableNBGLM` and the zero-inflated loss use the same implementation.
+
 ### Training Example
 
 ```python
