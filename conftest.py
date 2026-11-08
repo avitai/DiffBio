@@ -152,11 +152,14 @@ def pytest_runtest_setup(item):
 
 
 def pytest_runtest_teardown(item, nextitem):  # noqa: ARG001
-    """Clean up GPU memory after tests."""
+    """Release a GPU-marked test's device memory before the next test.
+
+    Other tests leave their garbage to CPython's own collector. A full ``gc.collect()`` walks the
+    whole heap, which the JIT caches kept across tests make larger as a session runs, so calling
+    it after every test costs time that grows with the session and does not lower peak memory.
+    """
     try:
         import jax
-
-        gc.collect()
 
         if hasattr(item, "get_closest_marker"):
             gpu_marker = item.get_closest_marker("gpu")
