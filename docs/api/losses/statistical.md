@@ -12,6 +12,13 @@ Loss functions for statistical modeling in bioinformatics.
         - __init__
         - __call__
 
+## nb_log_prob
+
+::: diffbio.losses.nb_log_prob
+    options:
+      show_root_heading: true
+      show_source: false
+
 ## VAELoss
 
 ::: diffbio.losses.statistical_losses.VAELoss
@@ -48,6 +55,18 @@ loss = nb_loss(
     dispersion=dispersions,        # (n_genes,) or scalar
 )
 ```
+
+### Elementwise negative binomial log-probability
+
+```python
+from diffbio.losses import nb_log_prob
+
+# log NB(x | mu, theta) per element, theta broadcast per gene
+log_prob = nb_log_prob(counts, mu, theta[None, :])   # (n_samples, n_genes)
+```
+
+`NegativeBinomialLoss` is its negative mean. Its gradients in `mu`, `theta` and the counts are
+closed forms (see [Statistical losses](../../user-guide/losses/statistical.md)).
 
 ### VAE Loss (ELBO)
 

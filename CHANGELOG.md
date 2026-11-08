@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `diffbio.losses.nb_log_prob`, the elementwise negative binomial log-probability
+  `log NB(x | mu, theta)` that `NegativeBinomialLoss`, `DifferentiableNBGLM` and the nonzero
+  counts of `zinb_negative_log_likelihood` are built on, with its closed-form partials in `mu`,
+  `theta` and the counts. `NegativeBinomialLoss` is its negative mean.
+
 ### Fixed
 
 - `NegativeBinomialLoss`, `DifferentiableNBGLM` and the nonzero counts of

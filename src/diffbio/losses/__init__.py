@@ -4,6 +4,7 @@ This module provides loss functions for training differentiable bioinformatics
 pipelines, including biological regularization to prevent adversarial optimization.
 """
 
+from diffbio.losses._negative_binomial import nb_log_prob
 from diffbio.losses.alignment_losses import (
     AlignmentConsistencyLoss,
     AlignmentScoreLoss,
@@ -58,6 +59,7 @@ __all__ = [
     "HMMLikelihoodLoss",
     "NegativeBinomialLoss",
     "VAELoss",
+    "nb_log_prob",
     "zinb_negative_log_likelihood",
     # Self-supervised losses
     "MaskedValueLoss",

@@ -8,6 +8,8 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 
+import diffbio.losses
+from diffbio.losses import nb_log_prob
 from diffbio.losses.statistical_losses import (
     HMMLikelihoodLoss,
     NegativeBinomialLoss,
@@ -193,6 +195,47 @@ class TestHMMLikelihoodLoss:
 
         assert jnp.isfinite(loss)
         assert hasattr(grads, "log_transitions")
+
+
+class TestNBLogProb:
+    """``nb_log_prob``, the elementwise NB log-probability the NB losses are built on."""
+
+    COUNTS = jnp.array([[0.0, 1.0, 5.0], [2.0, 0.0, 30.0]])
+    MU = jnp.array([[1.0, 2.0, 4.0], [3.0, 0.5, 25.0]])
+    THETA = jnp.array([0.5, 2.0, 10.0])
+
+    def test_is_exported_from_diffbio_losses(self) -> None:
+        assert "nb_log_prob" in diffbio.losses.__all__
+
+    def test_is_elementwise_with_a_per_gene_theta(self) -> None:
+        log_prob = nb_log_prob(self.COUNTS, self.MU, self.THETA[None, :])
+
+        assert log_prob.shape == self.COUNTS.shape
+        assert bool(jnp.all(log_prob <= 0.0))
+
+    def test_negative_binomial_loss_is_its_negative_mean(self) -> None:
+        """The loss is exactly the negative mean, so the loss's precision bounds hold for it."""
+        loss = NegativeBinomialLoss()(self.COUNTS, self.MU, self.THETA)
+
+        assert loss == -jnp.mean(nb_log_prob(self.COUNTS, self.MU, self.THETA[None, :]))
+
+    def test_its_gradient_in_mu_is_the_closed_form_partial(self) -> None:
+        theta = self.THETA[None, :]
+        gradient = jax.grad(lambda mu: jnp.sum(nb_log_prob(self.COUNTS, mu, theta)))(self.MU)
+
+        partial = theta * (self.COUNTS - self.MU) / (self.MU * (theta + self.MU))
+        assert bool(jnp.array_equal(gradient, partial))
+
+    def test_runs_under_jit_vmap_and_grad(self) -> None:
+        theta = self.THETA[None, :]
+        jitted = jax.jit(nb_log_prob)(self.COUNTS, self.MU, theta)
+        mapped = jax.vmap(nb_log_prob, in_axes=(0, 0, None))(self.COUNTS, self.MU, self.THETA)
+        gradient = jax.grad(lambda t: jnp.sum(nb_log_prob(self.COUNTS, self.MU, t)))(theta)
+
+        assert jitted.shape == mapped.shape == self.COUNTS.shape
+        assert gradient.shape == theta.shape
+        assert bool(jnp.all(jnp.isfinite(jitted)))
+        assert bool(jnp.all(jnp.isfinite(gradient)))
 
 
 class TestJITCompatibility:
