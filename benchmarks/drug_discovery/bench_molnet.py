@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Iterable
 from typing import Any
 
 import jax.numpy as jnp
@@ -78,40 +79,65 @@ class _MLPClassifier(nnx.Module):
         return self.linear2(h)
 
 
-def _featurize_molecules(
-    source: MolNetSource,
+def featurize_molecules(
+    source: Iterable[Any],
     fp_operator: CircularFingerprintOperator,
-) -> tuple[jnp.ndarray, jnp.ndarray, int]:
-    """Convert all source elements to fingerprints and labels.
+    *,
+    limit: int | None = None,
+) -> tuple[jnp.ndarray, jnp.ndarray, np.ndarray]:
+    """Fingerprint the source's usable molecules, in source order.
+
+    A molecule with a NaN label or a SMILES string RDKit cannot parse is skipped.
 
     Args:
-        source: MolNet data source with SMILES and labels.
+        source: Elements whose ``data`` holds ``smiles`` and ``y``, such as a MolNetSource.
         fp_operator: Fingerprint operator for featurization.
+        limit: Stop after this many usable molecules; all of them when None.
 
     Returns:
-        Tuple of (fingerprints, labels, n_valid) where n_valid
-        is the count of successfully featurized molecules.
+        Tuple of (fingerprints, labels, positions): row ``r`` holds the molecule at
+        source position ``positions[r]``.
     """
     fingerprints: list[jnp.ndarray] = []
     labels: list[float] = []
+    positions: list[int] = []
 
-    for element in source:
-        smiles = element.data["smiles"]
-        label = element.data["y"]
-        if math.isnan(float(label)):
+    for position, element in enumerate(source):
+        if limit is not None and len(labels) >= limit:
+            break
+        label = float(element.data["y"])
+        if math.isnan(label):
             continue
         try:
-            graph = smiles_to_graph(smiles)
+            graph = smiles_to_graph(element.data["smiles"])
         except ValueError:
             continue
 
         result, _, _ = fp_operator.apply(graph, {}, None)
         fingerprints.append(result["fingerprint"])
-        labels.append(float(label))
+        labels.append(label)
+        positions.append(position)
 
-    fp_array = jnp.stack(fingerprints)
-    label_array = jnp.array(labels)
-    return fp_array, label_array, len(labels)
+    return jnp.stack(fingerprints), jnp.array(labels), np.asarray(positions, dtype=np.int64)
+
+
+def rows_for_positions(split_positions: Any, featurized_positions: np.ndarray) -> np.ndarray:
+    """Return the fingerprint rows of the split's molecules, in the split's order.
+
+    A splitter names molecules by source position; fingerprint rows skip the molecules that
+    were not featurized, so the two differ after the first skipped one. Positions with no row
+    are left out.
+
+    Args:
+        split_positions: Source positions from a splitter.
+        featurized_positions: Source position of each fingerprint row, increasing.
+
+    Returns:
+        Row indices into the fingerprint and label arrays.
+    """
+    row_of = {int(position): row for row, position in enumerate(featurized_positions)}
+    rows = [row_of[int(p)] for p in np.asarray(split_positions) if int(p) in row_of]
+    return np.asarray(rows, dtype=np.int64)
 
 
 def _compute_roc_auc(
@@ -161,6 +187,7 @@ def _compute_roc_auc(
 def _train_and_evaluate(
     fingerprints: jnp.ndarray,
     labels: jnp.ndarray,
+    positions: np.ndarray,
     source: MolNetSource,
     *,
     n_epochs: int,
@@ -172,6 +199,7 @@ def _train_and_evaluate(
     Args:
         fingerprints: Fingerprint matrix, shape (n, n_bits).
         labels: Binary labels, shape (n,).
+        positions: Source position of each fingerprint row.
         source: MolNet data source (used for splitting).
         n_epochs: Number of training epochs.
         learning_rate: Adam learning rate.
@@ -192,10 +220,8 @@ def _train_and_evaluate(
     split = splitter.split(source)
 
     n_valid = fingerprints.shape[0]
-    train_idx = np.asarray(split.train_indices)
-    test_idx = np.asarray(split.test_indices)
-    train_idx = train_idx[train_idx < n_valid]
-    test_idx = test_idx[test_idx < n_valid]
+    train_idx = rows_for_positions(split.train_indices, positions)
+    test_idx = rows_for_positions(split.test_indices, positions)
 
     x_train = fingerprints[train_idx]
     y_train = labels[train_idx]
@@ -289,18 +315,10 @@ class MolNetBenchmark(DiffBioBenchmark):
 
         # 3. Featurize molecules
         logger.info("Featurizing molecules...")
-        fingerprints, labels, n_valid = _featurize_molecules(source, fp_operator)
-        logger.info(
-            "  %d/%d molecules featurized successfully",
-            n_valid,
-            n_total,
-        )
-
-        # Subsample in quick mode
-        if self.quick and n_valid > self.config.quick_subsample:
-            fingerprints = fingerprints[: self.config.quick_subsample]
-            labels = labels[: self.config.quick_subsample]
-            n_valid = self.config.quick_subsample
+        limit = self.config.quick_subsample if self.quick else None
+        fingerprints, labels, positions = featurize_molecules(source, fp_operator, limit=limit)
+        n_valid = int(labels.shape[0])
+        logger.info("  %d of %d molecules featurized", n_valid, n_total)
 
         # 4. Train MLP classifier on fingerprints
         n_epochs = 20 if self.quick else 50
@@ -308,6 +326,7 @@ class MolNetBenchmark(DiffBioBenchmark):
         metrics = _train_and_evaluate(
             fingerprints,
             labels,
+            positions,
             source,
             n_epochs=n_epochs,
         )

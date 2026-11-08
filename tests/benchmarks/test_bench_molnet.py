@@ -2,11 +2,75 @@
 
 from __future__ import annotations
 
+import math
+from dataclasses import dataclass
+from typing import Any
+
+import numpy as np
 import pytest
 from calibrax.core.result import BenchmarkResult
+from flax import nnx
 
-from benchmarks.drug_discovery.bench_molnet import MolNetBenchmark
+from benchmarks.drug_discovery.bench_molnet import (
+    MolNetBenchmark,
+    featurize_molecules,
+    rows_for_positions,
+)
+from diffbio.operators.drug_discovery import (
+    DEFAULT_ATOM_FEATURES,
+    CircularFingerprintConfig,
+    CircularFingerprintOperator,
+)
 from tests.benchmarks.conftest import assert_valid_benchmark_result
+
+
+@dataclass(frozen=True)
+class _Element:
+    data: dict[str, Any]
+
+
+def _source(records: list[tuple[str, float]]) -> list[_Element]:
+    """A source of SMILES and labels, iterated the way the benchmark iterates MolNetSource."""
+    return [_Element({"smiles": smiles, "y": label}) for smiles, label in records]
+
+
+def _fingerprint_operator() -> CircularFingerprintOperator:
+    config = CircularFingerprintConfig(
+        radius=1, n_bits=16, differentiable=True, in_features=DEFAULT_ATOM_FEATURES
+    )
+    return CircularFingerprintOperator(config, rngs=nnx.Rngs(0))
+
+
+_RECORDS = [("CCO", 1.0), ("not_a_smiles", 0.0), ("c1ccccc1", math.nan), ("CCN", 0.0), ("CCC", 1.0)]
+
+
+def test_featurization_skips_unusable_molecules_and_records_their_positions() -> None:
+    fingerprints, labels, positions = featurize_molecules(
+        _source(_RECORDS), _fingerprint_operator()
+    )
+
+    np.testing.assert_array_equal(positions, [0, 3, 4])
+    np.testing.assert_array_equal(np.asarray(labels), [1.0, 0.0, 1.0])
+    assert fingerprints.shape == (3, 16)
+
+
+def test_featurization_stops_at_the_limit_of_usable_molecules() -> None:
+    fingerprints, labels, positions = featurize_molecules(
+        _source(_RECORDS), _fingerprint_operator(), limit=2
+    )
+
+    np.testing.assert_array_equal(positions, [0, 3])
+    np.testing.assert_array_equal(np.asarray(labels), [1.0, 0.0])
+    assert fingerprints.shape == (2, 16)
+
+
+def test_split_positions_select_the_rows_of_those_molecules() -> None:
+    # Source positions 3 and 6 were not featurized, so rows run 0, 1, 2, 4, 5, 7.
+    featurized = np.array([0, 1, 2, 4, 5, 7])
+
+    rows = rows_for_positions(np.array([7, 3, 1, 0, 6]), featurized)
+
+    np.testing.assert_array_equal(rows, [5, 1, 0])
 
 
 def _can_load_bbbp() -> bool:
