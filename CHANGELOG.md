@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `soft_ops.max` and `soft_ops.argmax` take `where`, a boolean mask of the entries to reduce
+  over. An excluded entry takes no part in the standardization and gets zero weight and zero
+  gradient, as in `jax.nn.standardize(where=)` and `jax.nn.softmax(where=)`, so a padded axis
+  gives the unpadded result. Supported for `mode="hard"` and for `method="softsort"` in smooth
+  mode; the other methods and modes refuse it, since none has a masked form.
+  `standardize_and_squash` and `proj_simplex` take the same mask.
+
 ## [0.1.10] - 2026-11-07
 
 ### Added

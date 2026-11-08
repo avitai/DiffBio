@@ -197,6 +197,8 @@ def proj_simplex(
     axis: int,
     softness: float | Array = 0.1,
     mode: SimplexMode = "smooth",
+    *,
+    where: Array | None = None,
 ) -> Array:
     """Project ``x`` onto the unit simplex along ``axis``.
 
@@ -211,16 +213,25 @@ def proj_simplex(
         mode: Regularizer type controlling smoothness:
             ``"smooth"`` (C-inf), ``"c0"`` (continuous),
             ``"c1"`` (once differentiable), ``"c2"`` (twice differentiable).
+        where: Boolean mask broadcastable to ``x``. Excluded entries get zero weight and
+            take no part in the projection, as in ``jax.nn.softmax(where=)``. Smooth mode
+            only.
 
     Returns:
         Projected array on the probability simplex along ``axis``.
+
+    Raises:
+        ValueError: If ``where`` is given with a mode other than ``"smooth"``.
     """
     validate_softness(softness)
     axis = canonicalize_axis(axis, x.ndim)
     scaled = x / softness
 
     if mode == "smooth":
-        return jax.nn.softmax(scaled, axis=axis)
+        return jax.nn.softmax(scaled, axis=axis, where=where)
+    if where is not None:
+        msg = f"where is supported only in smooth mode, not mode={mode!r}"
+        raise ValueError(msg)
 
     if mode == "c0":
         proj_fn = _proj_unit_simplex_q2

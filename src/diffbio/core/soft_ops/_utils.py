@@ -59,6 +59,8 @@ def standardize_and_squash(
     eps: float = ...,
     temperature: float = ...,
     return_mean_std: Literal[False] = ...,
+    *,
+    where: jnp.ndarray | None = ...,
 ) -> jnp.ndarray: ...
 
 
@@ -70,6 +72,7 @@ def standardize_and_squash(
     temperature: float = ...,
     *,
     return_mean_std: Literal[True],
+    where: jnp.ndarray | None = ...,
 ) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]: ...
 
 
@@ -79,6 +82,8 @@ def standardize_and_squash(
     eps: float = 1e-6,
     temperature: float = 1.0,
     return_mean_std: bool = False,
+    *,
+    where: jnp.ndarray | None = None,
 ) -> jnp.ndarray | tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Standardize along axis then squash to (0, 1) via sigmoid.
 
@@ -93,13 +98,16 @@ def standardize_and_squash(
         eps: Epsilon for numerical stability in std computation.
         temperature: Controls sharpness. Lower = sharper.
         return_mean_std: If True, also return mean and std.
+        where: Boolean mask broadcastable to ``x``. The mean and variance are taken over
+            the included entries only, as in ``jax.nn.standardize(where=)``; every entry is
+            transformed. Each slice along ``axis`` needs at least one included entry.
 
     Returns:
         Squashed array in (0, 1). If ``return_mean_std``, returns
         ``(squashed, mean, std)`` tuple.
     """
-    mean = jnp.mean(x, axis=axis, keepdims=True)
-    var = jnp.mean((x - mean) ** 2, axis=axis, keepdims=True)
+    mean = jnp.mean(x, axis=axis, keepdims=True, where=where)
+    var = jnp.mean((x - mean) ** 2, axis=axis, keepdims=True, where=where)
     std = jnp.sqrt(var + eps)
     z = (x - mean) / std
     z = z / temperature
