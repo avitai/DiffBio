@@ -12,6 +12,8 @@ from pathlib import Path
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.container import BarContainer
 
 # Matplotlib setup for headless rendering
 matplotlib.use("Agg")
@@ -108,8 +110,8 @@ def simulated_loss(
 # Heatmap / bar-chart annotation helpers
 # ---------------------------------------------------------------------------
 def label_bars(
-    ax: plt.Axes,  # type: ignore[type-arg]
-    bars: plt.BarContainer,  # type: ignore[type-arg]
+    ax: Axes,
+    bars: BarContainer,
     values: list[float],
     *,
     fmt: str = ".2f",

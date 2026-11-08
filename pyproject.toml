@@ -151,7 +151,9 @@ test = [
   # tests/test_ci_shards.py reads the CI workflow.
   "pyyaml>=6",
   # The exact references of tests/losses/test_count_likelihood_precision.py.
-  "mpmath>=1.3"
+  "mpmath>=1.3",
+  # tests/scripts/test_plot_helpers.py draws with the documentation plot helpers.
+  "matplotlib>=3.7"
 ]
 torch-io = ["torch>=1.13.0"]
 
