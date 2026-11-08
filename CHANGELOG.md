@@ -16,8 +16,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mode; the other methods and modes refuse it, since none has a masked form.
   `standardize_and_squash` and `proj_simplex` take the same mask.
 
+### Changed
+
+- `smiles_to_graph` and `batch_smiles_to_graphs` assemble each graph on the host with NumPy and
+  convert it to JAX once per array. They built it with eager JAX operations, one array per atom
+  and four scatter updates per bond, each copying the whole adjacency or edge-feature array. The
+  arrays are unchanged: identical over all 1,640 BBBP molecules. The MolNet quick benchmark's
+  fixture took 13.0 s and 13.4 s against 59.3 s and 60.8 s before, on one CPU.
+- The test suite runs `gc.collect()` after GPU-marked tests only. The root conftest collected
+  after every test, which walked a heap the JIT caches kept growing, and teardown was most of
+  the core-and-misc shard's time; that shard took 7.4 minutes in its first run against a
+  15.0-minute median. Peak memory rose by at most 0.06 GB in the directories measured.
+
 ### Fixed
 
+- `batch_smiles_to_graphs` returns float32 arrays under JAX's x64 mode, as `smiles_to_graph`
+  already did; it returned float64. An empty batch and a SMILES string with no atoms raise a
+  `ValueError` that names the cause, instead of one from `max()` or `jnp.stack`.
+- The MolNet BBBP benchmark's test set is the one `RandomSplitter` chooses. The splitter names
+  molecules by source position, but the fingerprint rows skip molecules with a NaN label or a
+  SMILES RDKit cannot parse, so after the first skipped molecule a position named another row:
+  in quick mode 17 of the 25 test rows were other molecules. Train and test stayed disjoint.
+  Quick mode also featurizes only the 200 molecules it keeps. The reported ROC-AUC values
+  change.
 - A padded molecule's differentiable circular and MACCS fingerprints equal its unpadded ones.
   Both zeroed the padding atoms' hidden states and then passed them through biased layers, so
   each padding atom entered the soft max over atoms with nonzero bits: ethanol and benzene padded
