@@ -50,9 +50,9 @@ nb_loss = NegativeBinomialLoss()
 
 # For count data (RNA-seq, scRNA-seq)
 loss = nb_loss(
-    counts=observed_counts,        # (n_samples, n_genes)
-    predicted_mean=model_means,    # (n_samples, n_genes)
-    dispersion=dispersions,        # (n_genes,) or scalar
+    counts=observed_counts,   # (n_samples, n_genes)
+    mu=model_means,           # (n_samples, n_genes)
+    theta=dispersions,        # (n_genes,), inverse dispersion per gene
 )
 ```
 
@@ -77,10 +77,10 @@ vae_loss = VAELoss(kl_weight=1.0)
 
 # Evidence lower bound
 loss = vae_loss(
-    x=input_data,
-    x_reconstructed=decoded,
-    z_mean=latent_mean,
-    z_logvar=latent_logvar,
+    x=input_data,          # (batch, features)
+    x_recon=decoded,       # (batch, features)
+    mean=latent_mean,      # (batch, latent)
+    logvar=latent_logvar,  # (batch, latent)
 )
 ```
 
@@ -91,15 +91,11 @@ from flax import nnx
 
 from diffbio.losses import HMMLikelihoodLoss
 
-hmm_loss = HMMLikelihoodLoss(rngs=nnx.Rngs(0))
+hmm_loss = HMMLikelihoodLoss(n_states=3, n_emissions=4, rngs=nnx.Rngs(0))
 
-# Negative log-likelihood for HMM training
-loss = hmm_loss(
-    observations=observed_sequence,
-    log_initial=log_initial_probs,
-    log_transition=log_transition_matrix,
-    log_emission=log_emission_probs,
-)
+# Negative log-likelihood of integer observations under the learned initial, transition and
+# emission probabilities
+loss = hmm_loss(observations=observed_sequences)  # (batch, seq_len), values in [0, n_emissions)
 ```
 
 ## Mathematical Details

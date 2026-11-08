@@ -236,21 +236,23 @@ def hmm_emission_loss(hmm_loss_fn, observations):
 
 ## Numerical Stability
 
-All statistical losses use numerically stable implementations:
+The log-gamma form under [Algorithm](#algorithm) cancels in float32, so a model that needs the
+per-entry negative binomial log-probability, rather than the mean loss, calls the same
+implementation `NegativeBinomialLoss` uses:
 
 ```python
-# Log-space computation
-def stable_nb_logprob(y, mu, alpha):
-    # Use lgamma for log factorial
-    log_prob = (
-        jax.scipy.special.gammaln(y + 1/alpha)
-        - jax.scipy.special.gammaln(y + 1)
-        - jax.scipy.special.gammaln(1/alpha)
-        + (1/alpha) * jnp.log(1/(1 + alpha*mu))
-        + y * jnp.log(alpha*mu/(1 + alpha*mu) + 1e-10)
-    )
-    return log_prob
+import jax.numpy as jnp
+from diffbio.losses import nb_log_prob
+
+# Elementwise log P(counts | mu, theta); theta broadcasts over the gene axis
+log_prob = nb_log_prob(counts, mu, theta)   # (n_samples, n_genes)
+
+# A per-sample likelihood, for example to weight samples or score held-out cells
+per_sample = jnp.sum(log_prob, axis=-1)     # (n_samples,)
 ```
+
+The HMM loss sums the forward recursion in log space with `logsumexp`, and the VAE loss's
+Gaussian KL is closed-form.
 
 ## Next Steps
 
