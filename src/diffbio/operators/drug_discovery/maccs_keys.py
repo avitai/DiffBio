@@ -159,10 +159,6 @@ class MACCSKeysOperator(OperatorModule):
         # Message passing to capture local structure
         node_hidden = self.encoder(node_features, adjacency, edge_features)
 
-        # Apply node mask
-        if node_mask is not None:
-            node_hidden = node_hidden * node_mask[:, None]
-
         # Pattern detection at each atom
         # pattern_logits: (num_nodes, n_bits)
         pattern_logits = self.pattern_detectors(node_hidden)
@@ -170,9 +166,15 @@ class MACCSKeysOperator(OperatorModule):
         # Apply temperature-scaled sigmoid for soft pattern matching
         soft_patterns = soft_ops.greater(pattern_logits, 0.0, softness=self.config.temperature)
 
-        # Aggregate across atoms using max (OR-like)
-        # If any atom matches a pattern, the bit is set
-        fingerprint = soft_ops.max(soft_patterns, axis=0, softness=self.config.temperature)
+        # Aggregate across atoms using max (OR-like): if any atom matches a pattern, the bit
+        # is set. Padding atoms are left out of the reduction itself, so a padded molecule
+        # gives its unpadded fingerprint (their biased pattern logits are not zero).
+        fingerprint = soft_ops.max(
+            soft_patterns,
+            axis=0,
+            softness=self.config.temperature,
+            where=None if node_mask is None else node_mask[:, None] > 0,
+        )
 
         return fingerprint
 

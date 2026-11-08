@@ -301,10 +301,6 @@ class CircularFingerprintOperator(OperatorModule):
         # atoms within 'radius' bonds
         node_hidden = self.message_passing(node_features, adjacency, edge_features)
 
-        # Apply node mask if provided
-        if node_mask is not None:
-            node_hidden = node_hidden * node_mask[:, None]
-
         # Compute soft hash for each atom's environment
         # hash_logits: (num_nodes, n_bits)
         hash_logits = self.hash_network(node_hidden)
@@ -314,8 +310,15 @@ class CircularFingerprintOperator(OperatorModule):
         soft_bits = soft_ops.greater(hash_logits, 0.0, softness=self.config.temperature)
 
         # Aggregate across atoms using max (OR-like) operation
-        # This mimics how ECFP sets bits based on any substructure match
-        fingerprint = soft_ops.max(soft_bits, axis=0, softness=self.config.temperature)
+        # This mimics how ECFP sets bits based on any substructure match. Padding atoms are
+        # left out of the reduction itself, so a padded molecule gives its unpadded
+        # fingerprint (their biased hash logits are not zero).
+        fingerprint = soft_ops.max(
+            soft_bits,
+            axis=0,
+            softness=self.config.temperature,
+            where=None if node_mask is None else node_mask[:, None] > 0,
+        )
 
         return fingerprint
 
