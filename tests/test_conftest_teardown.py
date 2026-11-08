@@ -47,8 +47,7 @@ def test_an_unmarked_test_is_not_followed_by_a_collection(
     assert collections == []
 
 
-# The ids must not equal a marker name: tests/conftest.py skips an item whose keywords hold "gpu".
-@pytest.mark.parametrize("marker", ["gpu", "cuda"], ids=["gpu_marked", "cuda_marked"])
+@pytest.mark.parametrize("marker", ["gpu", "cuda"])
 def test_a_gpu_test_clears_the_caches_then_collects(
     marker: str, collections: list[tuple[int, ...]], monkeypatch: pytest.MonkeyPatch
 ) -> None:

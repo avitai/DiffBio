@@ -11,6 +11,9 @@ from substrax.runtime import merge_xla_flags
 
 logger = logging.getLogger(__name__)
 
+# The pytester fixture, for tests that run the suite's own conftests on generated test files.
+pytest_plugins = ("pytester",)
+
 
 def setup_jax_environment() -> None:
     """Set up JAX environment variables with safe CPU fallback."""
