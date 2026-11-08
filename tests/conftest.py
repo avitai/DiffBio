@@ -28,25 +28,6 @@ except ImportError:
     pass
 
 
-def pytest_configure(config):
-    """Register custom markers for pytest."""
-    config.addinivalue_line("markers", "integration: mark test as an integration test")
-    config.addinivalue_line("markers", "e2e: mark test as an end-to-end test")
-    config.addinivalue_line("markers", "benchmark: mark test as a performance benchmark")
-    config.addinivalue_line("markers", "gpu: mark test as requiring GPU")
-    config.addinivalue_line("markers", "slow: mark test as slow running")
-
-
-def pytest_addoption(parser):
-    """Add command-line options to pytest."""
-    parser.addoption(
-        "--integration",
-        action="store_true",
-        default=False,
-        help="run integration tests",
-    )
-
-
 # =============================================================================
 # Fixtures
 # =============================================================================
