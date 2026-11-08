@@ -29,6 +29,7 @@ from diffbio.operators.drug_discovery._graph_utils import (
     initialize_graph_encoder,
     unpack_graph_inputs,
 )
+from diffbio.operators.drug_discovery.primitives import DEFAULT_ATOM_FEATURES
 
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,8 @@ class MACCSKeysConfig(OperatorConfig):
         temperature: Temperature for soft bit assignment (default: 1.0).
         hidden_dim: Hidden dimension for pattern networks (default: 64).
         num_layers: Number of message passing layers (default: 2).
-        in_features: Number of input node features (default: 4).
+        in_features: Number of input node features (default: `DEFAULT_ATOM_FEATURES`, the
+            graph builder's width).
     """
 
     n_bits: int = 166
@@ -52,7 +54,7 @@ class MACCSKeysConfig(OperatorConfig):
     temperature: float = 1.0
     hidden_dim: int = 64
     num_layers: int = 2
-    in_features: int = 4
+    in_features: int = DEFAULT_ATOM_FEATURES
 
 
 class MACCSKeysOperator(OperatorModule):

@@ -27,6 +27,7 @@ from diffbio.operators.drug_discovery._graph_utils import (
     initialize_graph_encoder,
     unpack_graph_inputs,
 )
+from diffbio.operators.drug_discovery.primitives import DEFAULT_ATOM_FEATURES
 
 
 logger = logging.getLogger(__name__)
@@ -40,14 +41,15 @@ class MolecularFingerprintConfig(OperatorConfig):
         fingerprint_dim: Dimension of output fingerprint vector.
         hidden_dim: Hidden dimension for graph convolutions.
         num_layers: Number of graph convolution layers.
-        in_features: Number of input node features (default: DEFAULT_ATOM_FEATURES=34).
+        in_features: Number of input node features (default: `DEFAULT_ATOM_FEATURES`, the
+            graph builder's width).
         normalize: Whether to L2-normalize the fingerprint.
     """
 
     fingerprint_dim: int = 256
     hidden_dim: int = 128
     num_layers: int = 3
-    in_features: int = 4  # Default for tests; use DEFAULT_ATOM_FEATURES for real molecules
+    in_features: int = DEFAULT_ATOM_FEATURES
     normalize: bool = False
 
 
@@ -187,7 +189,8 @@ class CircularFingerprintConfig(OperatorConfig):
         differentiable: Use learned hash functions for gradients (default: True).
         hash_hidden_dim: Hidden dimension for hash network (default: 128).
         temperature: Temperature for soft bit assignment (default: 1.0).
-        in_features: Number of input node features (default: 4).
+        in_features: Number of input node features (default: `DEFAULT_ATOM_FEATURES`, the
+            graph builder's width).
     """
 
     radius: int = 2  # ECFP4 = radius 2, ECFP6 = radius 3
@@ -198,7 +201,7 @@ class CircularFingerprintConfig(OperatorConfig):
     differentiable: bool = True  # Use learned hash functions
     hash_hidden_dim: int = 128
     temperature: float = 1.0  # For soft bit assignment
-    in_features: int = 4  # Number of input node features
+    in_features: int = DEFAULT_ATOM_FEATURES
 
 
 class CircularFingerprintOperator(OperatorModule):

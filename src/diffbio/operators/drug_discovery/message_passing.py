@@ -9,6 +9,9 @@ import logging
 import jax.numpy as jnp
 from flax import nnx
 
+from diffbio.operators.drug_discovery.primitives import DEFAULT_ATOM_FEATURES, DEFAULT_BOND_FEATURES
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,15 +24,16 @@ class MessagePassingLayer(nnx.Module):
 
     Attributes:
         hidden_dim: Dimension of hidden node representations.
-        in_features: Number of input node features.
-        num_edge_features: Number of edge features (default 4 for bond types).
+        in_features: Number of input node features (default: `DEFAULT_ATOM_FEATURES`).
+        num_edge_features: Number of edge features (default: `DEFAULT_BOND_FEATURES`, the
+            graph builder's width).
     """
 
     def __init__(
         self,
         hidden_dim: int,
-        in_features: int = 4,
-        num_edge_features: int = 4,
+        in_features: int = DEFAULT_ATOM_FEATURES,
+        num_edge_features: int = DEFAULT_BOND_FEATURES,
         *,
         rngs: nnx.Rngs,
     ):
@@ -142,8 +146,8 @@ class StackedMessagePassing(nnx.Module):
         self,
         hidden_dim: int,
         num_layers: int,
-        in_features: int = 4,
-        num_edge_features: int = 4,
+        in_features: int = DEFAULT_ATOM_FEATURES,
+        num_edge_features: int = DEFAULT_BOND_FEATURES,
         *,
         rngs: nnx.Rngs,
     ):

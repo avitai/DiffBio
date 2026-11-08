@@ -8,10 +8,10 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+import jax
 from artifex.generative_models.core.base import MLP
 from datarax.core.config import OperatorConfig
 from datarax.core.operator import OperatorModule
-import jax
 from flax import nnx
 
 from diffbio.operators.drug_discovery._graph_utils import (
@@ -19,7 +19,9 @@ from diffbio.operators.drug_discovery._graph_utils import (
     graph_sum_readout,
     initialize_graph_encoder_from_config,
 )
+from diffbio.operators.drug_discovery.primitives import DEFAULT_ATOM_FEATURES, DEFAULT_BOND_FEATURES
 from diffbio.utils.nn_utils import ARTIFEX_RELU_MLP_KWARGS
+
 
 logger = logging.getLogger(__name__)
 
@@ -33,16 +35,17 @@ class MolecularPropertyConfig(OperatorConfig):
         num_message_passing_steps: Number of message passing iterations.
         num_output_tasks: Number of prediction tasks (multi-task learning).
         dropout_rate: Dropout rate for regularization.
-        in_features: Number of input node features (default: DEFAULT_ATOM_FEATURES=34).
-        num_edge_features: Number of edge/bond features.
+        in_features: Number of input node features (default: `DEFAULT_ATOM_FEATURES`, the
+            graph builder's width).
+        num_edge_features: Number of edge/bond features (default: `DEFAULT_BOND_FEATURES`).
     """
 
     hidden_dim: int = 300
     num_message_passing_steps: int = 3
     num_output_tasks: int = 1
     dropout_rate: float = 0.0
-    in_features: int = 4  # Default for tests; use DEFAULT_ATOM_FEATURES for real molecules
-    num_edge_features: int = 4
+    in_features: int = DEFAULT_ATOM_FEATURES
+    num_edge_features: int = DEFAULT_BOND_FEATURES
 
 
 class MolecularPropertyPredictor(OperatorModule):
