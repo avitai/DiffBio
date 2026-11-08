@@ -2,7 +2,8 @@
 
 This module provides utility functions for converting SMILES strings to
 molecular graphs suitable for differentiable neural network processing.
-RDKit is used for parsing only; all graph operations use JAX arrays.
+RDKit parses each molecule on the host, where its graph is assembled with NumPy; the
+functions return float32 JAX arrays, one transfer per array.
 """
 
 import logging
@@ -11,6 +12,7 @@ from functools import lru_cache
 from typing import Any
 
 import jax.numpy as jnp
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -73,28 +75,12 @@ DEFAULT_ATOM_FEATURES = DEFAULT_ATOM_CONFIG.total_features  # 34 features
 # Atom type vocabulary for one-hot encoding
 ATOM_TYPES = ["C", "N", "O", "S", "F", "Cl", "Br", "I", "P", "Si", "B", "Other"]
 
+# Bond-type one-hot width: single, double, triple, aromatic.
+NUM_BOND_FEATURES = 4
 
-def get_atom_features(atom: Any, config: AtomFeatureConfig | None = None) -> jnp.ndarray:
-    """Extract features from an RDKit atom object.
 
-    Features include:
-    - Atom type (one-hot, config.num_atom_types)
-    - Degree (one-hot, 0 to config.max_degree)
-    - Formal charge (one-hot, config.charge_range)
-    - Hybridization (one-hot, config.num_hybridization_types)
-    - Aromaticity (binary)
-    - Number of hydrogens (one-hot, 0 to config.max_num_hydrogens)
-
-    Args:
-        atom: RDKit atom object.
-        config: Feature extraction configuration. Defaults to DEFAULT_ATOM_CONFIG.
-
-    Returns:
-        Feature vector of shape (config.total_features,).
-    """
-    if config is None:
-        config = DEFAULT_ATOM_CONFIG
-
+def _atom_feature_values(atom: Any, config: AtomFeatureConfig) -> list[float]:
+    """Return an RDKit atom's feature values as a host list (see `get_atom_features`)."""
     features: list[float] = []
 
     # Atom type
@@ -144,7 +130,29 @@ def get_atom_features(atom: Any, config: AtomFeatureConfig | None = None) -> jnp
     h_onehot[num_h] = 1.0
     features.extend(h_onehot)
 
-    return jnp.array(features, dtype=jnp.float32)
+    return features
+
+
+def get_atom_features(atom: Any, config: AtomFeatureConfig | None = None) -> jnp.ndarray:
+    """Extract features from an RDKit atom object.
+
+    Features include:
+    - Atom type (one-hot, config.num_atom_types)
+    - Degree (one-hot, 0 to config.max_degree)
+    - Formal charge (one-hot, config.charge_range)
+    - Hybridization (one-hot, config.num_hybridization_types)
+    - Aromaticity (binary)
+    - Number of hydrogens (one-hot, 0 to config.max_num_hydrogens)
+
+    Args:
+        atom: RDKit atom object.
+        config: Feature extraction configuration. Defaults to DEFAULT_ATOM_CONFIG.
+
+    Returns:
+        Feature vector of shape (config.total_features,).
+    """
+    resolved = DEFAULT_ATOM_CONFIG if config is None else config
+    return jnp.asarray(_atom_feature_values(atom, resolved), dtype=jnp.float32)
 
 
 def get_bond_features(bond: Any) -> jnp.ndarray:
@@ -159,15 +167,43 @@ def get_bond_features(bond: Any) -> jnp.ndarray:
     Returns:
         Feature vector of shape (4,).
     """
+    return jnp.asarray(_bond_feature_values(bond), dtype=jnp.float32)
+
+
+def _bond_feature_values(bond: Any) -> list[float]:
+    """Return an RDKit bond's one-hot bond type as a host list (see `get_bond_features`)."""
     bond_type = bond.GetBondType()
-    chem = _rdkit_chem()
-    features = [
-        1 if bond_type == chem.rdchem.BondType.SINGLE else 0,
-        1 if bond_type == chem.rdchem.BondType.DOUBLE else 0,
-        1 if bond_type == chem.rdchem.BondType.TRIPLE else 0,
-        1 if bond_type == chem.rdchem.BondType.AROMATIC else 0,
-    ]
-    return jnp.array(features, dtype=jnp.float32)
+    bond_types = _rdkit_chem().rdchem.BondType
+    kinds = (bond_types.SINGLE, bond_types.DOUBLE, bond_types.TRIPLE, bond_types.AROMATIC)
+    return [1.0 if bond_type == kind else 0.0 for kind in kinds]
+
+
+def _host_graph(smiles: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Parse `smiles` and return its node features, adjacency and edge features as NumPy.
+
+    Raises:
+        ValueError: If the SMILES string is invalid or describes no atoms.
+    """
+    mol = _rdkit_chem().MolFromSmiles(smiles)
+    if mol is None:
+        raise ValueError(f"Invalid SMILES string: {smiles}")
+    num_atoms = mol.GetNumAtoms()
+    if num_atoms == 0:
+        raise ValueError(f"SMILES string has no atoms: {smiles!r}")
+
+    node_features = np.asarray(
+        [_atom_feature_values(atom, DEFAULT_ATOM_CONFIG) for atom in mol.GetAtoms()],
+        dtype=np.float32,
+    )
+    adjacency = np.zeros((num_atoms, num_atoms), dtype=np.float32)
+    edge_features = np.zeros((num_atoms, num_atoms, NUM_BOND_FEATURES), dtype=np.float32)
+    for bond in mol.GetBonds():
+        i = bond.GetBeginAtomIdx()
+        j = bond.GetEndAtomIdx()
+        # Symmetric (undirected graph)
+        adjacency[i, j] = adjacency[j, i] = 1.0
+        edge_features[i, j] = edge_features[j, i] = _bond_feature_values(bond)
+    return node_features, adjacency, edge_features
 
 
 def smiles_to_graph(smiles: str) -> dict[str, Any]:
@@ -184,40 +220,14 @@ def smiles_to_graph(smiles: str) -> dict[str, Any]:
             - num_nodes: number of atoms
 
     Raises:
-        ValueError: If SMILES string is invalid.
+        ValueError: If the SMILES string is invalid or describes no atoms.
     """
-    mol = _rdkit_chem().MolFromSmiles(smiles)
-    if mol is None:
-        raise ValueError(f"Invalid SMILES string: {smiles}")
-
-    num_atoms = mol.GetNumAtoms()
-
-    # Extract node features
-    node_features = []
-    for atom in mol.GetAtoms():
-        node_features.append(get_atom_features(atom))
-    node_features = jnp.stack(node_features)
-
-    # Build adjacency matrix and edge features
-    adjacency = jnp.zeros((num_atoms, num_atoms), dtype=jnp.float32)
-    edge_features = jnp.zeros((num_atoms, num_atoms, 4), dtype=jnp.float32)
-
-    for bond in mol.GetBonds():
-        i = bond.GetBeginAtomIdx()
-        j = bond.GetEndAtomIdx()
-        bond_feat = get_bond_features(bond)
-
-        # Symmetric (undirected graph)
-        adjacency = adjacency.at[i, j].set(1.0)
-        adjacency = adjacency.at[j, i].set(1.0)
-        edge_features = edge_features.at[i, j].set(bond_feat)
-        edge_features = edge_features.at[j, i].set(bond_feat)
-
+    node_features, adjacency, edge_features = _host_graph(smiles)
     return {
-        "node_features": node_features,
-        "adjacency": adjacency,
-        "edge_features": edge_features,
-        "num_nodes": num_atoms,
+        "node_features": jnp.asarray(node_features),
+        "adjacency": jnp.asarray(adjacency),
+        "edge_features": jnp.asarray(edge_features),
+        "num_nodes": node_features.shape[0],
     }
 
 
@@ -233,30 +243,33 @@ def batch_smiles_to_graphs(smiles_list: list[str]) -> dict[str, Any]:
             - adjacency: (batch_size, max_nodes, max_nodes)
             - edge_features: (batch_size, max_nodes, max_nodes, num_edge_features)
             - node_mask: (batch_size, max_nodes) mask for valid nodes
+
+    Raises:
+        ValueError: If the list is empty, or a SMILES string is invalid or describes no atoms.
     """
-    graphs = [smiles_to_graph(s) for s in smiles_list]
-
-    max_nodes = max(g["num_nodes"] for g in graphs)
+    if not smiles_list:
+        raise ValueError("batch_smiles_to_graphs needs at least one SMILES string")
+    graphs = [_host_graph(smiles) for smiles in smiles_list]
+    max_nodes = max(nodes.shape[0] for nodes, _, _ in graphs)
     batch_size = len(graphs)
-    num_features = graphs[0]["node_features"].shape[1]
-    num_edge_features = graphs[0]["edge_features"].shape[2]
+    num_features = graphs[0][0].shape[1]
 
-    # Initialize padded tensors
-    node_features = jnp.zeros((batch_size, max_nodes, num_features))
-    adjacency = jnp.zeros((batch_size, max_nodes, max_nodes))
-    edge_features = jnp.zeros((batch_size, max_nodes, max_nodes, num_edge_features))
-    node_mask = jnp.zeros((batch_size, max_nodes))
-
-    for i, g in enumerate(graphs):
-        n = g["num_nodes"]
-        node_features = node_features.at[i, :n, :].set(g["node_features"])
-        adjacency = adjacency.at[i, :n, :n].set(g["adjacency"])
-        edge_features = edge_features.at[i, :n, :n, :].set(g["edge_features"])
-        node_mask = node_mask.at[i, :n].set(1.0)
+    node_features = np.zeros((batch_size, max_nodes, num_features), dtype=np.float32)
+    adjacency = np.zeros((batch_size, max_nodes, max_nodes), dtype=np.float32)
+    edge_features = np.zeros(
+        (batch_size, max_nodes, max_nodes, NUM_BOND_FEATURES), dtype=np.float32
+    )
+    node_mask = np.zeros((batch_size, max_nodes), dtype=np.float32)
+    for i, (nodes, adj, edges) in enumerate(graphs):
+        n = nodes.shape[0]
+        node_features[i, :n] = nodes
+        adjacency[i, :n, :n] = adj
+        edge_features[i, :n, :n] = edges
+        node_mask[i, :n] = 1.0
 
     return {
-        "node_features": node_features,
-        "adjacency": adjacency,
-        "edge_features": edge_features,
-        "node_mask": node_mask,
+        "node_features": jnp.asarray(node_features),
+        "adjacency": jnp.asarray(adjacency),
+        "edge_features": jnp.asarray(edge_features),
+        "node_mask": jnp.asarray(node_mask),
     }
