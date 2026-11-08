@@ -70,13 +70,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The macOS jobs that pushes to `main` add to the package build run on `macos-15`.
   GitHub retires the `macos-14` image on 2026-11-02 (actions/runner-images#13518), and its
   scheduled brownouts already cancel jobs that ask for it.
-- Requires `datarax>=0.1.14`, `avitai-artifex>=0.1.12`, `opifex>=0.2.8` and `calibrax>=0.1.9`,
-  the latest releases; the lock moves exactly those four, from 0.1.13, 0.1.10, 0.2.7 and
-  0.1.8. artifex 0.1.11 and 0.1.12 change its trainer, data pipeline and checkpointing, and
-  opifex 0.2.8 its trainer, checkpoints, loaders and `core.timing.block_until_ready`; DiffBio
-  imports none of those, and the layers, losses, physics and operator modules it does import
-  are unchanged. datarax 0.1.14 and calibrax 0.1.9 only raise their substrax floor to 0.1.11,
-  which DiffBio already requires.
+- Requires `datarax>=0.1.17`, `avitai-artifex>=0.1.15` and `opifex>=0.2.10`, the latest
+  releases; the lock moves those three from 0.1.13, 0.1.10 and 0.2.7, and BlackJAX, which
+  artifex and opifex bring, from 1.5 to 1.7.1.
+  - datarax 0.1.16 pads no batch and drops the `valid_mask` leaf, so an `OperatorModule` no
+    longer carries one through, and an indexed source defines `get_records(indices)` in place
+    of `get_batch_at`. DiffBio's sources define neither and read no `valid_mask`; the
+    `eager_get_batch`, `eager_iter` and `eager_reset` helpers the AnnData source calls are
+    unchanged. datarax 0.1.17 takes the checkpoint protocol from substrax.
+  - artifex 0.1.11 to 0.1.15 change its trainer, data pipeline, checkpointing and sampling
+    diagnostics, and opifex 0.2.8 to 0.2.10 its trainer, checkpoints, loaders, benchmarking,
+    solvers and `lsmr`. The `MLP`, `CNN`, layers, losses, protein extension, physics, GradNorm,
+    `randomized_svd` and neural-operator modules DiffBio imports are unchanged.
 - The Security job audits the lockfile through substrax's `audit-lock` action, pinned by commit.
   The previous step, `uv run --with pip-audit pip-audit --local`, audited the environment
   pip-audit ran in rather than DiffBio's lock. The action exports every extra the lock resolves
