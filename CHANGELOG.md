@@ -82,6 +82,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     diagnostics, and opifex 0.2.8 to 0.2.10 its trainer, checkpoints, loaders, benchmarking,
     solvers and `lsmr`. The `MLP`, `CNN`, layers, losses, protein extension, physics, GradNorm,
     `randomized_svd` and neural-operator modules DiffBio imports are unchanged.
+- Requires `datarax<0.1.18`. datarax's next release removes `eager_get_batch`, `eager_iter` and
+  `eager_reset`, which `diffbio.sources` imports, so without the cap a fresh install would
+  resolve it and fail at import. The lock already holds 0.1.17; the cap rises when DiffBio's
+  sources move to datarax's new source contract.
 - The Security job audits the lockfile through substrax's `audit-lock` action, pinned by commit.
   The previous step, `uv run --with pip-audit pip-audit --local`, audited the environment
   pip-audit ran in rather than DiffBio's lock. The action exports every extra the lock resolves
