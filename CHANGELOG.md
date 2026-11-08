@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mode; the other methods and modes refuse it, since none has a masked form.
   `standardize_and_squash` and `proj_simplex` take the same mask.
 
+### Fixed
+
+- A padded molecule's differentiable circular and MACCS fingerprints equal its unpadded ones.
+  Both zeroed the padding atoms' hidden states and then passed them through biased layers, so
+  each padding atom entered the soft max over atoms with nonzero bits: ethanol and benzene padded
+  to 13 atoms read up to 0.135 (circular) and 0.058 (MACCS) away from their unpadded
+  fingerprints, and a DTI batch's encodings depended on its largest molecule. The readout now
+  reduces over the real atoms only, through `soft_ops.max(..., where=node_mask)`.
+
 ## [0.1.10] - 2026-11-07
 
 ### Added
