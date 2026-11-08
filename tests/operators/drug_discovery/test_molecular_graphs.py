@@ -14,37 +14,39 @@ import pytest
 
 from diffbio.operators.drug_discovery import (
     DEFAULT_ATOM_FEATURES,
+    DEFAULT_BOND_FEATURES,
     batch_smiles_to_graphs,
     smiles_to_graph,
 )
 
-SINGLE = (1.0, 0.0, 0.0, 0.0)
-AROMATIC = (0.0, 0.0, 0.0, 1.0)
+# Bond vectors in the AttentiveFP layout (type, conjugated, in ring, stereo): a single bond with no
+# stereo, and an aromatic bond, which is conjugated and in a ring.
+SINGLE = (0, 6)
+AROMATIC = (3, 4, 5, 6)
 ARRAY_KEYS = ("node_features", "adjacency", "edge_features")
 
 
-def _expected_bonds(num_atoms: int, bonds: list[tuple[int, int, tuple[float, ...]]]):
+def _expected_bonds(num_atoms: int, bonds: list[tuple[int, int, tuple[int, ...]]]):
     adjacency = np.zeros((num_atoms, num_atoms), np.float32)
-    edges = np.zeros((num_atoms, num_atoms, 4), np.float32)
-    for i, j, kind in bonds:
+    edges = np.zeros((num_atoms, num_atoms, DEFAULT_BOND_FEATURES), np.float32)
+    for i, j, positions in bonds:
         adjacency[i, j] = adjacency[j, i] = 1.0
-        edges[i, j] = edges[j, i] = kind
+        edges[i, j, list(positions)] = edges[j, i, list(positions)] = 1.0
     return adjacency, edges
 
 
 @pytest.mark.parametrize(
-    ("smiles", "num_atoms", "bonds", "aromatic"),
+    ("smiles", "num_atoms", "bonds"),
     [
-        ("CCO", 3, [(0, 1, SINGLE), (1, 2, SINGLE)], False),
-        ("c1ccccc1", 6, [(k, (k + 1) % 6, AROMATIC) for k in range(6)], True),
+        ("CCO", 3, [(0, 1, SINGLE), (1, 2, SINGLE)]),
+        ("c1ccccc1", 6, [(k, (k + 1) % 6, AROMATIC) for k in range(6)]),
     ],
     ids=["ethanol", "benzene"],
 )
 def test_a_graph_holds_the_molecules_atoms_and_bonds(
     smiles: str,
     num_atoms: int,
-    bonds: list[tuple[int, int, tuple[float, ...]]],
-    aromatic: bool,
+    bonds: list[tuple[int, int, tuple[int, ...]]],
 ) -> None:
     graph = smiles_to_graph(smiles)
     adjacency, edges = _expected_bonds(num_atoms, bonds)
@@ -53,10 +55,6 @@ def test_a_graph_holds_the_molecules_atoms_and_bonds(
     assert graph["node_features"].shape == (num_atoms, DEFAULT_ATOM_FEATURES)
     np.testing.assert_array_equal(np.asarray(graph["adjacency"]), adjacency)
     np.testing.assert_array_equal(np.asarray(graph["edge_features"]), edges)
-    # Five one-hot groups set one entry each (type, degree, charge, hybridization, hydrogens),
-    # and the aromaticity flag adds one for an aromatic atom.
-    row_sums = np.asarray(graph["node_features"]).sum(axis=1)
-    np.testing.assert_array_equal(row_sums, np.full(num_atoms, 6.0 if aromatic else 5.0))
 
 
 def test_a_batch_row_is_its_molecules_graph_padded_with_zeros() -> None:

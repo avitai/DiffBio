@@ -54,9 +54,9 @@ batch remains valid under `validate_dti_dataset()`.
 ```mermaid
 graph TB
     A["SMILES String"] --> B["smiles_to_graph()<br/>RDKit: atom/bond features"]
-    B --> NF["node_features<br/>(n_atoms, 34)"]
+    B --> NF["node_features<br/>(n_atoms, 39)"]
     B --> ADJ["adjacency<br/>(n_atoms, n_atoms)"]
-    B --> EF["edge_features<br/>(n_atoms, n_atoms, 4)"]
+    B --> EF["edge_features<br/>(n_atoms, n_atoms, 10)"]
     NF --> C["StackedMessagePassing<br/>D-MPNN: message → update"]
     ADJ --> C
     EF --> C
@@ -103,7 +103,7 @@ smiles = "CCO"  # Ethanol
 node_features, adjacency, edge_features = smiles_to_graph(smiles)
 
 print(f"Atoms: {node_features.shape[0]}")      # 3 atoms
-print(f"Features per atom: {node_features.shape[1]}")  # 34 features
+print(f"Features per atom: {node_features.shape[1]}")  # 39 features
 print(f"Adjacency: {adjacency.shape}")         # (3, 3)
 ```
 
@@ -117,24 +117,34 @@ node_features, adjacency, edge_features, masks = batch_smiles_to_graphs(
     max_atoms=20,
 )
 
-print(f"Batch shape: {node_features.shape}")  # (3, 20, 34)
+print(f"Batch shape: {node_features.shape}")  # (3, 20, 39)
 print(f"Masks shape: {masks.shape}")          # (3, 20)
 ```
 
 ### Atom Features
 
-The default atom featurizer extracts 34 features per atom:
+Molecular graphs carry the AttentiveFP featurization (Xiong et al. 2019), as DGL-LifeSci's
+`AttentiveFPAtomFeaturizer` and `AttentiveFPBondFeaturizer` define it: 39 features per atom and 10
+per bond. Chirality, CIP labels and bond stereo are included, so stereoisomers get distinct graphs.
 
-| Feature | Dimensions | Description |
-|---------|------------|-------------|
-| Atom type | 10 | One-hot: C, N, O, S, F, Cl, Br, I, P, other |
-| Degree | 6 | One-hot: 0-5+ |
-| Formal charge | 5 | One-hot: -2 to +2 |
-| Hybridization | 5 | One-hot: SP, SP2, SP3, SP3D, SP3D2 |
+| Atom feature | Dimensions | Description |
+|--------------|------------|-------------|
+| Element | 16 | One-hot: B, C, N, O, F, Si, P, S, Cl, As, Se, Br, Te, I, At, unknown |
+| Degree | 6 | One-hot: 0-5 (all zero above 5) |
+| Formal charge | 1 | Signed count |
+| Radical electrons | 1 | Count |
+| Hybridization | 6 | One-hot: SP, SP2, SP3, SP3D, SP3D2, unknown |
 | Aromaticity | 1 | Binary |
-| Hydrogens | 5 | One-hot: 0-4+ |
+| Hydrogens | 5 | One-hot: 0-4 total hydrogens (all zero above 4) |
+| Chiral centre | 1 | Binary |
+| CIP label | 2 | One-hot: R, S (all zero when unassigned) |
+
+| Bond feature | Dimensions | Description |
+|--------------|------------|-------------|
+| Bond type | 4 | One-hot: single, double, triple, aromatic |
+| Conjugated | 1 | Binary |
 | In ring | 1 | Binary |
-| Chiral | 1 | Binary |
+| Stereo | 4 | One-hot: none, any, Z, E |
 
 ## MolecularPropertyPredictor
 
@@ -153,7 +163,7 @@ from diffbio.operators.drug_discovery import (
     DEFAULT_ATOM_FEATURES,
 )
 
-# Create predictor for real molecules (34 atom features)
+# Create predictor for real molecules (39 atom features)
 predictor = create_property_predictor(
     hidden_dim=64,
     num_layers=3,
@@ -929,15 +939,14 @@ grads = nnx.grad(end_to_end_loss)(predictor, fingerprint_op, sim_op, data1, data
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `smiles` | str | Valid SMILES string |
-| `config` | AtomFeatureConfig | Optional feature configuration |
 
 **Output**
 
 | Return | Shape | Description |
 |--------|-------|-------------|
-| `node_features` | (n_atoms, 34) | Atom feature vectors |
+| `node_features` | (n_atoms, 39) | Atom feature vectors |
 | `adjacency` | (n_atoms, n_atoms) | Binary adjacency matrix |
-| `edge_features` | (n_atoms, n_atoms, 4) | Bond type one-hot |
+| `edge_features` | (n_atoms, n_atoms, 10) | Bond feature vectors |
 
 ### MolecularPropertyPredictor
 

@@ -52,9 +52,9 @@ SMILES: CC(=O)OC1=CC=CC=C1C(=O)O
 
 Graph representation:
   Number of atoms: 13
-  Node features shape: (13, 34)
+  Node features shape: (13, 39)
   Adjacency matrix shape: (13, 13)
-  Edge features shape: (13, 13, 4)
+  Edge features shape: (13, 13, 10)
   Number of bonds: 13
 ```
 
