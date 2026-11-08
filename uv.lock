@@ -1192,7 +1192,7 @@ requires-dist = [
     { name = "chex", specifier = ">=0.1.7" },
     { name = "coverage", marker = "extra == 'dev'", specifier = ">=7" },
     { name = "coverage", marker = "extra == 'test'", specifier = ">=7" },
-    { name = "datarax", specifier = ">=0.1.17" },
+    { name = "datarax", specifier = ">=0.1.17,<0.1.18" },
     { name = "datasets", marker = "extra == 'benchmark'", specifier = ">=2.14" },
     { name = "deepchem", marker = "extra == 'benchmark'", specifier = ">=2.8.0" },
     { name = "diffbio", extras = ["benchmark", "chem", "cuda12", "dev", "docs", "genomics", "metal", "soft-ops-advanced", "soft-ops-ot", "test", "torch-io"], marker = "extra == 'all'" },

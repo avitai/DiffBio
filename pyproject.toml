@@ -36,8 +36,9 @@ classifiers = [
   "License :: OSI Approved :: MIT License"
 ]
 dependencies = [
-  # Datarax - operator, source, and pipeline contracts
-  "datarax>=0.1.17",
+  # Datarax - operator, source, and pipeline contracts. Capped below 0.1.18, which removes the
+  # eager source helpers diffbio.sources imports; the release that ports the sources raises it.
+  "datarax>=0.1.17,<0.1.18",
   # Artifex - modeling, modality, and transformer substrate
   "avitai-artifex>=0.1.15",
   # Opifex - scientific ML, operator learning, and advanced optimization
