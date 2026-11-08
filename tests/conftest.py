@@ -45,36 +45,6 @@ def pytest_addoption(parser):
         default=False,
         help="run integration tests",
     )
-    parser.addoption(
-        "--device",
-        choices=["cpu", "gpu", "all"],
-        default="all",
-        help="select device type for tests (cpu, gpu, or all)",
-    )
-
-
-def pytest_collection_modifyitems(config, items):
-    """Skip tests based on command-line options and GPU availability."""
-    device_option = config.getoption("--device")
-
-    # Check GPU availability
-    try:
-        gpu_available = len(jax.devices("gpu")) > 0
-    except RuntimeError:
-        gpu_available = False
-
-    skip_gpu = pytest.mark.skip(reason="GPU not available")
-    skip_cpu_only = pytest.mark.skip(reason="running GPU tests only")
-
-    for item in items:
-        # Skip GPU tests if GPU not available or CPU-only mode
-        if "gpu" in item.keywords:
-            if not gpu_available or device_option == "cpu":
-                item.add_marker(skip_gpu)
-
-        # Skip CPU tests if GPU-only mode
-        if device_option == "gpu" and "cpu" in item.keywords:
-            item.add_marker(skip_cpu_only)
 
 
 # =============================================================================
