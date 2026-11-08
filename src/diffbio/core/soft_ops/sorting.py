@@ -331,6 +331,8 @@ def argmax(
     method: ArgMethod = "softsort",
     standardize: bool = True,
     ot_kwargs: dict | None = None,
+    *,
+    where: Array | None = None,
 ) -> SoftIndex:
     """Soft argmax returning a SoftIndex (probability distribution).
 
@@ -344,28 +346,48 @@ def argmax(
             ``"sorting_network"``, or ``"ot"``.
         standardize: If True, standardize input for numerical stability.
         ot_kwargs: Extra kwargs for OT method.
+        where: Boolean mask broadcastable to ``x``. Excluded entries take no part in the
+            standardization and get zero weight, as in ``jax.nn.standardize(where=)`` and
+            ``jax.nn.softmax(where=)``. Supported for ``mode="hard"`` and for
+            ``method="softsort"`` in smooth mode. Each slice needs an included entry.
 
     Returns:
         SoftIndex of shape ``(..., {1}, ..., [n])``.
+
+    Raises:
+        ValueError: If ``where`` is given with a method or mode that has no masked form.
     """
+    if where is not None:
+        where = jnp.broadcast_to(jnp.asarray(where, dtype=bool), jnp.shape(x))
     if mode == "hard":
+        if where is not None:
+            x = jnp.where(where, x, -jnp.inf)
         indices = jnp.argmax(x, axis=axis, keepdims=keepdims)
         num_classes = jnp.size(x, axis=axis)
         return jax.nn.one_hot(indices, num_classes=num_classes, axis=-1)
+
+    if where is not None and (method != "softsort" or mode != "smooth"):
+        msg = (
+            "where is supported for method='softsort' in smooth mode and for mode='hard', "
+            f"not method={method!r} with mode={mode!r}"
+        )
+        raise ValueError(msg)
 
     x = ensure_float(x)
     if axis is None:
         num_dims = x.ndim
         x = jnp.ravel(x)
+        where = None if where is None else jnp.ravel(where)
         _axis = 0
     else:
         _axis = canonicalize_axis(axis, x.ndim)
         num_dims = None
 
     if standardize:
-        x = standardize_and_squash(x, axis=_axis)
+        x = standardize_and_squash(x, axis=_axis, where=where)
 
     x_last = jnp.moveaxis(x, _axis, -1)
+    where_last = None if where is None else jnp.moveaxis(where, _axis, -1)
     *batch_dims, n = x_last.shape
 
     if method == "softsort":
@@ -374,6 +396,7 @@ def argmax(
             axis=-1,
             softness=softness,
             mode=mode,
+            where=where_last,
         )
     elif method == "neuralsort":
         a_sum = _neuralsort_a_sum(x_last, mode=mode, softness=softness)
@@ -426,6 +449,8 @@ def max(
     standardize: bool = True,
     ot_kwargs: dict | None = None,
     gated_grad: bool = True,
+    *,
+    where: Array | None = None,
 ) -> Array:
     """Soft max via argmax + take_along_axis.
 
@@ -441,22 +466,36 @@ def max(
         standardize: If True, standardize input.
         ot_kwargs: Extra kwargs for OT method.
         gated_grad: If False, stop gradient through soft index.
+        where: Boolean mask broadcastable to ``x``: the maximum over the included entries
+            only (see :func:`argmax`). Supported for ``mode="hard"`` and for
+            ``method="softsort"`` in smooth mode.
 
     Returns:
         Soft maximum value(s).
+
+    Raises:
+        ValueError: If ``where`` is given with a method or mode that has no masked form.
     """
     if mode == "hard":
+        if where is not None:
+            return jnp.max(x, axis=axis, keepdims=keepdims, where=where, initial=-jnp.inf)
         return jnp.max(x, axis=axis, keepdims=keepdims)
+    if where is not None:
+        where = jnp.broadcast_to(jnp.asarray(where, dtype=bool), jnp.shape(x))
 
     if axis is None:
         num_dims = x.ndim
         x = jnp.ravel(x)
+        where = None if where is None else jnp.ravel(where)
         _axis = 0
     else:
         _axis = canonicalize_axis(axis, x.ndim)
         num_dims = None
 
     sort_methods: set[str] = {"sorting_network", "fast_soft_sort", "smooth_sort"}
+    if where is not None and method in sort_methods:
+        msg = f"where is not supported with the sort-based method={method!r}"
+        raise ValueError(msg)
     if method in sort_methods:
         soft_sorted = sort(
             x,
@@ -484,10 +523,14 @@ def max(
             method=arg_method,
             standardize=standardize,
             ot_kwargs=ot_kwargs,
+            where=where,
         )
         if not gated_grad:
             soft_index = jax.lax.stop_gradient(soft_index)
-        max_val = take_along_axis(x, soft_index, axis=_axis)
+        # Excluded entries have zero weight; zero their values too, so an infinite or NaN
+        # excluded value cannot turn the weighted sum into NaN.
+        values = x if where is None else jnp.where(where, x, 0.0)
+        max_val = take_along_axis(values, soft_index, axis=_axis)
         if num_dims is not None:
             max_val = max_val.reshape(*(1,) * num_dims)
         if not keepdims:
