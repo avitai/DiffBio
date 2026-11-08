@@ -30,6 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Every drug-discovery operator built with its defaults accepts `smiles_to_graph` output. The
+  input widths defaulted to 4 atom and 4 bond features while the graph builder produces
+  `DEFAULT_ATOM_FEATURES` and `DEFAULT_BOND_FEATURES`, so a default `MolecularPropertyConfig`,
+  `ADMETConfig`, `MACCSKeysConfig`, `CircularFingerprintConfig`, `MolecularFingerprintConfig` or
+  message-passing layer raised a shape error on a real molecule, and `AttentiveFPConfig`
+  defaulted to the AttentiveFP paper's 39 and 10. Each default is now the featurizer's symbol,
+  as chemprop derives its model width from its featurizer. `DEFAULT_BOND_FEATURES` is exported
+  beside `DEFAULT_ATOM_FEATURES`.
 - `batch_smiles_to_graphs` returns float32 arrays under JAX's x64 mode, as `smiles_to_graph`
   already did; it returned float64. An empty batch and a SMILES string with no atoms raise a
   `ValueError` that names the cause, instead of one from `max()` or `jnp.stack`.

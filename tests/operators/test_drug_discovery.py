@@ -33,115 +33,20 @@ def drug_like_smiles():
 
 @pytest.fixture
 def molecular_graph():
-    """Pre-computed molecular graph for testing (ethanol CCO)."""
-    # 3 atoms: C, C, O
-    # Bonds: C-C, C-O
-    node_features = jnp.array(
-        [
-            [1, 0, 0, 0],  # C (one-hot for C, N, O, other)
-            [1, 0, 0, 0],  # C
-            [0, 0, 1, 0],  # O
-        ],
-        dtype=jnp.float32,
-    )
+    """Ethanol (CCO) as the graph builder produces it."""
+    from diffbio.operators.drug_discovery import smiles_to_graph
 
-    # Adjacency matrix (symmetric for undirected)
-    adjacency = jnp.array(
-        [
-            [0, 1, 0],
-            [1, 0, 1],
-            [0, 1, 0],
-        ],
-        dtype=jnp.float32,
-    )
-
-    # Edge features (bond type: single=1, double=0, triple=0, aromatic=0)
-    edge_features = jnp.array(
-        [
-            [[0, 0, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0]],
-            [[1, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0]],
-            [[0, 0, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0]],
-        ],
-        dtype=jnp.float32,
-    )
-
-    return {
-        "node_features": node_features,
-        "adjacency": adjacency,
-        "edge_features": edge_features,
-        "num_nodes": 3,
-    }
+    return smiles_to_graph("CCO")
 
 
 @pytest.fixture
 def batch_molecular_graphs():
-    """Batch of molecular graphs for testing."""
-    # Batch of 2 molecules with padding
-    max_nodes = 4
+    """Ethanol and ethane padded to one batch by the graph builder."""
+    from diffbio.operators.drug_discovery import batch_smiles_to_graphs
 
-    # Molecule 1: 3 atoms
-    node_features_1 = jnp.array(
-        [
-            [1, 0, 0, 0],
-            [1, 0, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 0],  # padding
-        ],
-        dtype=jnp.float32,
-    )
-
-    # Molecule 2: 2 atoms
-    node_features_2 = jnp.array(
-        [
-            [1, 0, 0, 0],
-            [1, 0, 0, 0],
-            [0, 0, 0, 0],  # padding
-            [0, 0, 0, 0],  # padding
-        ],
-        dtype=jnp.float32,
-    )
-
-    node_features = jnp.stack([node_features_1, node_features_2])
-
-    # Adjacency matrices
-    adj_1 = jnp.array(
-        [
-            [0, 1, 0, 0],
-            [1, 0, 1, 0],
-            [0, 1, 0, 0],
-            [0, 0, 0, 0],
-        ],
-        dtype=jnp.float32,
-    )
-
-    adj_2 = jnp.array(
-        [
-            [0, 1, 0, 0],
-            [1, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-        ],
-        dtype=jnp.float32,
-    )
-
-    adjacency = jnp.stack([adj_1, adj_2])
-
-    # Node masks
-    node_mask = jnp.array(
-        [
-            [1, 1, 1, 0],
-            [1, 1, 0, 0],
-        ],
-        dtype=jnp.float32,
-    )
-
-    return {
-        "node_features": node_features,
-        "adjacency": adjacency,
-        "node_mask": node_mask,
-        "batch_size": 2,
-        "max_nodes": max_nodes,
-    }
+    batch = batch_smiles_to_graphs(["CCO", "CC"])
+    batch_size, max_nodes = batch["node_mask"].shape
+    return {**batch, "batch_size": batch_size, "max_nodes": max_nodes}
 
 
 # =============================================================================
@@ -224,7 +129,6 @@ class TestMessagePassingLayer:
 
         layer = MessagePassingLayer(
             hidden_dim=64,
-            num_edge_features=4,
             rngs=nnx.Rngs(42),
         )
 
@@ -238,7 +142,6 @@ class TestMessagePassingLayer:
         hidden_dim = 32
         layer = MessagePassingLayer(
             hidden_dim=hidden_dim,
-            num_edge_features=4,
             rngs=nnx.Rngs(42),
         )
 
@@ -256,7 +159,6 @@ class TestMessagePassingLayer:
 
         layer = MessagePassingLayer(
             hidden_dim=32,
-            num_edge_features=4,
             rngs=nnx.Rngs(42),
         )
 
@@ -275,7 +177,6 @@ class TestMessagePassingLayer:
 
         layer = MessagePassingLayer(
             hidden_dim=32,
-            num_edge_features=4,
             rngs=nnx.Rngs(42),
         )
 
@@ -298,14 +199,12 @@ class TestMessagePassingLayer:
 
         layer = MessagePassingLayer(
             hidden_dim=32,
-            num_edge_features=4,
             rngs=nnx.Rngs(42),
         )
 
-        # Create dummy edge features for batch
         batch_size = batch_molecular_graphs["batch_size"]
         max_nodes = batch_molecular_graphs["max_nodes"]
-        edge_features = jnp.zeros((batch_size, max_nodes, max_nodes, 4))
+        edge_features = batch_molecular_graphs["edge_features"]
 
         # vmap over batch dimension
         batched_forward = jax.vmap(

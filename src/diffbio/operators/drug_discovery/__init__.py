@@ -61,6 +61,7 @@ from diffbio.operators.drug_discovery.primitives import (
     AtomFeatureConfig,
     DEFAULT_ATOM_CONFIG,
     DEFAULT_ATOM_FEATURES,
+    DEFAULT_BOND_FEATURES,
     batch_smiles_to_graphs,
     smiles_to_graph,
 )
@@ -83,6 +84,7 @@ __all__ = [
     "smiles_to_graph",
     "batch_smiles_to_graphs",
     "DEFAULT_ATOM_FEATURES",
+    "DEFAULT_BOND_FEATURES",
     "DEFAULT_ATOM_CONFIG",
     "AtomFeatureConfig",
     # Message Passing

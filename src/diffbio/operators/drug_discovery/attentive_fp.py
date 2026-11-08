@@ -29,6 +29,8 @@ from flax import nnx
 from diffbio.operators.drug_discovery._graph_utils import (
     build_optional_dropout,
 )
+from diffbio.operators.drug_discovery.primitives import DEFAULT_ATOM_FEATURES, DEFAULT_BOND_FEATURES
+
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +50,8 @@ class _AttentiveFPArchitectureConfig:
 class _AttentiveFPInputConfig:
     """Graph input configuration for AttentiveFP."""
 
-    in_features: int = 39
-    edge_dim: int = 10
+    in_features: int = DEFAULT_ATOM_FEATURES
+    edge_dim: int = DEFAULT_BOND_FEATURES
     negative_slope: float = 0.2
 
 

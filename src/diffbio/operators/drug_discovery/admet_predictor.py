@@ -28,7 +28,9 @@ from diffbio.operators.drug_discovery._graph_utils import (
     graph_sum_readout,
     initialize_graph_encoder_from_config,
 )
+from diffbio.operators.drug_discovery.primitives import DEFAULT_ATOM_FEATURES, DEFAULT_BOND_FEATURES
 from diffbio.utils.nn_utils import ARTIFEX_RELU_MLP_KWARGS
+
 
 logger = logging.getLogger(__name__)
 
@@ -105,8 +107,9 @@ class ADMETConfig(OperatorConfig):
         num_message_passing_steps: Number of D-MPNN iterations (default: 3).
         num_tasks: Number of ADMET prediction tasks (default: 22).
         dropout_rate: Dropout rate for regularization (default: 0.0).
-        in_features: Number of input node features (default: 4).
-        num_edge_features: Number of edge features (default: 4).
+        in_features: Number of input node features (default: `DEFAULT_ATOM_FEATURES`, the
+            graph builder's width).
+        num_edge_features: Number of edge features (default: `DEFAULT_BOND_FEATURES`).
         ffn_hidden_dim: FFN hidden dimension (default: same as hidden_dim).
         ffn_num_layers: Number of FFN layers (default: 2).
         apply_task_activations: Apply sigmoid for classification tasks (default: False).
@@ -116,8 +119,8 @@ class ADMETConfig(OperatorConfig):
     num_message_passing_steps: int = 3
     num_tasks: int = 22
     dropout_rate: float = 0.0
-    in_features: int = 4
-    num_edge_features: int = 4
+    in_features: int = DEFAULT_ATOM_FEATURES
+    num_edge_features: int = DEFAULT_BOND_FEATURES
     ffn_hidden_dim: int | None = None
     ffn_num_layers: int = 2
     apply_task_activations: bool = False

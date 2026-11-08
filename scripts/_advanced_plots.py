@@ -328,17 +328,10 @@ def generate_attentivefp_plots() -> None:
     from diffbio.operators.drug_discovery import (
         AttentiveFP,
         AttentiveFPConfig,
-        DEFAULT_ATOM_FEATURES,
         smiles_to_graph,
     )
 
-    config = AttentiveFPConfig(
-        num_layers=2,
-        hidden_dim=64,
-        dropout_rate=0.0,
-        in_features=DEFAULT_ATOM_FEATURES,
-        edge_dim=4,
-    )
+    config = AttentiveFPConfig(num_layers=2, hidden_dim=64, dropout_rate=0.0)
     rngs = nnx.Rngs(42)
     model = AttentiveFP(config, rngs=rngs)
 

@@ -165,7 +165,7 @@ config = MolecularPropertyConfig(
     hidden_dim=64,
     num_message_passing_steps=3,
     num_output_tasks=1,
-    in_features=DEFAULT_ATOM_FEATURES,  # 34 for real molecules
+    in_features=DEFAULT_ATOM_FEATURES,  # the graph builder's width, also the default
 )
 predictor = MolecularPropertyPredictor(config, rngs=nnx.Rngs(42))
 
@@ -192,8 +192,8 @@ graph_repr = result["graph_representation"]  # (hidden_dim,)
 | `num_message_passing_steps` | int | 3 | Number of message passing iterations |
 | `num_output_tasks` | int | 1 | Number of prediction tasks (multi-task) |
 | `dropout_rate` | float | 0.0 | Dropout rate for regularization |
-| `in_features` | int | 4 | Input node features (use 34 for real molecules) |
-| `num_edge_features` | int | 4 | Number of bond features |
+| `in_features` | int | `DEFAULT_ATOM_FEATURES` | Input node features (the graph builder's width) |
+| `num_edge_features` | int | `DEFAULT_BOND_FEATURES` | Number of bond features (the graph builder's width) |
 
 ### Multi-Task Prediction
 
@@ -247,7 +247,6 @@ config = ADMETConfig(
     num_message_passing_steps=3,
     num_tasks=22,  # Standard TDC benchmark
     dropout_rate=0.1,
-    in_features=34,  # Real molecule features
 )
 admet = ADMETPredictor(config, rngs=nnx.Rngs(42))
 
@@ -331,7 +330,6 @@ config = MACCSKeysConfig(
     temperature=1.0,  # Lower = sharper bit assignment
     hidden_dim=64,
     num_layers=2,
-    in_features=34,
 )
 maccs = MACCSKeysOperator(config, rngs=nnx.Rngs(42))
 
@@ -384,7 +382,7 @@ result, _, _ = maccs.apply(data, {}, None)
 | `temperature` | float | 1.0 | Softmax temperature |
 | `hidden_dim` | int | 64 | Hidden dim for pattern networks |
 | `num_layers` | int | 2 | Message passing layers |
-| `in_features` | int | 4 | Input node features |
+| `in_features` | int | `DEFAULT_ATOM_FEATURES` | Input node features (the graph builder's width) |
 
 ## AttentiveFP
 
@@ -420,8 +418,6 @@ config = AttentiveFPConfig(
     num_layers=2,  # Atom-level attention layers
     num_timesteps=2,  # Molecule-level GRU iterations
     dropout_rate=0.0,
-    in_features=34,
-    edge_dim=4,
 )
 afp = AttentiveFP(config, rngs=nnx.Rngs(42))
 
@@ -461,8 +457,8 @@ print(f"Top 5 important atom indices: {top_atoms}")
 | `num_layers` | int | 2 | Atom-level attention layers |
 | `num_timesteps` | int | 2 | Molecule-level GRU iterations |
 | `dropout_rate` | float | 0.0 | Dropout for regularization |
-| `in_features` | int | 39 | Input node features |
-| `edge_dim` | int | 10 | Edge feature dimension |
+| `in_features` | int | `DEFAULT_ATOM_FEATURES` | Input node features (the graph builder's width) |
+| `edge_dim` | int | `DEFAULT_BOND_FEATURES` | Edge feature dimension (the graph builder's width) |
 | `negative_slope` | float | 0.2 | LeakyReLU negative slope |
 
 ### References
@@ -518,7 +514,7 @@ fingerprint = result["fingerprint"]  # (256,)
 | `fingerprint_dim` | int | 256 | Output fingerprint dimension |
 | `hidden_dim` | int | 128 | Hidden dimension for GNN |
 | `num_layers` | int | 3 | Number of message passing layers |
-| `in_features` | int | 4 | Input node features (use 34 for real molecules) |
+| `in_features` | int | `DEFAULT_ATOM_FEATURES` | Input node features (the graph builder's width) |
 | `normalize` | bool | False | L2-normalize the fingerprint |
 
 ### Comparing Fingerprints
@@ -666,7 +662,7 @@ result, _, _ = fp_op.apply(data, {}, None)
 | `differentiable` | bool | True | Use learned hash functions |
 | `hash_hidden_dim` | int | 128 | Hidden dimension for hash network |
 | `temperature` | float | 1.0 | Softmax temperature |
-| `in_features` | int | 4 | Input node feature dimension |
+| `in_features` | int | `DEFAULT_ATOM_FEATURES` | Input node feature dimension (the graph builder's width) |
 
 ### Gradient-Based Optimization
 
