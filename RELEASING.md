@@ -67,24 +67,15 @@ when validating publishing setup before a real release.
 
 ## PyPI Authentication
 
-The publish workflow uses API token authentication. Two repo secrets must be
-set on `avitai/DiffBio`:
-
-- `PYPI_API_TOKEN`      — account-scoped token used by the `pypi` job
-- `TEST_PYPI_API_TOKEN` — account-scoped token used by the `testpypi` job
-
-For the maiden release of a new project, the token must be **account-scoped**
-(project-scoped tokens cannot create new projects). Once the project exists on
-PyPI, project-scoped tokens are preferred for least-privilege rotation.
-
-To migrate to OIDC trusted publishing later, register the project at
-<https://pypi.org/manage/account/publishing/> (and the TestPyPI equivalent)
-with:
+The publish workflow uses PyPI trusted publishing (OIDC): the `publish-pypi` and
+`publish-testpypi` jobs request an `id-token` and no API token is stored in the
+repository. PyPI must trust, for the project `diffbio`:
 
 - Owner: `avitai`
 - Repository: `DiffBio`
 - Workflow: `publish.yml`
-- Environment: `pypi` (and `testpypi`)
+- Environment: `pypi` (and `testpypi` on TestPyPI)
 
-Then remove the `password` inputs from the publish steps and add
-`permissions: id-token: write` to each publish job.
+If PyPI rejects the upload with `invalid-publisher`, verify that registration
+(<https://pypi.org/manage/account/publishing/>) before looking for secrets; the
+expected identity is `repo:avitai/DiffBio:environment:pypi`.
