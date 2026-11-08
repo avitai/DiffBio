@@ -76,7 +76,7 @@ DEFAULT_ATOM_FEATURES = DEFAULT_ATOM_CONFIG.total_features  # 34 features
 ATOM_TYPES = ["C", "N", "O", "S", "F", "Cl", "Br", "I", "P", "Si", "B", "Other"]
 
 # Bond-type one-hot width: single, double, triple, aromatic.
-NUM_BOND_FEATURES = 4
+DEFAULT_BOND_FEATURES = 4
 
 
 def _atom_feature_values(atom: Any, config: AtomFeatureConfig) -> list[float]:
@@ -196,7 +196,7 @@ def _host_graph(smiles: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         dtype=np.float32,
     )
     adjacency = np.zeros((num_atoms, num_atoms), dtype=np.float32)
-    edge_features = np.zeros((num_atoms, num_atoms, NUM_BOND_FEATURES), dtype=np.float32)
+    edge_features = np.zeros((num_atoms, num_atoms, DEFAULT_BOND_FEATURES), dtype=np.float32)
     for bond in mol.GetBonds():
         i = bond.GetBeginAtomIdx()
         j = bond.GetEndAtomIdx()
@@ -257,7 +257,7 @@ def batch_smiles_to_graphs(smiles_list: list[str]) -> dict[str, Any]:
     node_features = np.zeros((batch_size, max_nodes, num_features), dtype=np.float32)
     adjacency = np.zeros((batch_size, max_nodes, max_nodes), dtype=np.float32)
     edge_features = np.zeros(
-        (batch_size, max_nodes, max_nodes, NUM_BOND_FEATURES), dtype=np.float32
+        (batch_size, max_nodes, max_nodes, DEFAULT_BOND_FEATURES), dtype=np.float32
     )
     node_mask = np.zeros((batch_size, max_nodes), dtype=np.float32)
     for i, (nodes, adj, edges) in enumerate(graphs):
