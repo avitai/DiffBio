@@ -58,8 +58,6 @@ from diffbio.operators.drug_discovery.message_passing import (
     StackedMessagePassing,
 )
 from diffbio.operators.drug_discovery.primitives import (
-    AtomFeatureConfig,
-    DEFAULT_ATOM_CONFIG,
     DEFAULT_ATOM_FEATURES,
     DEFAULT_BOND_FEATURES,
     batch_smiles_to_graphs,
@@ -85,8 +83,6 @@ __all__ = [
     "batch_smiles_to_graphs",
     "DEFAULT_ATOM_FEATURES",
     "DEFAULT_BOND_FEATURES",
-    "DEFAULT_ATOM_CONFIG",
-    "AtomFeatureConfig",
     # Message Passing
     "MessagePassingLayer",
     "StackedMessagePassing",

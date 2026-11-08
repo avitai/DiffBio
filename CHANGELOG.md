@@ -18,6 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Molecular graphs carry the AttentiveFP featurization (Xiong et al. 2019) as DGL-LifeSci's
+  `AttentiveFPAtomFeaturizer` and `AttentiveFPBondFeaturizer` define it: 39 atom features and 10
+  bond features, against 34 and 4 before. The new features are chirality and the CIP label,
+  radical electrons, the elements As, Se, Te and At, SP3D2 hybridization, bond conjugation, ring
+  membership and bond stereo. Formal charge is a signed count rather than a one-hot clipped to
+  -2..2, and a degree above 5 or more than 4 hydrogens leaves its block all zero, as in the
+  reference. Stereoisomers now get distinct graphs: on BBBP as MolNet supplies it, 12 molecules
+  in 6 groups shared one graph, 2 of the groups with conflicting labels, and none do now.
+  `DEFAULT_ATOM_FEATURES` and `DEFAULT_BOND_FEATURES` follow, so every operator built with its
+  defaults takes the new graphs. `AtomFeatureConfig`, `DEFAULT_ATOM_CONFIG` and `ATOM_TYPES` are
+  removed, and `get_atom_features` takes no configuration.
 - `smiles_to_graph` and `batch_smiles_to_graphs` assemble each graph on the host with NumPy and
   convert it to JAX once per array. They built it with eager JAX operations, one array per atom
   and four scatter updates per bond, each copying the whole adjacency or edge-feature array. The

@@ -4,10 +4,15 @@ This module provides utility functions for converting SMILES strings to
 molecular graphs suitable for differentiable neural network processing.
 RDKit parses each molecule on the host, where its graph is assembled with NumPy; the
 functions return float32 JAX arrays, one transfer per array.
+
+The atom and bond features are the AttentiveFP featurization (Xiong et al. 2019, "Pushing the
+Boundaries of Molecular Representation for Drug Discovery with the Graph Attention Mechanism",
+J. Med. Chem. 63, 8749), as DGL-LifeSci's `AttentiveFPAtomFeaturizer` and
+`AttentiveFPBondFeaturizer` define it (Apache-2.0): 39 atom and 10 bond features, including
+chirality, bond stereo, conjugation and ring membership, so stereoisomers get distinct graphs.
 """
 
 import logging
-from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
 
@@ -35,147 +40,109 @@ def _rdkit_chem() -> Any:
     return Chem
 
 
-@dataclass(frozen=True)
-class AtomFeatureConfig:
-    """Configuration for atom feature extraction.
+# The AttentiveFP featurization's value sets, one per one-hot block. RDKit enums are matched by
+# name, so these widths are known without importing RDKit. A block with an unknown slot sets it
+# for a value outside its set; the degree, hydrogen-count, bond-type and stereo blocks have none
+# and stay all zero, as in the reference.
+ATOM_ELEMENTS = ("B", "C", "N", "O", "F", "Si", "P", "S", "Cl", "As", "Se", "Br", "Te", "I", "At")
+ATOM_DEGREES = (0, 1, 2, 3, 4, 5)
+ATOM_HYBRIDIZATIONS = ("SP", "SP2", "SP3", "SP3D", "SP3D2")
+ATOM_HYDROGEN_COUNTS = (0, 1, 2, 3, 4)
+ATOM_CIP_CODES = ("R", "S")
+BOND_TYPES = ("SINGLE", "DOUBLE", "TRIPLE", "AROMATIC")
+BOND_STEREOS = ("STEREONONE", "STEREOANY", "STEREOZ", "STEREOE")
 
-    The default configuration produces 34 features:
-
-    - Atom type: 12 dimensions (C, N, O, S, F, Cl, Br, I, P, Si, B, Other)
-    - Degree: 7 dimensions (0-6)
-    - Formal charge: 5 dimensions (-2 to +2)
-    - Hybridization: 4 dimensions (SP, SP2, SP3, SP3D)
-    - Aromaticity: 1 dimension (binary)
-    - Num hydrogens: 5 dimensions (0-4)
-    """
-
-    num_atom_types: int = 12
-    max_degree: int = 6  # Creates max_degree + 1 dimensions
-    charge_range: tuple[int, int] = (-2, 2)  # Creates 5 dimensions
-    num_hybridization_types: int = 4
-    max_num_hydrogens: int = 4  # Creates max_num_hydrogens + 1 dimensions
-
-    @property
-    def total_features(self) -> int:
-        """Calculate total number of atom features."""
-        return (
-            self.num_atom_types
-            + (self.max_degree + 1)
-            + (self.charge_range[1] - self.charge_range[0] + 1)
-            + self.num_hybridization_types
-            + 1  # aromaticity
-            + (self.max_num_hydrogens + 1)
-        )
+# Element (+ unknown), degree, formal charge, radical electrons, hybridization (+ unknown),
+# aromaticity, total hydrogens, chiral centre, CIP label: 39.
+DEFAULT_ATOM_FEATURES = (
+    len(ATOM_ELEMENTS)
+    + 1
+    + len(ATOM_DEGREES)
+    + 2
+    + len(ATOM_HYBRIDIZATIONS)
+    + 1
+    + 1
+    + len(ATOM_HYDROGEN_COUNTS)
+    + 1
+    + len(ATOM_CIP_CODES)
+)
+# Bond type, conjugated, in ring, stereo configuration: 10.
+DEFAULT_BOND_FEATURES = len(BOND_TYPES) + 2 + len(BOND_STEREOS)
 
 
-# Default configuration
-DEFAULT_ATOM_CONFIG = AtomFeatureConfig()
-DEFAULT_ATOM_FEATURES = DEFAULT_ATOM_CONFIG.total_features  # 34 features
-
-# Atom type vocabulary for one-hot encoding
-ATOM_TYPES = ["C", "N", "O", "S", "F", "Cl", "Br", "I", "P", "Si", "B", "Other"]
-
-# Bond-type one-hot width: single, double, triple, aromatic.
-DEFAULT_BOND_FEATURES = 4
+def _one_hot(value: Any, allowed: tuple[Any, ...], *, unknown: bool = False) -> list[float]:
+    """Return the one-hot encoding of `value` over `allowed`, with an optional unknown slot."""
+    encoding = [1.0 if value == item else 0.0 for item in allowed]
+    if unknown:
+        encoding.append(0.0 if value in allowed else 1.0)
+    return encoding
 
 
-def _atom_feature_values(atom: Any, config: AtomFeatureConfig) -> list[float]:
+def _atom_feature_values(atom: Any) -> list[float]:
     """Return an RDKit atom's feature values as a host list (see `get_atom_features`)."""
-    features: list[float] = []
-
-    # Atom type
-    symbol = atom.GetSymbol()
-    atom_type_idx = ATOM_TYPES.index(symbol) if symbol in ATOM_TYPES else len(ATOM_TYPES) - 1
-    atom_type_onehot = [0.0] * config.num_atom_types
-    atom_type_onehot[min(atom_type_idx, config.num_atom_types - 1)] = 1.0
-    features.extend(atom_type_onehot)
-
-    # Degree
-    degree = min(atom.GetDegree(), config.max_degree)
-    degree_onehot = [0.0] * (config.max_degree + 1)
-    degree_onehot[degree] = 1.0
-    features.extend(degree_onehot)
-
-    # Formal charge
-    charge = atom.GetFormalCharge()
-    charge_min, charge_max = config.charge_range
-    charge_idx = max(charge_min, min(charge_max, charge)) - charge_min
-    charge_dim = charge_max - charge_min + 1
-    charge_onehot = [0.0] * charge_dim
-    charge_onehot[charge_idx] = 1.0
-    features.extend(charge_onehot)
-
-    # Hybridization
-    hybridization = atom.GetHybridization()
-    chem = _rdkit_chem()
-    hyb_types = [
-        chem.rdchem.HybridizationType.SP,
-        chem.rdchem.HybridizationType.SP2,
-        chem.rdchem.HybridizationType.SP3,
-        chem.rdchem.HybridizationType.SP3D,
+    cip_code = atom.GetProp("_CIPCode") if atom.HasProp("_CIPCode") else None
+    return [
+        *_one_hot(atom.GetSymbol(), ATOM_ELEMENTS, unknown=True),
+        *_one_hot(atom.GetDegree(), ATOM_DEGREES),
+        float(atom.GetFormalCharge()),
+        float(atom.GetNumRadicalElectrons()),
+        *_one_hot(str(atom.GetHybridization()), ATOM_HYBRIDIZATIONS, unknown=True),
+        float(atom.GetIsAromatic()),
+        *_one_hot(atom.GetTotalNumHs(), ATOM_HYDROGEN_COUNTS),
+        float(atom.HasProp("_ChiralityPossible")),
+        *_one_hot(cip_code, ATOM_CIP_CODES),
     ]
-    hyb_onehot = [0.0] * config.num_hybridization_types
-    for i, h in enumerate(hyb_types[: config.num_hybridization_types]):
-        if hybridization == h:
-            hyb_onehot[i] = 1.0
-            break
-    features.extend(hyb_onehot)
-
-    # Aromaticity
-    features.append(1.0 if atom.GetIsAromatic() else 0.0)
-
-    # Number of hydrogens
-    num_h = min(atom.GetTotalNumHs(), config.max_num_hydrogens)
-    h_onehot = [0.0] * (config.max_num_hydrogens + 1)
-    h_onehot[num_h] = 1.0
-    features.extend(h_onehot)
-
-    return features
 
 
-def get_atom_features(atom: Any, config: AtomFeatureConfig | None = None) -> jnp.ndarray:
-    """Extract features from an RDKit atom object.
+def get_atom_features(atom: Any) -> jnp.ndarray:
+    """Extract an RDKit atom's AttentiveFP features.
 
-    Features include:
-    - Atom type (one-hot, config.num_atom_types)
-    - Degree (one-hot, 0 to config.max_degree)
-    - Formal charge (one-hot, config.charge_range)
-    - Hybridization (one-hot, config.num_hybridization_types)
+    Features, in order:
+
+    - Element: one-hot over `ATOM_ELEMENTS`, plus an unknown slot
+    - Degree: one-hot over 0-5 (all zero above 5)
+    - Formal charge and number of radical electrons, as counts
+    - Hybridization: one-hot over `ATOM_HYBRIDIZATIONS`, plus an unknown slot
     - Aromaticity (binary)
-    - Number of hydrogens (one-hot, 0 to config.max_num_hydrogens)
+    - Total hydrogens: one-hot over 0-4 (all zero above 4)
+    - Chiral centre (binary, RDKit's `_ChiralityPossible`)
+    - CIP label: one-hot over R and S (all zero when RDKit assigns none)
 
     Args:
         atom: RDKit atom object.
-        config: Feature extraction configuration. Defaults to DEFAULT_ATOM_CONFIG.
 
     Returns:
-        Feature vector of shape (config.total_features,).
+        Feature vector of shape (`DEFAULT_ATOM_FEATURES`,).
     """
-    resolved = DEFAULT_ATOM_CONFIG if config is None else config
-    return jnp.asarray(_atom_feature_values(atom, resolved), dtype=jnp.float32)
+    return jnp.asarray(_atom_feature_values(atom), dtype=jnp.float32)
 
 
 def get_bond_features(bond: Any) -> jnp.ndarray:
-    """Extract features from an RDKit bond object.
+    """Extract an RDKit bond's AttentiveFP features.
 
-    Features include:
-    - Bond type (one-hot: single, double, triple, aromatic)
+    Features, in order:
+
+    - Bond type: one-hot over single, double, triple and aromatic
+    - Conjugated and in a ring (binary each)
+    - Stereo configuration: one-hot over none, any, Z and E
 
     Args:
         bond: RDKit bond object.
 
     Returns:
-        Feature vector of shape (4,).
+        Feature vector of shape (`DEFAULT_BOND_FEATURES`,).
     """
     return jnp.asarray(_bond_feature_values(bond), dtype=jnp.float32)
 
 
 def _bond_feature_values(bond: Any) -> list[float]:
-    """Return an RDKit bond's one-hot bond type as a host list (see `get_bond_features`)."""
-    bond_type = bond.GetBondType()
-    bond_types = _rdkit_chem().rdchem.BondType
-    kinds = (bond_types.SINGLE, bond_types.DOUBLE, bond_types.TRIPLE, bond_types.AROMATIC)
-    return [1.0 if bond_type == kind else 0.0 for kind in kinds]
+    """Return an RDKit bond's feature values as a host list (see `get_bond_features`)."""
+    return [
+        *_one_hot(str(bond.GetBondType()), BOND_TYPES),
+        float(bond.GetIsConjugated()),
+        float(bond.IsInRing()),
+        *_one_hot(str(bond.GetStereo()), BOND_STEREOS),
+    ]
 
 
 def _host_graph(smiles: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -192,7 +159,7 @@ def _host_graph(smiles: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         raise ValueError(f"SMILES string has no atoms: {smiles!r}")
 
     node_features = np.asarray(
-        [_atom_feature_values(atom, DEFAULT_ATOM_CONFIG) for atom in mol.GetAtoms()],
+        [_atom_feature_values(atom) for atom in mol.GetAtoms()],
         dtype=np.float32,
     )
     adjacency = np.zeros((num_atoms, num_atoms), dtype=np.float32)

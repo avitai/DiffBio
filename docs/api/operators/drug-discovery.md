@@ -233,12 +233,17 @@ Differentiable operators for molecular property prediction, fingerprint computat
     options:
       show_root_heading: true
 
-### AtomFeatureConfig
+### get_atom_features
 
-::: diffbio.operators.drug_discovery.primitives.AtomFeatureConfig
+::: diffbio.operators.drug_discovery.primitives.get_atom_features
     options:
       show_root_heading: true
-      members: []
+
+### get_bond_features
+
+::: diffbio.operators.drug_discovery.primitives.get_bond_features
+    options:
+      show_root_heading: true
 
 ## Constants
 
@@ -248,9 +253,9 @@ Differentiable operators for molecular property prediction, fingerprint computat
     options:
       show_root_heading: true
 
-### DEFAULT_ATOM_CONFIG
+### DEFAULT_BOND_FEATURES
 
-::: diffbio.operators.drug_discovery.primitives.DEFAULT_ATOM_CONFIG
+::: diffbio.operators.drug_discovery.primitives.DEFAULT_BOND_FEATURES
     options:
       show_root_heading: true
 
@@ -403,9 +408,9 @@ node_features, adjacency, edge_features, masks = batch_smiles_to_graphs(
     smiles_list,
     max_atoms=20,
 )
-# node_features: (3, 20, 34)
+# node_features: (3, 20, 39)
 # adjacency: (3, 20, 20)
-# edge_features: (3, 20, 20, 4)
+# edge_features: (3, 20, 20, 10)
 # masks: (3, 20)
 ```
 
@@ -513,14 +518,30 @@ grads = nnx.grad(loss_fn)(predictor, data)
 
 ## Atom Feature Dimensions
 
+The AttentiveFP featurization (Xiong et al. 2019), as DGL-LifeSci's `AttentiveFPAtomFeaturizer`
+defines it.
+
 | Feature | Dimensions | Description |
 |---------|------------|-------------|
-| Atom type | 10 | C, N, O, S, F, Cl, Br, I, P, other |
-| Degree | 6 | 0-5+ neighbors |
-| Formal charge | 5 | -2 to +2 |
-| Hybridization | 5 | SP, SP2, SP3, SP3D, SP3D2 |
+| Element | 16 | B, C, N, O, F, Si, P, S, Cl, As, Se, Br, Te, I, At, unknown |
+| Degree | 6 | 0-5 neighbors (all zero above 5) |
+| Formal charge | 1 | Signed count |
+| Radical electrons | 1 | Count |
+| Hybridization | 6 | SP, SP2, SP3, SP3D, SP3D2, unknown |
 | Aromaticity | 1 | Binary |
-| Hydrogens | 5 | 0-4+ |
+| Hydrogens | 5 | 0-4 total hydrogens (all zero above 4) |
+| Chiral centre | 1 | Binary |
+| CIP label | 2 | R, S (all zero when unassigned) |
+| **Total** | **39** | `DEFAULT_ATOM_FEATURES` |
+
+## Bond Feature Dimensions
+
+DGL-LifeSci's `AttentiveFPBondFeaturizer`.
+
+| Feature | Dimensions | Description |
+|---------|------------|-------------|
+| Bond type | 4 | Single, double, triple, aromatic |
+| Conjugated | 1 | Binary |
 | In ring | 1 | Binary |
-| Chiral | 1 | Binary |
-| **Total** | **34** | `DEFAULT_ATOM_FEATURES` |
+| Stereo | 4 | None, any, Z, E |
+| **Total** | **10** | `DEFAULT_BOND_FEATURES` |
