@@ -1149,6 +1149,7 @@ soft-ops-ot = [
 test = [
     { name = "beartype" },
     { name = "coverage" },
+    { name = "matplotlib" },
     { name = "mpmath" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -1213,6 +1214,7 @@ requires-dist = [
     { name = "jaxtyping", specifier = ">=0.2.20" },
     { name = "lineax", marker = "extra == 'soft-ops-advanced'", specifier = ">=0.0.8" },
     { name = "matplotlib", marker = "extra == 'benchmark'", specifier = ">=3.7" },
+    { name = "matplotlib", marker = "extra == 'test'", specifier = ">=3.7" },
     { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.6.1" },
     { name = "mkdocs-include-exclude-files", marker = "extra == 'docs'", specifier = ">=0.1" },
     { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.6.7" },
