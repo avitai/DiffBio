@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- `uv.lock` takes tornado 6.6.1, which carries the fix for CVE-2026-126347: an open redirect in
+  `tornado.web.RedirectHandler`, reachable through three or more leading slashes where a URL
+  template lets attacker-controlled input shape the destination. Affected versions are below
+  6.6.1; the advisory was published 2026-11-12 with a CVSS 3.1 base score of 3.1, low. tornado is
+  not a declared dependency -- it arrives transitively through the Jupyter stack in the `dev`
+  extra -- so nothing here constructs a `RedirectHandler` and the lock was stale rather than the
+  package exposed. The `Security` workflow's scheduled runs show that: the lock last audited
+  clean on 2026-11-09, the advisory published on the 12th, and the first failure was the
+  scheduled run of the 16th against an unchanged lock. Only tornado's version moved; the other
+  349 resolved packages are unchanged.
+
 ### Added
 
 - `soft_ops.max` and `soft_ops.argmax` take `where`, a boolean mask of the entries to reduce
