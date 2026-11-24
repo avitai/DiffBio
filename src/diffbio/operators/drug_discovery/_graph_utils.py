@@ -1,7 +1,7 @@
 """Shared helpers for graph-based drug-discovery operators."""
 
 import logging
-from typing import Any, Mapping
+from typing import Any, Literal, Mapping
 
 import jax.numpy as jnp
 from flax import nnx
@@ -111,13 +111,48 @@ def unpack_graph_inputs(data: Mapping[str, Any]) -> tuple[Any, Any, Any, Any]:
     )
 
 
-def graph_sum_readout(
+def graph_readout(
     data: Mapping[str, Any],
     encoder: StackedMessagePassing,
     *,
+    aggregation: Literal["sum", "mean"] = "mean",
     dropout: nnx.Dropout | None = None,
 ) -> jnp.ndarray:
-    """Encode a graph and sum-pool node states into a graph representation."""
+    """Encode a graph and pool its node states into one graph-level representation.
+
+    The readout is the only route by which molecule size reaches the output: the atom features
+    carry no atom count, and message passing is local. So the pooling choice decides whether the
+    representation is extensive in the atom count (``"sum"``) or intensive (``"mean"``).
+
+    Choose by the property being predicted, which is chemprop's documented rule: mean for a
+    property that does not depend on the number of atoms, sum for one that does. Schweidtmann et
+    al., *Computers and Chemical Engineering* 172 (2023) 108202, reach the same conclusion from
+    the physics and add that for a size-independent property the poolings should be compared
+    rather than assumed.
+
+    ``"max"`` is deliberately absent: chemprop's registry offers mean, sum, norm and attentive
+    aggregation and no max for graph readout, and ``scatter_aggregate``'s ``"max"`` in this
+    package is *message* aggregation, a different operation. chemprop's ``norm`` (a sum divided
+    by a constant) and its attention readout are also unimplemented here; both leave the output
+    extensive or add parameters, and neither has been measured against this package's operators.
+
+    Args:
+        data: Graph arrays, as ``unpack_graph_inputs`` reads them. ``node_mask`` is optional;
+            when absent every row counts as a real atom.
+        encoder: Message-passing encoder producing one hidden state per row.
+        aggregation: ``"mean"`` to divide by the number of unmasked atoms, ``"sum"`` to total
+            them.
+        dropout: Optional dropout applied to the pooled representation.
+
+    Returns:
+        The pooled graph representation, of shape ``(hidden_dim,)``.
+
+    Raises:
+        ValueError: If ``aggregation`` is not a supported mode.
+    """
+    if aggregation not in {"sum", "mean"}:
+        raise ValueError(f"Unknown aggregation: {aggregation}")
+
     node_features, adjacency, edge_features, node_mask = unpack_graph_inputs(data)
 
     node_hidden = encoder(node_features, adjacency, edge_features)
@@ -125,6 +160,15 @@ def graph_sum_readout(
         node_hidden = node_hidden * node_mask[:, None]
 
     graph_repr = jnp.sum(node_hidden, axis=0)
+    if aggregation == "mean":
+        # `jnp.mean(..., where=)` is the standard-library masked mean and divides by the mask's
+        # own sum, but it has no guard for an empty mask -- `_var` returns NaN deliberately while
+        # `_mean` does not guard at all -- so an all-padding graph would return NaN and poison
+        # the gradient. Clamping the divisor is what chemprop (`sums / counts.clamp(min=1)`) and
+        # jraph (`maximum(count, 1)`) both do, and it is exact for every non-empty graph.
+        atom_count = jnp.shape(node_hidden)[0] if node_mask is None else jnp.sum(node_mask)
+        graph_repr = graph_repr / jnp.maximum(atom_count, 1)
+
     if dropout is not None:
         graph_repr = dropout(graph_repr)
     return graph_repr

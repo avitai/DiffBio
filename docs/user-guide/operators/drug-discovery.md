@@ -60,10 +60,10 @@ graph TB
     NF --> C["StackedMessagePassing<br/>D-MPNN: message → update"]
     ADJ --> C
     EF --> C
-    C --> D["Sum Pooling<br/>g = Σᵢ hᵢ (graph repr)"]
+    C --> D["Graph Readout<br/>mean: g = Σᵢ hᵢ / n, or sum"]
     D --> E["MolecularPropertyPredictor"]
     D --> F["DifferentiableMolecularFingerprint"]
-    D --> G["CircularFingerprintOperator"]
+    C --> G["CircularFingerprintOperator<br/>(own soft-max readout)"]
     E --> E1["predictions"]
     F --> F1["learned fingerprint"]
     G --> G1["ECFP-style fingerprint"]

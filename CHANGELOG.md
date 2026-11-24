@@ -31,6 +31,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking.** The graph readout pools node states by `mean` rather than `sum`, and the pooling
+  is now a choice. `graph_sum_readout` becomes `graph_readout` with an `aggregation` argument,
+  and `MolecularPropertyConfig`, `ADMETConfig` and `MolecularFingerprintConfig` each gain an
+  `aggregation` field defaulting to `"mean"`, so every operator built with its defaults returns
+  different numbers than before. Pass `aggregation="sum"` for the old behaviour; there is no shim
+  and no deprecation period. The readout is the only route by which molecule size reaches a
+  graph-level output -- the atom features carry no atom count and message passing is local, so on
+  a constant node state a sum readout returns exactly the atom count -- which makes a sum readout
+  extensive in molecule size and a mean readout intensive. The default follows chemprop's
+  documented rule, mean for a property that does not depend on the number of atoms and sum for
+  one that does, and Schweidtmann et al., *Computers and Chemical Engineering* 172 (2023) 108202,
+  which reaches the same conclusion from the physics and adds that for a size-independent
+  property the poolings should be compared rather than assumed. A downstream user measured a
+  large size coupling in a predictor built on these defaults, which is what prompted the change;
+  only the property-predictor path has a measurement behind it, and the other two operators take
+  the documented default rather than a measured one. A graph with no unmasked atoms reads out as
+  zeros rather than NaN, because the divisor is clamped as in chemprop's
+  `sums / counts.clamp(min=1)` and jraph's `maximum(count, 1)`: `jnp.mean(..., where=)` divides
+  by the mask's own sum but has no guard for an empty mask. `"max"` is not offered -- chemprop's
+  registry has no max aggregation for graph readout, and this package's `scatter_aggregate`
+  `"max"` is message aggregation, a different operation -- and neither are chemprop's `norm` or
+  attentive readouts, which leave the output extensive or add parameters.
 - Molecular graphs carry the AttentiveFP featurization (Xiong et al. 2019) as DGL-LifeSci's
   `AttentiveFPAtomFeaturizer` and `AttentiveFPBondFeaturizer` define it: 39 atom features and 10
   bond features, against 34 and 4 before. The new features are chirality and the CIP label,

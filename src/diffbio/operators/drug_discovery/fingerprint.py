@@ -10,7 +10,7 @@ Operators:
 
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 import jax
 import jax.numpy as jnp
@@ -23,7 +23,7 @@ from diffbio.core import soft_ops
 from diffbio.operators.drug_discovery._graph_utils import (
     attach_fingerprint,
     build_encoder,
-    graph_sum_readout,
+    graph_readout,
     initialize_graph_encoder,
     unpack_graph_inputs,
 )
@@ -43,7 +43,12 @@ class MolecularFingerprintConfig(OperatorConfig):
         num_layers: Number of graph convolution layers.
         in_features: Number of input node features (default: `DEFAULT_ATOM_FEATURES`, the
             graph builder's width).
-        normalize: Whether to L2-normalize the fingerprint.
+        normalize: Whether to L2-normalize the fingerprint. This removes the magnitude of the
+            projected vector but not the pooling choice below it: the projection is affine, so
+            a sum and a mean readout do not differ by a scalar once its bias is added.
+        aggregation: Graph readout pooling, `"mean"` or `"sum"`; see `graph_readout`. No
+            measurement in this package compares the two for a learned fingerprint, so this
+            takes the documented default rather than a measured one.
     """
 
     fingerprint_dim: int = 256
@@ -51,6 +56,7 @@ class MolecularFingerprintConfig(OperatorConfig):
     num_layers: int = 3
     in_features: int = DEFAULT_ATOM_FEATURES
     normalize: bool = False
+    aggregation: Literal["sum", "mean"] = "mean"
 
 
 class DifferentiableMolecularFingerprint(OperatorModule):
@@ -133,7 +139,7 @@ class DifferentiableMolecularFingerprint(OperatorModule):
                 - unchanged state
                 - unchanged metadata
         """
-        graph_repr = graph_sum_readout(data, self.encoder)
+        graph_repr = graph_readout(data, self.encoder, aggregation=self.config.aggregation)
 
         # Project to fingerprint dimension
         fingerprint = self.projection(graph_repr)

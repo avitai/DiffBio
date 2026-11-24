@@ -40,8 +40,10 @@ $$
 $$
 
 After $T$ rounds of message passing, each atom's representation encodes
-information about its $T$-hop neighborhood. A graph-level readout (sum or
-attention pooling) produces a single molecular representation.
+information about its $T$-hop neighborhood. A graph-level readout produces a single
+molecular representation. The choice of pooling decides whether that representation is
+extensive in the atom count or intensive: `mean` for a property that does not depend on the
+number of atoms, `sum` for one that does. `mean` is the default.
 
 DiffBio implements the **directed MPNN (D-MPNN)** variant from ChemProp, where
 messages pass along directed edges to avoid information shortcuts. This is the
@@ -57,7 +59,7 @@ DiffBio provides differentiable alternatives:
 
 | Fingerprint Type | Operator | Method | Output |
 |---|---|---|---|
-| **Neural graph** | `DifferentiableMolecularFingerprint` | Learned GNN convolutions + sum readout | Dense vector |
+| **Neural graph** | `DifferentiableMolecularFingerprint` | Learned GNN convolutions + mean readout (`aggregation`) | Dense vector |
 | **Circular (ECFP/Morgan)** | `CircularFingerprintOperator` | Differentiable radius-based atom environments | Bit vector (soft) |
 | **MACCS keys** | `MACCSKeysOperator` | Learned pattern matching for 166 structural keys | 166-bit vector (soft) |
 | **Attentive** | `AttentiveFP` | Graph attention + GRU-based molecule readout | Dense vector |
@@ -86,7 +88,7 @@ interpretability of classical fingerprints while enabling gradient flow.
 predicting molecular properties:
 
 1. D-MPNN encodes the molecular graph into atom representations
-2. Sum readout aggregates atoms into a graph-level vector
+2. Mean readout aggregates atoms into a graph-level vector, or sum via `aggregation`
 3. Feed-forward network maps the graph vector to property predictions
 
 The operator supports multi-task learning -- predicting multiple properties from
