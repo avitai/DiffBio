@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `.python-version` pins 3.12, the oldest Python the package supports, so `./setup.sh` and
+  any uv command without `--python` build on it rather than on the newest interpreter
+  installed (a free-threaded 3.14 on one development machine).
+
 ## [0.1.11] - 2026-11-24
 
 ### Security
