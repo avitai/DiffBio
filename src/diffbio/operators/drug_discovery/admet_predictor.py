@@ -14,7 +14,7 @@ References:
 
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 import jax
 import jax.numpy as jnp
@@ -25,7 +25,7 @@ from flax import nnx
 
 from diffbio.operators.drug_discovery._graph_utils import (
     build_optional_dropout,
-    graph_sum_readout,
+    graph_readout,
     initialize_graph_encoder_from_config,
 )
 from diffbio.operators.drug_discovery.primitives import DEFAULT_ATOM_FEATURES, DEFAULT_BOND_FEATURES
@@ -113,6 +113,8 @@ class ADMETConfig(OperatorConfig):
         ffn_hidden_dim: FFN hidden dimension (default: same as hidden_dim).
         ffn_num_layers: Number of FFN layers (default: 2).
         apply_task_activations: Apply sigmoid for classification tasks (default: False).
+        aggregation: Graph readout pooling. `"mean"` for an endpoint that does not depend on the
+            number of atoms, `"sum"` for one that does; see `graph_readout`.
     """
 
     hidden_dim: int = 300
@@ -124,6 +126,7 @@ class ADMETConfig(OperatorConfig):
     ffn_hidden_dim: int | None = None
     ffn_num_layers: int = 2
     apply_task_activations: bool = False
+    aggregation: Literal["sum", "mean"] = "mean"
 
 
 class ADMETPredictor(OperatorModule):
@@ -229,7 +232,9 @@ class ADMETPredictor(OperatorModule):
         """
         del key, stats  # Unused
 
-        graph_repr = graph_sum_readout(data, self.encoder, dropout=self.dropout)
+        graph_repr = graph_readout(
+            data, self.encoder, aggregation=self.config.aggregation, dropout=self.dropout
+        )
 
         h = graph_repr
         if self.ffn_backbone is not None:

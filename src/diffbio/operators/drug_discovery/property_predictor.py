@@ -6,7 +6,7 @@ using message passing neural networks.
 
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 import jax
 from artifex.generative_models.core.base import MLP
@@ -16,7 +16,7 @@ from flax import nnx
 
 from diffbio.operators.drug_discovery._graph_utils import (
     build_optional_dropout,
-    graph_sum_readout,
+    graph_readout,
     initialize_graph_encoder_from_config,
 )
 from diffbio.operators.drug_discovery.primitives import DEFAULT_ATOM_FEATURES, DEFAULT_BOND_FEATURES
@@ -38,6 +38,8 @@ class MolecularPropertyConfig(OperatorConfig):
         in_features: Number of input node features (default: `DEFAULT_ATOM_FEATURES`, the
             graph builder's width).
         num_edge_features: Number of edge/bond features (default: `DEFAULT_BOND_FEATURES`).
+        aggregation: Graph readout pooling. `"mean"` for a property that does not depend on the
+            number of atoms, `"sum"` for one that does; see `graph_readout`.
     """
 
     hidden_dim: int = 300
@@ -46,6 +48,7 @@ class MolecularPropertyConfig(OperatorConfig):
     dropout_rate: float = 0.0
     in_features: int = DEFAULT_ATOM_FEATURES
     num_edge_features: int = DEFAULT_BOND_FEATURES
+    aggregation: Literal["sum", "mean"] = "mean"
 
 
 class MolecularPropertyPredictor(OperatorModule):
@@ -122,7 +125,9 @@ class MolecularPropertyPredictor(OperatorModule):
                 - unchanged state
                 - unchanged metadata
         """
-        graph_repr = graph_sum_readout(data, self.encoder, dropout=self.dropout)
+        graph_repr = graph_readout(
+            data, self.encoder, aggregation=self.config.aggregation, dropout=self.dropout
+        )
 
         # Feed-forward prediction
         ffn_output = self.ffn_backbone(graph_repr)
