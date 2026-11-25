@@ -104,13 +104,10 @@ class TestAlignmentJITPerformance:
             return aligner.align(s1, s2)
 
         # First call triggers compilation
-        result1 = jit_align(seq1, seq2)
-        # Block until computation is done
-        result1.score.block_until_ready()
+        result1 = jax.block_until_ready(jit_align(seq1, seq2))
 
         # Subsequent calls should be fast (already compiled)
-        result2 = jit_align(seq1, seq2)
-        result2.score.block_until_ready()
+        result2 = jax.block_until_ready(jit_align(seq1, seq2))
 
         # Results should be identical
         assert jnp.allclose(result1.score, result2.score)
@@ -214,12 +211,10 @@ class TestAlignmentBenchmarks:
         seq2 = generate_random_dna_sequence(jax.random.split(key)[0], SMALL_LENGTH)
 
         # Warm up JIT
-        result = jit_aligner(seq1, seq2)
-        result.score.block_until_ready()
+        result = jax.block_until_ready(jit_aligner(seq1, seq2))
 
         def run_alignment():
-            result = jit_aligner(seq1, seq2)
-            result.score.block_until_ready()
+            result = jax.block_until_ready(jit_aligner(seq1, seq2))
             return result
 
         result = benchmark(run_alignment)
@@ -232,12 +227,10 @@ class TestAlignmentBenchmarks:
         seq2 = generate_random_dna_sequence(jax.random.split(key)[0], MEDIUM_LENGTH)
 
         # Warm up JIT
-        result = jit_aligner(seq1, seq2)
-        result.score.block_until_ready()
+        result = jax.block_until_ready(jit_aligner(seq1, seq2))
 
         def run_alignment():
-            result = jit_aligner(seq1, seq2)
-            result.score.block_until_ready()
+            result = jax.block_until_ready(jit_aligner(seq1, seq2))
             return result
 
         result = benchmark(run_alignment)
@@ -250,12 +243,10 @@ class TestAlignmentBenchmarks:
         seq2 = generate_random_dna_sequence(jax.random.split(key)[0], LARGE_LENGTH)
 
         # Warm up JIT
-        result = jit_aligner(seq1, seq2)
-        result.score.block_until_ready()
+        result = jax.block_until_ready(jit_aligner(seq1, seq2))
 
         def run_alignment():
-            result = jit_aligner(seq1, seq2)
-            result.score.block_until_ready()
+            result = jax.block_until_ready(jit_aligner(seq1, seq2))
             return result
 
         result = benchmark(run_alignment)
