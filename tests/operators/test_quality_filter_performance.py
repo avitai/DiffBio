@@ -87,12 +87,10 @@ class TestQualityFilterJITPerformance:
             return quality_filter.apply(data, state, None, None)
 
         # First call triggers compilation
-        result1, _, _ = jit_apply(data, state)
-        result1["sequence"].block_until_ready()
+        result1, _, _ = jax.block_until_ready(jit_apply(data, state))
 
         # Second call uses compiled version
-        result2, _, _ = jit_apply(data, state)
-        result2["sequence"].block_until_ready()
+        result2, _, _ = jax.block_until_ready(jit_apply(data, state))
 
         # Results should be identical
         assert jnp.allclose(result1["sequence"], result2["sequence"])
@@ -189,12 +187,10 @@ class TestQualityFilterBenchmarks:
         state = {}
 
         # Warm up JIT
-        result, _, _ = jit_apply(data, state)
-        result["sequence"].block_until_ready()
+        result, _, _ = jax.block_until_ready(jit_apply(data, state))
 
         def run_filter():
-            result, _, _ = jit_apply(data, state)
-            result["sequence"].block_until_ready()
+            result, _, _ = jax.block_until_ready(jit_apply(data, state))
             return result
 
         result = benchmark(run_filter)
@@ -207,12 +203,10 @@ class TestQualityFilterBenchmarks:
         state = {}
 
         # Warm up JIT
-        result, _, _ = jit_apply(data, state)
-        result["sequence"].block_until_ready()
+        result, _, _ = jax.block_until_ready(jit_apply(data, state))
 
         def run_filter():
-            result, _, _ = jit_apply(data, state)
-            result["sequence"].block_until_ready()
+            result, _, _ = jax.block_until_ready(jit_apply(data, state))
             return result
 
         result = benchmark(run_filter)
@@ -225,12 +219,10 @@ class TestQualityFilterBenchmarks:
         state = {}
 
         # Warm up JIT
-        result, _, _ = jit_apply(data, state)
-        result["sequence"].block_until_ready()
+        result, _, _ = jax.block_until_ready(jit_apply(data, state))
 
         def run_filter():
-            result, _, _ = jit_apply(data, state)
-            result["sequence"].block_until_ready()
+            result, _, _ = jax.block_until_ready(jit_apply(data, state))
             return result
 
         result = benchmark(run_filter)
